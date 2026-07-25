@@ -4,45 +4,46 @@
 #include "../Core/Config.mqh"
 #include "../Core/OrderManager.mqh"
 #include "../Core/RiskEngine.mqh"
+#include "../Core/PositionManager.mqh"
 
 //==================================================
 // EXECUTION ENGINE
 //==================================================
 
-bool ExecuteTrade(int signal)
+bool ExecuteTrade(string symbol,int signal)
 {
+   if(symbol=="")
+      return false;
+
    if(signal==0)
       return false;
 
-   if(PositionSelect(_Symbol))
+   if(!CanOpenPosition(symbol))
       return false;
 
-   double lot=CalculateLotByRisk(
-      RiskPercent,
-      StopLossPoints
-   );
+   double lot=
+      CalculateLotByRisk(
+         symbol,
+         RiskPercent,
+         StopLossPoints
+      );
 
    if(lot<=0)
       return false;
 
    bool result=false;
 
-   switch(signal)
-   {
-      case 1:
-         result=OpenBuy(lot);
-         break;
+   if(signal==1)
+      result=OpenBuy(symbol,lot);
 
-      case -1:
-         result=OpenSell(lot);
-         break;
-   }
+   if(signal==-1)
+      result=OpenSell(symbol,lot);
 
    if(result)
    {
       Print(
          "TRADE EXECUTADO | ",
-         _Symbol,
+         symbol,
          " | SIGNAL=",
          signal,
          " | LOT=",
@@ -52,12 +53,23 @@ bool ExecuteTrade(int signal)
    else
    {
       Print(
-         "ERRO EXECUÇÃO: ",
+         "ERRO EXECUÇÃO ",
+         symbol,
+         " | ",
          GetLastError()
       );
    }
 
    return result;
+}
+
+//==================================================
+// COMPATIBILIDADE
+//==================================================
+
+bool ExecuteTrade(int signal)
+{
+   return ExecuteTrade(_Symbol,signal);
 }
 
 #endif
