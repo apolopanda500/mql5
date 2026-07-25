@@ -4,6 +4,7 @@
 #include <Trade/Trade.mqh>
 #include "../Core/Config.mqh"
 
+extern CTrade trade;
 
 //==================================================
 // INIT
@@ -16,27 +17,45 @@ void InitOrderManager()
 }
 
 //==================================================
-// OPEN BUY
+// BUY
 //==================================================
 
-bool OpenBuy(double lot)
+bool OpenBuy(
+   string symbol,
+   double lot
+)
 {
+   if(symbol=="")
+      return false;
+
    if(lot<=0)
       return false;
 
-   return trade.Buy(lot,_Symbol);
+   return trade.Buy(
+      lot,
+      symbol
+   );
 }
 
 //==================================================
-// OPEN SELL
+// SELL
 //==================================================
 
-bool OpenSell(double lot)
+bool OpenSell(
+   string symbol,
+   double lot
+)
 {
+   if(symbol=="")
+      return false;
+
    if(lot<=0)
       return false;
 
-   return trade.Sell(lot,_Symbol);
+   return trade.Sell(
+      lot,
+      symbol
+   );
 }
 
 #endif
