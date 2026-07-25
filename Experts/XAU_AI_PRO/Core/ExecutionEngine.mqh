@@ -5,6 +5,7 @@
 #include "../Core/OrderManager.mqh"
 #include "../Core/RiskEngine.mqh"
 #include "../Core/PositionManager.mqh"
+#include "../Core/TradeController.mqh"
 
 //==================================================
 // EXECUTION ENGINE
@@ -18,6 +19,9 @@ bool ExecuteTrade(string symbol,int signal)
    if(signal==0)
       return false;
 
+   if(!CanTrade(symbol))
+      return false;
+
    if(!CanOpenPosition(symbol))
       return false;
 
@@ -29,18 +33,43 @@ bool ExecuteTrade(string symbol,int signal)
       );
 
    if(lot<=0)
+   {
+      Print("EXECUTION: LOTE INVÁLIDO");
       return false;
+   }
 
    bool result=false;
 
-   if(signal==1)
-      result=OpenBuy(symbol,lot);
+   switch(signal)
+   {
+      case 1:
+      {
+         result=
+            OpenBuy(
+               symbol,
+               lot
+            );
+         break;
+      }
 
-   if(signal==-1)
-      result=OpenSell(symbol,lot);
+      case -1:
+      {
+         result=
+            OpenSell(
+               symbol,
+               lot
+            );
+         break;
+      }
+
+      default:
+         return false;
+   }
 
    if(result)
    {
+      RegisterTrade();
+
       Print(
          "TRADE EXECUTADO | ",
          symbol,
@@ -53,9 +82,9 @@ bool ExecuteTrade(string symbol,int signal)
    else
    {
       Print(
-         "ERRO EXECUÇÃO ",
+         "ERRO EXECUÇÃO | ",
          symbol,
-         " | ",
+         " | ERROR=",
          GetLastError()
       );
    }
@@ -69,7 +98,10 @@ bool ExecuteTrade(string symbol,int signal)
 
 bool ExecuteTrade(int signal)
 {
-   return ExecuteTrade(_Symbol,signal);
+   return ExecuteTrade(
+      _Symbol,
+      signal
+   );
 }
 
 #endif
