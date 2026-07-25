@@ -1,37 +1,18 @@
 #ifndef RISKENGINE_MQH
 #define RISKENGINE_MQH
 
-
 //==================================================
 // RISK ENGINE
-// MULTI ASSET
 //==================================================
 
-
-
-//==================================================
-// CALCULA LOTE PADRÃO
-//==================================================
-
-double CalculateLotByRisk(
-   double riskPercent,
-   int stopPoints
-)
+double CalculateLotByRisk(double riskPercent,int stopPoints)
 {
-
    return CalculateLotByRisk(
       _Symbol,
       riskPercent,
       stopPoints
    );
-
 }
-
-
-
-//==================================================
-// CALCULA LOTE POR SÍMBOLO
-//==================================================
 
 double CalculateLotByRisk(
    string symbol,
@@ -39,129 +20,72 @@ double CalculateLotByRisk(
    int stopPoints
 )
 {
-
-
    if(symbol=="")
       return 0.01;
 
+   if(stopPoints<=0)
+      stopPoints=100;
 
+   double balance=AccountInfoDouble(ACCOUNT_BALANCE);
 
-   double balance =
-      AccountInfoDouble(
-         ACCOUNT_BALANCE
-      );
+   double riskMoney=
+      balance*riskPercent/100.0;
 
-
-
-   double riskMoney =
-      balance *
-      riskPercent /
-      100.0;
-
-
-
-   double tickValue =
+   double tickValue=
       SymbolInfoDouble(
          symbol,
          SYMBOL_TRADE_TICK_VALUE
       );
 
-
-
-   double tickSize =
+   double tickSize=
       SymbolInfoDouble(
          symbol,
          SYMBOL_TRADE_TICK_SIZE
       );
 
-
-
-   if(
-      tickValue<=0 ||
-      tickSize<=0
-   )
-      return 0.01;
-
-
-
-   double point =
+   double point=
       SymbolInfoDouble(
          symbol,
          SYMBOL_POINT
       );
 
+   if(tickValue<=0 || tickSize<=0 || point<=0)
+      return 0.01;
 
-
-   double lossPerLot =
-      (
-         stopPoints *
-         point /
-         tickSize
-      )
-      *
-      tickValue;
-
-
+   double lossPerLot=
+      ((stopPoints*point)/tickSize)
+      *tickValue;
 
    if(lossPerLot<=0)
       return 0.01;
 
+   double lot=
+      riskMoney/lossPerLot;
 
-
-   double lot =
-      riskMoney /
-      lossPerLot;
-
-
-
-   double minLot =
+   double minLot=
       SymbolInfoDouble(
          symbol,
          SYMBOL_VOLUME_MIN
       );
 
-
-   double maxLot =
+   double maxLot=
       SymbolInfoDouble(
          symbol,
          SYMBOL_VOLUME_MAX
       );
 
-
-   double step =
+   double step=
       SymbolInfoDouble(
          symbol,
          SYMBOL_VOLUME_STEP
       );
 
+   lot=MathMax(minLot,lot);
+   lot=MathMin(maxLot,lot);
 
+   lot=MathFloor(lot/step)*step;
 
-   lot =
-      MathFloor(
-         lot /
-         step
-      )
-      *
-      step;
-
-
-
-   if(lot < minLot)
-      lot=minLot;
-
-
-   if(lot > maxLot)
-      lot=maxLot;
-
-
-
-   return NormalizeDouble(
-      lot,
-      2
-   );
-
+   return NormalizeDouble(lot,2);
 }
-
-
 
 #endif
