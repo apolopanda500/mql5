@@ -1,18 +1,29 @@
 #ifndef TRADEPIPELINE_MQH
 #define TRADEPIPELINE_MQH
 
-#include "SignalCore.mqh"
-#include "DecisionEngine.mqh"
-#include "ExecutionEngine.mqh"
+#include "../Core/SymbolManager.mqh"
+#include "../Core/MarketScanner.mqh"
 
-bool RunTradePipeline()
+//==================================================
+// TRADE PIPELINE
+//==================================================
+
+void RunTradePipeline()
 {
-   int decision = GetDecision();
+   int total=TotalSymbols();
 
-   if(decision == 0)
-      return false;
+   if(total<=0)
+      return;
 
-   return ExecuteTrade(decision);
+   for(int i=0;i<total;i++)
+   {
+      string symbol=GetTradeSymbol(i);
+
+      if(symbol=="")
+         continue;
+
+      ProcessSymbol(symbol);
+   }
 }
 
 #endif
