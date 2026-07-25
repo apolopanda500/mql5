@@ -29,7 +29,7 @@ void ProcessSymbol(string symbol)
    if(!ValidateTrade(signal))
       return;
 
-   if(!ExecuteTrade(signal))
+   if(!ExecuteTrade(symbol,signal))
       return;
 
    Print(
