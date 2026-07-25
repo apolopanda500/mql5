@@ -20,10 +20,7 @@ void InitOrderManager()
 // BUY
 //==================================================
 
-bool OpenBuy(
-   string symbol,
-   double lot
-)
+bool OpenBuy(string symbol,double lot)
 {
    if(symbol=="")
       return false;
@@ -31,20 +28,54 @@ bool OpenBuy(
    if(lot<=0)
       return false;
 
-   return trade.Buy(
-      lot,
-      symbol
-   );
+   double ask=
+      SymbolInfoDouble(symbol,SYMBOL_ASK);
+
+   double sl=0;
+   double tp=0;
+
+   if(StopLossPoints>0)
+      sl=NormalizeDouble(
+         ask-(StopLossPoints*_Point),
+         (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
+      );
+
+   if(TakeProfitPoints>0)
+      tp=NormalizeDouble(
+         ask+(TakeProfitPoints*_Point),
+         (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
+      );
+
+   bool result=
+      trade.Buy(
+         lot,
+         symbol,
+         ask,
+         sl,
+         tp,
+         "XAU_AI_PRO BUY"
+      );
+
+   if(!result)
+   {
+      Print(
+         "BUY ERROR ",
+         symbol,
+         " | ",
+         trade.ResultRetcode(),
+         " | ",
+         trade.ResultRetcodeDescription()
+      );
+   }
+
+   return result;
 }
 
 //==================================================
 // SELL
 //==================================================
 
-bool OpenSell(
-   string symbol,
-   double lot
-)
+bool OpenSell(string symbol,double lot)
 {
    if(symbol=="")
       return false;
@@ -52,10 +83,59 @@ bool OpenSell(
    if(lot<=0)
       return false;
 
-   return trade.Sell(
-      lot,
-      symbol
-   );
+   double bid=
+      SymbolInfoDouble(symbol,SYMBOL_BID);
+
+   double sl=0;
+   double tp=0;
+
+   if(StopLossPoints>0)
+      sl=NormalizeDouble(
+         bid+(StopLossPoints*_Point),
+         (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
+      );
+
+   if(TakeProfitPoints>0)
+      tp=NormalizeDouble(
+         bid-(TakeProfitPoints*_Point),
+         (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
+      );
+
+   bool result=
+      trade.Sell(
+         lot,
+         symbol,
+         bid,
+         sl,
+         tp,
+         "XAU_AI_PRO SELL"
+      );
+
+   if(!result)
+   {
+      Print(
+         "SELL ERROR ",
+         symbol,
+         " | ",
+         trade.ResultRetcode(),
+         " | ",
+         trade.ResultRetcodeDescription()
+      );
+   }
+
+   return result;
+}
+
+//==================================================
+// CLOSE POSITION
+//==================================================
+
+bool ClosePosition(string symbol)
+{
+   if(!PositionSelect(symbol))
+      return false;
+
+   return trade.PositionClose(symbol);
 }
 
 #endif
