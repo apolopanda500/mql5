@@ -2,119 +2,88 @@
 #define POSITIONMANAGER_MQH
 
 #include "../Core/Config.mqh"
-
 #include <Trade/Trade.mqh>
 
 extern CTrade trade;
 
-
 //==================================================
-// POSITION MANAGER
-//==================================================
-
-
-//==================================================
-// VERIFICA POSIÇÃO
+// EXISTE POSIÇÃO DO EA
 //==================================================
 
 bool HasPosition(string symbol)
 {
-
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
-
-      ulong ticket =
-         PositionGetTicket(i);
-
+      ulong ticket=PositionGetTicket(i);
 
       if(ticket==0)
          continue;
 
+      if(!PositionSelectByTicket(ticket))
+         continue;
 
-      string posSymbol =
-         PositionGetString(
-            POSITION_SYMBOL
-         );
+      if(PositionGetString(POSITION_SYMBOL)!=symbol)
+         continue;
 
+      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+         continue;
 
-      if(posSymbol==symbol)
-         return true;
-
+      return true;
    }
 
-
    return false;
-
 }
 
-
-
 //==================================================
-// POSIÇÃO ATUAL DO EA
+// POSIÇÃO NO SÍMBOLO ATUAL
 //==================================================
 
 bool HasOpenPosition()
 {
-
    return HasPosition(_Symbol);
-
 }
 
-
-
 //==================================================
-// CONTAR POSIÇÕES
+// CONTAR POSIÇÕES DO EA
 //==================================================
 
 int CountPositions()
 {
-
    int total=0;
-
 
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
+      ulong ticket=PositionGetTicket(i);
 
-      ulong ticket =
-         PositionGetTicket(i);
+      if(ticket==0)
+         continue;
 
+      if(!PositionSelectByTicket(ticket))
+         continue;
 
-      if(ticket>0)
-         total++;
+      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+         continue;
 
+      total++;
    }
 
-
    return total;
-
 }
 
-
-
 //==================================================
-// PERMITE ABRIR
+// PODE ABRIR
 //==================================================
 
 bool CanOpenPosition(string symbol)
 {
-
    if(HasPosition(symbol))
       return false;
 
-
-   if(
-      CountPositions()
-      >=
-      MaxOpenPositions
-   )
+   if(CountPositions()>=MaxOpenPositions)
       return false;
 
-
    return true;
-
 }
-
-
 
 //==================================================
 // DIREÇÃO
@@ -122,31 +91,22 @@ bool CanOpenPosition(string symbol)
 
 int GetPositionDirection(string symbol)
 {
-
    if(!PositionSelect(symbol))
       return 0;
 
+   if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+      return 0;
 
-
-   long type =
-      PositionGetInteger(
-         POSITION_TYPE
-      );
-
+   ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
 
    if(type==POSITION_TYPE_BUY)
       return 1;
 
-
    if(type==POSITION_TYPE_SELL)
       return -1;
 
-
    return 0;
-
 }
-
-
 
 //==================================================
 // FECHAR POSIÇÃO
@@ -154,66 +114,38 @@ int GetPositionDirection(string symbol)
 
 bool CloseSymbolPosition(string symbol)
 {
-
    if(!PositionSelect(symbol))
       return false;
 
+   if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+      return false;
 
-
-   CTrade closeTrade;
-
-
-   closeTrade.SetExpertMagicNumber(
-      MagicNumber
-   );
-
-
-   return
-      closeTrade.PositionClose(
-         symbol
-      );
-
+   return trade.PositionClose(symbol);
 }
 
-
-
 //==================================================
-// GERENCIAMENTO
+// GERENCIAR
 //==================================================
 
 void ManagePositions()
 {
-
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
-
-      ulong ticket =
-         PositionGetTicket(i);
-
+      ulong ticket=PositionGetTicket(i);
 
       if(ticket==0)
          continue;
 
-
-      string symbol =
-         PositionGetString(
-            POSITION_SYMBOL
-         );
-
-
-      if(symbol=="")
+      if(!PositionSelectByTicket(ticket))
          continue;
 
+      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+         continue;
 
-      // futuro:
-      // trailing stop
-      // break even
-      // parcial
-
+      // BreakEven();
+      // TrailingStop();
+      // PartialClose();
    }
-
 }
-
-
 
 #endif
