@@ -3,97 +3,79 @@
 
 #include "../Core/Config.mqh"
 #include "../Core/SignalCore.mqh"
-
+#include "../Core/ValidationEngine.mqh"
 
 //==================================================
 // DECISION ENGINE
 //==================================================
 
-
-double MarketScore = 0;
-
+double MarketScore=0;
 
 //==================================================
-// SCORE BASE
+// MARKET SCORE
 //==================================================
 
 double CalculateMarketScore(int signal)
 {
-
-   if(signal == 0)
+   if(signal==0)
       return 0;
 
+   double score=50;
 
-   double score = 50;
+   score+=20;
 
+   if(score>100)
+      score=100;
 
-   if(signal == 1 || signal == -1)
-      score += 20;
+   MarketScore=NormalizeDouble(score,2);
 
-
-   if(score > 100)
-      score = 100;
-
-
-   MarketScore = score;
-
-
-   return score;
-
+   return MarketScore;
 }
 
-
-
 //==================================================
-// PERMISSÃO
+// ALLOW TRADE
 //==================================================
 
 bool AllowTrade(int signal)
 {
-
-   if(signal == 0)
+   if(signal==0)
       return false;
 
+   if(!ValidateTrade(signal))
+      return false;
 
-   double score =
+   double score=
       CalculateMarketScore(signal);
 
-
-
-   if(score < 60)
+   if(score<60)
       return false;
 
-
-
    return true;
-
 }
 
-
-
 //==================================================
-// DECISÃO FINAL
+// FINAL DECISION
 //==================================================
 
 int GetDecision()
 {
-
-   int signal =
+   int signal=
       GetSignal();
 
-
-   if(signal == 0)
+   if(signal==0)
       return 0;
-
 
    if(!AllowTrade(signal))
       return 0;
 
+   Print(
+      "DECISION | SIGNAL=",
+      signal,
+      " SCORE=",
+      DoubleToString(MarketScore,2)
+   );
 
    return signal;
-
 }
-
-
 
 #endif
