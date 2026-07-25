@@ -21,12 +21,16 @@ bool ValidateTrade(const int signal)
 
    if(EnableSpreadFilter)
    {
-      double spread =
-         (SymbolInfoDouble(_Symbol,SYMBOL_ASK) -
-          SymbolInfoDouble(_Symbol,SYMBOL_BID))/_Point;
+      double spread=
+         (SymbolInfoDouble(_Symbol,SYMBOL_ASK)-
+          SymbolInfoDouble(_Symbol,SYMBOL_BID))
+         /_Point;
 
-      if(spread > MaxSpread)
+      if(spread>MaxSpread)
+      {
+         Print("VALIDATION: SPREAD");
          return false;
+      }
    }
 
    //==================================
@@ -36,7 +40,10 @@ bool ValidateTrade(const int signal)
    if(EnableSessionFilter)
    {
       if(!IsTradingSession())
+      {
+         Print("VALIDATION: SESSION");
          return false;
+      }
    }
 
    //==================================
@@ -46,10 +53,16 @@ bool ValidateTrade(const int signal)
    if(EnableTrendFilter)
    {
       if(signal==1 && !TrendBuy())
+      {
+         Print("VALIDATION: TREND BUY");
          return false;
+      }
 
       if(signal==-1 && !TrendSell())
+      {
+         Print("VALIDATION: TREND SELL");
          return false;
+      }
    }
 
    //==================================
@@ -59,7 +72,10 @@ bool ValidateTrade(const int signal)
    if(EnableADXFilter)
    {
       if(!ADX_OK())
+      {
+         Print("VALIDATION: ADX");
          return false;
+      }
    }
 
    //==================================
@@ -69,7 +85,10 @@ bool ValidateTrade(const int signal)
    if(EnableAIFilter)
    {
       if(!AITradeAllowed())
+      {
+         Print("VALIDATION: AI");
          return false;
+      }
    }
 
    //==================================
@@ -79,7 +98,10 @@ bool ValidateTrade(const int signal)
    if(EnableMTFConfirmation)
    {
       if(!MTFApproved(signal))
+      {
+         Print("VALIDATION: MTF");
          return false;
+      }
    }
 
    return true;
