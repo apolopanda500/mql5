@@ -127,8 +127,133 @@ bool CloseSymbolPosition(string symbol)
 // GERENCIAR
 //==================================================
 
+//==================================================
+// TRAILING STOP ATR
+//==================================================
+
+void TrailingStopATR(string symbol, ulong ticket)
+{
+   if(!EnableTrailingATR)
+      return;
+
+   if(!PositionSelectByTicket(ticket))
+      return;
+
+   if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+      return;
+
+   double openPrice=PositionGetDouble(POSITION_PRICE_OPEN);
+   double sl=PositionGetDouble(POSITION_SL);
+   ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+
+   double point=SymbolInfoDouble(symbol,SYMBOL_POINT);
+   if(point<=0)
+      point=_Point;
+
+   double atr=0;
+   // Use iATR for actual ATR value
+   double atrBuf[];
+   int atrHandle=iATR(symbol,PERIOD_CURRENT,ATRPeriod);
+   if(atrHandle!=INVALID_HANDLE)
+   {
+      if(CopyBuffer(atrHandle,0,0,1,atrBuf)>0)
+         atr=atrBuf[0];
+      IndicatorRelease(atrHandle);
+   }
+   if(atr<=0)
+      atr=BreakEvenTrigger*point;
+
+   double trailDistance=ATRMultiplier*atr;
+
+   double currentPrice;
+   if(type==POSITION_TYPE_BUY)
+      currentPrice=SymbolInfoDouble(symbol,SYMBOL_BID);
+   else
+      currentPrice=SymbolInfoDouble(symbol,SYMBOL_ASK);
+
+   double newSL;
+   if(type==POSITION_TYPE_BUY)
+   {
+      if(currentPrice-openPrice<trailDistance)
+         return;
+
+      newSL=currentPrice-trailDistance;
+      if(sl>0 && newSL<=sl)
+         return;
+   }
+   else
+   {
+      if(openPrice-currentPrice<trailDistance)
+         return;
+
+      newSL=currentPrice+trailDistance;
+      if(sl>0 && newSL>=sl)
+         return;
+   }
+
+   double tp=PositionGetDouble(POSITION_TP);
+   trade.PositionModify(symbol,newSL,tp);
+}
+
+//==================================================
+// PARTIAL CLOSE
+//==================================================
+
+void PartialClose(string symbol, ulong ticket)
+{
+   if(!EnablePartialClose)
+      return;
+
+   if(!PositionSelectByTicket(ticket))
+      return;
+
+   if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+      return;
+
+   double openPrice=PositionGetDouble(POSITION_PRICE_OPEN);
+   double volume=PositionGetDouble(POSITION_VOLUME);
+   ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+
+   double point=SymbolInfoDouble(symbol,SYMBOL_POINT);
+   if(point<=0)
+      point=_Point;
+
+   double currentPrice;
+   if(type==POSITION_TYPE_BUY)
+      currentPrice=SymbolInfoDouble(symbol,SYMBOL_BID);
+   else
+      currentPrice=SymbolInfoDouble(symbol,SYMBOL_ASK);
+
+   double profitPoints=MathAbs(currentPrice-openPrice)/point;
+
+   if(profitPoints<PartialTrigger)
+      return;
+
+   double closeVolume=volume*(PartialPercent/100.0);
+   double minLot=SymbolInfoDouble(symbol,SYMBOL_VOLUME_MIN);
+   double step=SymbolInfoDouble(symbol,SYMBOL_VOLUME_STEP);
+
+   if(step<=0)
+      step=minLot;
+
+   closeVolume=MathFloor(closeVolume/step)*step;
+   closeVolume=MathMax(minLot,closeVolume);
+
+   if(closeVolume<=0)
+      return;
+
+   trade.PositionClosePartial(symbol,closeVolume);
+}
+
+//==================================================
+// GERENCIAR
+//==================================================
+
 void ManagePositions()
 {
+   // Break-even management (iterates all positions internally)
+   CheckBreakEven();
+
    for(int i=PositionsTotal()-1;i>=0;i--)
    {
       ulong ticket=PositionGetTicket(i);
@@ -142,9 +267,10 @@ void ManagePositions()
       if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
          continue;
 
-      // BreakEven();
-      // TrailingStop();
-      // PartialClose();
+      string symbol=PositionGetString(POSITION_SYMBOL);
+
+      TrailingStopATR(symbol,ticket);
+      PartialClose(symbol,ticket);
    }
 }
 

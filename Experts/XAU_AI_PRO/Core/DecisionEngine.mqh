@@ -36,12 +36,12 @@ double CalculateMarketScore(int signal)
 // ALLOW TRADE
 //==================================================
 
-bool AllowTrade(int signal)
+bool AllowTrade(int signal, string symbol="")
 {
    if(signal==0)
       return false;
 
-   if(!ValidateTrade(signal))
+   if(!ValidateTrade(signal, symbol))
       return false;
 
    double score=
@@ -57,15 +57,15 @@ bool AllowTrade(int signal)
 // FINAL DECISION
 //==================================================
 
-int GetDecision()
+int GetDecision(string symbol="")
 {
    int signal=
-      GetSignal();
+      GetSignal(symbol);
 
    if(signal==0)
       return 0;
 
-   if(!AllowTrade(signal))
+   if(!AllowTrade(signal, symbol))
       return 0;
 
    Print(

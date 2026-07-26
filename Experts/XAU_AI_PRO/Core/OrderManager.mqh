@@ -31,18 +31,23 @@ bool OpenBuy(string symbol,double lot)
    double ask=
       SymbolInfoDouble(symbol,SYMBOL_ASK);
 
+   double point=
+      SymbolInfoDouble(symbol,SYMBOL_POINT);
+   if(point<=0)
+      point=_Point;
+
    double sl=0;
    double tp=0;
 
    if(StopLossPoints>0)
       sl=NormalizeDouble(
-         ask-(StopLossPoints*_Point),
+         ask-(StopLossPoints*point),
          (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
       );
 
    if(TakeProfitPoints>0)
       tp=NormalizeDouble(
-         ask+(TakeProfitPoints*_Point),
+         ask+(TakeProfitPoints*point),
          (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
       );
 
@@ -86,18 +91,23 @@ bool OpenSell(string symbol,double lot)
    double bid=
       SymbolInfoDouble(symbol,SYMBOL_BID);
 
+   double point=
+      SymbolInfoDouble(symbol,SYMBOL_POINT);
+   if(point<=0)
+      point=_Point;
+
    double sl=0;
    double tp=0;
 
    if(StopLossPoints>0)
       sl=NormalizeDouble(
-         bid+(StopLossPoints*_Point),
+         bid+(StopLossPoints*point),
          (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
       );
 
    if(TakeProfitPoints>0)
       tp=NormalizeDouble(
-         bid-(TakeProfitPoints*_Point),
+         bid-(TakeProfitPoints*point),
          (int)SymbolInfoInteger(symbol,SYMBOL_DIGITS)
       );
 

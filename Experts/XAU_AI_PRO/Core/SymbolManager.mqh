@@ -18,6 +18,15 @@ string ResolveBrokerSymbol(string symbol)
    StringTrimLeft(symbol);
    StringTrimRight(symbol);
 
+   // Strip trailing "c" suffix to normalize symbols like "XAUUSDc" -> "XAUUSD"
+   // so they enter the correct broker-mapping branch below
+   string baseSymbol = symbol;
+   int len = StringLen(baseSymbol);
+   if(len > 1 && StringGetCharacter(baseSymbol, len - 1) == 'c')
+   {
+      baseSymbol = StringSubstr(baseSymbol, 0, len - 1);
+   }
+
    string candidates[];
    ArrayResize(candidates,12);
 
@@ -26,7 +35,7 @@ string ResolveBrokerSymbol(string symbol)
    candidates[2]=symbol+".";
    candidates[3]=symbol+"#";
 
-   if(symbol=="XAUUSD")
+   if(baseSymbol=="XAUUSD")
    {
       candidates[4]="GOLD";
       candidates[5]="GOLD#";
@@ -38,7 +47,7 @@ string ResolveBrokerSymbol(string symbol)
       candidates[11]="XAUUSD.r";
    }
    else
-   if(symbol=="BTCUSD")
+   if(baseSymbol=="BTCUSD")
    {
       candidates[4]="BTCUSD#";
       candidates[5]="BTCUSDc";
@@ -147,35 +156,48 @@ bool InitSymbolManager()
       return true;
    }
 
-   for(int i=0;i<count;i++)
-   {
-      string symbol=
-         ResolveBrokerSymbol(
-            temp[i]
-         );
+    for(int i=0;i<count;i++)
+    {
+       string symbol=
+          ResolveBrokerSymbol(
+             temp[i]
+          );
 
-      if(symbol=="")
-         continue;
+       if(symbol=="")
+          continue;
 
-      int size=
-         ArraySize(
-            ActiveSymbols
-         );
+       int size=
+          ArraySize(
+             ActiveSymbols
+          );
 
-      ArrayResize(
-         ActiveSymbols,
-         size+1
-      );
+       ArrayResize(
+          ActiveSymbols,
+          size+1
+       );
 
-      ActiveSymbols[size]=symbol;
+       ActiveSymbols[size]=symbol;
 
-      Print(
-         "ATIVO REGISTRADO: ",
-         symbol
-      );
-   }
+       Print(
+          "ATIVO REGISTRADO: ",
+          symbol
+       );
+    }
 
-   return(ArraySize(ActiveSymbols)>0);
+    // Fallback: if no symbols resolved, use _Symbol
+    // This prevents INIT_FAILED in Strategy Tester when
+    // broker symbol suffixes don't match the Symbols list
+    if(ArraySize(ActiveSymbols)==0)
+    {
+       ArrayResize(ActiveSymbols,1);
+       ActiveSymbols[0]=_Symbol;
+       Print(
+          "FALLBACK: No symbols resolved, using _Symbol: ",
+          _Symbol
+       );
+    }
+
+    return true;
 }
 
 //==================================================

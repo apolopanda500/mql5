@@ -29,10 +29,10 @@ double GetAIConfidence(int signal);
 // AI FILTER INTERFACE
 //==================================================
 
-bool AITradeAllowed()
+bool AITradeAllowed(string symbol="")
 {
 
-   int signal = GetSignal();
+   int signal = GetSignal(symbol);
 
 
    if(signal == 0)

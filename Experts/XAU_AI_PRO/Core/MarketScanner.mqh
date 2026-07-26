@@ -26,8 +26,8 @@ void ProcessSymbol(string symbol)
    if(signal==0)
       return;
 
-   if(!ValidateTrade(signal))
-      return;
+    if(!ValidateTrade(signal, symbol))
+       return;
 
    if(!ExecuteTrade(symbol,signal))
       return;

@@ -538,6 +538,11 @@
       "path":"Core\\TradePipeline.mqh",
       "compile":false,
       "relative_to_project":true
+    },
+    {
+      "path":"Core\\TradeController.mqh",
+      "compile":false,
+      "relative_to_project":true
     }
   ]
 }

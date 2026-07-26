@@ -13,18 +13,25 @@
 // VALIDAÇÃO FINAL
 //==================================================
 
-bool ValidateTrade(const int signal)
+bool ValidateTrade(const int signal, string symbol="")
 {
+   // Use passed symbol or fallback to _Symbol
+   string sym = (symbol != "") ? symbol : _Symbol;
+
    //==================================
    // SPREAD
    //==================================
 
    if(EnableSpreadFilter)
    {
+      double point = SymbolInfoDouble(sym, SYMBOL_POINT);
+      if(point <= 0)
+         point = _Point;
+
       double spread=
-         (SymbolInfoDouble(_Symbol,SYMBOL_ASK)-
-          SymbolInfoDouble(_Symbol,SYMBOL_BID))
-         /_Point;
+         (SymbolInfoDouble(sym,SYMBOL_ASK)-
+          SymbolInfoDouble(sym,SYMBOL_BID))
+         /point;
 
       if(spread>MaxSpread)
       {
@@ -84,7 +91,7 @@ bool ValidateTrade(const int signal)
 
    if(EnableAIFilter)
    {
-      if(!AITradeAllowed())
+      if(!AITradeAllowed(sym))
       {
          Print("VALIDATION: AI");
          return false;
