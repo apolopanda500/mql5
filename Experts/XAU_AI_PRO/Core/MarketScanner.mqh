@@ -5,9 +5,11 @@
 #include "../Core/ValidationEngine.mqh"
 #include "../Core/ExecutionEngine.mqh"
 #include "../Core/PositionManager.mqh"
+#include "../AI/AIEngine.mqh"
 
 //==================================================
 // PROCESS SYMBOL
+// Usa GetCombinedSignal (técnico + IA) em vez de apenas GetSignal
 //==================================================
 
 void ProcessSymbol(string symbol)
@@ -21,13 +23,14 @@ void ProcessSymbol(string symbol)
    if(!CanOpenPosition(symbol))
       return;
 
-   int signal=GetSignal(symbol);
+   // Sinal combinado: técnico + IA
+   int signal=GetCombinedSignal(symbol);
 
    if(signal==0)
       return;
 
-    if(!ValidateTrade(signal, symbol))
-       return;
+    if(!ValidateTrade(symbol,signal))
+      return;
 
    if(!ExecuteTrade(symbol,signal))
       return;
@@ -36,7 +39,9 @@ void ProcessSymbol(string symbol)
       "MARKET SCANNER | ",
       symbol,
       " | SIGNAL=",
-      signal
+      signal,
+      " | AI Score=",
+      DoubleToString(AI_Score, 2)
    );
 }
 
