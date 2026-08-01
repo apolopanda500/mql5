@@ -21,11 +21,13 @@ double AI_Score=0;
 // LOAD PREDICTION
 //==================================================
 
-bool LoadAIPrediction()
+bool LoadAIPrediction(string symbol="")
 {
+    if(symbol=="")
+       symbol=_Symbol;
 
-   string fileName=
-      "Data\\prediction.json";
+    string fileName=
+       "Data\\prediction_" + symbol + ".json";
 
 
    Print(
