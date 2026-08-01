@@ -5,11 +5,21 @@
 // AI CONNECTOR
 // XAU_AI_PRO V1.1
 // MULTI SYMBOL
+//
+// RESPONSABILIDADE:
+// - Ler prediction_<SYMBOL>.json
+// - Validar o símbolo
+// - Armazenar os dados da IA
+// - Disponibilizar getters
+//
+// OBS:
+// A função AITradeAllowed() NÃO fica aqui.
+// Ela pertence ao AIEngine.mqh.
 //==================================================
+
 
 //==================================================
 // GLOBAL AI STATE
-// Compatibilidade com módulos antigos
 //==================================================
 
 string AI_Symbol="";
@@ -23,7 +33,7 @@ double AI_Confidence=0.0;
 
 
 //==================================================
-// RESET GLOBAL STATE
+// RESET AI STATE
 //==================================================
 
 void ResetAIState()
@@ -54,6 +64,7 @@ bool LoadAIPrediction(string symbol="")
    if(symbol=="")
       return false;
 
+
    string fileName=
       "Data\\prediction_" +
       symbol +
@@ -71,6 +82,10 @@ bool LoadAIPrediction(string symbol="")
    ResetLastError();
 
 
+   //================================================
+   // FILE EXISTS
+   //================================================
+
    if(!FileIsExist(fileName))
    {
       Print(
@@ -81,6 +96,10 @@ bool LoadAIPrediction(string symbol="")
       return false;
    }
 
+
+   //================================================
+   // OPEN FILE
+   //================================================
 
    int file=
       FileOpen(
@@ -104,6 +123,10 @@ bool LoadAIPrediction(string symbol="")
    }
 
 
+   //================================================
+   // READ JSON
+   //================================================
+
    string json="";
 
 
@@ -119,6 +142,10 @@ bool LoadAIPrediction(string symbol="")
    FileClose(file);
 
 
+   //================================================
+   // VALIDATE JSON
+   //================================================
+
    if(json=="")
    {
       Print(
@@ -131,7 +158,7 @@ bool LoadAIPrediction(string symbol="")
 
 
    //================================================
-   // EXTRACT
+   // EXTRACT VALUES
    //================================================
 
    string jsonSymbol=
@@ -184,7 +211,7 @@ bool LoadAIPrediction(string symbol="")
 
 
    //================================================
-   // VALIDATE
+   // VALIDATE SYMBOL
    //================================================
 
    if(jsonSymbol=="")
@@ -198,6 +225,10 @@ bool LoadAIPrediction(string symbol="")
    }
 
 
+   //================================================
+   // VALIDATE SIGNAL
+   //================================================
+
    if(jsonSignal=="")
    {
       Print(
@@ -210,7 +241,7 @@ bool LoadAIPrediction(string symbol="")
 
 
    //================================================
-   // SYMBOL CHECK
+   // SYMBOL MATCH
    //================================================
 
    if(
@@ -274,13 +305,17 @@ bool LoadAIPrediction(string symbol="")
 
 
    //================================================
-   // COMPATIBILITY
-   // Se confidence não existir, usa score
+   // FALLBACK CONFIDENCE
    //================================================
 
    if(AI_Confidence<=0.0)
-      AI_Confidence=AI_Score;
+      AI_Confidence=
+         AI_Score;
 
+
+   //================================================
+   // LOG
+   //================================================
 
    Print(
       "AI PYTHON | ",
@@ -369,9 +404,11 @@ string ExtractJSON(
       );
 
 
-   while(
-      start<length
-   )
+   //================================================
+   // SKIP SPACES
+   //================================================
+
+   while(start<length)
    {
       int ch=
          StringGetCharacter(
@@ -384,8 +421,7 @@ string ExtractJSON(
          ch==' ' ||
          ch=='\t' ||
          ch=='\r' ||
-         ch=='\n' ||
-         ch=='"'
+         ch=='\n'
       )
       {
          start++;
@@ -396,6 +432,10 @@ string ExtractJSON(
       }
    }
 
+
+   //================================================
+   // CHECK QUOTED VALUE
+   //================================================
 
    bool quoted=false;
 
@@ -415,6 +455,10 @@ string ExtractJSON(
 
    int end=start;
 
+
+   //================================================
+   // READ VALUE
+   //================================================
 
    if(quoted)
    {
@@ -490,11 +534,10 @@ string ExtractJSON(
 
 
 //==================================================
-// AI TRADE ALLOWED
-// Compatibilidade com ValidationEngine antigo
+// BUY SIGNAL CHECK
 //==================================================
 
-bool AITradeAllowed(
+bool AIBuyAllowed(
    string symbol=""
 )
 {
@@ -517,69 +560,6 @@ bool AITradeAllowed(
    }
 
 
-   if(AI_Signal=="")
-      return false;
-
-
-   if(
-      AI_Signal=="HOLD"
-   )
-   {
-      return false;
-   }
-
-
-   if(
-      AI_Signal=="BUY"
-   )
-   {
-      return true;
-   }
-
-
-   if(
-      AI_Signal=="SELL"
-   )
-   {
-      return true;
-   }
-
-
-   return false;
-}
-
-
-//==================================================
-// AI SIGNAL MATCH
-//==================================================
-
-bool AIBuyAllowed(
-   string symbol=""
-)
-{
-   if(
-      symbol==""
-   )
-   {
-      symbol=_Symbol;
-   }
-
-
-   if(
-      AI_Symbol!=symbol
-   )
-   {
-      if(
-         !LoadAIPrediction(
-            symbol
-         )
-      )
-      {
-         return false;
-      }
-   }
-
-
    return(
       AI_Signal=="BUY"
    );
@@ -587,19 +567,15 @@ bool AIBuyAllowed(
 
 
 //==================================================
-// AI SELL MATCH
+// SELL SIGNAL CHECK
 //==================================================
 
 bool AISellAllowed(
    string symbol=""
 )
 {
-   if(
-      symbol==""
-   )
-   {
+   if(symbol=="")
       symbol=_Symbol;
-   }
 
 
    if(
@@ -624,7 +600,7 @@ bool AISellAllowed(
 
 
 //==================================================
-// GETTERS
+// GET AI SIGNAL
 //==================================================
 
 string GetAISignal()
@@ -633,11 +609,19 @@ string GetAISignal()
 }
 
 
+//==================================================
+// GET AI SCORE
+//==================================================
+
 double GetAIScore()
 {
    return AI_Score;
 }
 
+
+//==================================================
+// GET AI CONFIDENCE
+//==================================================
 
 double GetAIConfidence()
 {
@@ -645,11 +629,19 @@ double GetAIConfidence()
 }
 
 
+//==================================================
+// GET AI BUY PROBABILITY
+//==================================================
+
 double GetAIBuy()
 {
    return AI_BuyProbability;
 }
 
+
+//==================================================
+// GET AI SELL PROBABILITY
+//==================================================
 
 double GetAISell()
 {
@@ -657,11 +649,19 @@ double GetAISell()
 }
 
 
+//==================================================
+// GET AI PRICE
+//==================================================
+
 double GetAIPrice()
 {
    return AI_Price;
 }
 
+
+//==================================================
+// GET AI SYMBOL
+//==================================================
 
 string GetAISymbol()
 {
@@ -670,7 +670,7 @@ string GetAISymbol()
 
 
 //==================================================
-// CHECK SYMBOL
+// CHECK DATA FOR SYMBOL
 //==================================================
 
 bool AIDataForSymbol(
@@ -682,9 +682,14 @@ bool AIDataForSymbol(
 
 
    return(
-      AI_Symbol==symbol
+      AI_Symbol==
+      symbol
    );
 }
 
+
+//==================================================
+// END
+//==================================================
 
 #endif
