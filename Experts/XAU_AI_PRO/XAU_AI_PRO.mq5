@@ -159,92 +159,146 @@ void ProcessClosedTrades()
 
 int OnInit()
 {
-
    Print(
-   "TESTER PATH: ",
-   TerminalInfoString(TERMINAL_DATA_PATH)
+      "TESTER PATH: ",
+      TerminalInfoString(
+         TERMINAL_DATA_PATH
+      )
    );
 
    Print("========================================");
-   Print("  XAU_AI_PRO v1.10 - DEBUG MODE");
+   Print(" XAU_AI_PRO v1.1 - MULTI SYMBOL");
    Print("========================================");
-   Print("Symbolo atual: ", _Symbol);
-   Print("Conta: ", AccountInfoInteger(ACCOUNT_LOGIN));
-   Print("Corretora: ", AccountInfoString(ACCOUNT_COMPANY));
-   Print("Servidor: ", AccountInfoString(ACCOUNT_SERVER));
-   Print("Saldo: ", AccountInfoDouble(ACCOUNT_BALANCE));
-   Print("Moeda: ", AccountInfoString(ACCOUNT_CURRENCY));
+   Print(
+      "Símbolo atual: ",
+      _Symbol
+   );
+   Print(
+      "Conta: ",
+      AccountInfoInteger(
+         ACCOUNT_LOGIN
+      )
+   );
+   Print(
+      "Corretora: ",
+      AccountInfoString(
+         ACCOUNT_COMPANY
+      )
+   );
+   Print(
+      "Servidor: ",
+      AccountInfoString(
+         ACCOUNT_SERVER
+      )
+   );
+   Print(
+      "Saldo: ",
+      AccountInfoDouble(
+         ACCOUNT_BALANCE
+      )
+   );
+   Print(
+      "Moeda: ",
+      AccountInfoString(
+         ACCOUNT_CURRENCY
+      )
+   );
    Print("========================================");
-   Print("");
 
-   Print("Inicializando XAU_AI_PRO");
+   //================================================
+   // TRADE
+   //================================================
 
-
-   trade.SetExpertMagicNumber(
-      MagicNumber
-   );
-
-
-   trade.SetDeviationInPoints(
-      Slippage
-   );
-   
    InitOrderManager();
 
+   //================================================
+   // SYSTEM
+   // Inicializa:
+   // Broker
+   // Environment
+   // Paths
+   // Timeframes
+   // Symbols
+   //================================================
+
    if(!InitSystem())
-{
-   Print("ERRO INIT SYSTEM");
-   return INIT_FAILED;
-}
+   {
+      Print(
+         "ERRO INIT SYSTEM"
+      );
 
+      return INIT_FAILED;
+   }
 
-    if(!InitATR())
-       Print("AVISO: InitATR falhou");
+   //================================================
+   // INDICATORS
+   //================================================
 
-    if(!InitADX())
-       Print("AVISO: InitADX falhou");
+   if(!InitATR())
+      Print(
+         "AVISO: InitATR falhou"
+      );
 
-    if(!InitRSI())
-       Print("AVISO: InitRSI falhou");
+   if(!InitADX())
+      Print(
+         "AVISO: InitADX falhou"
+      );
 
-    if(!InitTrendFilter())
-       Print("AVISO: InitTrendFilter falhou");
+   if(!InitRSI())
+      Print(
+         "AVISO: InitRSI falhou"
+      );
 
-    if(!InitMTF())
-       Print("AVISO: InitMTF falhou");
-    
-    if(!InitSymbolManager())
-    {
-       Print("ERRO SYMBOL MANAGER");
-       return INIT_FAILED;
-    }
+   if(!InitTrendFilter())
+      Print(
+         "AVISO: InitTrendFilter falhou"
+      );
 
+   if(!InitMTF())
+      Print(
+         "AVISO: InitMTF falhou"
+      );
 
-    AIClientInit();
+   //================================================
+   // AI
+   //================================================
 
+   AIClientInit();
 
-    InitDailyRisk();
+   //================================================
+   // RISK / PERFORMANCE
+   //================================================
 
+   InitDailyRisk();
 
-    PerformanceInit();
-    
+   PerformanceInit();
 
-    if(!DataLoggerInit())
-    {
-       Print("AVISO: DataLoggerInit falhou - continuando sem dataset");
-    }
-    else
-    {
-       Print("DATA LOGGER OK");
-    }
+   //================================================
+   // DATA LOGGER
+   //================================================
 
+   if(!DataLoggerInit())
+   {
+      Print(
+         "AVISO: DataLoggerInit falhou"
+      );
+   }
+   else
+   {
+      Print(
+         "DATA LOGGER OK"
+      );
+   }
 
-   Print("XAU_AI_PRO iniciado");
+   //================================================
+   // READY
+   //================================================
 
+   Print(
+      "XAU_AI_PRO V1.1 iniciado"
+   );
 
    return INIT_SUCCEEDED;
-
-
 }
 
 
@@ -255,34 +309,84 @@ int OnInit()
 
 void OnTick()
 {
-   // Proteção de equity - verifica antes de tudo
-   if(!CheckEquityProtection())
-      return;
+   //================================================
+   // PROCESSAR TRADES FECHADOS
+   //================================================
 
    ProcessClosedTrades();
 
-   RunTradePipeline();
+
+   //================================================
+   // PROTEÇÃO DE EQUITY
+   //================================================
+
+   if(!CheckEquityProtection())
+      return;
+
+
+   //================================================
+   // GERENCIAR POSIÇÕES
+   //================================================
 
    ManagePositions();
 
+
+   //================================================
+   // NOVAS ENTRADAS
+   //================================================
+
+   RunTradePipeline();
+
+
+   //================================================
+   // DATASET
+   //================================================
+
    if(EnableDataset)
    {
-      datetime candle=iTime(_Symbol,PERIOD_CURRENT,0);
+      datetime candle=
+         iTime(
+            _Symbol,
+            PERIOD_CURRENT,
+            0
+         );
 
-      if(candle!=lastDatasetCandle)
+      if(
+         candle!=
+         lastDatasetCandle
+      )
       {
-         lastDatasetCandle=candle;
+         lastDatasetCandle=
+            candle;
 
-         // Salvar dados de todos os símbolos do pipeline
-         int total=TotalSymbols();
-         for(int i=0;i<total;i++)
+         int total=
+            TotalSymbols();
+
+         for(
+            int i=0;
+            i<total;
+            i++
+         )
          {
-            string sym=GetTradeSymbol(i);
-            if(sym!="")
-               SaveMarketData(sym);
+            string sym=
+               GetTradeSymbol(
+                  i
+               );
+
+            if(sym=="")
+               continue;
+
+            SaveMarketData(
+               sym
+            );
          }
       }
    }
+
+
+   //================================================
+   // DASHBOARD
+   //================================================
 
    DashboardUpdate();
 }
