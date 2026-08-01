@@ -123,6 +123,9 @@ void ProcessClosedTrades()
       double profit =
          HistoryDealGetDouble(ticket, DEAL_PROFIT);
 
+      string dealSymbol =
+         HistoryDealGetString(ticket, DEAL_SYMBOL);
+
       RegisterTradePerformance(profit);
 
       if(EnableDataset)
@@ -131,6 +134,16 @@ void ProcessClosedTrades()
             LastDatasetIndex,
             (profit > 0)
          );
+      }
+
+      // Feedback loop da IA: registrar resultado do trade
+      if(EnableAIFilter)
+      {
+         double aiConfidence=GetAIConfidence(
+            (profit > 0) ? 1 : -1,
+            dealSymbol
+         );
+         LogAIFeedback(dealSymbol, 0, profit, aiConfidence);
       }
 
       lastTicket = ticket;
@@ -151,6 +164,18 @@ int OnInit()
    "TESTER PATH: ",
    TerminalInfoString(TERMINAL_DATA_PATH)
    );
+
+   Print("========================================");
+   Print("  XAU_AI_PRO v1.10 - DEBUG MODE");
+   Print("========================================");
+   Print("Symbolo atual: ", _Symbol);
+   Print("Conta: ", AccountInfoInteger(ACCOUNT_LOGIN));
+   Print("Corretora: ", AccountInfoString(ACCOUNT_COMPANY));
+   Print("Servidor: ", AccountInfoString(ACCOUNT_SERVER));
+   Print("Saldo: ", AccountInfoDouble(ACCOUNT_BALANCE));
+   Print("Moeda: ", AccountInfoString(ACCOUNT_CURRENCY));
+   Print("========================================");
+   Print("");
 
    Print("Inicializando XAU_AI_PRO");
 
@@ -230,7 +255,9 @@ int OnInit()
 
 void OnTick()
 {
-   LoadAIPrediction();
+   // Proteção de equity - verifica antes de tudo
+   if(!CheckEquityProtection())
+      return;
 
    ProcessClosedTrades();
 
@@ -245,7 +272,15 @@ void OnTick()
       if(candle!=lastDatasetCandle)
       {
          lastDatasetCandle=candle;
-         SaveMarketData();
+
+         // Salvar dados de todos os símbolos do pipeline
+         int total=TotalSymbols();
+         for(int i=0;i<total;i++)
+         {
+            string sym=GetTradeSymbol(i);
+            if(sym!="")
+               SaveMarketData(sym);
+         }
       }
    }
 
