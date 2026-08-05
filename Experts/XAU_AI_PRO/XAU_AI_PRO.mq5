@@ -1,25 +1,29 @@
+// recompile-trigger 19:40:47
 //==================================================
 // XAU_AI_PRO v1.10
 //==================================================
 
 #property strict
-#property version   "1.10"
+#property version "1.10"
 
 #include <Trade/Trade.mqh>
 
 CTrade trade;
+
 
 //==================================================
 // CORE
 //==================================================
 
 #include "Core/Config.mqh"
+#include "Core/SystemManager.mqh"
 #include "Core/BrokerConfig.mqh"
 #include "Core/BrokerInfo.mqh"
 #include "Core/EnvironmentManager.mqh"
 #include "Core/CompatibilityManager.mqh"
 #include "Core/PathManager.mqh"
 #include "Core/TimeFrameManager.mqh"
+
 
 //==================================================
 // INDICATORS
@@ -31,6 +35,7 @@ CTrade trade;
 #include "Indicators/TrendStrength.mqh"
 #include "Indicators/VolatilityFilter.mqh"
 
+
 //==================================================
 // FILTERS
 //==================================================
@@ -40,6 +45,7 @@ CTrade trade;
 #include "Filters/TrendFilter.mqh"
 #include "Filters/MultiTimeframeFilter.mqh"
 #include "Filters/NewsFilter.mqh"
+
 
 //==================================================
 // AI
@@ -52,6 +58,7 @@ CTrade trade;
 #include "AI/DataLogger.mqh"
 #include "AI/AdaptiveWeights.mqh"
 
+
 //==================================================
 // SIGNAL
 //==================================================
@@ -60,23 +67,6 @@ CTrade trade;
 #include "Core/DecisionEngine.mqh"
 #include "Core/ValidationEngine.mqh"
 
-//==================================================
-// EXECUTION
-//==================================================
-
-#include "Core/RiskEngine.mqh"
-#include "Core/ExecutionEngine.mqh"
-#include "Core/OrderManager.mqh"
-#include "Core/PositionManager.mqh"
-
-//==================================================
-// MULTI SYMBOL
-//==================================================
-
-#include "Core/SymbolValidator.mqh"
-#include "Core/SymbolManager.mqh"
-#include "Core/MarketScanner.mqh"
-#include "Core/TradePipeline.mqh"
 
 //==================================================
 // MANAGEMENT
@@ -87,6 +77,27 @@ CTrade trade;
 #include "Management/EquityProtection.mqh"
 #include "Management/PortfolioManager.mqh"
 
+
+//==================================================
+// EXECUTION
+//==================================================
+
+#include "Core/RiskEngine.mqh"
+#include "Core/ExecutionEngine.mqh"
+#include "Core/OrderManager.mqh"
+#include "Core/PositionManager.mqh"
+
+
+//==================================================
+// MULTI SYMBOL
+//==================================================
+
+#include "Core/SymbolValidator.mqh"
+#include "Core/SymbolManager.mqh"
+#include "Core/MarketScanner.mqh"
+#include "Core/TradePipeline.mqh"
+
+
 //==================================================
 // MONITORING
 //==================================================
@@ -94,6 +105,7 @@ CTrade trade;
 #include "Monitoring/Dashboard.mqh"
 #include "Monitoring/TradeLogger.mqh"
 #include "Monitoring/PerformanceAnalyzer.mqh"
+
 
 //==================================================
 // ENTERPRISE
@@ -103,6 +115,7 @@ CTrade trade;
 #include "Enterprise/CircuitBreaker.mqh"
 #include "Enterprise/RecoveryManager.mqh"
 #include "Enterprise/SmartExecution.mqh"
+
 
 //==================================================
 // UTILS
@@ -206,7 +219,7 @@ bool VerboseMode = EnableVerboseDebug;
 bool InitializeModules()
 {
    Print("=================================");
-   Print("Inicializando módulos...");
+   Print("Inicializando mÃ³dulos...");
    Print("=================================");
 
    if(!InitSystem())
@@ -271,14 +284,48 @@ void ShutdownModules()
 
 void UpdatePerformance()
 {
-   ProcessClosedTrades();
+   //==================================================
+   // PERFORMANCE UPDATE
+   //
+   // NÃƒO chama ProcessClosedTrades() aqui.
+   //
+   // O registro de trades fechados Ã© responsabilidade
+   // exclusiva de OnTradeTransaction() (evento por deal),
+   // evitando duplicidade em RegisterTradePerformance().
+   //
+   // Antes, ProcessClosedTrades() reprocessava as Ãºltimas
+   // 24h a cada tick, somando o mesmo profit mÃºltiplas
+   // vezes e inflando DailyProfit / ConsecutiveWins /
+   // ConsecutiveLosses.
+   //==================================================
 
-   DailyProfit = AccountInfoDouble(ACCOUNT_PROFIT);
+   DailyProfit =
+      AccountInfoDouble(
+         ACCOUNT_PROFIT
+      );
 
-   PeakEquity = MathMax(
-      PeakEquity,
-      AccountInfoDouble(ACCOUNT_EQUITY)
-   );
+   double equity =
+      AccountInfoDouble(
+         ACCOUNT_EQUITY
+      );
+
+   if(equity > PeakEquity)
+      PeakEquity = equity;
+
+   if(PeakEquity > 0.0)
+   {
+      CurrentDrawdown =
+         (
+            (PeakEquity - equity)
+            /
+            PeakEquity
+         )
+         * 100.0;
+   }
+   else
+   {
+      CurrentDrawdown = 0.0;
+   }
 }
 
 void UpdateSafety()
@@ -417,7 +464,7 @@ int OnInit()
    Print("Conta.............: ", AccountInfoInteger(ACCOUNT_LOGIN));
    Print("Corretora.........: ", AccountInfoString(ACCOUNT_COMPANY));
    Print("Servidor..........: ", AccountInfoString(ACCOUNT_SERVER));
-   Print("Símbolo...........: ", _Symbol);
+   Print("SÃ­mbolo...........: ", _Symbol);
    Print("Saldo.............: ", DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2));
    Print("Equity............: ", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2));
 
@@ -426,7 +473,7 @@ int OnInit()
 
    if(!InitializeModules())
    {
-      Print("ERRO: Falha ao inicializar módulos.");
+      Print("ERRO: Falha ao inicializar mÃ³dulos.");
       return INIT_FAILED;
    }
 
@@ -454,10 +501,13 @@ void OnTick()
    //------------------------------------------------
 
    if(!SystemInitialized)
+   {
+      Print("[TRADE BLOCK] SYSTEM NOT INITIALIZED");
       return;
+   }
 
    //------------------------------------------------
-   // Atualiza horário
+   // Atualiza horÃ¡rio
    //------------------------------------------------
 
    LastTick = TimeCurrent();
@@ -469,7 +519,10 @@ void OnTick()
    CCircuitBreaker::Run();
 
    if(!CCircuitBreaker::CanTrade())
+   {
+      Print("[TRADE BLOCK] CIRCUIT BREAKER | State=", CCircuitBreaker::GetStateString(), " | Reason=", CCircuitBreaker::GetTriggerReason());
       return;
+   }
 
    //------------------------------------------------
    // Recovery
@@ -482,14 +535,20 @@ void OnTick()
    //------------------------------------------------
 
    if(!CSafetyManager::CheckAll())
+   {
+      Print("[TRADE BLOCK] SAFETY | ", CSafetyManager::GetSafetySummary());
       return;
+   }
 
    //------------------------------------------------
    // Equity Protection
    //------------------------------------------------
 
    if(!CheckEquityProtection())
+   {
+      Print("[TRADE BLOCK] EQUITY PROTECTION");
       return;
+   }
 
    //------------------------------------------------
    // Atualiza Performance
@@ -516,10 +575,12 @@ void OnTick()
    // Scanner Multi Symbol
    //------------------------------------------------
 
+   Print("[TRADE PIPELINE] INICIANDO");
+
    RunTradePipeline();
 
    //------------------------------------------------
-   // Gerenciamento das posições
+   // Gerenciamento das posiÃ§Ãµes
    //------------------------------------------------
 
    ManagePositions();
@@ -601,7 +662,7 @@ void OnTradeTransaction(
    }
 
    //------------------------------------------------
-   // Saída
+   // SaÃ­da
    //------------------------------------------------
 
    if(entry == DEAL_ENTRY_OUT)
@@ -613,7 +674,7 @@ void OnTradeTransaction(
       RegisterTradePerformance(profit);
 
       //------------------------------------------------
-      // Estatísticas
+      // EstatÃ­sticas
       //------------------------------------------------
 
       if(profit > 0)
@@ -713,7 +774,7 @@ void OnTimer()
    CSafetyManager::UpdateStats();
 
    //------------------------------------------------
-   // Atualização IA
+   // AtualizaÃ§Ã£o IA
    //------------------------------------------------
 
    if(EnableAIFilter)
@@ -722,7 +783,7 @@ void OnTimer()
    }
 
    //------------------------------------------------
-   // Sincronizar posições
+   // Sincronizar posiÃ§Ãµes
    //------------------------------------------------
 
    CSmartExecution::Synchronize();
@@ -737,7 +798,7 @@ void OnTimer()
    }
 
    //------------------------------------------------
-   // Salvar estatísticas
+   // Salvar estatÃ­sticas
    //------------------------------------------------
 
    PerformanceSave();
@@ -756,3 +817,32 @@ void OnTimer()
    }
 }
 
+//==================================================
+// ON DEINIT
+//==================================================
+
+void OnDeinit(const int reason)
+{
+   EventKillTimer();
+
+   SystemInitialized=false;
+
+   ShutdownModules();
+
+   Print(
+      "========================================"
+   );
+
+   Print(
+      "XAU_AI_PRO finalizado"
+   );
+
+   Print(
+      "Reason=",
+      reason
+   );
+
+   Print(
+      "========================================"
+   );
+}
