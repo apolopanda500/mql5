@@ -349,6 +349,63 @@ bool CheckTradingConditions()
 }
 
 //==================================================
+// FUNCOES AUXILIARES AUSENTES
+//==================================================
+
+// Processa trades fechados para atualizar performance
+void ProcessClosedTrades()
+{
+   datetime from = TimeCurrent() - 86400; // ultimas 24h
+   if(!HistorySelect(from, TimeCurrent()))
+      return;
+
+   int deals = HistoryDealsTotal();
+   for(int i = 0; i < deals; i++)
+   {
+      ulong deal = HistoryDealGetTicket(i);
+      if(deal == 0)
+         continue;
+
+      if(HistoryDealGetInteger(deal, DEAL_ENTRY) != DEAL_ENTRY_OUT)
+         continue;
+
+      if(HistoryDealGetInteger(deal, DEAL_MAGIC) != MagicNumber)
+         continue;
+
+      double profit = HistoryDealGetDouble(deal, DEAL_PROFIT);
+      RegisterTradePerformance(profit);
+   }
+}
+
+// Atualiza o estado do cliente IA (fallback local)
+void AIClientUpdate()
+{
+   // IA local - apenas mantem o estado atualizado
+   if(EnableAIFilter)
+   {
+      AIReady = AIClientConnected();
+      AIStatus = AIReady ? "ONLINE" : "OFFLINE";
+   }
+}
+
+// Salva as estatisticas de performance em arquivo
+void PerformanceSave()
+{
+   int handle = FileOpen("XAU_AI_PRO_stats.csv", FILE_WRITE | FILE_CSV | FILE_ANSI, ',');
+   if(handle == INVALID_HANDLE)
+      return;
+
+   FileWrite(handle, "metric,value");
+   FileWrite(handle, "TradesToday", TradesToday);
+   FileWrite(handle, "ConsecutiveWins", ConsecutiveWins);
+   FileWrite(handle, "ConsecutiveLosses", ConsecutiveLosses);
+   FileWrite(handle, "DailyProfit", DoubleToString(DailyProfit, 2));
+   FileWrite(handle, "PeakEquity", DoubleToString(PeakEquity, 2));
+   FileWrite(handle, "CurrentDrawdown", DoubleToString(CurrentDrawdown, 2));
+   FileClose(handle);
+}
+
+//==================================================
 // ON INIT
 //==================================================
 
