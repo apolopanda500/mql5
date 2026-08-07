@@ -1,45 +1,36 @@
 #ifndef AICLIENT_MQH
 #define AICLIENT_MQH
 
-
 #include "../Core/Config.mqh"
 
 #include "../Indicators/ADX.mqh"
 #include "../Indicators/RSI.mqh"
 
+#include "../AI/AdaptiveWeights.mqh"
 
 //==================================================
-// AI CLIENT
+// AI CLIENT v2.0
 //==================================================
 
-//====================================================
-// AI CLIENT
-//====================================================
+bool g_AIConnected=false;
+double g_LastConfidence=0.0;
+int g_LastSignal=0;
 
-
-//====================================================
-// ESTADO DA CONEXÃO
-//====================================================
+//==================================================
 
 bool AIClientConnected()
 {
-   return false;
+   return g_AIConnected;
 }
 
-
-//====================================================
-// USO DE IA EXTERNA
-//====================================================
+//==================================================
 
 bool UseExternalAI()
 {
    return false;
 }
 
-
-//====================================================
-// REQUEST IA EXTERNA
-//====================================================
+//==================================================
 
 double RequestExternalAIConfidence(int signal)
 {
@@ -49,10 +40,7 @@ double RequestExternalAIConfidence(int signal)
    return -1.0;
 }
 
-
-//====================================================
-// REQUEST SINAL IA EXTERNA
-//====================================================
+//==================================================
 
 int RequestExternalAISignal()
 {
@@ -62,100 +50,141 @@ int RequestExternalAISignal()
    return 0;
 }
 
-
-//====================================================
-// IA LOCAL FALLBACK
-//====================================================
+//==================================================
 
 double GetLocalAIFallback(int signal)
 {
+   double score=50.0;
 
-   double score = 50.0;
+   double adx=GetADX();
+   double rsi=GetRSI();
 
+   //----------------------------------------
+   // TREND
+   //----------------------------------------
 
-   double adx = GetADX();
-   double rsi = GetRSI();
-
-
-
-   // força da tendência
-
-   if(adx >= 18)
-      score += 15;
+   if(adx>=30)
+      score+=25.0*GetTrendWeight();
    else
-      score -= 10;
+   if(adx>=20)
+      score+=15.0*GetTrendWeight();
+   else
+      score-=15.0;
 
+   //----------------------------------------
+   // RSI
+   //----------------------------------------
 
-
-   // BUY
-
-   if(signal == 1)
+   if(signal>0)
    {
-      if(rsi > 30 && rsi < 70)
-         score += 10;
+      if(rsi>35 && rsi<65)
+         score+=15.0*GetMomentumWeight();
 
-      if(rsi >= 70)
-         score -= 10;
+      if(rsi>=70)
+         score-=20.0;
+
+      if(rsi<=20)
+         score+=8.0;
    }
 
-
-
-   // SELL
-
-   if(signal == -1)
+   if(signal<0)
    {
-      if(rsi > 30 && rsi < 70)
-         score += 10;
+      if(rsi>35 && rsi<65)
+         score+=15.0*GetMomentumWeight();
 
-      if(rsi <= 30)
-         score -= 10;
+      if(rsi<=30)
+         score-=20.0;
+
+      if(rsi>=80)
+         score+=8.0;
    }
 
+   //----------------------------------------
+   // LIMITS
+   //----------------------------------------
 
+   if(score>100.0)
+      score=100.0;
 
-   // limite
+   if(score<0.0)
+      score=0.0;
 
-   if(score > 100)
-      score = 100;
+   g_LastConfidence=
+      NormalizeDouble(score,2);
 
+   g_LastSignal=signal;
 
-   if(score < 0)
-      score = 0;
-
-
-
-   Print(
-      "LOCAL AI SCORE: ",
-      DoubleToString(score,2),
-      " Signal: ",
-      signal
-   );
-
-
-   return NormalizeDouble(score,2);
+   return g_LastConfidence;
 }
 
+//==================================================
 
+double GetAIConfidence(int signal)
+{
+   if(UseExternalAI())
+   {
+      double ext=
+         RequestExternalAIConfidence(signal);
 
-//====================================================
-// INIT
-//====================================================
+      if(ext>=0.0)
+      {
+         g_LastConfidence=ext;
+         return ext;
+      }
+   }
+
+   return GetLocalAIFallback(signal);
+}
+
+//==================================================
+
+int GetAISignal()
+{
+   if(UseExternalAI())
+   {
+      int ext=
+         RequestExternalAISignal();
+
+      if(ext!=0)
+      {
+         g_LastSignal=ext;
+         return ext;
+      }
+   }
+
+   return g_LastSignal;
+}
+
+//==================================================
+
+double LastAIConfidence()
+{
+   return g_LastConfidence;
+}
+
+//==================================================
+
+void AIClientUpdate()
+{
+   g_AIConnected=true;
+}
+
+//==================================================
 
 void AIClientInit()
 {
-   Print("AI Client iniciado - modo local fallback");
+   g_AIConnected=true;
+
+   Print("[AI] Client initialized");
 }
 
-
-
-//====================================================
-// SHUTDOWN
-//====================================================
+//==================================================
 
 void AIClientShutdown()
 {
-   Print("AI Client finalizado");
-}
+   g_AIConnected=false;
 
+   Print("[AI] Client shutdown");
+}
 
 #endif
