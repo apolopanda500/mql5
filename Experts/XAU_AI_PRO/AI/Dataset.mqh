@@ -1,290 +1,297 @@
-﻿#ifndef DATASET_MQH
+#ifndef DATASET_MQH
 #define DATASET_MQH
 
+//==================================================
+// XAU_AI_PRO ENTERPRISE DATASET
+//==================================================
 
-//==================================================
-// DATA STRUCT (ML READY)
-//==================================================
+#define MAX_DATASET        100000
+#define MAX_SYMBOL_MEMORY     128
 
 struct TradeData
 {
    datetime time;
-   string   symbol;
-   int      signal;
-   double   price;
-   double   lot;
-   double   spread;
-   double   atr;
-   double   rsi;
-   double   adx;
-   double   score;
-   bool     result;
+
+   string symbol;
+
+   ENUM_TIMEFRAMES timeframe;
+
+   int signal;
+
+   double price;
+
+   double volume;
+
+   double spread;
+
+   double atr;
+
+   double adx;
+
+   double rsi;
+
+   double volatility;
+
+   double trend;
+
+   double ai_score;
+
+   double ai_probability;
+
+   double execution_score;
+
+   double sl;
+
+   double tp;
+
+   double profit;
+
+   bool result;
 };
 
+static TradeData Dataset[];
+
+static int DatasetCount=0;
+static int LastDatasetIndex=-1;
 
 //==================================================
-// CONFIG
-//==================================================
 
-#define MAX_DATASET 1000
-
-
-TradeData dataset[MAX_DATASET];
-
-int datasetIndex = 0;
-
-int LastDatasetIndex = -1;
-
-
-//==================================================
-// SAFE INDEX
-//==================================================
-
-int NextIndex()
+void DatasetInit()
 {
-   if(datasetIndex >= MAX_DATASET)
-      datasetIndex = 0;
+   ArrayResize(Dataset,MAX_DATASET);
 
-   return datasetIndex;
+   DatasetCount=0;
+   LastDatasetIndex=-1;
 }
 
-
 //==================================================
-// ADD DATA
+
+int DatasetNext()
+{
+   if(DatasetCount>=MAX_DATASET)
+      DatasetCount=0;
+
+   return DatasetCount;
+}
+
 //==================================================
 
 int AddToDataset(
+   string symbol,
+   ENUM_TIMEFRAMES tf,
    int signal,
    double price,
-   double lot,
+   double volume,
    double spread,
    double atr,
-   double rsi,
    double adx,
-   double score
+   double rsi,
+   double volatility,
+   double trend,
+   double aiScore,
+   double aiProb,
+   double executionScore,
+   double sl,
+   double tp
 )
 {
+   int id=DatasetNext();
 
-   int index = NextIndex();
+   Dataset[id].time=TimeCurrent();
+   Dataset[id].symbol=symbol;
+   Dataset[id].timeframe=tf;
 
+   Dataset[id].signal=signal;
 
-   dataset[index].time   = TimeCurrent();
-   dataset[index].symbol = _Symbol;
-   dataset[index].signal = signal;
-   dataset[index].price  = price;
-   dataset[index].lot    = lot;
-   dataset[index].spread = spread;
-   dataset[index].atr    = atr;
-   dataset[index].rsi    = rsi;
-   dataset[index].adx    = adx;
-   dataset[index].score  = score;
-   dataset[index].result = false;
+   Dataset[id].price=price;
+   Dataset[id].volume=volume;
 
+   Dataset[id].spread=spread;
 
-   LastDatasetIndex = index;
+   Dataset[id].atr=atr;
+   Dataset[id].adx=adx;
+   Dataset[id].rsi=rsi;
 
+   Dataset[id].volatility=volatility;
+   Dataset[id].trend=trend;
 
-   datasetIndex++;
+   Dataset[id].ai_score=aiScore;
+   Dataset[id].ai_probability=aiProb;
+   Dataset[id].execution_score=executionScore;
 
+   Dataset[id].sl=sl;
+   Dataset[id].tp=tp;
 
-   return index;
+   Dataset[id].profit=0.0;
+   Dataset[id].result=false;
+
+   LastDatasetIndex=id;
+
+   DatasetCount++;
+
+   return id;
 }
 
-
-
-//==================================================
-// UPDATE RESULT
 //==================================================
 
 void UpdateDatasetResult(
    int index,
-   bool result
+   double profit
 )
 {
-
-   if(index < 0 || index >= MAX_DATASET)
+   if(index<0)
       return;
 
+   if(index>=MAX_DATASET)
+      return;
 
-   dataset[index].result = result;
+   Dataset[index].profit=profit;
+   Dataset[index].result=(profit>0);
 }
 
-
-
-//==================================================
-// TOTAL
 //==================================================
 
 int DatasetTotal()
 {
-   return datasetIndex;
+   return DatasetCount;
 }
 
-
-
-//==================================================
-// WIN RATE
 //==================================================
 
-double GetDatasetWinRate()
+double DatasetWinRate()
 {
+   if(DatasetCount==0)
+      return 0;
 
-   int wins = 0;
-   int total = 0;
+   int wins=0;
 
-
-   for(int i=0;i<datasetIndex && i<MAX_DATASET;i++)
+   for(int i=0;i<DatasetCount;i++)
    {
-
-      total++;
-
-
-      if(dataset[i].result)
+      if(Dataset[i].result)
          wins++;
-
    }
 
-
-   if(total==0)
-      return 0;
-
-
-   return NormalizeDouble(
-      (double)wins * 100.0 / total,
-      2
-   );
+   return
+      NormalizeDouble(
+         (double)wins*100.0/DatasetCount,
+         2
+      );
 }
 
-
-
-//==================================================
-// AVG SCORE
 //==================================================
 
-double GetAverageScore()
+double DatasetAverageProfit()
 {
-
-   if(datasetIndex==0)
+   if(DatasetCount==0)
       return 0;
 
+   double total=0;
 
-   double sum=0;
+   for(int i=0;i<DatasetCount;i++)
+      total+=Dataset[i].profit;
 
-
-   for(int i=0;i<datasetIndex && i<MAX_DATASET;i++)
-      sum += dataset[i].score;
-
-
-   return NormalizeDouble(
-      sum/datasetIndex,
-      2
-   );
+   return NormalizeDouble(total/DatasetCount,2);
 }
 
-
-
 //==================================================
-// EXPORT CSV
+
+double DatasetAverageAIScore()
+{
+   if(DatasetCount==0)
+      return 0;
+
+   double total=0;
+
+   for(int i=0;i<DatasetCount;i++)
+      total+=Dataset[i].ai_score;
+
+   return NormalizeDouble(total/DatasetCount,2);
+}
+
 //==================================================
 
 void ExportDatasetCSV()
 {
+   int total = MathMin(DatasetCount, MAX_DATASET);
 
    int file = FileOpen(
-   "Data\\trades_dataset.csv",
-      FILE_WRITE |
-      FILE_CSV
+      "Data\\trades_dataset.csv",
+      FILE_WRITE | FILE_CSV | FILE_ANSI
    );
 
-
-   if(file==INVALID_HANDLE)
+   if(file == INVALID_HANDLE)
    {
-      Print("Erro CSV: ",GetLastError());
+      Print("Erro CSV: ", GetLastError());
       return;
    }
-
-
 
    FileWrite(
       file,
       "Time",
       "Symbol",
+      "Timeframe",
       "Signal",
       "Price",
-      "Lot",
+      "Volume",
       "Spread",
       "ATR",
-      "RSI",
       "ADX",
-      "Score",
+      "RSI",
+      "Volatility",
+      "Trend",
+      "AIScore",
+      "AIProbability",
+      "ExecutionScore",
+      "SL",
+      "TP",
+      "Profit",
       "Result"
    );
 
-
-
-   for(int i=0;i<datasetIndex && i<MAX_DATASET;i++)
+   for(int i=0; i<total; i++)
    {
-
       FileWrite(
          file,
-         TimeToString(dataset[i].time),
-         dataset[i].symbol,
-         dataset[i].signal,
-         dataset[i].price,
-         dataset[i].lot,
-         dataset[i].spread,
-         dataset[i].atr,
-         dataset[i].rsi,
-         dataset[i].adx,
-         dataset[i].score,
-         dataset[i].result
+         TimeToString(Dataset[i].time, TIME_DATE|TIME_SECONDS),
+         Dataset[i].symbol,
+         EnumToString(Dataset[i].timeframe),
+         Dataset[i].signal,
+         Dataset[i].price,
+         Dataset[i].volume,
+         Dataset[i].spread,
+         Dataset[i].atr,
+         Dataset[i].adx,
+         Dataset[i].rsi,
+         Dataset[i].volatility,
+         Dataset[i].trend,
+         Dataset[i].ai_score,
+         Dataset[i].ai_probability,
+         Dataset[i].execution_score,
+         Dataset[i].sl,
+         Dataset[i].tp,
+         Dataset[i].profit,
+         Dataset[i].result
       );
-
    }
-
 
    FileClose(file);
 
-
-   Print(
-      "Dataset exportado: ",
-      datasetIndex,
-      " registros"
-   );
+   Print("Dataset exportado: ", total, " registros");
 }
 
-
-
-//==================================================
-// CLEAR
 //==================================================
 
 void ClearDataset()
 {
+   DatasetCount = 0;
+   LastDatasetIndex = -1;
 
-   for(int i=0;i<MAX_DATASET;i++)
+   ArrayResize(Dataset, MAX_DATASET);
+
+   for(int i=0; i<MAX_DATASET; i++)
    {
-
-      dataset[i].time=0;
-      dataset[i].symbol="";
-      dataset[i].signal=0;
-      dataset[i].price=0;
-      dataset[i].lot=0;
-      dataset[i].spread=0;
-      dataset[i].atr=0;
-      dataset[i].rsi=0;
-      dataset[i].adx=0;
-      dataset[i].score=0;
-      dataset[i].result=false;
-
+      ZeroMemory(Dataset[i]);
    }
-
-
-   datasetIndex=0;
-   LastDatasetIndex=-1;
-
 }
-
-
 
 #endif
