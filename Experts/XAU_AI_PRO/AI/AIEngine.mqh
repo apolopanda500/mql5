@@ -1,166 +1,135 @@
 #ifndef AIENGINE_MQH
 #define AIENGINE_MQH
 
-
 #include "../Core/Config.mqh"
+
+#include "../Core/SignalCore.mqh"
 
 #include "../Filters/TrendFilter.mqh"
 #include "../Filters/SpreadFilter.mqh"
 
-#include "../Indicators/RSI.mqh"
+#include "../Indicators/ATR.mqh"
 #include "../Indicators/ADX.mqh"
-#include "../Indicators/VolatilityFilter.mqh"
+#include "../Indicators/RSI.mqh"
 #include "../Indicators/TrendStrength.mqh"
-
-#include "../Core/SignalCore.mqh"
+#include "../Indicators/VolatilityFilter.mqh"
 
 #include "AdaptiveWeights.mqh"
 #include "AIConnector.mqh"
-
+#include "AILearningMemory.mqh"
 
 //==================================================
-// PROTOTIPOS
+// PROTOTYPES
 //==================================================
 
-double GetAIConfidence(int signal, string symbol="");
+double GetAIConfidence(int signal,string symbol="");
+bool   AITradeAllowed(string symbol="");
+int    GetAISignal(string symbol="");
+int    GetCombinedSignal(string symbol="");
+double GetAILotMultiplier(double confidence);
 double GetAIVetoThreshold(string symbol="");
-
+void   LogAIFeedback(string symbol,double profit);
 
 //==================================================
-// AI FILTER INTERFACE
+// AI FILTER
 //==================================================
 
 bool AITradeAllowed(string symbol="")
 {
+   if(symbol=="")
+      symbol=_Symbol;
 
-   int signal = GetSignal(symbol);
+   int signal=GetSignal(symbol);
 
-
-   if(signal == 0)
+   if(signal==0)
       return false;
 
+   double confidence=GetAIConfidence(signal,symbol);
 
-   double confidence =
-      GetAIConfidence(signal, symbol);
-
-
-
-   if(confidence < MinAIConfidence)
-   {
-
-      Print(
-         "AI BLOQUEADO: ",
-         DoubleToString(confidence,2),
-         " | Symbol=", symbol
-      );
-
-
+   if(confidence<MinAIConfidence)
       return false;
 
-   }
-
-
-   // Veto da IA: se a predição do Python contradiz o sinal, bloquear
    if(LoadAIPrediction(symbol))
    {
-      if(signal == 1 && AI_Signal == "SELL")
-      {
-         Print("AI VETO: Python diz SELL mas sinal é BUY | ", symbol);
+      if(signal==1 && AI_Signal=="SELL")
          return false;
-      }
 
-      if(signal == -1 && AI_Signal == "BUY")
-      {
-         Print("AI VETO: Python diz BUY mas sinal é SELL | ", symbol);
+      if(signal==-1 && AI_Signal=="BUY")
          return false;
-      }
 
-      // Se a probabilidade contrária é muito alta, veto
-      double contraProb = (signal == 1) ? AI_SellProbability : AI_BuyProbability;
-      if(contraProb > 60.0)
-      {
-         Print("AI VETO: Probabilidade contrária alta (", 
-               DoubleToString(contraProb, 2), "%) | ", symbol);
+      double contra=
+         (signal==1)?
+         AI_SellProbability:
+         AI_BuyProbability;
+
+      if(contra>GetAIVetoThreshold(symbol))
          return false;
-      }
    }
 
-
-   Print(
-      "AI APROVADO: ",
-      DoubleToString(confidence,2),
-      " | Symbol=", symbol
-   );
-
-
    return true;
-
 }
 
-
-
 //==================================================
-// CONFIDENCE BASE
+// AI CONFIDENCE
 //==================================================
 
-double GetAIConfidence(int signal, string symbol="")
+double GetAIConfidence(int signal,string symbol="")
 {
-
    if(signal==0)
       return 0;
 
    if(symbol=="")
       symbol=_Symbol;
 
-   double score = 50.0;
+   double score=50.0;
 
-   // Carregar predição do Python
-   bool loaded = LoadAIPrediction(symbol);
-
-   if(loaded)
+   if(LoadAIPrediction(symbol))
    {
-      // Sinal bateu?
-      if((signal == 1 && AI_Signal == "BUY") ||
-         (signal == -1 && AI_Signal == "SELL"))
-      {
-         score += 20.0;
-      }
+      if(signal==1 && AI_Signal=="BUY")
+         score+=20.0;
 
-      // Score do Python
-      score += (AI_Score * 0.40);
+      if(signal==-1 && AI_Signal=="SELL")
+         score+=20.0;
 
-      // Probabilidade
-      double prob = (signal == 1) ? AI_BuyProbability : AI_SellProbability;
-      score += (prob * 0.30);
+      score+=AI_Score*0.40;
+
+      double prob=
+         (signal==1)?
+         AI_BuyProbability:
+         AI_SellProbability;
+
+      score+=prob*0.30;
    }
    else
    {
-      // Fallback: heurística local
       if(signal==1 && TrendBuy(symbol))
-         score += 15.0;
+         score+=15;
 
       if(signal==-1 && TrendSell(symbol))
-         score += 15.0;
+         score+=15;
 
-      double rsi = GetRSI(symbol);
-      if(rsi > 30 && rsi < 70)
-         score += 10.0;
+      double rsi=GetRSI(symbol);
 
-      if(GetADX(symbol) >= MinimumADX)
-         score += 10.0;
+      if(rsi>30 && rsi<70)
+         score+=10;
+
+      if(GetADX(symbol)>=MinimumADX)
+         score+=10;
    }
 
-   // Limite
-   if(score > 100.0)
-      score = 100.0;
+   score *= MemoryBoost(symbol);
 
-   return score;
+   if(score>100)
+      score=100;
 
+   if(score<0)
+      score=0;
+
+   return NormalizeDouble(score,2);
 }
 
-
 //==================================================
-// AI VETO THRESHOLD
+// DYNAMIC VETO
 //==================================================
 
 double GetAIVetoThreshold(string symbol="")
@@ -168,53 +137,54 @@ double GetAIVetoThreshold(string symbol="")
    if(symbol=="")
       symbol=_Symbol;
 
-   // Threshold dinâmico baseado em volatilidade
    double atr=GetATR(symbol);
-   double atrPoints=0;
 
-   if(atr>0)
-   {
-      double point=SymbolInfoDouble(symbol,SYMBOL_POINT);
-      if(point>0)
-         atrPoints=atr/point;
-   }
+   double point=
+      SymbolInfoDouble(
+         symbol,
+         SYMBOL_POINT
+      );
 
-   // Alta volatilidade: threshold maior (mais conservador)
+   if(point<=0)
+      return 60;
+
+   double atrPoints=atr/point;
+
    if(atrPoints>200)
-      return 70.0;
+      return 70;
 
-   // Volatilidade normal: threshold padrão
+   if(atrPoints>100)
+      return 65;
+
    if(atrPoints>50)
-      return 60.0;
+      return 60;
 
-   // Baixa volatilidade: threshold menor
-   return 50.0;
+   return 55;
 }
 
-
 //==================================================
-// AI LOT ADJUSTMENT
+// LOT ADJUSTMENT
 //==================================================
 
 double GetAILotMultiplier(double confidence)
 {
-   // Ajusta o lote baseado na confiança da IA
-   if(confidence >= 80.0)
-      return 1.0;   // Confiança alta: lote normal
+   if(confidence>=90)
+      return 1.25;
 
-   if(confidence >= 70.0)
-      return 0.75;  // Confiança boa: 75% do lote
+   if(confidence>=80)
+      return 1.00;
 
-   if(confidence >= 60.0)
-      return 0.50;  // Confiança média: 50% do lote
+   if(confidence>=70)
+      return 0.75;
 
-   return 0.25;     // Confiança baixa: 25% do lote
+   if(confidence>=60)
+      return 0.50;
+
+   return 0.25;
 }
 
-
 //==================================================
-// AI SIGNAL GENERATOR
-// Gera sinal baseado na predição do Python
+// AI SIGNAL
 //==================================================
 
 int GetAISignal(string symbol="")
@@ -225,25 +195,20 @@ int GetAISignal(string symbol="")
    if(!LoadAIPrediction(symbol))
       return 0;
 
-   // Score mínimo para gerar sinal
-   if(AI_Score < MinAIConfidence)
+   if(AI_Score<MinAIConfidence)
       return 0;
 
-   // BUY se buy probability > sell probability + margem
-   if(AI_BuyProbability > AI_SellProbability + 10.0)
+   if(AI_BuyProbability>AI_SellProbability+10)
       return 1;
 
-   // SELL se sell probability > buy probability + margem
-   if(AI_SellProbability > AI_BuyProbability + 10.0)
+   if(AI_SellProbability>AI_BuyProbability+10)
       return -1;
 
    return 0;
 }
 
-
 //==================================================
-// AI COMBINED SIGNAL
-// Combina sinal técnico com sinal da IA
+// COMBINED SIGNAL
 //==================================================
 
 int GetCombinedSignal(string symbol="")
@@ -251,70 +216,73 @@ int GetCombinedSignal(string symbol="")
    if(symbol=="")
       symbol=_Symbol;
 
-   int techSignal=GetSignal(symbol);
-   int aiSignal=GetAISignal(symbol);
+   int tech=GetSignal(symbol);
+   int ai=GetAISignal(symbol);
 
-   // Se ambos concordam: sinal forte
-   if(techSignal==aiSignal && techSignal!=0)
-   {
-      Print("AI COMBINED: Técnico e IA concordam | Signal=", techSignal, " | ", symbol);
-      return techSignal;
-   }
+   if(tech==ai)
+      return tech;
 
-   // Se técnico diz 0 mas IA tem sinal forte (score > 70)
-   if(techSignal==0 && aiSignal!=0 && AI_Score > 70.0)
-   {
-      Print("AI COMBINED: IA gera sinal independente | Signal=", aiSignal, " | ", symbol);
-      return aiSignal;
-   }
+   if(tech==0 && ai!=0 && AI_Score>75)
+      return ai;
 
-   // Se técnico tem sinal mas IA contradiz: veto
-   if(techSignal!=0 && aiSignal!=0 && techSignal!=aiSignal)
-   {
-      Print("AI COMBINED: IA veta sinal técnico | Tech=", techSignal, " AI=", aiSignal, " | ", symbol);
+   if(tech!=0 && ai!=0 && tech!=ai)
       return 0;
-   }
 
-   // Padrão: usar sinal técnico
-   return techSignal;
+   return tech;
 }
 
-
 //==================================================
-// AI FEEDBACK LOG
-// Registra resultado do trade para feedback loop
+// FEEDBACK
 //==================================================
 
-void LogAIFeedback(string symbol, int signal, double profit, double confidence)
+void LogAIFeedback(string symbol,double profit)
 {
-   string fileName="Data\\ai_feedback.csv";
+   StoreExperience(
+   symbol,
+   GetAISignal(symbol),
+   AI_Score,
+   profit>0
+);
 
-   int file=FileOpen(fileName, FILE_READ|FILE_WRITE|FILE_CSV|FILE_SHARE_READ|FILE_SHARE_WRITE, ',');
+   int file=
+      FileOpen(
+         "Data\\ai_feedback.csv",
+         FILE_READ|
+         FILE_WRITE|
+         FILE_CSV|
+         FILE_SHARE_READ|
+         FILE_SHARE_WRITE,
+         ','
+      );
 
    if(file==INVALID_HANDLE)
       return;
 
-   FileSeek(file, 0, SEEK_END);
+   FileSeek(file,0,SEEK_END);
 
    if(FileSize(file)==0)
-   {
-      FileWrite(file, "Time", "Symbol", "Signal", "Profit", "Confidence", "Result");
-   }
+      FileWrite(file,
+         "Time",
+         "Symbol",
+         "AIScore",
+         "BuyProb",
+         "SellProb",
+         "Profit",
+         "Result"
+      );
 
-   string result = (profit > 0) ? "WIN" : "LOSS";
-
-   FileWrite(file,
-      TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS),
+   FileWrite(
+      file,
+      TimeToString(TimeCurrent(),TIME_DATE|TIME_SECONDS),
       symbol,
-      signal,
-      DoubleToString(profit, 2),
-      DoubleToString(confidence, 2),
-      result
+      AI_Score,
+      AI_BuyProbability,
+      AI_SellProbability,
+      profit,
+      (profit>0?"WIN":"LOSS")
    );
 
    FileClose(file);
 }
-
-
 
 #endif
