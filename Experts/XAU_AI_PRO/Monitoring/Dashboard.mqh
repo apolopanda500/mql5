@@ -1,7 +1,6 @@
 #ifndef DASHBOARD_MQH
 #define DASHBOARD_MQH
 
-
 #include "../Core/SignalCore.mqh"
 #include "../Core/DecisionEngine.mqh"
 #include "../Core/PositionManager.mqh"
@@ -13,6 +12,12 @@
 #include "../Indicators/ADX.mqh"
 #include "../Indicators/VolatilityFilter.mqh"
 
+//==================================================
+// DASHBOARD
+// XAU_AI_PRO — MULTI-SYMBOL READY
+//==================================================
+
+bool DashboardReady = false;
 
 
 //==================================================
@@ -21,13 +26,39 @@
 
 void DashboardInit()
 {
+   DashboardReady = true;
 
    Comment(
-      "XAU_AI_PRO iniciado..."
+      "XAU_AI_PRO\n",
+      "Dashboard inicializado..."
    );
-
 }
 
+
+//==================================================
+// SIGNAL TEXT
+//==================================================
+
+string DashboardSignalText(int signal)
+{
+   if(signal == 1)
+      return "BUY";
+
+   if(signal == -1)
+      return "SELL";
+
+   return "WAIT";
+}
+
+
+//==================================================
+// BOOLEAN TEXT
+//==================================================
+
+string DashboardBoolText(bool value)
+{
+   return value ? "SIM" : "NAO";
+}
 
 
 //==================================================
@@ -36,6 +67,9 @@ void DashboardInit()
 
 void DashboardUpdate()
 {
+   if(!DashboardReady)
+      return;
+
 
    double balance =
       AccountInfoDouble(
@@ -49,46 +83,47 @@ void DashboardUpdate()
       );
 
 
+   double profit =
+      AccountInfoDouble(
+         ACCOUNT_PROFIT
+      );
+
 
    int signal =
-      GetSignal();
+      GetSignal(_Symbol);
 
 
-
-   string signalText="WAIT";
-
-
-   if(signal==1)
-      signalText="BUY";
+   string signalText =
+      DashboardSignalText(
+         signal
+      );
 
 
-   if(signal==-1)
-      signalText="SELL";
-
-
-
-   string positionText =
-      HasOpenPosition()
-      ?
-      "SIM"
-      :
-      "NAO";
-
+   bool position =
+      HasOpenPosition();
 
 
    double atr =
-      GetATR();
-
+      GetATR(_Symbol);
 
 
    double adx =
-      GetADX();
-
+      GetADX(_Symbol);
 
 
    double rsi =
-      GetRSI();
+      GetRSI(_Symbol);
 
+
+   double drawdown = 0.0;
+
+
+   if(balance > 0.0)
+   {
+      drawdown =
+         ((balance - equity) / balance)
+         * 100.0;
+   }
 
 
    Comment(
@@ -98,49 +133,93 @@ void DashboardUpdate()
       "\nSymbol: ",
       _Symbol,
 
+      "\nTimeframe: ",
+      EnumToString(
+         (ENUM_TIMEFRAMES)_Period
+      ),
+
+      "\n-------------------------------",
 
       "\nBalance: ",
-      DoubleToString(balance,2),
-
+      DoubleToString(
+         balance,
+         2
+      ),
 
       "\nEquity: ",
-      DoubleToString(equity,2),
+      DoubleToString(
+         equity,
+         2
+      ),
 
+      "\nProfit: ",
+      DoubleToString(
+         profit,
+         2
+      ),
+
+      "\nDrawdown: ",
+      DoubleToString(
+         drawdown,
+         2
+      ),
+      "%",
+
+      "\n-------------------------------",
 
       "\nSignal: ",
       signalText,
 
-
       "\nPosition: ",
-      positionText,
+      DashboardBoolText(
+         position
+      ),
 
+      "\n-------------------------------",
 
       "\nATR: ",
-      DoubleToString(atr,2),
-
+      DoubleToString(
+         atr,
+         2
+      ),
 
       "\nADX: ",
-      DoubleToString(adx,2),
-
+      DoubleToString(
+         adx,
+         2
+      ),
 
       "\nRSI: ",
-      DoubleToString(rsi,2),
+      DoubleToString(
+         rsi,
+         2
+      ),
 
+      "\n-------------------------------",
 
       "\nTrades: ",
       PerformanceTrades(),
-
 
       "\nWinRate: ",
       DoubleToString(
          PerformanceWinRate(),
          2
-      )
+      ),
+      "%",
 
+      "\n==============================="
    );
-
 }
 
+
+//==================================================
+// CLEAR
+//==================================================
+
+void DashboardClear()
+{
+   Comment("");
+}
 
 
 //==================================================
@@ -149,9 +228,9 @@ void DashboardUpdate()
 
 void DashboardDestroy()
 {
+   DashboardClear();
 
-   Comment("");
-
+   DashboardReady = false;
 }
 
 
