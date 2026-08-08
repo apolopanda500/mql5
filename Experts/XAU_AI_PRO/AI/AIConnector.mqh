@@ -561,7 +561,8 @@ bool AIBuyAllowed(
 
 
    return(
-      AI_Signal=="BUY"
+      AI_Signal=="BUY" ||
+      AI_Signal=="STRONG_BUY"
    );
 }
 
@@ -594,16 +595,17 @@ bool AISellAllowed(
 
 
    return(
-      AI_Signal=="SELL"
+      AI_Signal=="SELL" ||
+      AI_Signal=="STRONG_SELL"
    );
 }
 
 
 //==================================================
-// GET AI SIGNAL
+// GET AI CONNECTOR SIGNAL
 //==================================================
 
-string GetAISignal()
+string GetAIConnectorSignal()
 {
    return AI_Signal;
 }
