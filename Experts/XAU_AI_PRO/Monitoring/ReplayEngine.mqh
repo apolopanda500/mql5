@@ -5,21 +5,23 @@
 #include "Logger.mqh"
 
 //==================================================
-// REPLAY ENGINE — V1.1
-// Reproduz dataset CSV para validação
+// REPLAY ENGINE — V2.0
+// Compatível com Dataset.mqh V2.0
 //==================================================
 
-int replayHandle = INVALID_HANDLE;
+int  replayHandle   = INVALID_HANDLE;
 bool g_replayActive = false;
-int g_replayLine = 0;
+int  g_replayLine   = 0;
 
 //==================================================
-// INICIALIZA REPLAY
+// INIT
 //==================================================
 
-bool ReplayEngineInit(string datasetFile = "dataset.csv")
+bool ReplayEngineInit(
+   string datasetFile = "Data\\trades_dataset.csv"
+)
 {
-   // Fecha handle anterior
+   // Fechar replay anterior
    if(replayHandle != INVALID_HANDLE)
    {
       FileClose(replayHandle);
@@ -27,13 +29,16 @@ bool ReplayEngineInit(string datasetFile = "dataset.csv")
    }
 
    g_replayActive = false;
-   g_replayLine = 0;
+   g_replayLine   = 0;
 
    ResetLastError();
 
    replayHandle = FileOpen(
       datasetFile,
-      FILE_COMMON | FILE_READ | FILE_CSV | FILE_ANSI,
+      FILE_COMMON |
+      FILE_READ   |
+      FILE_CSV    |
+      FILE_ANSI,
       ','
    );
 
@@ -48,14 +53,13 @@ bool ReplayEngineInit(string datasetFile = "dataset.csv")
    }
 
    //==================================================
-   // PULA CABEÇALHO
+   // PULAR CABEÇALHO
    //==================================================
 
    if(!FileIsEnding(replayHandle))
    {
-      // Como o arquivo é CSV, precisamos consumir
-      // os campos do cabeçalho.
-      for(int i = 0; i < 8; i++)
+      // O Dataset.mqh possui 20 colunas.
+      for(int i = 0; i < 20; i++)
       {
          if(FileIsEnding(replayHandle))
             break;
@@ -77,17 +81,29 @@ bool ReplayEngineInit(string datasetFile = "dataset.csv")
 }
 
 //==================================================
-// LE PRÓXIMA LINHA DO DATASET
+// PRÓXIMO REGISTRO
 //==================================================
 
 bool ReplayEngineNextLine(
-   double &rsi,
-   double &adx,
+   datetime &recordTime,
+   string &symbol,
+   ENUM_TIMEFRAMES &timeframe,
+   int &signal,
+   double &price,
+   double &volume,
+   double &spread,
    double &atr,
-   double &emaFast,
-   double &emaSlow,
+   double &adx,
+   double &rsi,
+   double &volatility,
+   double &trend,
    double &aiScore,
-   double &profit
+   double &aiProbability,
+   double &executionScore,
+   double &sl,
+   double &tp,
+   double &profit,
+   bool &result
 )
 {
    if(replayHandle == INVALID_HANDLE)
@@ -102,7 +118,9 @@ bool ReplayEngineNextLine(
 
    if(FileIsEnding(replayHandle))
    {
-      LogSystem("ReplayEngine: fim do dataset");
+      LogSystem(
+         "ReplayEngine: fim do dataset"
+      );
 
       ReplayEngineClose();
 
@@ -110,44 +128,81 @@ bool ReplayEngineNextLine(
    }
 
    //==================================================
-   // FORMATO ESPERADO
-   //
-   // Time
-   // RSI
-   // ADX
-   // ATR
-   // EMA_Fast
-   // EMA_Slow
-   // AI_Score
-   // Profit
+   // LEITURA DOS 20 CAMPOS
    //==================================================
 
-   string timeValue   = FileReadString(replayHandle);
-   string rsiValue    = FileReadString(replayHandle);
-   string adxValue    = FileReadString(replayHandle);
-   string atrValue    = FileReadString(replayHandle);
-   string emaFastValue = FileReadString(replayHandle);
-   string emaSlowValue = FileReadString(replayHandle);
-   string aiScoreValue = FileReadString(replayHandle);
-   string profitValue  = FileReadString(replayHandle);
+   string timeValue =
+      FileReadString(replayHandle);
+
+   string symbolValue =
+      FileReadString(replayHandle);
+
+   string timeframeValue =
+      FileReadString(replayHandle);
+
+   string signalValue =
+      FileReadString(replayHandle);
+
+   string priceValue =
+      FileReadString(replayHandle);
+
+   string volumeValue =
+      FileReadString(replayHandle);
+
+   string spreadValue =
+      FileReadString(replayHandle);
+
+   string atrValue =
+      FileReadString(replayHandle);
+
+   string adxValue =
+      FileReadString(replayHandle);
+
+   string rsiValue =
+      FileReadString(replayHandle);
+
+   string volatilityValue =
+      FileReadString(replayHandle);
+
+   string trendValue =
+      FileReadString(replayHandle);
+
+   string aiScoreValue =
+      FileReadString(replayHandle);
+
+   string aiProbabilityValue =
+      FileReadString(replayHandle);
+
+   string executionScoreValue =
+      FileReadString(replayHandle);
+
+   string slValue =
+      FileReadString(replayHandle);
+
+   string tpValue =
+      FileReadString(replayHandle);
+
+   string profitValue =
+      FileReadString(replayHandle);
+
+   string resultValue =
+      FileReadString(replayHandle);
 
    g_replayLine++;
 
    //==================================================
-   // VALIDAÇÃO BÁSICA
+   // VALIDAÇÃO
    //==================================================
 
-   if(timeValue == "" &&
-      rsiValue == "" &&
-      adxValue == "" &&
-      atrValue == "" &&
-      emaFastValue == "" &&
-      emaSlowValue == "" &&
-      aiScoreValue == "" &&
-      profitValue == "")
+   if(
+      timeValue == "" &&
+      symbolValue == "" &&
+      timeframeValue == "" &&
+      signalValue == ""
+   )
    {
       LogWarning(
-         "ReplayEngine: linha vazia: ",
+         "ReplayEngine: registro vazio na linha ",
          IntegerToString(g_replayLine)
       );
 
@@ -155,52 +210,139 @@ bool ReplayEngineNextLine(
    }
 
    //==================================================
-   // CONVERSÃO
+   // TIME
    //==================================================
 
-   rsi     = StringToDouble(rsiValue);
-   adx     = StringToDouble(adxValue);
-   atr     = StringToDouble(atrValue);
-   emaFast = StringToDouble(emaFastValue);
-   emaSlow = StringToDouble(emaSlowValue);
-   aiScore = StringToDouble(aiScoreValue);
-   profit  = StringToDouble(profitValue);
+   recordTime =
+      StringToTime(timeValue);
 
    //==================================================
-   // VALIDAÇÃO DOS DADOS
+   // SYMBOL
    //==================================================
 
-   if(rsi < 0.0 ||
-      adx < 0.0 ||
-      atr < 0.0)
-   {
-      LogWarning(
-         "ReplayEngine: dados inválidos na linha ",
-         IntegerToString(g_replayLine)
-      );
+   symbol =
+      symbolValue;
 
-      return false;
-   }
+   //==================================================
+   // TIMEFRAME
+   //==================================================
+
+   timeframe =
+      PERIOD_CURRENT;
+
+   if(timeframeValue == "PERIOD_M1")
+      timeframe = PERIOD_M1;
+   else
+   if(timeframeValue == "PERIOD_M2")
+      timeframe = PERIOD_M2;
+   else
+   if(timeframeValue == "PERIOD_M3")
+      timeframe = PERIOD_M3;
+   else
+   if(timeframeValue == "PERIOD_M5")
+      timeframe = PERIOD_M5;
+   else
+   if(timeframeValue == "PERIOD_M10")
+      timeframe = PERIOD_M10;
+   else
+   if(timeframeValue == "PERIOD_M15")
+      timeframe = PERIOD_M15;
+   else
+   if(timeframeValue == "PERIOD_M30")
+      timeframe = PERIOD_M30;
+   else
+   if(timeframeValue == "PERIOD_H1")
+      timeframe = PERIOD_H1;
+   else
+   if(timeframeValue == "PERIOD_H4")
+      timeframe = PERIOD_H4;
+   else
+   if(timeframeValue == "PERIOD_D1")
+      timeframe = PERIOD_D1;
+
+   //==================================================
+   // NUMERICOS
+   //==================================================
+
+   signal =
+      (int)StringToInteger(signalValue);
+
+   price =
+      StringToDouble(priceValue);
+
+   volume =
+      StringToDouble(volumeValue);
+
+   spread =
+      StringToDouble(spreadValue);
+
+   atr =
+      StringToDouble(atrValue);
+
+   adx =
+      StringToDouble(adxValue);
+
+   rsi =
+      StringToDouble(rsiValue);
+
+   volatility =
+      StringToDouble(volatilityValue);
+
+   trend =
+      StringToDouble(trendValue);
+
+   aiScore =
+      StringToDouble(aiScoreValue);
+
+   aiProbability =
+      StringToDouble(aiProbabilityValue);
+
+   executionScore =
+      StringToDouble(executionScoreValue);
+
+   sl =
+      StringToDouble(slValue);
+
+   tp =
+      StringToDouble(tpValue);
+
+   profit =
+      StringToDouble(profitValue);
+
+   //==================================================
+   // RESULTADO
+   //==================================================
+
+   StringToLower(resultValue);
+
+    result =
+   (resultValue == "true" ||
+    resultValue == "1");
 
    return true;
 }
 
 //==================================================
-// FECHA REPLAY
+// FECHAR REPLAY
 //==================================================
 
 void ReplayEngineClose()
 {
    if(replayHandle != INVALID_HANDLE)
    {
-      FileClose(replayHandle);
+      FileClose(
+         replayHandle
+      );
+
       replayHandle = INVALID_HANDLE;
    }
 
    g_replayActive = false;
-   g_replayLine = 0;
+   g_replayLine   = 0;
 
-   LogSystem("ReplayEngine finalizado");
+   LogSystem(
+      "ReplayEngine finalizado"
+   );
 }
 
 //==================================================
@@ -219,6 +361,21 @@ bool ReplayEngineIsActive()
 int ReplayEngineCurrentLine()
 {
    return g_replayLine;
+}
+
+//==================================================
+// RESET
+//==================================================
+
+void ReplayEngineReset()
+{
+   ReplayEngineClose();
+
+   g_replayLine = 0;
+
+   LogSystem(
+      "ReplayEngine resetado"
+   );
 }
 
 #endif
