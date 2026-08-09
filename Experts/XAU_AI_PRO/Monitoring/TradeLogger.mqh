@@ -1,11 +1,9 @@
 #ifndef TRADELOGGER_MQH
 #define TRADELOGGER_MQH
 
-
 #include "../Indicators/VolatilityFilter.mqh"
 #include "../Indicators/ADX.mqh"
 #include "../Indicators/RSI.mqh"
-
 
 //==================================================
 // TRADE LOGGER ENGINE
@@ -14,13 +12,15 @@
 int tradeLoggerHandle = INVALID_HANDLE;
 
 
-
 //==================================================
 // INIT
 //==================================================
 
 bool InitTradeLogger()
 {
+   // Evita abrir o mesmo arquivo novamente
+   if(tradeLoggerHandle != INVALID_HANDLE)
+      return true;
 
    tradeLoggerHandle = FileOpen(
       "trade_history.csv",
@@ -28,27 +28,30 @@ bool InitTradeLogger()
       FILE_CSV |
       FILE_READ |
       FILE_WRITE |
-      FILE_ANSI
+      FILE_ANSI,
+      ','
    );
-
 
    if(tradeLoggerHandle == INVALID_HANDLE)
    {
-
       Print(
          "Erro TradeLogger: ",
          GetLastError()
       );
 
       return false;
-
    }
 
+   // Vai para o final do arquivo
+   FileSeek(
+      tradeLoggerHandle,
+      0,
+      SEEK_END
+   );
 
-
-   if(FileSize(tradeLoggerHandle)==0)
+   // Se estiver vazio, cria o cabeçalho
+   if(FileTell(tradeLoggerHandle) == 0)
    {
-
       FileWrite(
          tradeLoggerHandle,
          "Time",
@@ -63,23 +66,20 @@ bool InitTradeLogger()
          "AI"
       );
 
-
       FileFlush(tradeLoggerHandle);
-
    }
 
+   Print("TradeLogger inicializado.");
 
    return true;
-
 }
-
 
 
 //==================================================
 // LOG TRADE
 //==================================================
 
-void LogTrade(
+void LogTradeCSV(
    bool isBuy,
    double entry,
    double exit,
@@ -87,32 +87,44 @@ void LogTrade(
    double aiScore
 )
 {
-
-
-   if(tradeLoggerHandle==INVALID_HANDLE)
+   if(tradeLoggerHandle == INVALID_HANDLE)
       return;
 
-
-
-   FileSeek(
+   // Garante gravação no final do arquivo
+   if(!FileSeek(
       tradeLoggerHandle,
       0,
       SEEK_END
-   );
+   ))
+   {
+      Print(
+         "Erro TradeLogger FileSeek: ",
+         GetLastError()
+      );
 
+      return;
+   }
 
+   string tradeType = "SELL";
+
+   if(isBuy)
+      tradeType = "BUY";
+
+   double atr = GetATR();
+   double adx = GetADX();
+   double rsi = GetRSI();
 
    FileWrite(
       tradeLoggerHandle,
 
       TimeToString(
          TimeCurrent(),
-         TIME_DATE|TIME_SECONDS
+         TIME_DATE | TIME_SECONDS
       ),
 
       _Symbol,
 
-      (isBuy ? "BUY":"SELL"),
+      tradeType,
 
       DoubleToString(
          entry,
@@ -130,17 +142,17 @@ void LogTrade(
       ),
 
       DoubleToString(
-         GetATR(),
+         atr,
          _Digits
       ),
 
       DoubleToString(
-         GetADX(),
+         adx,
          2
       ),
 
       DoubleToString(
-         GetRSI(),
+         rsi,
          2
       ),
 
@@ -150,12 +162,8 @@ void LogTrade(
       )
    );
 
-
-
    FileFlush(tradeLoggerHandle);
-
 }
-
 
 
 //==================================================
@@ -164,17 +172,12 @@ void LogTrade(
 
 void CloseTradeLogger()
 {
-
-   if(tradeLoggerHandle!=INVALID_HANDLE)
+   if(tradeLoggerHandle != INVALID_HANDLE)
    {
-
       FileClose(tradeLoggerHandle);
 
-      tradeLoggerHandle=INVALID_HANDLE;
-
+      tradeLoggerHandle = INVALID_HANDLE;
    }
-
 }
-
 
 #endif
