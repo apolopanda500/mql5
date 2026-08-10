@@ -1,146 +1,121 @@
 #ifndef BREAKEVEN_MQH
 #define BREAKEVEN_MQH
 
-
 #include "../Core/Config.mqh"
-
+#include "../Indicators/VolatilityFilter.mqh"
 #include <Trade/Trade.mqh>
-
 
 extern CTrade trade;
 
-
-//==================================================
-// BREAK EVEN
-//==================================================
-
-
 void CheckBreakEven()
 {
+if(!EnableBreakEven)
+return;
 
-   if(!EnableBreakEven)
-      return;
-
-
-
-   for(int i=PositionsTotal()-1;i>=0;i--)
-   {
+for(int i = PositionsTotal() - 1; i >= 0; i--)
+{
+ulong ticket = PositionGetTicket(i);
 
 
-      ulong ticket =
-         PositionGetTicket(i);
+  if(ticket == 0)
+     continue;
 
+  if(!PositionSelectByTicket(ticket))
+     continue;
 
-      if(ticket==0)
-         continue;
+  if(PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+     continue;
 
+  string symbol = PositionGetString(POSITION_SYMBOL);
+  long type = PositionGetInteger(POSITION_TYPE);
 
+  double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+  double currentSL = PositionGetDouble(POSITION_SL);
+  double currentTP = PositionGetDouble(POSITION_TP);
 
-      string symbol =
-         PositionGetString(
-            POSITION_SYMBOL
-         );
+  double currentPrice = 0.0;
 
+  if(type == POSITION_TYPE_BUY)
+     currentPrice = SymbolInfoDouble(symbol, SYMBOL_BID);
+  else if(type == POSITION_TYPE_SELL)
+     currentPrice = SymbolInfoDouble(symbol, SYMBOL_ASK);
+  else
+     continue;
 
+  if(currentPrice <= 0.0)
+     continue;
 
-      long type =
-         PositionGetInteger(
-            POSITION_TYPE
-         );
+  double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
 
+  if(point <= 0.0)
+     point = _Point;
 
+  double atr = GetATR(symbol);
+  double triggerPoints = 0.0;
 
-      double openPrice =
-         PositionGetDouble(
-            POSITION_PRICE_OPEN
-         );
+  if(atr > 0.0)
+     triggerPoints = atr / point;
+  else
+     triggerPoints = BreakEvenTrigger;
 
+  if(triggerPoints <= 0.0)
+     continue;
 
+  double profitPoints = 0.0;
 
-      double currentPrice = 0;
+  if(type == POSITION_TYPE_BUY)
+     profitPoints = (currentPrice - openPrice) / point;
+  else
+     profitPoints = (openPrice - currentPrice) / point;
 
+  if(profitPoints < triggerPoints)
+     continue;
 
+  double newSL = 0.0;
 
-      if(type==POSITION_TYPE_BUY)
-      {
-         currentPrice =
-            SymbolInfoDouble(
-               symbol,
-               SYMBOL_BID
-            );
-      }
+  if(type == POSITION_TYPE_BUY)
+  {
+     newSL = openPrice + BreakEvenOffset * point;
 
+     if(currentSL > 0.0 && newSL <= currentSL)
+        continue;
+  }
+  else
+  {
+     newSL = openPrice - BreakEvenOffset * point;
 
-      if(type==POSITION_TYPE_SELL)
-      {
-         currentPrice =
-            SymbolInfoDouble(
-               symbol,
-               SYMBOL_ASK
-            );
-      }
+     if(currentSL > 0.0 && newSL >= currentSL)
+        continue;
+  }
 
+  int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+  newSL = NormalizeDouble(newSL, digits);
 
+  ResetLastError();
 
-      double point =
-         SymbolInfoDouble(
-            symbol,
-            SYMBOL_POINT
-         );
+  if(!trade.PositionModify(symbol, newSL, currentTP))
+  {
+     PrintFormat(
+        "[BREAK EVEN] Falha #%I64u | %s | SL %.5f | Erro %d",
+        ticket,
+        symbol,
+        newSL,
+        GetLastError()
+     );
+  }
+  else
+  {
+     PrintFormat(
+        "[BREAK EVEN] Ativado #%I64u | %s | SL %.5f | Trigger %.1f",
+        ticket,
+        symbol,
+        newSL,
+        triggerPoints
+     );
+  }
 
-
-
-      double profitPoints =
-         MathAbs(
-            currentPrice-openPrice
-         )
-         /
-         point;
-
-
-
-      if(profitPoints < BreakEvenTrigger)
-         continue;
-
-
-
-      double newSL;
-
-
-
-      if(type==POSITION_TYPE_BUY)
-      {
-
-         newSL =
-            openPrice +
-            BreakEvenOffset *
-            point;
-
-      }
-      else
-      {
-
-         newSL =
-            openPrice -
-            BreakEvenOffset *
-            point;
-
-      }
-
-
-
-      trade.PositionModify(
-         symbol,
-         newSL,
-         PositionGetDouble(
-            POSITION_TP
-         )
-      );
-
-   }
 
 }
-
-
+}
 
 #endif
