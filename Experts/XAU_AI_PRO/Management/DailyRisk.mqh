@@ -3,235 +3,152 @@
 
 #include "../Core/Config.mqh"
 
-//==================================================
-// DAILY RISK ENGINE
-//==================================================
-
-
 int dailyTrades = 0;
 int lastDayKey = -1;
 
 double dailyStartBalance = 0.0;
 bool dailyBlocked = false;
 
-
-
-//==================================================
-// DAY KEY
-//==================================================
-
 int GetDayKey()
 {
+MqlDateTime dt;
 
-   MqlDateTime dt;
+TimeToStruct(
+TimeCurrent(),
+dt
+);
 
-   TimeToStruct(
-      TimeCurrent(),
-      dt
-   );
-
-
-   return(
-      dt.year * 1000 +
-      dt.day_of_year
-   );
-
+return(
+dt.year * 1000 +
+dt.day_of_year
+);
 }
-
-
-
-//==================================================
-// INIT
-//==================================================
 
 void InitDailyRisk()
 {
+dailyStartBalance =
+AccountInfoDouble(
+ACCOUNT_BALANCE
+);
 
-   dailyStartBalance =
-      AccountInfoDouble(
-         ACCOUNT_BALANCE
-      );
+ResetDaily();
 
-
-   ResetDaily();
-
+PrintFormat(
+"[DAILYRISK] dayKey=%d blocked=%s trades=%d/%d lossCheck=%s",
+GetDayKey(),
+dailyBlocked ? "true" : "false",
+dailyTrades,
+MaxTradesPerDay,
+CheckDailyLossDaily() ? "OK" : "FAIL"
+);
 }
-
-
-
-//==================================================
-// RESET
-//==================================================
 
 void ResetDaily()
 {
+int day = GetDayKey();
 
-   int day =
-      GetDayKey();
-
-
-   if(day != lastDayKey)
-   {
-
-      dailyTrades = 0;
-
-      dailyBlocked = false;
+if(day != lastDayKey)
+{
+dailyTrades = 0;
+dailyBlocked = false;
 
 
-      dailyStartBalance =
-         AccountInfoDouble(
-            ACCOUNT_BALANCE
-         );
+  dailyStartBalance =
+     AccountInfoDouble(
+        ACCOUNT_BALANCE
+     );
 
+  lastDayKey = day;
 
-      lastDayKey = day;
-
-   }
 
 }
-
-
-
-//==================================================
-// REGISTER
-//==================================================
+}
 
 void RegisterDailyTrade()
 {
+ResetDaily();
 
-   ResetDaily();
-
-   dailyTrades++;
-
+dailyTrades++;
 }
-
-
-
-//==================================================
-// DAILY LOSS CALCULATION
-//==================================================
 
 double GetDailyLossPercentDaily()
 {
+if(dailyStartBalance <= 0.0)
+return 0.0;
 
-   if(dailyStartBalance <= 0)
-      return 0.0;
+double balance =
+AccountInfoDouble(
+ACCOUNT_BALANCE
+);
 
+double loss =
+(
+dailyStartBalance -
+balance
+)
+/
+dailyStartBalance
+*
+100.0;
 
-
-   double balance =
-      AccountInfoDouble(
-         ACCOUNT_BALANCE
-      );
-
-
-
-   double loss =
-      (
-       dailyStartBalance -
-       balance
-      )
-      /
-      dailyStartBalance
-      *
-      100.0;
-
-
-
-   return NormalizeDouble(
-      loss,
-      2
-   );
-
+return NormalizeDouble(
+loss,
+2
+);
 }
-
-
-
-//==================================================
-// DAILY LOSS CHECK
-//==================================================
 
 bool CheckDailyLossDaily()
 {
+double loss =
+GetDailyLossPercentDaily();
 
-   double loss =
-      GetDailyLossPercentDaily();
-
-
-
-   if(loss >= MaxDailyLossPercent)
-   {
-
-      dailyBlocked = true;
+if(loss >= MaxDailyLossPercent)
+{
+dailyBlocked = true;
 
 
-      Print(
-         "Daily Loss bloqueado: ",
-         loss,
-         "%"
-      );
+  Print(
+     "Daily Loss bloqueado: ",
+     DoubleToString(loss, 2),
+     "%"
+  );
 
+  return false;
 
-      return false;
-
-   }
-
-
-   return true;
 
 }
 
-
-
-//==================================================
-// ALLOW TRADE TODAY
-//==================================================
+return true;
+}
 
 bool CanTradeToday()
 {
+ResetDaily();
 
-   ResetDaily();
+if(dailyBlocked)
+return false;
 
+if(!CheckDailyLossDaily())
+return false;
 
+if(dailyTrades >= MaxTradesPerDay)
+return false;
 
-   if(dailyBlocked)
-      return false;
-
-
-
-   if(!CheckDailyLossDaily())
-      return false;
-
-
-
-   if(dailyTrades >= MaxTradesPerDay)
-      return false;
-
-
-
-   return true;
-
+return true;
 }
-
-
-
-//==================================================
-// DEBUG
-//==================================================
 
 void PrintDailyRisk()
 {
-
-   Print(
-      "Trades hoje: ",
-      dailyTrades,
-      " | Loss diário: ",
-      GetDailyLossPercentDaily(),
-      "%"
-   );
-
+Print(
+"Trades hoje: ",
+dailyTrades,
+" | Loss diário: ",
+DoubleToString(
+GetDailyLossPercentDaily(),
+2
+),
+"%"
+);
 }
-
-
 
 #endif
