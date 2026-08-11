@@ -1,36 +1,22 @@
-
 #ifndef RSI_MQH
 #define RSI_MQH
 
 #include "../Core/Config.mqh"
 
 //==================================================
-// RSI INDICATOR
-// XAU_AI_PRO
-// Hardened V1.1
-//==================================================
-
-//==================================================
-// GLOBAL HANDLE
+// RSI
 //==================================================
 
 int rsiHandle = INVALID_HANDLE;
 
 //==================================================
-// INITIALIZE RSI
+// INIT
 //==================================================
 
 bool InitRSI()
 {
-   // Evita criar o handle novamente
    if(rsiHandle != INVALID_HANDLE)
-   {
-      if(BarsCalculated(rsiHandle) >= 0)
-         return true;
-
       IndicatorRelease(rsiHandle);
-      rsiHandle = INVALID_HANDLE;
-   }
 
    rsiHandle = iRSI(
       _Symbol,
@@ -42,11 +28,7 @@ bool InitRSI()
    if(rsiHandle == INVALID_HANDLE)
    {
       Print(
-         "[RSI] INIT ERROR | Symbol=",
-         _Symbol,
-         " | Period=",
-         RSIPeriod,
-         " | Error=",
+         "[RSI] INIT ERROR | Error=",
          GetLastError()
       );
 
@@ -54,9 +36,7 @@ bool InitRSI()
    }
 
    Print(
-      "[RSI] INIT OK | Symbol=",
-      _Symbol,
-      " | Period=",
+      "[RSI] INIT OK | Period=",
       RSIPeriod
    );
 
@@ -64,20 +44,7 @@ bool InitRSI()
 }
 
 //==================================================
-// RELEASE RSI
-//==================================================
-
-void ReleaseRSI()
-{
-   if(rsiHandle != INVALID_HANDLE)
-   {
-      IndicatorRelease(rsiHandle);
-      rsiHandle = INVALID_HANDLE;
-   }
-}
-
-//==================================================
-// GET RSI — CURRENT SYMBOL
+// GET RSI
 //==================================================
 
 double GetRSI()
@@ -85,45 +52,39 @@ double GetRSI()
    if(rsiHandle == INVALID_HANDLE)
       return 0.0;
 
-   if(BarsCalculated(rsiHandle) < 1)
-      return 0.0;
+   double buffer[];
 
-   double buffer[1];
+   ArraySetAsSeries(buffer, true);
 
    ResetLastError();
 
-   int copied = CopyBuffer(
+   if(CopyBuffer(
       rsiHandle,
       0,
       0,
       1,
       buffer
-   );
-
-   if(copied != 1)
+   ) != 1)
    {
       return 0.0;
    }
 
-   double value = buffer[0];
-
-   // RSI válido deve estar entre 0 e 100.
-   if(value < 0.0 || value > 100.0)
+   if(buffer[0] <= 0.0 || buffer[0] >= 100.0)
       return 0.0;
 
-   return value;
+   return buffer[0];
 }
 
 //==================================================
-// GET RSI — MULTI SYMBOL
+// MULTI SYMBOL
 //==================================================
 
 double GetRSI(string symbol)
 {
-   if(symbol == "")
+   if(symbol == "" || symbol == _Symbol)
       return GetRSI();
 
-   if(!SymbolSelect(symbol,true))
+   if(!SymbolSelect(symbol, true))
       return 0.0;
 
    int handle = iRSI(
@@ -134,43 +95,23 @@ double GetRSI(string symbol)
    );
 
    if(handle == INVALID_HANDLE)
-   {
-      Print(
-         "[RSI] HANDLE ERROR | Symbol=",
-         symbol,
-         " | Error=",
-         GetLastError()
-      );
-
       return 0.0;
-   }
 
-   if(BarsCalculated(handle) < 1)
-   {
-      IndicatorRelease(handle);
-      return 0.0;
-   }
+   double buffer[];
 
-   double buffer[1];
+   ArraySetAsSeries(buffer, true);
 
-   ResetLastError();
+   double result = 0.0;
 
-   int copied = CopyBuffer(
+   if(CopyBuffer(
       handle,
       0,
       0,
       1,
       buffer
-   );
-
-   double result = 0.0;
-
-   if(copied == 1)
+   ) == 1)
    {
       result = buffer[0];
-
-      if(result < 0.0 || result > 100.0)
-         result = 0.0;
    }
 
    IndicatorRelease(handle);
@@ -179,7 +120,7 @@ double GetRSI(string symbol)
 }
 
 //==================================================
-// RSI BUY FILTER
+// BUY
 //==================================================
 
 bool RSI_OK_Buy()
@@ -193,7 +134,7 @@ bool RSI_OK_Buy()
 }
 
 //==================================================
-// RSI BUY FILTER — MULTI SYMBOL
+// BUY MULTI SYMBOL
 //==================================================
 
 bool RSI_OK_Buy(string symbol)
@@ -207,7 +148,7 @@ bool RSI_OK_Buy(string symbol)
 }
 
 //==================================================
-// RSI SELL FILTER
+// SELL
 //==================================================
 
 bool RSI_OK_Sell()
@@ -221,7 +162,7 @@ bool RSI_OK_Sell()
 }
 
 //==================================================
-// RSI SELL FILTER — MULTI SYMBOL
+// SELL MULTI SYMBOL
 //==================================================
 
 bool RSI_OK_Sell(string symbol)
@@ -235,21 +176,16 @@ bool RSI_OK_Sell(string symbol)
 }
 
 //==================================================
-// RSI VALIDATION
+// RELEASE
 //==================================================
 
-bool RSIValid()
+void ReleaseRSI()
 {
-   double rsi = GetRSI();
-
-   return (
-      rsi > 0.0 &&
-      rsi < 100.0
-   );
+   if(rsiHandle != INVALID_HANDLE)
+   {
+      IndicatorRelease(rsiHandle);
+      rsiHandle = INVALID_HANDLE;
+   }
 }
-
-//==================================================
-// END
-//==================================================
 
 #endif
