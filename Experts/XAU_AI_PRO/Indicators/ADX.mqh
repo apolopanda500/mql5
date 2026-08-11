@@ -5,15 +5,14 @@
 
 //==================================================
 // ADX INDICATOR
-// XAU_AI_PRO V1.1
-// MULTI SYMBOL
+// XAU_AI_PRO
 //==================================================
 
 int adxHandle = INVALID_HANDLE;
 double adxBuffer[];
 
 //==================================================
-// INIT ADX - CURRENT SYMBOL
+// INIT
 //==================================================
 
 bool InitADX()
@@ -30,7 +29,7 @@ bool InitADX()
    if(adxHandle == INVALID_HANDLE)
    {
       Print(
-         "ADX INIT ERROR | ",
+         "[ADX] INIT ERROR | Symbol=",
          _Symbol,
          " | Error=",
          GetLastError()
@@ -39,11 +38,11 @@ bool InitADX()
       return false;
    }
 
-   ArrayResize(adxBuffer, 2);
+   ArrayResize(adxBuffer, 3);
    ArraySetAsSeries(adxBuffer, true);
 
    Print(
-      "ADX INIT OK | ",
+      "[ADX] INIT OK | Symbol=",
       _Symbol,
       " | Period=",
       ADXPeriod
@@ -53,36 +52,44 @@ bool InitADX()
 }
 
 //==================================================
-// GET ADX - CURRENT SYMBOL
+// GET CURRENT ADX
 //==================================================
 
 double GetADX()
 {
    if(adxHandle == INVALID_HANDLE)
-   {
-      if(!InitADX())
-         return 0.0;
-   }
-
-   if(BarsCalculated(adxHandle) <= 0)
       return 0.0;
 
-   if(CopyBuffer(
+   ResetLastError();
+
+   int copied = CopyBuffer(
       adxHandle,
       0,
       0,
       1,
       adxBuffer
-   ) <= 0)
+   );
+
+   if(copied != 1)
    {
+      Print(
+         "[ADX] CopyBuffer failed | Error=",
+         GetLastError()
+      );
+
       return 0.0;
    }
 
-   return adxBuffer[0];
+   double value = adxBuffer[0];
+
+   if(value <= 0.0)
+      return 0.0;
+
+   return value;
 }
 
 //==================================================
-// GET ADX - MULTI SYMBOL
+// MULTI SYMBOL
 //==================================================
 
 double GetADX(string symbol)
@@ -92,11 +99,7 @@ double GetADX(string symbol)
 
    if(!SymbolSelect(symbol, true))
    {
-      Print(
-         "ADX SYMBOL ERROR | ",
-         symbol
-      );
-
+      Print("[ADX] SymbolSelect failed: ", symbol);
       return 0.0;
    }
 
@@ -109,7 +112,7 @@ double GetADX(string symbol)
    if(handle == INVALID_HANDLE)
    {
       Print(
-         "ADX HANDLE ERROR | ",
+         "[ADX] Handle error | ",
          symbol,
          " | Error=",
          GetLastError()
@@ -118,28 +121,22 @@ double GetADX(string symbol)
       return 0.0;
    }
 
-   if(BarsCalculated(handle) <= 0)
-   {
-      IndicatorRelease(handle);
-      return 0.0;
-   }
-
    double buffer[];
-   ArrayResize(buffer, 1);
+
    ArraySetAsSeries(buffer, true);
 
-   double result = 0.0;
-
-   if(CopyBuffer(
+   int copied = CopyBuffer(
       handle,
       0,
       0,
       1,
       buffer
-   ) > 0)
-   {
+   );
+
+   double result = 0.0;
+
+   if(copied == 1)
       result = buffer[0];
-   }
 
    IndicatorRelease(handle);
 
@@ -147,7 +144,7 @@ double GetADX(string symbol)
 }
 
 //==================================================
-// ADX FILTER - CURRENT SYMBOL
+// FILTER
 //==================================================
 
 bool ADX_OK()
@@ -161,7 +158,7 @@ bool ADX_OK()
 }
 
 //==================================================
-// ADX FILTER - MULTI SYMBOL
+// MULTI SYMBOL FILTER
 //==================================================
 
 bool ADX_OK(string symbol)
@@ -172,27 +169,17 @@ bool ADX_OK(string symbol)
    double adx = GetADX(symbol);
 
    if(adx <= 0.0)
-   {
-      Print(
-         "ADX INVALID | ",
-         symbol
-      );
-
       return false;
-   }
 
    return (adx >= MinimumADX);
 }
 
 //==================================================
-// ADX STRENGTH
+// STRENGTH
 //==================================================
 
 double GetADXStrength(string symbol = "")
 {
-   if(symbol == "")
-      symbol = _Symbol;
-
    double adx = GetADX(symbol);
 
    if(adx <= 0.0)
@@ -217,7 +204,7 @@ double GetADXStrength(string symbol = "")
 }
 
 //==================================================
-// RELEASE ADX
+// RELEASE
 //==================================================
 
 void ReleaseADX()
@@ -230,9 +217,5 @@ void ReleaseADX()
 
    ArrayFree(adxBuffer);
 }
-
-//==================================================
-// END
-//==================================================
 
 #endif
