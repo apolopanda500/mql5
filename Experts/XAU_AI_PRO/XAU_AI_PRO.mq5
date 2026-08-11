@@ -115,6 +115,7 @@ CTrade trade;
 #include "Enterprise/CircuitBreaker.mqh"
 #include "Enterprise/RecoveryManager.mqh"
 #include "Enterprise/SmartExecution.mqh"
+#include "Enterprise/TradeMonitor.mqh"
 
 
 //==================================================
@@ -424,7 +425,7 @@ void ProcessClosedTrades()
 }
 
 // Atualiza o estado do cliente IA (fallback local)
-void AIClientUpdate()
+void UpdateAIStatus()
 {
    // IA local - apenas mantem o estado atualizado
    if(EnableAIFilter)
@@ -562,7 +563,7 @@ void OnTick()
 
    if(EnableAIFilter)
    {
-      AIClientUpdate();
+      UpdateAIStatus();
    }
 
    //------------------------------------------------
@@ -779,7 +780,7 @@ void OnTimer()
 
    if(EnableAIFilter)
    {
-      AIClientUpdate();
+      UpdateAIStatus();
    }
 
    //------------------------------------------------
@@ -821,25 +822,52 @@ void OnTimer()
 // ON DEINIT
 //==================================================
 
-void OnDeinit(const int reason)
+void OnDeinit(
+   const int reason
+)
 {
-   EventKillTimer();
-
-   SystemInitialized=false;
-
-   ShutdownModules();
-
    Print(
       "========================================"
    );
 
    Print(
-      "XAU_AI_PRO finalizado"
+      "XAU_AI_PRO FINALIZANDO"
    );
 
    Print(
       "Reason=",
       reason
+   );
+
+   //================================================
+   // PARAR TIMER
+   //================================================
+
+   EventKillTimer();
+
+
+   //================================================
+   // DESABILITAR SISTEMA
+   //================================================
+
+   SystemInitialized=false;
+
+   TradingEnabled=false;
+
+
+   //================================================
+   // SHUTDOWN DOS MÓDULOS
+   //================================================
+
+   ShutdownModules();
+
+
+   //================================================
+   // LOG FINAL
+   //================================================
+
+   Print(
+      "XAU_AI_PRO FINALIZADO"
    );
 
    Print(
