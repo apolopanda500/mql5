@@ -3,23 +3,9 @@
 
 #include "../Core/Config.mqh"
 
-//==================================================
-// TREND FILTER PRO
-// XAU_AI_PRO
-//
-// Tendência principal:
-// EMA 200 no H1
-//
-// Compatível com Multi-Symbol
-//==================================================
-
 #define TREND_EMA_PERIOD 200
 
 input ENUM_TIMEFRAMES TrendTF = PERIOD_H1;
-
-//==================================================
-// HANDLE DO SYMBOL PRINCIPAL
-//==================================================
 
 int trendEMAHandle = INVALID_HANDLE;
 
@@ -32,10 +18,7 @@ double trendEMABuffer[];
 bool InitTrendFilter()
 {
    if(trendEMAHandle != INVALID_HANDLE)
-   {
       IndicatorRelease(trendEMAHandle);
-      trendEMAHandle = INVALID_HANDLE;
-   }
 
    trendEMAHandle = iMA(
       _Symbol,
@@ -49,13 +32,7 @@ bool InitTrendFilter()
    if(trendEMAHandle == INVALID_HANDLE)
    {
       Print(
-         "[TREND] ERRO criando EMA ",
-         TREND_EMA_PERIOD,
-         " | Symbol=",
-         _Symbol,
-         " | TF=",
-         EnumToString(TrendTF),
-         " | Error=",
+         "[TREND] INIT ERROR | Error=",
          GetLastError()
       );
 
@@ -66,7 +43,7 @@ bool InitTrendFilter()
    ArraySetAsSeries(trendEMABuffer, true);
 
    Print(
-      "[TREND] INIT OK | Symbol=",
+      "[TREND] INIT OK | ",
       _Symbol,
       " | TF=",
       EnumToString(TrendTF),
@@ -78,7 +55,7 @@ bool InitTrendFilter()
 }
 
 //==================================================
-// GET EMA - SYMBOL PRINCIPAL
+// GET EMA
 //==================================================
 
 bool GetTrendEMA(double &value)
@@ -88,85 +65,38 @@ bool GetTrendEMA(double &value)
    if(trendEMAHandle == INVALID_HANDLE)
       return false;
 
-   ResetLastError();
-
-   int copied = CopyBuffer(
+   if(CopyBuffer(
       trendEMAHandle,
       0,
       0,
       1,
       trendEMABuffer
-   );
-
-   if(copied != 1)
+   ) != 1)
    {
-      int error = GetLastError();
-
-      Print(
-         "[TREND] CopyBuffer falhou | Symbol=",
-         _Symbol,
-         " | copied=",
-         copied,
-         " | Error=",
-         error
-      );
-
       return false;
    }
-
-   if(trendEMABuffer[0] <= 0.0)
-      return false;
 
    value = trendEMABuffer[0];
 
-   return true;
+   return (value > 0.0);
 }
 
 //==================================================
-// GET EMA - MULTI SYMBOL
+// MULTI SYMBOL
 //==================================================
 
-bool GetTrendEMA(double &value, string symbol)
+bool GetTrendEMA(
+   double &value,
+   string symbol
+)
 {
    value = 0.0;
 
-   if(symbol == "")
-      symbol = _Symbol;
-
-   // Symbol principal usa o handle persistente
-   if(symbol == _Symbol)
+   if(symbol == "" || symbol == _Symbol)
       return GetTrendEMA(value);
 
-   // Garante que o símbolo esteja disponível
    if(!SymbolSelect(symbol, true))
-   {
-      Print(
-         "[TREND] SymbolSelect falhou | ",
-         symbol,
-         " | Error=",
-         GetLastError()
-      );
-
       return false;
-   }
-
-   // Verifica se existe cotação
-   double bid = SymbolInfoDouble(
-      symbol,
-      SYMBOL_BID
-   );
-
-   if(bid <= 0.0)
-   {
-      Print(
-         "[TREND] Sem BID válido | ",
-         symbol
-      );
-
-      return false;
-   }
-
-   ResetLastError();
 
    int handle = iMA(
       symbol,
@@ -178,63 +108,36 @@ bool GetTrendEMA(double &value, string symbol)
    );
 
    if(handle == INVALID_HANDLE)
-   {
-      Print(
-         "[TREND] EMA handle inválido | ",
-         symbol,
-         " | Error=",
-         GetLastError()
-      );
-
       return false;
-   }
 
    double buffer[];
 
-   ArraySetAsSeries(
-      buffer,
-      true
-   );
+   ArraySetAsSeries(buffer, true);
 
-   ResetLastError();
+   bool ok = false;
 
-   int copied = CopyBuffer(
+   if(CopyBuffer(
       handle,
       0,
       0,
       1,
       buffer
-   );
-
-   bool success = false;
-
-   if(copied == 1 && buffer[0] > 0.0)
+   ) == 1)
    {
       value = buffer[0];
-      success = true;
-   }
-   else
-   {
-      Print(
-         "[TREND] EMA ainda indisponível | ",
-         symbol,
-         " | copied=",
-         copied,
-         " | Error=",
-         GetLastError()
-      );
+      ok = (value > 0.0);
    }
 
    IndicatorRelease(handle);
 
-   return success;
+   return ok;
 }
 
 //==================================================
-// PRICE ABOVE EMA
+// BUY
 //==================================================
 
-bool PriceAboveTrendEMA(string symbol="")
+bool TrendBuy(string symbol = "")
 {
    if(symbol == "")
       symbol = _Symbol;
@@ -256,10 +159,10 @@ bool PriceAboveTrendEMA(string symbol="")
 }
 
 //==================================================
-// PRICE BELOW EMA
+// SELL
 //==================================================
 
-bool PriceBelowTrendEMA(string symbol="")
+bool TrendSell(string symbol = "")
 {
    if(symbol == "")
       symbol = _Symbol;
@@ -281,52 +184,22 @@ bool PriceBelowTrendEMA(string symbol="")
 }
 
 //==================================================
-// TREND BUY
-//==================================================
-
-bool TrendBuy(string symbol="")
-{
-   return PriceAboveTrendEMA(symbol);
-}
-
-//==================================================
-// TREND SELL
-//==================================================
-
-bool TrendSell(string symbol="")
-{
-   return PriceBelowTrendEMA(symbol);
-}
-
-//==================================================
-// TREND SIGNAL - CURRENT SYMBOL
+// SIGNAL
 //==================================================
 
 int GetTrendSignal()
 {
-   return GetTrendSignal(_Symbol);
-}
-
-//==================================================
-// TREND SIGNAL - MULTI SYMBOL
-//==================================================
-
-int GetTrendSignal(string symbol)
-{
-   if(symbol == "")
-      symbol = _Symbol;
-
-   if(TrendBuy(symbol))
+   if(TrendBuy())
       return 1;
 
-   if(TrendSell(symbol))
+   if(TrendSell())
       return -1;
 
    return 0;
 }
 
 //==================================================
-// TREND DISTANCE - CURRENT SYMBOL
+// DISTANCE
 //==================================================
 
 double GetTrendDistance()
@@ -350,7 +223,7 @@ double GetTrendDistance()
    );
 
    if(point <= 0.0)
-      point = _Point;
+      return 0.0;
 
    return NormalizeDouble(
       MathAbs(bid - ema) / point,
@@ -366,24 +239,11 @@ void ReleaseTrendFilter()
 {
    if(trendEMAHandle != INVALID_HANDLE)
    {
-      IndicatorRelease(
-         trendEMAHandle
-      );
-
+      IndicatorRelease(trendEMAHandle);
       trendEMAHandle = INVALID_HANDLE;
    }
 
-   ArrayFree(
-      trendEMABuffer
-   );
-
-   Print(
-      "[TREND] Released"
-   );
+   ArrayFree(trendEMABuffer);
 }
-
-//==================================================
-// END
-//==================================================
 
 #endif
