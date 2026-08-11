@@ -1,108 +1,108 @@
 #ifndef SPREADFILTER_MQH
 #define SPREADFILTER_MQH
 
-
 #include "../Core/Config.mqh"
 
+//==================================================
+// SPREAD FILTER PRO
+// XAU_AI_PRO
+//
+// Trabalha em POINTS.
+// Compatível com Multi-Symbol.
+//==================================================
 
 //==================================================
-// SPREAD FILTER
+// GET SPREAD - SYMBOL
 //==================================================
 
+double GetSpread(string symbol="")
+{
+   if(symbol == "")
+      symbol = _Symbol;
+
+   if(!SymbolSelect(symbol, true))
+      return -1.0;
+
+   MqlTick tick;
+
+   if(!SymbolInfoTick(symbol, tick))
+   {
+      Print(
+         "[SPREAD] Falha ao obter tick | ",
+         symbol,
+         " | Error=",
+         GetLastError()
+      );
+
+      return -1.0;
+   }
+
+   if(tick.ask <= 0.0 || tick.bid <= 0.0)
+      return -1.0;
+
+   double point = SymbolInfoDouble(
+      symbol,
+      SYMBOL_POINT
+   );
+
+   if(point <= 0.0)
+      return -1.0;
+
+   return (
+      (tick.ask - tick.bid) / point
+   );
+}
 
 //==================================================
-// CHECK SPREAD
+// CHECK SPREAD - CURRENT SYMBOL
 //==================================================
 
 bool GoodSpread()
 {
+   return GoodSpread(_Symbol);
+}
 
-   double ask =
-      SymbolInfoDouble(
-         _Symbol,
-         SYMBOL_ASK
-      );
+//==================================================
+// CHECK SPREAD - MULTI SYMBOL
+//==================================================
 
+bool GoodSpread(string symbol)
+{
+   if(!EnableSpreadFilter)
+      return true;
 
-   double bid =
-      SymbolInfoDouble(
-         _Symbol,
-         SYMBOL_BID
-      );
+   if(symbol == "")
+      symbol = _Symbol;
 
+   double spread = GetSpread(symbol);
 
-
-   if(
-      ask <= 0 ||
-      bid <= 0
-   )
-      return false;
-
-
-
-   double spread =
-      (ask - bid)
-      /
-      _Point;
-
-
-
-   if(spread > MaxSpread)
+   // Sem tick válido = não pode operar
+   if(spread < 0.0)
    {
       Print(
-         "SPREAD BLOCKED: ",
-         DoubleToString(spread,1),
-         " max: ",
-         DoubleToString(MaxSpread,1)
+         "[SPREAD BLOCK] Sem tick válido | ",
+         symbol
       );
 
       return false;
    }
 
+   if(spread > MaxSpread)
+   {
+      Print(
+         "[SPREAD BLOCK] ",
+         symbol,
+         " | Current=",
+         DoubleToString(spread, 1),
+         " | Max=",
+         DoubleToString(MaxSpread, 1)
+      );
 
+      return false;
+   }
 
    return true;
-
 }
-
-
-
-//==================================================
-// GET CURRENT SPREAD
-//==================================================
-
-double GetCurrentSpread()
-{
-
-   double ask =
-      SymbolInfoDouble(
-         _Symbol,
-         SYMBOL_ASK
-      );
-
-
-   double bid =
-      SymbolInfoDouble(
-         _Symbol,
-         SYMBOL_BID
-      );
-
-
-
-   if(ask <= 0 || bid <= 0)
-      return 999;
-
-
-
-   return(
-      (ask-bid)
-      /
-      _Point
-   );
-
-}
-
-
 
 //==================================================
 // COMPATIBILITY
@@ -110,10 +110,27 @@ double GetCurrentSpread()
 
 bool SpreadOK()
 {
-   return GoodSpread();
+   return GoodSpread(_Symbol);
 }
 
+bool SpreadOK(string symbol)
+{
+   return GoodSpread(symbol);
+}
 
+//==================================================
+// CURRENT SPREAD
+//==================================================
+
+double GetCurrentSpread()
+{
+   return GetSpread(_Symbol);
+}
+
+double GetCurrentSpread(string symbol)
+{
+   return GetSpread(symbol);
+}
 
 //==================================================
 // DEBUG
@@ -121,17 +138,29 @@ bool SpreadOK()
 
 void PrintSpreadStatus()
 {
+   double spread = GetCurrentSpread();
+
+   if(spread < 0.0)
+   {
+      Print(
+         "[SPREAD] ",
+         _Symbol,
+         " | INVALID TICK"
+      );
+
+      return;
+   }
 
    Print(
-      "CURRENT SPREAD: ",
-      DoubleToString(
-         GetCurrentSpread(),
-         1
-      )
+      "[SPREAD] ",
+      _Symbol,
+      " | Current=",
+      DoubleToString(spread, 1),
+      " points | Max=",
+      DoubleToString(MaxSpread, 1),
+      " | Status=",
+      (spread <= MaxSpread ? "OK" : "BLOCKED")
    );
-
 }
-
-
 
 #endif
