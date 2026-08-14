@@ -17,6 +17,7 @@ input double RiskPercent        = 1.0;
 
 input double MaxDailyLossPercent= 5.0;
 input double MaxDrawdownPercent = 15.0;
+input double MinEquityPercent   = 50.0;  // Equity mínima (% do balance) para operar
 
 input int    MaxTradesPerDay    = 10;
 input int    MaxOpenPositions   = 1;
@@ -24,7 +25,13 @@ input int    MaxOpenPositions   = 1;
 //==================================================
 // EXECUÇÃO
 //==================================================
-input double MaxSpread          = 30;
+// MaxSpread (pontos) - limite de spread por símbolo.
+// Antes 30.0: em backtest/M15 o GOLD# tem spread ~31,
+// o que fazia o ValidateTrade bloquear com
+// "[VALIDATION] BLOCK | SPREAD | GOLD# | 31.00/30.00".
+// Ajustado para 50.0 para tolerar o spread normal do ouro
+// (~30-40 pips) mantendo proteção contra spread anormal.
+input double MaxSpread          = 50;
 input int    Slippage           = 5;
 
 //==================================================
@@ -37,21 +44,21 @@ input int TakeProfitPoints      = 600;
 // BREAK EVEN
 //==================================================
 input bool EnableBreakEven      = true;
-input int  BreakEvenTrigger     = 150;
+input int  BreakEvenTrigger     = 80;
 input int  BreakEvenOffset      = 10;
 
 //==================================================
 // TRAILING
 //==================================================
 input bool   EnableTrailingATR  = true;
-input double ATRMultiplier      = 2.0;
+input double ATRMultiplier      = 1.2;
 
 //==================================================
 // PARCIAL
 //==================================================
 input bool   EnablePartialClose = true;
-input int    PartialTrigger     = 300;
-input double PartialPercent     = 50.0;
+input int    PartialTrigger     = 150;
+input double PartialPercent     = 30.0;
 
 //==================================================
 // FILTROS
@@ -108,14 +115,19 @@ input bool DebugTradeDecision   = true;
 input bool EnableMultiSymbol    = true;
 
 input string Symbols=
-"XAUUSDc,"
-"BTCUSDc,"
-"ETHUSDc,"
-"EURUSDc,"
-"GBPUSDc,"
-"USDJPYc,"
-"AUDUSDc,"
-"USDCADc,"
-"NZDUSDc";
+"GOLD#,"     // ← ALTERE AQUI para o nome do símbolo da sua corretora
+"BTCUSD#,"   // Ex: XAUUSD, XAUUSD.pro, GOLD, etc.
+"ETHUSD#,"   // Verifique no Market Watch (Ctrl+M)
+"EURUSD#,"   // Nome completo com sufixo se houver
+"GBPUSD#,"
+"USDJPY#,"
+"AUDUSD#,"
+"USDCAD#,"
+"NZDUSD#";
+
+//==================================================
+// DEBUG - NÃO ALTERE
+//==================================================
+input bool EnableVerboseDebug    = true;  // Logs detalhados para debug
 
 #endif
