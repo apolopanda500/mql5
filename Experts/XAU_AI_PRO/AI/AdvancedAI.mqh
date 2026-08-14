@@ -1,10 +1,10 @@
 #ifndef ADVANCEDAI_MQH
 #define ADVANCEDAI_MQH
 
-
 #include "../Core/Config.mqh"
 
 #include "../AI/AIEngine.mqh"
+#include "../AI/AdaptiveWeights.mqh"
 
 #include "../Filters/TrendFilter.mqh"
 #include "../Filters/SpreadFilter.mqh"
@@ -12,101 +12,125 @@
 #include "../Indicators/TrendStrength.mqh"
 #include "../Indicators/VolatilityFilter.mqh"
 
+//==================================================
+// ADVANCED AI ENGINE v2.0
+//==================================================
 
-//==================================================
-// ADVANCED AI ENGINE
-//==================================================
+double ClampScore(double value)
+{
+   if(value < 0.0)
+      return 0.0;
 
-//==================================================
-// ADVANCED AI SCORE
+   if(value > 100.0)
+      return 100.0;
+
+   return value;
+}
+
 //==================================================
 
 double AdvancedAIScore(int signal)
 {
+   if(signal == 0)
+      return 0.0;
 
-   double base = GetAIConfidence(signal);
+   double score = 0.0;
 
+   //------------------------------------------
+   // AI BASE
+   //------------------------------------------
 
-   double score = base;
+   score +=
+      GetAIConfidence(signal) *
+      GetExecutionWeight();
 
+   //------------------------------------------
+   // TREND
+   //------------------------------------------
 
-   // Consistência de tendência
    if(StrongTrend())
-      score += 10;
+      score += 100.0 * GetTrendWeight();
    else
-      score -= 5;
+      score -= 40.0 * GetTrendWeight();
 
+   //------------------------------------------
+   // TREND STRENGTH
+   //------------------------------------------
 
-   // Qualidade do spread
+   double trend = GetADX();
+
+   if(trend > 100.0)
+   trend = 100.0;
+
+   score +=
+   trend *
+   GetStrengthWeight();
+
+   //------------------------------------------
+   // SPREAD
+   //------------------------------------------
+
    if(GoodSpread())
-      score += 5;
+      score +=
+         100.0 *
+         GetMarketWeight();
    else
-      score -= 10;
+      score -=
+         60.0 *
+         GetMarketWeight();
 
+   //------------------------------------------
+   // VOLATILITY
+   //------------------------------------------
 
-   // Volatilidade adequada
    if(GoodVolatility(30))
-      score += 10;
+      score += 8.0;
    else
-      score -= 5;
+      score -= 12.0;
 
+   //------------------------------------------
+   // BONUS
+   //------------------------------------------
 
+   if(signal > 0 && TrendBuy())
+      score += 6.0;
 
-   if(score > 100)
-      score = 100;
+   if(signal < 0 && TrendSell())
+      score += 6.0;
 
-
-   if(score < 0)
-      score = 0;
-
-
+   score = ClampScore(score);
 
    return NormalizeDouble(score,2);
 }
 
-
-
-//==================================================
-// AI DECISION
 //==================================================
 
 bool FinalAIAllow(int signal)
 {
-
-   if(signal == 0)
+   if(signal==0)
       return false;
 
+   double score=
+      AdvancedAIScore(signal);
 
-   double score = AdvancedAIScore(signal);
-
-
-   Print(
-      "ADVANCED AI SCORE: ",
-      score
+   PrintFormat(
+      "[ADV AI] Score %.2f | Min %.2f",
+      score,
+      MinAIConfidence
    );
 
-
-   return(score >= MinAIConfidence);
+   return(score>=MinAIConfidence);
 }
 
-
-//==================================================
-// STRONG TREND WRAPPER
 //==================================================
 
 bool StrongTrend()
 {
-
-   if(TrendBuy())
-      return true;
-
-
-   if(TrendSell())
-      return true;
-
-
-   return false;
-
+   return
+   (
+      TrendBuy() ||
+      TrendSell()
+   );
 }
 
 #endif
