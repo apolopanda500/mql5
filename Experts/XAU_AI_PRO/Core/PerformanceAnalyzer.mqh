@@ -122,4 +122,34 @@ double PerformanceWinRate()
    return PA_WinRate();
 }
 
+//==================================================
+// CURRENT DRAWDOWN
+//==================================================
+
+double PerformanceCurrentDrawdown()
+{
+   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+
+   if(balance <= 0)
+      return 0.0;
+
+   return ((balance - equity) / balance) * 100.0;
+}
+
+//==================================================
+// SUMMARY
+//==================================================
+
+string PerformanceSummary()
+{
+   string summary = "=== PERFORMANCE ===\n";
+   summary += "Trades: " + IntegerToString(PA_TotalTrades) + "\n";
+   summary += "Win Rate: " + DoubleToString(PA_WinRate(), 2) + "%\n";
+   summary += "Profit Factor: " + DoubleToString(PA_ProfitFactor(), 2) + "\n";
+   summary += "Net Profit: " + DoubleToString(PA_NetProfit(), 2) + "\n";
+   summary += "Drawdown: " + DoubleToString(PerformanceCurrentDrawdown(), 2) + "%\n";
+   return summary;
+}
+
 #endif
