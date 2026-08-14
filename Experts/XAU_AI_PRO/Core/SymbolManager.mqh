@@ -155,6 +155,20 @@ bool InitSymbolManager()
 
       return true;
    }
+    Print("=== INICIALIZANDO SYMBOL MANAGER ===");
+    Print("Simbolos configurados: ", count);
+    
+    if(EnableVerboseDebug)
+    {
+       Print("Lista de simbolos no Market Watch:");
+       int total=SymbolsTotal(true);
+       for(int i=0; i<total; i++)
+       {
+          string brokerSymbol=SymbolName(i,true);
+          Print("  [", i, "] ", brokerSymbol);
+       }
+    }
+
 
     for(int i=0;i<count;i++)
     {
@@ -183,6 +197,15 @@ bool InitSymbolManager()
           symbol
        );
     }
+
+     Print("=== SYMBOL MANAGER INICIALIZADO ===");
+     Print("Total de ativos: ", ArraySize(ActiveSymbols));
+     
+     for(int i=0; i<ArraySize(ActiveSymbols); i++)
+     {
+        Print("  Ativo [", i, "]: ", ActiveSymbols[i]);
+     }
+
 
     // Fallback: if no symbols resolved, use _Symbol
     // This prevents INIT_FAILED in Strategy Tester when
