@@ -138,7 +138,7 @@ double GetAIConfidence(int signal)
 
 //==================================================
 
-int GetAISignal()
+int GetClientAISignal()
 {
    if(UseExternalAI())
    {
