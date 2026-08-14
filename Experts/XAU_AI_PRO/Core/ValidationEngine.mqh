@@ -24,25 +24,16 @@ bool ValidateTrade(
    const int signal
 )
 {
-   //================================================
-   // BASIC VALIDATION
-   //================================================
-
    if(symbol=="")
+   {
+      Print("[VALIDATION] BLOCK | Empty symbol");
       return false;
+   }
 
    if(signal==0)
-      return false;
-
-
-   //================================================
-   // SELECT SYMBOL
-   //================================================
-
-   if(!SymbolSelect(symbol,true))
    {
       Print(
-         "VALIDATION BLOCK | SYMBOL NOT AVAILABLE | ",
+         "[VALIDATION] BLOCK | Signal=0 | ",
          symbol
       );
 
@@ -81,7 +72,7 @@ bool ValidateTrade(
       )
       {
          Print(
-            "VALIDATION BLOCK | INVALID PRICE | ",
+            "[VALIDATION] BLOCK | Invalid price | ",
             symbol
          );
 
@@ -89,23 +80,32 @@ bool ValidateTrade(
       }
 
       double spread=
-         (ask-bid)/point;
+         (ask-bid)/
+         point;
 
-      if(spread>MaxSpread)
+      Print(
+         "[VALIDATION] ",
+         symbol,
+         " | Spread=",
+         DoubleToString(
+            spread,
+            2
+         ),
+         " | Max=",
+         DoubleToString(
+            MaxSpread,
+            2
+         )
+      );
+
+      if(
+         spread>
+         MaxSpread
+      )
       {
          Print(
-            "VALIDATION BLOCK | SPREAD | ",
-            symbol,
-            " | Spread=",
-            DoubleToString(
-               spread,
-               2
-            ),
-            " | Max=",
-            DoubleToString(
-               MaxSpread,
-               2
-            )
+            "[VALIDATION] BLOCK | SPREAD | ",
+            symbol
          );
 
          return false;
@@ -122,7 +122,7 @@ bool ValidateTrade(
       if(!IsTradingSession())
       {
          Print(
-            "VALIDATION BLOCK | SESSION | ",
+            "[VALIDATION] BLOCK | SESSION | ",
             symbol
          );
 
@@ -143,7 +143,7 @@ bool ValidateTrade(
       )
       {
          Print(
-            "VALIDATION BLOCK | TREND BUY | ",
+            "[VALIDATION] BLOCK | TREND BUY | ",
             symbol
          );
 
@@ -156,7 +156,7 @@ bool ValidateTrade(
       )
       {
          Print(
-            "VALIDATION BLOCK | TREND SELL | ",
+            "[VALIDATION] BLOCK | TREND SELL | ",
             symbol
          );
 
@@ -167,32 +167,38 @@ bool ValidateTrade(
 
    //================================================
    // ADX
-   // MULTI SYMBOL
    //================================================
 
    if(EnableADXFilter)
    {
-      if(
-         !ADX_OK(
+      double adx=
+         GetADX(
             symbol
+         );
+
+      Print(
+         "[VALIDATION] ",
+         symbol,
+         " | ADX=",
+         DoubleToString(
+            adx,
+            2
+         ),
+         " | Min=",
+         DoubleToString(
+            MinimumADX,
+            2
          )
+      );
+
+      if(
+         adx<
+         MinimumADX
       )
       {
          Print(
-            "VALIDATION BLOCK | ADX | ",
-            symbol,
-            " | ADX=",
-            DoubleToString(
-               GetADX(
-                  symbol
-               ),
-               2
-            ),
-            " | MIN=",
-            DoubleToString(
-               MinimumADX,
-               2
-            )
+            "[VALIDATION] BLOCK | ADX | ",
+            symbol
          );
 
          return false;
@@ -202,7 +208,6 @@ bool ValidateTrade(
 
    //================================================
    // AI
-   // MULTI SYMBOL
    //================================================
 
    if(EnableAIFilter)
@@ -214,18 +219,22 @@ bool ValidateTrade(
       )
       {
          Print(
-            "VALIDATION BLOCK | AI | ",
+            "[VALIDATION] BLOCK | AI | ",
             symbol
          );
 
          return false;
       }
+
+      Print(
+         "[VALIDATION] AI OK | ",
+         symbol
+      );
    }
 
 
    //================================================
-   // MULTI TIMEFRAME
-   // MULTI SYMBOL
+   // MTF
    //================================================
 
    if(EnableMTFConfirmation)
@@ -238,7 +247,7 @@ bool ValidateTrade(
       )
       {
          Print(
-            "VALIDATION BLOCK | MTF | ",
+            "[VALIDATION] BLOCK | MTF | ",
             symbol
          );
 
@@ -252,9 +261,9 @@ bool ValidateTrade(
    //================================================
 
    Print(
-      "VALIDATION APPROVED | ",
+      "[VALIDATION] APPROVED | ",
       symbol,
-      " | SIGNAL=",
+      " | Signal=",
       signal
    );
 
