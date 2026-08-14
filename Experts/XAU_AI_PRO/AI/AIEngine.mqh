@@ -24,7 +24,7 @@
 
 double GetAIConfidence(int signal,string symbol="");
 bool   AITradeAllowed(string symbol="");
-int    GetAISignal(string symbol="");
+int    GetAIEngineSignal(string symbol="");
 int    GetCombinedSignal(string symbol="");
 double GetAILotMultiplier(double confidence);
 double GetAIVetoThreshold(string symbol="");
@@ -187,7 +187,7 @@ double GetAILotMultiplier(double confidence)
 // AI SIGNAL
 //==================================================
 
-int GetAISignal(string symbol="")
+int GetAIEngineSignal(string symbol="")
 {
    if(symbol=="")
       symbol=_Symbol;
@@ -217,7 +217,7 @@ int GetCombinedSignal(string symbol="")
       symbol=_Symbol;
 
    int tech=GetSignal(symbol);
-   int ai=GetAISignal(symbol);
+   int ai=GetAIEngineSignal(symbol);
 
    if(tech==ai)
       return tech;
@@ -239,7 +239,7 @@ void LogAIFeedback(string symbol,double profit)
 {
    StoreExperience(
    symbol,
-   GetAISignal(symbol),
+   GetAIEngineSignal(symbol),
    AI_Score,
    profit>0
 );
