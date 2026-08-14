@@ -9,39 +9,131 @@
 
 //==================================================
 // PROCESS SYMBOL
-// Usa GetCombinedSignal (técnico + IA) em vez de apenas GetSignal
 //==================================================
 
 void ProcessSymbol(string symbol)
 {
    if(symbol=="")
-      return;
+   {
+      Print(
+         "[SCANNER] BLOCK | Empty symbol"
+      );
 
-   if(!SymbolSelect(symbol,true))
       return;
+   }
 
-   if(!CanOpenPosition(symbol))
-      return;
-
-   // Sinal combinado: técnico + IA
-   int signal=GetCombinedSignal(symbol);
-
-   if(signal==0)
-      return;
-
-    if(!ValidateTrade(symbol,signal))
-      return;
-
-   if(!ExecuteTrade(symbol,signal))
-      return;
 
    Print(
-      "MARKET SCANNER | ",
+      "[SCANNER] START | ",
+      symbol
+   );
+
+
+   //================================================
+   // POSITION LIMIT
+   //================================================
+
+   if(!CanOpenPosition(symbol))
+   {
+      Print(
+         "[SCANNER] BLOCK | CanOpenPosition | ",
+         symbol
+      );
+
+      return;
+   }
+
+
+   Print(
+      "[SCANNER] POSITION CHECK OK | ",
+      symbol
+   );
+
+
+   //================================================
+   // SIGNAL
+   //================================================
+
+   int signal=
+      GetCombinedSignal(
+         symbol
+      );
+
+
+   if(signal==0)
+   {
+      Print(
+         "[SCANNER] BLOCK | No Signal | ",
+         symbol
+      );
+
+      return;
+   }
+
+
+   Print(
+      "[SCANNER] SIGNAL OK | ",
       symbol,
-      " | SIGNAL=",
-      signal,
-      " | AI Score=",
-      DoubleToString(AI_Score, 2)
+      " | Signal=",
+      signal
+   );
+
+
+   //================================================
+   // VALIDATION
+   //================================================
+
+   if(
+      !ValidateTrade(
+         symbol,
+         signal
+      )
+   )
+   {
+      Print(
+         "[SCANNER] BLOCK | Validation | ",
+         symbol,
+         " | Signal=",
+         signal
+      );
+
+      return;
+   }
+
+
+   Print(
+      "[SCANNER] VALIDATION OK | ",
+      symbol
+   );
+
+
+   //================================================
+   // EXECUTION
+   //================================================
+
+   if(
+      !ExecuteTrade(
+         symbol,
+         signal
+      )
+   )
+   {
+      Print(
+         "[SCANNER] BLOCK | Execution Failed | ",
+         symbol,
+         " | Signal=",
+         signal
+      );
+
+      return;
+   }
+
+
+   Print(
+      "[SCANNER] TRADE SUCCESS | ",
+      symbol,
+      " | Signal=",
+      signal
    );
 }
 
