@@ -1,7 +1,9 @@
 #ifndef POSITIONMANAGER_MQH
 #define POSITIONMANAGER_MQH
 
+#include "../Management/BreakEven.mqh"
 #include "../Core/Config.mqh"
+#include "../Indicators/VolatilityFilter.mqh"
 #include <Trade/Trade.mqh>
 
 extern CTrade trade;
@@ -144,26 +146,25 @@ void TrailingStopATR(string symbol, ulong ticket)
 
    double openPrice=PositionGetDouble(POSITION_PRICE_OPEN);
    double sl=PositionGetDouble(POSITION_SL);
+   double tp=PositionGetDouble(POSITION_TP);
    ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
 
    double point=SymbolInfoDouble(symbol,SYMBOL_POINT);
    if(point<=0)
       point=_Point;
 
-   double atr=0;
-   // Use iATR for actual ATR value
-   double atrBuf[];
-   int atrHandle=iATR(symbol,PERIOD_CURRENT,ATRPeriod);
-   if(atrHandle!=INVALID_HANDLE)
-   {
-      if(CopyBuffer(atrHandle,0,0,1,atrBuf)>0)
-         atr=atrBuf[0];
-      IndicatorRelease(atrHandle);
-   }
+   // Usar GetATR com símbolo (já implementado)
+   double atr=GetATR(symbol);
+
    if(atr<=0)
       atr=BreakEvenTrigger*point;
 
    double trailDistance=ATRMultiplier*atr;
+
+   // Mínimo de distância do stop (proteção contra stops muito próximos)
+   double minStopDistance=10*point;
+   if(trailDistance<minStopDistance)
+      trailDistance=minStopDistance;
 
    double currentPrice;
    if(type==POSITION_TYPE_BUY)
@@ -174,24 +175,41 @@ void TrailingStopATR(string symbol, ulong ticket)
    double newSL;
    if(type==POSITION_TYPE_BUY)
    {
+      // Só trailing se já estiver em lucro
       if(currentPrice-openPrice<trailDistance)
          return;
 
       newSL=currentPrice-trailDistance;
+
+      // Não mover SL para baixo
       if(sl>0 && newSL<=sl)
+         return;
+
+      // Verificar distância mínima do preço atual
+      if(currentPrice-newSL<minStopDistance)
          return;
    }
    else
    {
+      // Só trailing se já estiver em lucro
       if(openPrice-currentPrice<trailDistance)
          return;
 
       newSL=currentPrice+trailDistance;
+
+      // Não mover SL para cima
       if(sl>0 && newSL>=sl)
+         return;
+
+      // Verificar distância mínima do preço atual
+      if(newSL-currentPrice<minStopDistance)
          return;
    }
 
-   double tp=PositionGetDouble(POSITION_TP);
+   // Normalizar SL para o símbolo
+   int digits=(int)SymbolInfoInteger(symbol,SYMBOL_DIGITS);
+   newSL=NormalizeDouble(newSL,digits);
+
    trade.PositionModify(symbol,newSL,tp);
 }
 
