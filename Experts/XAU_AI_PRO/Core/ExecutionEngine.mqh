@@ -6,6 +6,8 @@
 #include "../Core/RiskEngine.mqh"
 #include "../Core/PositionManager.mqh"
 #include "../Core/TradeController.mqh"
+#include "../Management/DailyRisk.mqh"
+#include "../AI/AIEngine.mqh"
 
 //==================================================
 // EXECUTION ENGINE
@@ -20,10 +22,24 @@ bool ExecuteTrade(string symbol,int signal)
       return false;
 
    if(!CanTrade(symbol))
+   {
+      Print("EXECUTION FAIL | CanTrade=false | symbol=",symbol);
+      Print("  - LastTradeTime=",LastTradeTime," | Now=",TimeCurrent());
       return false;
+   }
 
    if(!CanOpenPosition(symbol))
+   {
+      Print("EXECUTION FAIL | CanOpenPosition=false | symbol=",symbol);
       return false;
+   }
+
+   // Verificar limite diário
+   if(!CanTradeToday())
+   {
+      Print("EXECUTION: Limite diário atingido");
+      return false;
+   }
 
    double lot=
       CalculateLotByRisk(
@@ -37,6 +53,26 @@ bool ExecuteTrade(string symbol,int signal)
       Print("EXECUTION: LOTE INVÁLIDO");
       return false;
    }
+
+   // Ajustar lote baseado na confiança da IA
+   double aiConfidence=GetAIConfidence(signal, symbol);
+   double lotMultiplier=GetAILotMultiplier(aiConfidence);
+   double adjustedLot=lot*lotMultiplier;
+
+   // Normalizar para o step do símbolo
+   double step=SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+   double minLot=SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+
+   if(step>0)
+      adjustedLot=MathFloor(adjustedLot/step)*step;
+   adjustedLot=MathMax(minLot, adjustedLot);
+
+   Print("EXECUTION: Lote ajustado por IA | Base=", DoubleToString(lot,2),
+         " | AI Confidence=", DoubleToString(aiConfidence,2),
+         " | Multiplier=", DoubleToString(lotMultiplier,2),
+         " | Final=", DoubleToString(adjustedLot,2));
+
+   lot=adjustedLot;
 
    bool result=false;
 
@@ -69,6 +105,7 @@ bool ExecuteTrade(string symbol,int signal)
    if(result)
    {
       RegisterTrade();
+      RegisterDailyTrade();
 
       Print(
          "TRADE EXECUTADO | ",
