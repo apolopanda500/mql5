@@ -1,1 +1,58 @@
-logs/20260725.log
+# ============================================================
+# MQL5 / MetaTrader 5 - .gitignore
+# Projeto: XAU_AI_PRO v1.2.0
+# ============================================================
+
+# --- Compiled / Binary Output ---
+*.ex5
+*.ex4
+*.dll
+
+# --- Logs ---
+*.log
+
+# --- Data / Temp Files ---
+**/Data/*.csv
+**/Data/prediction_*.json
+*.dat
+*.db
+*.sqlite
+*.sqlite3
+*.tmp
+*.cache
+
+# --- MQL5 Editor / MetaEditor ---
+.mq5.user/
+*.mq5.user
+
+# --- Python / AI Pipeline ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.venv/
+venv/
+
+# --- Temp / Backup ---
+Files/Temp/
+Files/Backup/
+*~
+*.bak
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- MQL5 Logs Directory ---
+logs/
+
+# --- Preserve ---
+# *.mq5       (Expert Advisors - source)
+# *.mqh       (Include files - source)
+# *.mqproj    (Project files)
+# *.json      (config files at root)
+# *.md        (documentation)
+# *.set       (setting files)

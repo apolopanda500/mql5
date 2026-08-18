@@ -1,0 +1,25 @@
+# Binary files
+*.ex5     binary
+*.ex4     binary
+*.dll     binary
+*.dat     binary
+*.csv     binary
+*.db      binary
+*.sqlite  binary
+*.sqlite3 binary
+
+# Images
+*.bmp     binary
+*.ico     binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+
+# MQL5 source - text
+*.mq5     text eol=lf
+*.mqh     text eol=lf
+*.mqproj  text eol=lf
+*.set     text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
