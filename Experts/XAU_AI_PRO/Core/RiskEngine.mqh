@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.0
 #ifndef RISKENGINE_MQH
 #define RISKENGINE_MQH
 
@@ -33,20 +33,20 @@ double CalculateLotByRisk(
    double balance=AccountInfoDouble(ACCOUNT_BALANCE);
    double equity=AccountInfoDouble(ACCOUNT_EQUITY);
    
-   // ProteÃ§Ã£o: equity muito baixa
+   // Protecao: equity muito baixa
    double minEquityRatio = MinEquityPercent / 100.0;
    if(equity < balance * minEquityRatio)
    {
-      Print("RISK: Equity crÃ­tica (", DoubleToString(equity, 2),
-            " < ", DoubleToString(balance * minEquityRatio, 2), "), bloqueando operaÃ§Ãµes");
-      return 0.01;
+      Print("RISK: Equity critica (", DoubleToString(equity, 2),
+            " < ", DoubleToString(balance * minEquityRatio, 2), "), bloqueando operacoes");
+      return 0.0;   // bloqueia nova operacao
    }
 
-   // Verificar stop loss diÃ¡rio
+   // Verificar stop loss diario
    if(!CheckDailyLossDaily())
    {
-      Print("RISK: Limite de perda diÃ¡ria atingido");
-      return 0.01;
+      Print("RISK: Limite de perda diaria atingido");
+      return 0.0;   // bloqueia nova operacao
    }
    
    // Calcular drawdown atual
@@ -54,20 +54,23 @@ double CalculateLotByRisk(
    if(balance > 0)
       drawdown = ((balance - equity) / balance) * 100.0;
    
-   // Ajustar risco baseado no drawdown
+   // Ajustar risco baseado no drawdown (escalonado a partir de MaxDrawdownPercent)
    double adjustedRisk = riskPercent;
+   double ddCritical = MaxDrawdownPercent;          // ex.: 15.0
+   double ddHigh     = MaxDrawdownPercent * 0.67;   // ~10.0
+   double ddModerate = MaxDrawdownPercent * 0.33;   // ~5.0
    
-   if(drawdown > 15.0)
+   if(drawdown > ddCritical)
    {
-      Print("RISK: Drawdown crÃ­tico (", DoubleToString(drawdown, 2), "%), reduzindo risco para 25%");
+      Print("RISK: Drawdown critico (", DoubleToString(drawdown, 2), "%), reduzindo risco para 25%");
       adjustedRisk = riskPercent * 0.25;  // Reduz 75%
    }
-   else if(drawdown > 10.0)
+   else if(drawdown > ddHigh)
    {
       Print("RISK: Drawdown alto (", DoubleToString(drawdown, 2), "%), reduzindo risco para 50%");
       adjustedRisk = riskPercent * 0.50;  // Reduz 50%
    }
-   else if(drawdown > 5.0)
+   else if(drawdown > ddModerate)
    {
       Print("RISK: Drawdown moderado (", DoubleToString(drawdown, 2), "%), reduzindo risco para 75%");
       adjustedRisk = riskPercent * 0.75;  // Reduz 25%
@@ -80,12 +83,12 @@ double CalculateLotByRisk(
    double point=SymbolInfoDouble(symbol, SYMBOL_POINT);
 
    if(tickValue<=0 || tickSize<=0 || point<=0)
-      return 0.01;
+      return 0.0;   // dados invalidos -> bloqueia
 
    double lossPerLot=((stopPoints*point)/tickSize)*tickValue;
 
    if(lossPerLot<=0)
-      return 0.01;
+      return 0.0;   // calculo invalido -> bloqueia
 
    double lot=riskMoney/lossPerLot;
 

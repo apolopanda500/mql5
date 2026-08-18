@@ -59,7 +59,7 @@ bool OpenBuy(string symbol,double lot)
          ask,
          sl,
          tp,
-         "XAU_AI_PRO BUY"
+         TradeComment
       );
 
    if(!result)
@@ -119,7 +119,7 @@ bool OpenSell(string symbol,double lot)
          bid,
          sl,
          tp,
-         "XAU_AI_PRO SELL"
+         TradeComment
       );
 
    if(!result)
