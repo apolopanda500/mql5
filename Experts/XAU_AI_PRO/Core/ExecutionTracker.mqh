@@ -1,4 +1,5 @@
-﻿#ifndef EXECUTIONTRACKER_MQH
+﻿// XAU_AI_PRO v1.2.0
+#ifndef EXECUTIONTRACKER_MQH
 #define EXECUTIONTRACKER_MQH
 
 //======================================================

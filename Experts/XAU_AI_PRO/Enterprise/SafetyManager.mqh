@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                              SafetyManager.mqh   |
 //|                                  Safety Management System        |
-//|                                            XAU_AI_PRO v1.1       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 
 #ifndef SAFETY_MANAGER_MQH
@@ -68,6 +68,9 @@ public:
 
    static void UpdateStats();
 
+
+    static void RegisterTrade();
+    static int GetDailyTrades();
    static string GetSafetySummary();
 
    static void LogSafety();
@@ -146,7 +149,7 @@ void CSafetyManager::Init()
       10.0;
 
    m_limits.min_free_margin =
-      100.0;
+      MinFreeMargin;
 
    m_limits.max_risk_per_symbol =
       2.0;
@@ -649,6 +652,31 @@ void CSafetyManager::LogSafety()
       "[SAFETY] %s",
       GetSafetySummary()
    );
+}
+
+
+//==================================================
+// REGISTER TRADE
+//==================================================
+
+void CSafetyManager::RegisterTrade()
+{
+   if(!m_initialized)
+      Init();
+
+   m_daily_trades++;
+}
+
+//==================================================
+// GET DAILY TRADES
+//==================================================
+
+int CSafetyManager::GetDailyTrades()
+{
+   if(!m_initialized)
+      Init();
+
+   return m_daily_trades;
 }
 
 #endif // SAFETY_MANAGER_MQH

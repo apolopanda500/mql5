@@ -9,6 +9,72 @@
 
 string ActiveSymbols[];
 
+//--------------------------------------------------
+// ESTADO DE SINCRONIZACAO (v1.2.0)
+// Quando o terminal inicia, os simbolos ainda nao
+// estao sincronizados. Antes isso fazia o OnInit
+// falhar com code 1 / symbol synchronization timeout.
+// Agora a resolucao e adiada e tentada de novo
+// em OnTick/OnTimer (UpdateSymbolManager).
+//--------------------------------------------------
+bool SymbolsPending     = false;   // ha simbolos aguardando sincronizacao
+bool SymbolsResolved    = false;   // resolucao concluida com sucesso
+datetime LastSymbolRetry= 0;       // throttle do retry
+
+//==================================================
+// HELPERS
+//==================================================
+
+bool IsSymbolTradeable(string symbol)
+{
+   if(symbol == "")
+      return false;
+
+   ResetLastError();
+
+   if(!SymbolSelect(symbol, true))
+   {
+      // 4301 = simbolo realmente desconhecido.
+      // Qualquer outro erro (ex.: 4106, 4801) normalmente
+      // significa que o simbolo ainda nao sincronizou.
+      if(GetLastError() != 4301)
+         SymbolsPending = true;
+
+      return false;
+   }
+
+   long tradeMode = SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE);
+   if(tradeMode == SYMBOL_TRADE_MODE_DISABLED)
+   {
+      Print("SYMBOL MANAGER | Trade disabled | ", symbol);
+      return false;
+   }
+
+   if(tradeMode == SYMBOL_TRADE_MODE_CLOSEONLY)
+   {
+      Print("SYMBOL MANAGER | Close-only mode | ", symbol);
+      return false;
+   }
+
+   return true;
+}
+
+string NormalizeInputSymbol(string symbol)
+{
+   StringTrimLeft(symbol);
+   StringTrimRight(symbol);
+
+   // Remove sufixo "c" apenas para casos conhecidos (contas cent/raw)
+   string knownCent[] = {"XAUUSDc", "BTCUSDc", "ETHUSDc", "EURUSDc", "GBPUSDc", "USDJPYc"};
+   for(int i = 0; i < ArraySize(knownCent); i++)
+   {
+      if(StringCompare(symbol, knownCent[i], false) == 0)
+         return StringSubstr(symbol, 0, StringLen(symbol) - 1);
+   }
+
+   return symbol;
+}
+
 //==================================================
 // RESOLVE BROKER SYMBOL
 //==================================================
@@ -18,102 +84,106 @@ string ResolveBrokerSymbol(string symbol)
    StringTrimLeft(symbol);
    StringTrimRight(symbol);
 
-   // Strip trailing "c" suffix to normalize symbols like "XAUUSDc" -> "XAUUSD"
-   // so they enter the correct broker-mapping branch below
-   string baseSymbol = symbol;
-   int len = StringLen(baseSymbol);
-   if(len > 1 && StringGetCharacter(baseSymbol, len - 1) == 'c')
+   if(symbol == "")
    {
-      baseSymbol = StringSubstr(baseSymbol, 0, len - 1);
+      Print("SYMBOL MANAGER | Empty symbol requested");
+      return "";
    }
+
+   string baseSymbol = NormalizeInputSymbol(symbol);
 
    string candidates[];
-   ArrayResize(candidates,12);
+   ArrayResize(candidates, 16);
 
-   candidates[0]=symbol;
-   candidates[1]=symbol+"c";
-   candidates[2]=symbol+".";
-   candidates[3]=symbol+"#";
+   candidates[0]  = symbol;
+   candidates[1]  = baseSymbol;
+   candidates[2]  = baseSymbol + "c";
+   candidates[3]  = baseSymbol + ".";
+   candidates[4]  = baseSymbol + "#";
+   candidates[5]  = baseSymbol + "m";
+   candidates[6]  = baseSymbol + "micro";
+   candidates[7]  = baseSymbol + ".pro";
+   candidates[8]  = baseSymbol + "_i";
+   candidates[9]  = baseSymbol + ".cash";
+   candidates[10] = baseSymbol + ".r";
+   candidates[11] = "";
+   candidates[12] = "";
+   candidates[13] = "";
+   candidates[14] = "";
+   candidates[15] = "";
 
-   if(baseSymbol=="XAUUSD")
+   if(baseSymbol == "XAUUSD")
    {
-      candidates[4]="GOLD";
-      candidates[5]="GOLD#";
-      candidates[6]="XAUUSDm";
-      candidates[7]="XAUUSDmicro";
-      candidates[8]="XAUUSD.pro";
-      candidates[9]="XAUUSD_i";
-      candidates[10]="XAUUSD.cash";
-      candidates[11]="XAUUSD.r";
+      candidates[11] = "GOLD";
+      candidates[12] = "GOLD#";
+      candidates[13] = "XAUUSDm";
+      candidates[14] = "XAUUSDmicro";
+      candidates[15] = "XAUUSD.pro";
    }
    else
-   if(baseSymbol=="BTCUSD")
+   if(baseSymbol == "BTCUSD")
    {
-      candidates[4]="BTCUSD#";
-      candidates[5]="BTCUSDc";
-      candidates[6]="BTCUSDm";
-      candidates[7]="BTCUSD.";
-      candidates[8]="BTCUSD.pro";
-      candidates[9]="BTCUSD_i";
-      candidates[10]="BTCUSD.cash";
-      candidates[11]="BTCUSD.r";
+      candidates[11] = "BTCUSD#";
+      candidates[12] = "BTCUSDm";
+      candidates[13] = "BTCUSDmicro";
+      candidates[14] = "BTCUSD.pro";
+      candidates[15] = "BTCUSD.cash";
    }
    else
+   if(baseSymbol == "ETHUSD")
    {
-      candidates[4]=symbol+"m";
-      candidates[5]=symbol+"micro";
-      candidates[6]=symbol+"_i";
-      candidates[7]=symbol+"pro";
-      candidates[8]=symbol+".";
-      candidates[9]=symbol+"#";
-      candidates[10]=symbol+".cash";
-      candidates[11]=symbol+".r";
+      candidates[11] = "ETHUSD#";
+      candidates[12] = "ETHUSDm";
+      candidates[13] = "ETHUSDmicro";
+      candidates[14] = "ETHUSD.pro";
+      candidates[15] = "ETHUSD.cash";
    }
 
-   for(int i=0;i<ArraySize(candidates);i++)
+   for(int i = 0; i < ArraySize(candidates); i++)
    {
-      if(candidates[i]=="")
+      if(candidates[i] == "")
          continue;
 
-      if(SymbolSelect(candidates[i],true))
+      if(IsSymbolTradeable(candidates[i]))
       {
-         Print(
-            "Broker Symbol: ",
-            symbol,
-            " -> ",
-            candidates[i]
-         );
-
+         Print("SYMBOL MANAGER | Resolved: ", symbol, " -> ", candidates[i]);
          return candidates[i];
       }
    }
 
-   int total=SymbolsTotal(true);
-
-   for(int i=0;i<total;i++)
+   // Fallback 1: match exato no Market Watch
+   int total = SymbolsTotal(true);
+   for(int i = 0; i < total; i++)
    {
-      string broker=SymbolName(i,true);
+      string broker = SymbolName(i, true);
 
-      if(StringFind(broker,symbol)>=0)
+      if(StringCompare(broker, symbol, false) == 0 ||
+         StringCompare(broker, baseSymbol, false) == 0)
       {
-         SymbolSelect(broker,true);
-
-         Print(
-            "Broker Symbol Auto: ",
-            symbol,
-            " -> ",
-            broker
-         );
-
-         return broker;
+         if(IsSymbolTradeable(broker))
+         {
+            Print("SYMBOL MANAGER | Exact match: ", symbol, " -> ", broker);
+            return broker;
+         }
       }
    }
 
-   Print(
-      "Símbolo não encontrado: ",
-      symbol
-   );
+   // Fallback 2: match parcial (mais permissivo, mas logado)
+   for(int i = 0; i < total; i++)
+   {
+      string broker = SymbolName(i, true);
 
+      if(StringFind(broker, baseSymbol, 0) == 0)
+      {
+         if(IsSymbolTradeable(broker))
+         {
+            Print("SYMBOL MANAGER | Partial match: ", symbol, " -> ", broker);
+            return broker;
+         }
+      }
+   }
+
+   Print("SYMBOL MANAGER | Symbol not found: ", symbol);
    return "";
 }
 
@@ -121,106 +191,167 @@ string ResolveBrokerSymbol(string symbol)
 // INIT
 //==================================================
 
+bool SymbolAlreadyActive(string symbol)
+{
+   int total = ArraySize(ActiveSymbols);
+   for(int i = 0; i < total; i++)
+   {
+      if(StringCompare(ActiveSymbols[i], symbol, false) == 0)
+         return true;
+   }
+   return false;
+}
+
 bool InitSymbolManager()
 {
-   ArrayResize(ActiveSymbols,0);
+   ArrayResize(ActiveSymbols, 0);
 
    if(!EnableMultiSymbol)
    {
-      ArrayResize(ActiveSymbols,1);
-      ActiveSymbols[0]=ResolveBrokerSymbol(_Symbol);
+      ArrayResize(ActiveSymbols, 1);
 
-      if(ActiveSymbols[0]=="")
-         ActiveSymbols[0]=_Symbol;
+      // Tenta resolver o simbolo do grafico para a convencao da corretora.
+      // Se nao encontrar um tradeable, usa _Symbol diretamente.
+      string resolved = ResolveBrokerSymbol(_Symbol);
+      if(resolved != "" && IsSymbolTradeable(resolved))
+      {
+         ActiveSymbols[0] = resolved;
+         Print("SYMBOL MANAGER | Single-symbol mode mapped: ", _Symbol, " -> ", resolved);
+      }
+      else
+      {
+         ActiveSymbols[0] = _Symbol;
+         if(!IsSymbolTradeable(ActiveSymbols[0]))
+         {
+            // Nao e fatal: o simbolo pode ainda nao estar sincronizado.
+            // O retry (UpdateSymbolManager) tenta de novo em OnTick/OnTimer.
+            Print("SYMBOL MANAGER | _Symbol ainda nao negociavel (pendente): ", ActiveSymbols[0]);
+            SymbolsPending = true;
+         }
+         Print("SYMBOL MANAGER | Single-symbol mode: ", ActiveSymbols[0]);
+      }
 
       return true;
    }
 
    string temp[];
+   int count = StringSplit(Symbols, ',', temp);
 
-   int count=
-      StringSplit(
-         Symbols,
-         ',',
-         temp
-      );
-
-   if(count<=0)
+   if(count <= 0)
    {
-      ArrayResize(ActiveSymbols,1);
-      ActiveSymbols[0]=ResolveBrokerSymbol(_Symbol);
+      ArrayResize(ActiveSymbols, 1);
+      ActiveSymbols[0] = _Symbol;
 
-      if(ActiveSymbols[0]=="")
-         ActiveSymbols[0]=_Symbol;
+      if(!IsSymbolTradeable(ActiveSymbols[0]))
+      {
+         Print("SYMBOL MANAGER | _Symbol ainda nao negociavel (pendente): ", ActiveSymbols[0]);
+         SymbolsPending = true;
+      }
 
+      Print("SYMBOL MANAGER | Fallback single-symbol mode: ", ActiveSymbols[0]);
       return true;
    }
-    Print("=== INICIALIZANDO SYMBOL MANAGER ===");
-    Print("Simbolos configurados: ", count);
-    
-    if(EnableVerboseDebug)
-    {
-       Print("Lista de simbolos no Market Watch:");
-       int total=SymbolsTotal(true);
-       for(int i=0; i<total; i++)
-       {
-          string brokerSymbol=SymbolName(i,true);
-          Print("  [", i, "] ", brokerSymbol);
-       }
-    }
 
+   Print("=== SYMBOL MANAGER INITIALIZING ===");
+   Print("SYMBOL MANAGER | Configured symbols: ", count);
 
-    for(int i=0;i<count;i++)
-    {
-       string symbol=
-          ResolveBrokerSymbol(
-             temp[i]
-          );
+   if(EnableVerboseDebug)
+   {
+      Print("SYMBOL MANAGER | Market Watch list:");
+      int total = SymbolsTotal(true);
+      for(int i = 0; i < total; i++)
+      {
+         string brokerSymbol = SymbolName(i, true);
+         Print("  [", i, "] ", brokerSymbol);
+      }
+   }
 
-       if(symbol=="")
-          continue;
+   for(int i = 0; i < count; i++)
+   {
+      string symbol = ResolveBrokerSymbol(temp[i]);
 
-       int size=
-          ArraySize(
-             ActiveSymbols
-          );
+      if(symbol == "")
+         continue;
 
-       ArrayResize(
-          ActiveSymbols,
-          size+1
-       );
+      if(SymbolAlreadyActive(symbol))
+      {
+         Print("SYMBOL MANAGER | Duplicate ignored: ", symbol);
+         continue;
+      }
 
-       ActiveSymbols[size]=symbol;
+      int size = ArraySize(ActiveSymbols);
+      ArrayResize(ActiveSymbols, size + 1);
+      ActiveSymbols[size] = symbol;
 
-       Print(
-          "ATIVO REGISTRADO: ",
-          symbol
-       );
-    }
+      Print("SYMBOL MANAGER | Active symbol registered: ", symbol);
+   }
 
-     Print("=== SYMBOL MANAGER INICIALIZADO ===");
-     Print("Total de ativos: ", ArraySize(ActiveSymbols));
-     
-     for(int i=0; i<ArraySize(ActiveSymbols); i++)
-     {
-        Print("  Ativo [", i, "]: ", ActiveSymbols[i]);
-     }
+   Print("=== SYMBOL MANAGER INITIALIZED ===");
+   Print("SYMBOL MANAGER | Total active symbols: ", ArraySize(ActiveSymbols));
 
+   for(int i = 0; i < ArraySize(ActiveSymbols); i++)
+   {
+      Print("  [", i, "] ", ActiveSymbols[i]);
+   }
 
-    // Fallback: if no symbols resolved, use _Symbol
-    // This prevents INIT_FAILED in Strategy Tester when
-    // broker symbol suffixes don't match the Symbols list
-    if(ArraySize(ActiveSymbols)==0)
-    {
-       ArrayResize(ActiveSymbols,1);
-       ActiveSymbols[0]=_Symbol;
-       Print(
-          "FALLBACK: No symbols resolved, using _Symbol: ",
-          _Symbol
-       );
-    }
+   if(ArraySize(ActiveSymbols) == 0)
+   {
+      Print("SYMBOL MANAGER | WARNING: No symbols resolved, using _Symbol: ", _Symbol);
+      ArrayResize(ActiveSymbols, 1);
+      ActiveSymbols[0] = _Symbol;
 
-    return true;
+      if(!IsSymbolTradeable(ActiveSymbols[0]))
+      {
+         // Nao e fatal: apenas sinaliza que a sincronizacao esta pendente.
+         Print("SYMBOL MANAGER | WARNING: _Symbol ainda nao negociavel (pendente): ", ActiveSymbols[0]);
+         SymbolsPending = true;
+      }
+   }
+
+   return true;
+}
+
+//==================================================
+// UPDATE (RETRY) - SIMBOLOS PENDENTES
+// Chamado em OnTick/OnTimer enquanto SymbolsPending.
+// Reexecuta a resolucao com throttle para nao travar
+// o OnInit nem inundar o log quando o terminal inicia
+// antes da sincronizacao dos simbolos.
+//==================================================
+
+bool UpdateSymbolManager()
+{
+   if(!SymbolsPending)
+      return true;
+
+   datetime now = TimeCurrent();
+
+   if(now - LastSymbolRetry < 5)
+      return false;
+
+   LastSymbolRetry = now;
+
+   Print("SYMBOL MANAGER | Retentando sincronizacao de simbolos...");
+
+   SymbolsPending = false;
+   InitSymbolManager();
+
+   if(!SymbolsPending)
+   {
+      SymbolsResolved = true;
+      Print("SYMBOL MANAGER | Simbolos sincronizados com sucesso (", ArraySize(ActiveSymbols), ")");
+   }
+
+   return !SymbolsPending;
+}
+
+//==================================================
+// STATUS
+//==================================================
+
+bool AreSymbolsReady()
+{
+   return !SymbolsPending;
 }
 
 //==================================================
@@ -238,7 +369,7 @@ int TotalSymbols()
 
 string GetTradeSymbol(int index)
 {
-   if(index<0 || index>=ArraySize(ActiveSymbols))
+   if(index < 0 || index >= ArraySize(ActiveSymbols))
       return "";
 
    return ActiveSymbols[index];
@@ -254,3 +385,5 @@ void ReleaseSymbolManager()
 }
 
 #endif
+
+

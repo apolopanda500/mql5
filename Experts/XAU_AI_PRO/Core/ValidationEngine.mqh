@@ -7,6 +7,7 @@
 #include "../Filters/SessionFilter.mqh"
 #include "../Filters/TrendFilter.mqh"
 #include "../Filters/MultiTimeframeFilter.mqh"
+#include "../Filters/NewsFilter.mqh"
 
 #include "../Indicators/ADX.mqh"
 
@@ -15,7 +16,7 @@
 
 //==================================================
 // VALIDATION ENGINE
-// XAU_AI_PRO V1.1
+// XAU_AI_PRO v1.2.0
 // MULTI SYMBOL
 //==================================================
 
@@ -79,6 +80,8 @@ bool ValidateTrade(
          return false;
       }
 
+      double maxAllowed = GetMaxSpread(symbol);
+
       double spread=
          (ask-bid)/
          point;
@@ -93,14 +96,14 @@ bool ValidateTrade(
          ),
          " | Max=",
          DoubleToString(
-            MaxSpread,
+            maxAllowed,
             2
          )
       );
 
       if(
          spread>
-         MaxSpread
+         maxAllowed
       )
       {
          Print(
@@ -255,6 +258,27 @@ bool ValidateTrade(
       }
    }
 
+//================================================
+   // NEWS (Economic Calendar v1.2.0)
+   //================================================
+
+   if(EnableNewsFilter)
+   {
+      if(!CanTradeNews())
+      {
+         Print(
+            "[VALIDATION] BLOCK | NEWS | ",
+            symbol
+         );
+
+         return false;
+      }
+
+      Print(
+         "[VALIDATION] NEWS OK | ",
+         symbol
+      );
+   }
 
    //================================================
    // APPROVED

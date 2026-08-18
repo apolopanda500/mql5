@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef SPREADFILTER_MQH
 #define SPREADFILTER_MQH
 
@@ -87,7 +88,9 @@ bool GoodSpread(string symbol)
       return false;
    }
 
-   if(spread > MaxSpread)
+   double maxAllowed = GetMaxSpread(symbol);
+
+   if(spread > maxAllowed)
    {
       Print(
          "[SPREAD BLOCK] ",
@@ -95,7 +98,7 @@ bool GoodSpread(string symbol)
          " | Current=",
          DoubleToString(spread, 1),
          " | Max=",
-         DoubleToString(MaxSpread, 1)
+         DoubleToString(maxAllowed, 1)
       );
 
       return false;
@@ -139,6 +142,7 @@ double GetCurrentSpread(string symbol)
 void PrintSpreadStatus()
 {
    double spread = GetCurrentSpread();
+   double maxAllowed = GetMaxSpread(_Symbol);
 
    if(spread < 0.0)
    {
@@ -157,9 +161,9 @@ void PrintSpreadStatus()
       " | Current=",
       DoubleToString(spread, 1),
       " points | Max=",
-      DoubleToString(MaxSpread, 1),
+      DoubleToString(maxAllowed, 1),
       " | Status=",
-      (spread <= MaxSpread ? "OK" : "BLOCKED")
+      (spread <= maxAllowed ? "OK" : "BLOCKED")
    );
 }
 

@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef PATHMANAGER_MQH
 #define PATHMANAGER_MQH
 

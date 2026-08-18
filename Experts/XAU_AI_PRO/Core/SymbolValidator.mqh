@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef SYMBOLVALIDATOR_MQH
 #define SYMBOLVALIDATOR_MQH
 
@@ -119,7 +120,7 @@ bool ValidateSymbol(
 
 
 
-   if(spread > MaxSpread)
+   if(spread > GetMaxSpread(symbol))
       return false;
 
 

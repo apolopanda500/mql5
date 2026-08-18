@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                              AutoCalibration.mqh |
 //|                                  Auto Calibration System         |
-//|                                            XAU_AI_PRO v1.0       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 
 #ifndef AUTO_CALIBRATION_MQH

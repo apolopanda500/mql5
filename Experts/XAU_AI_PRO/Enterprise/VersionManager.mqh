@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                               VersionManager.mqh |
 //|                                  Version Management System       |
-//|                                            XAU_AI_PRO v1.0       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 #ifndef VERSION_MANAGER_MQH
 #define VERSION_MANAGER_MQH
@@ -68,10 +68,10 @@ public:
 
 VersionInfo CVersionManager::m_current =
 {
-   "1.0.0",
+   "1.2.0",
    "",
    "XAU_AI_PRO Team",
-   "V1.0 Enterprise - Production Ready",
+   "V1.2.0 - Production Ready",
    true
 };
 

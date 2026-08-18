@@ -1,10 +1,10 @@
 // recompile-trigger 19:40:47
 //==================================================
-// XAU_AI_PRO v1.20
+// XAU_AI_PRO v1.2.0
 //==================================================
 
 #property strict
-#property version "1.20"
+#property version "1.2.0"
 
 #include <Trade/Trade.mqh>
 
@@ -269,7 +269,7 @@ bool InitializeModules()
    CSmartExecution::Init();
 
    //------------------------------------------------
-   // v1.20 - TRADE LOGGER / DATABASE / SCHEDULER / STATISTICS
+   // v1.2.0 - TRADE LOGGER / DATABASE / SCHEDULER / STATISTICS
    //------------------------------------------------
 
    if(!InitTradeLogger())
@@ -294,7 +294,7 @@ bool InitializeModules()
    StatisticsInit();
 
 //------------------------------------------------
-   // v1.20 - TELEMETRY
+   // v1.2.0 - TELEMETRY
    //------------------------------------------------
 
    if(EnableTelemetry)
@@ -504,7 +504,7 @@ void PerformanceSave()
 int OnInit()
 {
    Print("========================================");
-   Print("        XAU_AI_PRO v1.20");
+   Print("        XAU_AI_PRO v1.2.0");
    Print("========================================");
 
    Print("Conta.............: ", AccountInfoInteger(ACCOUNT_LOGIN));
@@ -549,6 +549,19 @@ void OnTick()
    if(!SystemInitialized)
    {
       Print("[TRADE BLOCK] SYSTEM NOT INITIALIZED");
+      return;
+   }
+
+   //------------------------------------------------
+   // AutoTrade (input) - v1.2.0
+   // O input AutoTrade agora e respeitado no OnTick.
+   // Antes ele so era checado em CheckTradingConditions(),
+   // que nunca era chamada - o robo ignorava o input.
+   //------------------------------------------------
+
+   if(!AutoTrade)
+   {
+      Print("[TRADE BLOCK] AUTOTRADE OFF | Ative AutoTrade=true no EA");
       return;
    }
 
@@ -717,7 +730,7 @@ void OnTradeTransaction(
       );
 
       //------------------------------------------------
-      // v1.20 - POSITION SYNC + DATABASE
+      // v1.2.0 - POSITION SYNC + DATABASE
       //------------------------------------------------
 
       CSmartExecution::Synchronize();
@@ -823,13 +836,13 @@ void OnTradeTransaction(
       );
 
       //------------------------------------------------
-      // v1.20 - POSITION SYNC
+      // v1.2.0 - POSITION SYNC
       //------------------------------------------------
 
       CSmartExecution::Synchronize();
 
       //------------------------------------------------
-      // v1.20 - TRADE LOGGER
+      // v1.2.0 - TRADE LOGGER
       //------------------------------------------------
 
       if(tradeLoggerHandle != INVALID_HANDLE)
@@ -850,7 +863,7 @@ void OnTradeTransaction(
       }
 
       //------------------------------------------------
-      // v1.20 - DATABASE
+      // v1.2.0 - DATABASE
       //------------------------------------------------
 
       if(EnableDatabase)
@@ -868,7 +881,7 @@ void OnTradeTransaction(
       }
 
       //------------------------------------------------
-      // v1.20 - STATISTICS
+      // v1.2.0 - STATISTICS
       //------------------------------------------------
 
       StatisticsRegisterTrade(profit);
@@ -929,7 +942,7 @@ void OnTimer()
    CSmartExecution::Synchronize();
 
    //------------------------------------------------
-   // Scheduler (v1.20)
+   // Scheduler (v1.2.0)
    //------------------------------------------------
 
    if(EnableScheduler)
@@ -991,7 +1004,7 @@ void OnDeinit(
    // PARAR TIMER
    //================================================
 
-   // v1.21 - SALVAR RESUMO (win rate) em FILE_COMMON
+   // v1.2.0 - SALVAR RESUMO (win rate) em FILE_COMMON
    StatisticsSaveSummary();
 
    EventKillTimer();

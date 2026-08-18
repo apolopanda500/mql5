@@ -5,7 +5,7 @@
 #include "Logger.mqh"
 
 //==================================================
-// XAU_AI_PRO — STATISTICS ENGINE V2.0
+// XAU_AI_PRO — STATISTICS ENGINE v1.2.0
 // Estatísticas diárias, semanais e mensais
 //==================================================
 
@@ -32,6 +32,10 @@ double g_statsTodayLoss = 0.0;
 double g_statsWeekLoss  = 0.0;
 double g_statsMonthLoss = 0.0;
 double g_statsTotalLoss = 0.0;
+
+// v1.2.0 - contadores de resultado (deals de saida)
+int g_statsWins   = 0;
+int g_statsLosses = 0;
 
 //==================================================
 // CALCULA INICIO DO DIA
@@ -215,6 +219,7 @@ void StatisticsRegisterTrade(double profit)
 
    if(profit > 0.0)
    {
+      g_statsWins++;
       g_statsTotalProfit += profit;
       g_statsTodayProfit += profit;
       g_statsWeekProfit  += profit;
@@ -237,6 +242,7 @@ void StatisticsRegisterTrade(double profit)
       double loss =
          MathAbs(profit);
 
+      g_statsLosses++;
       g_statsTotalLoss += loss;
       g_statsTodayLoss += loss;
       g_statsWeekLoss  += loss;
@@ -260,6 +266,58 @@ void StatisticsRegisterTrade(double profit)
 //==================================================
 // TRADES
 //==================================================
+
+//==================================================
+// SALVA RESUMO DO BACKTEST (FILE_COMMON -> legivel)
+// v1.2.0 - usado para medir win rate de cada teste
+//==================================================
+
+void StatisticsSaveSummary()
+{
+   int handle =
+      FileOpen(
+         "xau_ai_pro_summary.csv",
+         FILE_WRITE |
+         FILE_CSV |
+         FILE_ANSI |
+         FILE_COMMON
+      );
+
+   if(handle == INVALID_HANDLE)
+      return;
+
+   int totalDeals = g_statsWins + g_statsLosses;
+   double winRate = 0.0;
+
+   if(totalDeals > 0)
+      winRate = 100.0 * (double)g_statsWins / (double)totalDeals;
+
+   double grossProfit = g_statsTotalProfit;
+   double grossLoss   = g_statsTotalLoss;
+   double pf = 0.0;
+
+   if(grossLoss > 0.0)
+      pf = grossProfit / grossLoss;
+   else if(grossProfit > 0.0)
+      pf = 99.99;
+
+   FileWrite(handle, "metric,value");
+   FileWrite(handle, "Symbol", _Symbol);
+   FileWrite(handle, "ClosedDeals", totalDeals);
+   FileWrite(handle, "Wins", g_statsWins);
+   FileWrite(handle, "Losses", g_statsLosses);
+   FileWrite(handle, "WinRatePercent", DoubleToString(winRate, 2));
+   FileWrite(handle, "NetProfit", DoubleToString(grossProfit - grossLoss, 2));
+   FileWrite(handle, "GrossProfit", DoubleToString(grossProfit, 2));
+   FileWrite(handle, "GrossLoss", DoubleToString(grossLoss, 2));
+   FileWrite(handle, "ProfitFactor", DoubleToString(pf, 4));
+   FileWrite(handle, "MaxWinStreak", g_maxWinStreak);
+   FileWrite(handle, "MaxLossStreak", g_maxLossStreak);
+   FileWrite(handle, "FinalBalance", DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE), 2));
+   FileWrite(handle, "FinalEquity", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2));
+
+   FileClose(handle);
+}
 
 int StatsTodayTrades()
 {

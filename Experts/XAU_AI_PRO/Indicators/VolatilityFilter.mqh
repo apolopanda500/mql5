@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef VOLATILITYFILTER_MQH
 #define VOLATILITYFILTER_MQH
 
@@ -83,6 +84,27 @@ double GetATR()
       _Digits
    );
 
+}
+
+
+double GetATR(string symbol)
+{
+   if(symbol=="")
+      return GetATR();
+
+   int handle=iATR(symbol, PERIOD_CURRENT, VOLATILITY_ATR_PERIOD);
+   if(handle==INVALID_HANDLE)
+      return 0.0;
+
+   double buf[];
+   ArraySetAsSeries(buf, true);
+
+   double result=0.0;
+   if(CopyBuffer(handle, 0, 0, 1, buf) > 0)
+      result=NormalizeDouble(buf[0], _Digits);
+
+   IndicatorRelease(handle);
+   return result;
 }
 
 

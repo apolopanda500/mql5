@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef POSITIONMANAGER_MQH
 #define POSITIONMANAGER_MQH
 
@@ -9,7 +10,7 @@
 extern CTrade trade;
 
 //==================================================
-// EXISTE POSIÇÃO DO EA
+// EXISTE POSIÃ‡ÃƒO DO EA
 //==================================================
 
 bool HasPosition(string symbol)
@@ -37,7 +38,7 @@ bool HasPosition(string symbol)
 }
 
 //==================================================
-// POSIÇÃO NO SÍMBOLO ATUAL
+// POSIÃ‡ÃƒO NO SÃMBOLO ATUAL
 //==================================================
 
 bool HasOpenPosition()
@@ -46,7 +47,7 @@ bool HasOpenPosition()
 }
 
 //==================================================
-// CONTAR POSIÇÕES DO EA
+// CONTAR POSIÃ‡Ã•ES DO EA
 //==================================================
 
 int CountPositions()
@@ -88,41 +89,63 @@ bool CanOpenPosition(string symbol)
 }
 
 //==================================================
-// DIREÇÃO
+// DIREÃ‡ÃƒO
 //==================================================
 
 int GetPositionDirection(string symbol)
 {
-   if(!PositionSelect(symbol))
-      return 0;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0)
+         continue;
 
-   if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
-      return 0;
+      if(!PositionSelectByTicket(ticket))
+         continue;
 
-   ENUM_POSITION_TYPE type=(ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+      if(PositionGetString(POSITION_SYMBOL) != symbol)
+         continue;
 
-   if(type==POSITION_TYPE_BUY)
-      return 1;
+      if(PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+         continue;
 
-   if(type==POSITION_TYPE_SELL)
-      return -1;
+      ENUM_POSITION_TYPE type = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+
+      if(type == POSITION_TYPE_BUY)
+         return 1;
+
+      if(type == POSITION_TYPE_SELL)
+         return -1;
+   }
 
    return 0;
 }
 
 //==================================================
-// FECHAR POSIÇÃO
+// FECHAR POSIÃ‡ÃƒO
 //==================================================
 
 bool CloseSymbolPosition(string symbol)
 {
-   if(!PositionSelect(symbol))
-      return false;
+   for(int i = PositionsTotal() - 1; i >= 0; i--)
+   {
+      ulong ticket = PositionGetTicket(i);
+      if(ticket == 0)
+         continue;
 
-   if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
-      return false;
+      if(!PositionSelectByTicket(ticket))
+         continue;
 
-   return trade.PositionClose(symbol);
+      if(PositionGetString(POSITION_SYMBOL) != symbol)
+         continue;
+
+      if(PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+         continue;
+
+      return trade.PositionClose(ticket);
+   }
+
+   return false;
 }
 
 //==================================================
@@ -153,7 +176,7 @@ void TrailingStopATR(string symbol, ulong ticket)
    if(point<=0)
       point=_Point;
 
-   // Usar GetATR com símbolo (já implementado)
+   // Usar GetATR com sÃ­mbolo (jÃ¡ implementado)
    double atr=GetATR(symbol);
 
    if(atr<=0)
@@ -161,8 +184,11 @@ void TrailingStopATR(string symbol, ulong ticket)
 
    double trailDistance=ATRMultiplier*atr;
 
-   // Mínimo de distância do stop (proteção contra stops muito próximos)
-   double minStopDistance=10*point;
+   // MÃ­nimo de distÃ¢ncia do stop (proteÃ§Ã£o contra stops muito prÃ³ximos)
+   // Usa o stop level do broker (em pontos) como distancia minima,
+   // com piso de 10 pontos. Evita "Invalid stops" no trailing.
+   long stopLevelBroker=SymbolInfoInteger(symbol,SYMBOL_TRADE_STOPS_LEVEL);
+   double minStopDistance=MathMax((double)stopLevelBroker,10.0)*point;
    if(trailDistance<minStopDistance)
       trailDistance=minStopDistance;
 
@@ -175,38 +201,38 @@ void TrailingStopATR(string symbol, ulong ticket)
    double newSL;
    if(type==POSITION_TYPE_BUY)
    {
-      // Só trailing se já estiver em lucro
+      // SÃ³ trailing se jÃ¡ estiver em lucro
       if(currentPrice-openPrice<trailDistance)
          return;
 
       newSL=currentPrice-trailDistance;
 
-      // Não mover SL para baixo
+      // NÃ£o mover SL para baixo
       if(sl>0 && newSL<=sl)
          return;
 
-      // Verificar distância mínima do preço atual
+      // Verificar distÃ¢ncia mÃ­nima do preÃ§o atual
       if(currentPrice-newSL<minStopDistance)
          return;
    }
    else
    {
-      // Só trailing se já estiver em lucro
+      // SÃ³ trailing se jÃ¡ estiver em lucro
       if(openPrice-currentPrice<trailDistance)
          return;
 
       newSL=currentPrice+trailDistance;
 
-      // Não mover SL para cima
+      // NÃ£o mover SL para cima
       if(sl>0 && newSL>=sl)
          return;
 
-      // Verificar distância mínima do preço atual
+      // Verificar distÃ¢ncia mÃ­nima do preÃ§o atual
       if(newSL-currentPrice<minStopDistance)
          return;
    }
 
-   // Normalizar SL para o símbolo
+   // Normalizar SL para o sÃ­mbolo
    int digits=(int)SymbolInfoInteger(symbol,SYMBOL_DIGITS);
    newSL=NormalizeDouble(newSL,digits);
 
@@ -293,3 +319,4 @@ void ManagePositions()
 }
 
 #endif
+

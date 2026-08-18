@@ -1,6 +1,8 @@
+﻿// XAU_AI_PRO v1.2.0
 #ifndef RISKENGINE_MQH
 #define RISKENGINE_MQH
 
+#include "../Core/Config.mqh"
 #include "../Management/DailyRisk.mqh"
 
 //==================================================
@@ -31,19 +33,19 @@ double CalculateLotByRisk(
    double balance=AccountInfoDouble(ACCOUNT_BALANCE);
    double equity=AccountInfoDouble(ACCOUNT_EQUITY);
    
-   // Proteção: equity muito baixa
+   // ProteÃ§Ã£o: equity muito baixa
    double minEquityRatio = MinEquityPercent / 100.0;
    if(equity < balance * minEquityRatio)
    {
-      Print("RISK: Equity crítica (", DoubleToString(equity, 2),
-            " < ", DoubleToString(balance * minEquityRatio, 2), "), bloqueando operações");
+      Print("RISK: Equity crÃ­tica (", DoubleToString(equity, 2),
+            " < ", DoubleToString(balance * minEquityRatio, 2), "), bloqueando operaÃ§Ãµes");
       return 0.01;
    }
 
-   // Verificar stop loss diário
+   // Verificar stop loss diÃ¡rio
    if(!CheckDailyLossDaily())
    {
-      Print("RISK: Limite de perda diária atingido");
+      Print("RISK: Limite de perda diÃ¡ria atingido");
       return 0.01;
    }
    
@@ -57,7 +59,7 @@ double CalculateLotByRisk(
    
    if(drawdown > 15.0)
    {
-      Print("RISK: Drawdown crítico (", DoubleToString(drawdown, 2), "%), reduzindo risco para 25%");
+      Print("RISK: Drawdown crÃ­tico (", DoubleToString(drawdown, 2), "%), reduzindo risco para 25%");
       adjustedRisk = riskPercent * 0.25;  // Reduz 75%
    }
    else if(drawdown > 10.0)

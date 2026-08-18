@@ -1,6 +1,8 @@
 #ifndef SIGNALCORE_MQH
 #define SIGNALCORE_MQH
 
+#include "../Core/Config.mqh"
+
 //==================================================
 // SIGNAL CORE
 //==================================================
@@ -16,6 +18,13 @@ int GetSignal()
 
 int GetSignal(string symbol)
 {
+   // Log de diagnostico 1x por minuto (evita spam a cada tick)
+   static datetime lastLogTime = 0;
+   datetime logNow = TimeCurrent();
+   bool logOnce = (logNow - lastLogTime >= 60);
+   if(logOnce)
+      lastLogTime = logNow;
+
    if(symbol=="")
       return 0;
 
@@ -23,7 +32,7 @@ int GetSignal(string symbol)
    int emaFastHandle=iMA(
       symbol,
       PERIOD_CURRENT,
-      50,
+      FastEMA,
       0,
       MODE_EMA,
       PRICE_CLOSE
@@ -32,7 +41,7 @@ int GetSignal(string symbol)
    int emaSlowHandle=iMA(
       symbol,
       PERIOD_CURRENT,
-      200,
+      SlowEMA,
       0,
       MODE_EMA,
       PRICE_CLOSE
@@ -41,27 +50,30 @@ int GetSignal(string symbol)
    int signalRSIHandle=iRSI(
       symbol,
       PERIOD_CURRENT,
-      14,
+      RSIPeriod,
       PRICE_CLOSE
    );
 
    // Valida handles
    if(emaFastHandle==INVALID_HANDLE)
    {
-      Print("SIGNAL ERROR: EMA Fast inválido para ", symbol);
+      if(logOnce)
+         Print("SIGNAL ERROR: EMA Fast invalido para ", symbol);
       return 0;
    }
 
    if(emaSlowHandle==INVALID_HANDLE)
    {
-      Print("SIGNAL ERROR: EMA Slow inválido para ", symbol);
+      if(logOnce)
+         Print("SIGNAL ERROR: EMA Slow invalido para ", symbol);
       IndicatorRelease(emaFastHandle);
       return 0;
    }
 
    if(signalRSIHandle==INVALID_HANDLE)
    {
-      Print("SIGNAL ERROR: RSI inválido para ", symbol);
+      if(logOnce)
+         Print("SIGNAL ERROR: RSI invalido para ", symbol);
       IndicatorRelease(emaFastHandle);
       IndicatorRelease(emaSlowHandle);
       return 0;
@@ -71,9 +83,9 @@ int GetSignal(string symbol)
    double slow[];
    double rsi[];
 
-   ArrayResize(fast,2);
-   ArrayResize(slow,2);
-   ArrayResize(rsi,2);
+   ArrayResize(fast,3);
+   ArrayResize(slow,3);
+   ArrayResize(rsi,3);
 
    ArraySetAsSeries(fast,true);
    ArraySetAsSeries(slow,true);
@@ -82,21 +94,24 @@ int GetSignal(string symbol)
    // Copiar buffers
    bool copyOK=true;
 
-   if(CopyBuffer(emaFastHandle,0,0,2,fast)<=0)
+   if(CopyBuffer(emaFastHandle,0,0,3,fast)<=0)
    {
-      Print("SIGNAL ERROR: Falha ao copiar EMA Fast para ", symbol);
+      if(logOnce)
+         Print("SIGNAL ERROR: Falha ao copiar EMA Fast para ", symbol);
       copyOK=false;
    }
 
-   if(CopyBuffer(emaSlowHandle,0,0,2,slow)<=0)
+   if(CopyBuffer(emaSlowHandle,0,0,3,slow)<=0)
    {
-      Print("SIGNAL ERROR: Falha ao copiar EMA Slow para ", symbol);
+      if(logOnce)
+         Print("SIGNAL ERROR: Falha ao copiar EMA Slow para ", symbol);
       copyOK=false;
    }
 
-   if(CopyBuffer(signalRSIHandle,0,0,2,rsi)<=0)
+   if(CopyBuffer(signalRSIHandle,0,0,3,rsi)<=0)
    {
-      Print("SIGNAL ERROR: Falha ao copiar RSI para ", symbol);
+      if(logOnce)
+         Print("SIGNAL ERROR: Falha ao copiar RSI para ", symbol);
       copyOK=false;
    }
 
@@ -108,16 +123,20 @@ int GetSignal(string symbol)
    if(!copyOK)
       return 0;
 
-   // Lógica de sinal
-   if(fast[0]>slow[0] && rsi[0]<50.0)
+   // Logica de sinal v1.2.0 - vela FECHADA (indice 1) + pullback com reversao
+   // BUY: tendencia de alta M15 (EMA50>EMA200) + RSI fechou <45 (pullback) + RSI virando p/ cima
+   if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2])
    {
-      Print(symbol," SIGNAL BUY");
+      if(logOnce)
+         Print(symbol," SIGNAL BUY | RSI[1]=",DoubleToString(rsi[1],2));
       return 1;
    }
 
-   if(fast[0]<slow[0] && rsi[0]>50.0)
+   // SELL: tendencia de baixa M15 (EMA50<EMA200) + RSI fechou >55 (rally) + RSI virando p/ baixo
+   if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<rsi[2])
    {
-      Print(symbol," SIGNAL SELL");
+      if(logOnce)
+         Print(symbol," SIGNAL SELL | RSI[1]=",DoubleToString(rsi[1],2));
       return -1;
    }
 

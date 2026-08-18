@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef TRADELOGGER_MQH
 #define TRADELOGGER_MQH
 
@@ -28,7 +29,9 @@ bool InitTradeLogger()
       FILE_CSV |
       FILE_READ |
       FILE_WRITE |
-      FILE_ANSI,
+      FILE_ANSI |
+      FILE_SHARE_READ |
+      FILE_SHARE_WRITE,
       ','
    );
 

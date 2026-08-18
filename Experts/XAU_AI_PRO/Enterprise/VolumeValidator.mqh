@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //|                                              VolumeValidator.mqh |
-//|                         XAU_AI_PRO v2.0 Professional             |
+//|                         XAU_AI_PRO v1.2.0 Professional             |
 //+------------------------------------------------------------------+
 #ifndef VOLUME_VALIDATOR_MQH
 #define VOLUME_VALIDATOR_MQH

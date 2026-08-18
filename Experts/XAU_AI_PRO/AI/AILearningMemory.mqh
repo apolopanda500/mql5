@@ -1,8 +1,9 @@
+// XAU_AI_PRO v1.2.0
 #ifndef AILEARNINGMEMORY_MQH
 #define AILEARNINGMEMORY_MQH
 
 //==================================================
-// AI LEARNING MEMORY v2.0
+// AI LEARNING MEMORY v1.2.0
 // XAU_AI_PRO ENTERPRISE
 //==================================================
 

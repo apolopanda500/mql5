@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                           NotificationCenter.mqh |
 //|                                  Notification Center             |
-//|                                            XAU_AI_PRO v1.0       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 
 #ifndef NOTIFICATION_CENTER_MQH

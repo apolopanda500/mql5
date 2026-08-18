@@ -1,9 +1,10 @@
+// XAU_AI_PRO v1.2.0
 #ifndef DATASET_MQH
 #define DATASET_MQH
 
 //==================================================
 // XAU_AI_PRO ENTERPRISE DATASET
-// V2.0 — Ring Buffer + Export seguro
+// v1.2.0 — Ring Buffer + Export seguro
 //==================================================
 
 #define MAX_DATASET 100000

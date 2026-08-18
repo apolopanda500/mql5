@@ -1,4 +1,4 @@
-#ifndef EXECUTIONENGINE_MQH
+﻿#ifndef EXECUTIONENGINE_MQH
 #define EXECUTIONENGINE_MQH
 
 #include "../Core/Config.mqh"
@@ -6,8 +6,12 @@
 #include "../Core/RiskEngine.mqh"
 #include "../Core/PositionManager.mqh"
 #include "../Core/TradeController.mqh"
+#include "../Core/SymbolValidator.mqh"
 #include "../Management/DailyRisk.mqh"
+#include "../Management/PortfolioManager.mqh"
 #include "../AI/AIEngine.mqh"
+#include "../Enterprise/SmartExecution.mqh"
+#include "../Enterprise/SimulationEngine.mqh"
 
 //==================================================
 // EXECUTION ENGINE
@@ -34,10 +38,10 @@ bool ExecuteTrade(string symbol,int signal)
       return false;
    }
 
-   // Verificar limite diário
+   // Verificar limite diario
    if(!CanTradeToday())
    {
-      Print("EXECUTION: Limite diário atingido");
+      Print("EXECUTION: Limite diario atingido");
       return false;
    }
 
@@ -50,16 +54,16 @@ bool ExecuteTrade(string symbol,int signal)
 
    if(lot<=0)
    {
-      Print("EXECUTION: LOTE INVÁLIDO");
+      Print("EXECUTION: LOTE INVALIDO");
       return false;
    }
 
-   // Ajustar lote baseado na confiança da IA
+   // Ajustar lote baseado na confianca da IA
    double aiConfidence=GetAIConfidence(signal, symbol);
    double lotMultiplier=GetAILotMultiplier(aiConfidence);
    double adjustedLot=lot*lotMultiplier;
 
-   // Normalizar para o step do símbolo
+   // Normalizar para o step do simbolo
    double step=SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
    double minLot=SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
 
@@ -74,35 +78,103 @@ bool ExecuteTrade(string symbol,int signal)
 
    lot=adjustedLot;
 
-   bool result=false;
+   //------------------------------------------------
+   // DELEGAR PARA SMART EXECUTION
+   //------------------------------------------------
 
-   switch(signal)
+   ExecRequest req;
+   req.symbol  = symbol;
+   req.volume  = lot;
+   req.magic   = MagicNumber;
+   req.comment = TradeComment;
+
+   // Calcular preco de entrada
+   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   if(point <= 0.0)
+      point = _Point;
+
+   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+
+   if(signal == 1) // BUY
    {
-      case 1:
-      {
-         result=
-            OpenBuy(
-               symbol,
-               lot
-            );
-         break;
-      }
+      req.type  = ORDER_TYPE_BUY;
+      req.price = SymbolInfoDouble(symbol, SYMBOL_ASK);
 
-      case -1:
-      {
-         result=
-            OpenSell(
-               symbol,
-               lot
-            );
-         break;
-      }
+      if(StopLossPoints > 0)
+         req.sl = NormalizeDouble(req.price - (StopLossPoints * point), digits);
 
-      default:
-         return false;
+      if(TakeProfitPoints > 0)
+         req.tp = NormalizeDouble(req.price + (TakeProfitPoints * point), digits);
+   }
+   else if(signal == -1) // SELL
+   {
+      req.type  = ORDER_TYPE_SELL;
+      req.price = SymbolInfoDouble(symbol, SYMBOL_BID);
+
+      if(StopLossPoints > 0)
+         req.sl = NormalizeDouble(req.price + (StopLossPoints * point), digits);
+
+      if(TakeProfitPoints > 0)
+         req.tp = NormalizeDouble(req.price - (TakeProfitPoints * point), digits);
+   }
+   else
+   {
+      return false;
    }
 
-   if(result)
+   if(req.price <= 0.0)
+   {
+      Print("EXECUTION: PRECO INVALIDO | ", symbol);
+      return false;
+   }
+
+//------------------------------------------------
+   // SIMULATION - Pre-execucao
+   // Avalia a operacao antes de envia-la ao broker.
+   // Fase de SIMULATION do pipeline v1.2.0.
+   //------------------------------------------------
+   CSimulationEngine::Init();   // idempotente
+
+   SimulationResult simResult =
+      CSimulationEngine::Evaluate(
+         symbol,
+         req.type,
+         lot,
+         req.price,
+         req.sl,
+         req.tp
+      );
+
+   if(!CSimulationEngine::ShouldExecute(simResult))
+   {
+      Print(
+         "EXECUTION: SIMULACAO BLOQUEADA | ",
+         symbol,
+         " | Signal=",
+         signal,
+         " | Razao=",
+         simResult.reason,
+         " | Prob=",
+         DoubleToString(simResult.probability_success,2),
+         " | RR=",
+         DoubleToString(simResult.risk_reward,2)
+      );
+
+      return false;
+   }
+
+   Print(
+      "EXECUTION: SIMULACAO APROVADA | ",
+      symbol,
+      " | Prob=",
+      DoubleToString(simResult.probability_success,2),
+      " | RR=",
+      DoubleToString(simResult.risk_reward,2)
+   );
+   ulong ticket = 0;
+   ExecResult execResult = CSmartExecution::OpenPosition(req, ticket);
+
+   if(execResult == EXEC_SUCCESS)
    {
       RegisterTrade();
       RegisterDailyTrade();
@@ -113,20 +185,26 @@ bool ExecuteTrade(string symbol,int signal)
          " | SIGNAL=",
          signal,
          " | LOT=",
-         DoubleToString(lot,2)
+         DoubleToString(lot,2),
+         " | Ticket=",
+         IntegerToString(ticket)
       );
+
+      return true;
    }
    else
    {
       Print(
-         "ERRO EXECUÇÃO | ",
+         "ERRO EXECUCAO | ",
          symbol,
-         " | ERROR=",
-         GetLastError()
+         " | Signal=",
+         signal,
+         " | Result=",
+         EnumToString(execResult)
       );
-   }
 
-   return result;
+      return false;
+   }
 }
 
 //==================================================

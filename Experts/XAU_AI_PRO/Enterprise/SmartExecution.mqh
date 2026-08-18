@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                              SmartExecution.mqh |
 //|                                  Smart Execution Engine - Core   |
-//|                                            XAU_AI_PRO v1.1      |
+//|                                            XAU_AI_PRO v1.2.0      |
 //+------------------------------------------------------------------+
 
 #ifndef SMART_EXECUTION_MQH
@@ -324,14 +324,14 @@ ExecResult CSmartExecution::ValidateExecution(
          (ask-bid)/point;
 
       if(
-         spread>MaxSpread
+         spread>GetMaxSpread(exec_req.symbol)
       )
       {
          PrintFormat(
             "[EXECUTION] SPREAD TOO HIGH | %s | %.1f / %.1f",
             exec_req.symbol,
             spread,
-            MaxSpread
+            GetMaxSpread(exec_req.symbol)
          );
 
          return EXEC_SPREAD_TOO_HIGH;
@@ -344,6 +344,7 @@ ExecResult CSmartExecution::ValidateExecution(
 
    if(
       !CMarginChecker::CheckMargin(
+         exec_req.symbol,
          exec_req.volume,
          exec_req.price
       )
@@ -368,7 +369,7 @@ ExecResult CSmartExecution::ValidateExecution(
           SYMBOL_TRADE_STOPS_LEVEL
        );
 
-    if(stopLevel > 0 && exec_req.sl != 0.0)
+    if(stopLevel > 0 && (exec_req.sl != 0.0 || exec_req.tp != 0.0))
     {
        double point =
           SymbolInfoDouble(
@@ -381,7 +382,9 @@ ExecResult CSmartExecution::ValidateExecution(
           double slDistance =
              MathAbs(exec_req.price - exec_req.sl) / point;
 
-          if(slDistance < (double)stopLevel)
+          double tpDistance = MathAbs(exec_req.price - exec_req.tp) / point;
+
+          if(slDistance < (double)stopLevel || tpDistance < (double)stopLevel)
           {
              PrintFormat(
                 "[EXECUTION] STOP LEVEL VIOLATION | %s | SL dist=%.0f < broker min=%d",
@@ -811,12 +814,37 @@ ExecResult CSmartExecution::ModifyPosition(
       ticket;
 
 
-   request.sl=
-      sl;
+   //------------------------------------------------
+   // Normaliza SL/TP contra o stop level do broker
+   // (evita "Invalid stops" no break-even/trailing)
+   //------------------------------------------------
+
+   double pointM = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   long stopLevelM = SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   int digitsM = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+
+   ENUM_POSITION_TYPE ptypeM = (ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE);
+   double curM = (ptypeM == POSITION_TYPE_BUY)
+                 ? SymbolInfoDouble(symbol, SYMBOL_BID)
+                 : SymbolInfoDouble(symbol, SYMBOL_ASK);
+
+   if(pointM > 0.0 && curM > 0.0 && stopLevelM > 0)
+   {
+      double minDist = (double)stopLevelM * pointM;
+
+      if(sl != 0.0 && MathAbs(curM - sl) < minDist)
+         sl = (sl > curM) ? curM + minDist : curM - minDist;
+
+      if(tp != 0.0 && MathAbs(curM - tp) < minDist)
+         tp = (tp > curM) ? curM + minDist : curM - minDist;
+   }
+
+   request.sl =
+      NormalizeDouble(sl, digitsM);
 
 
    request.tp=
-      tp;
+      NormalizeDouble(tp, digitsM);
 
 
    request.magic=

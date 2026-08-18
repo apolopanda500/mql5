@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef BROKERINFO_MQH
 #define BROKERINFO_MQH
 

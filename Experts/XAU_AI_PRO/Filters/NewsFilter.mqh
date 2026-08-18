@@ -1,3 +1,4 @@
+﻿// XAU_AI_PRO v1.2.0
 #ifndef NEWSFILTER_MQH
 #define NEWSFILTER_MQH
 
@@ -7,15 +8,12 @@
 // NEWS FILTER
 // XAU_AI_PRO
 // Economic Calendar nativo MQL5
+// Config centralizada em Core/Config.mqh:
+//   - EnableNewsFilter      (liga/desliga)
+//   - NewsImpactThreshold   (1=low, 2=medium, 3=high)
+//   - NewsMinutesBefore     (janela antes)
+//   - NewsMinutesAfter      (janela depois)
 //==================================================
-
-input int NewsBlockMinutesBefore = 30;
-input int NewsBlockMinutesAfter  = 30;
-
-// 0 = baixo
-// 1 = médio
-// 2 = alto
-input int NewsMinimumImpact = 2;
 
 //==================================================
 // ESTADO
@@ -42,10 +40,10 @@ bool IsNewsTime()
       now = TimeCurrent();
 
    datetime fromTime =
-      now - (NewsBlockMinutesAfter * 60);
+      now - (NewsMinutesAfter * 60);
 
    datetime toTime =
-      now + (NewsBlockMinutesBefore * 60);
+      now + (NewsMinutesBefore * 60);
 
    MqlCalendarValue values[];
 
@@ -64,8 +62,8 @@ bool IsNewsTime()
          GetLastError()
       );
 
-      // Falha no calendário não deve bloquear
-      // automaticamente o EA nesta versão.
+      // Falha no calendÃ¡rio nÃ£o deve bloquear
+      // automaticamente o EA nesta versÃ£o.
       newsBlocked = false;
 
       return false;
@@ -80,7 +78,7 @@ bool IsNewsTime()
          (ENUM_CALENDAR_EVENT_IMPORTANCE)
          values[i].impact_type;
 
-      if((int)impact < NewsMinimumImpact)
+      if((int)impact < NewsImpactThreshold)
          continue;
 
       datetime eventTime = values[i].time;
@@ -88,11 +86,11 @@ bool IsNewsTime()
       if(
          now >=
          eventTime -
-         NewsBlockMinutesBefore * 60
+         NewsMinutesBefore * 60
          &&
          now <=
          eventTime +
-         NewsBlockMinutesAfter * 60
+         NewsMinutesAfter * 60
       )
       {
          newsBlocked = true;

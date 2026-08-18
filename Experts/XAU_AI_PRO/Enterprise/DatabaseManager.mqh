@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                              DatabaseManager.mqh |
 //|                                  SQLite Database Manager         |
-//|                                            XAU_AI_PRO v1.0       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 
 #ifndef DATABASE_MANAGER_MQH
@@ -11,7 +11,7 @@
    int sqlite3_open(string filename, int &db);
    int sqlite3_close(int db);
    int sqlite3_exec(int db, string sql, int callback, int param, string &errmsg);
-   int sqlite3_errmsg(int db);
+   string sqlite3_errmsg(int db);
 #import
 
 class CDatabaseManager
@@ -55,6 +55,9 @@ void CDatabaseManager::Init()
 bool CDatabaseManager::Connect()
 {
    if(m_db != 0) return true;
+   // v1.2.0 fix: em backtest o sqlite3.dll nao esta no agente do tester
+   if(MQLInfoInteger(MQL_TESTER)!=0)
+      return false;
    int result = sqlite3_open(m_db_path, m_db);
    if(result != 0) { PrintFormat("[DATABASE] Failed: %s", sqlite3_errmsg(m_db)); return false; }
    ExecuteQuery("CREATE TABLE IF NOT EXISTS trades (ticket INTEGER PRIMARY KEY, symbol TEXT, type INTEGER, volume REAL, open_price REAL, open_time INTEGER, close_price REAL, close_time INTEGER, profit REAL, commission REAL, swap REAL, comment TEXT)");

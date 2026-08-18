@@ -1,11 +1,13 @@
-//+------------------------------------------------------------------+
+﻿//+------------------------------------------------------------------+
 //|                                             SimulationEngine.mqh |
 //|                                  Pre-Execution Simulation        |
-//|                                            XAU_AI_PRO v1.0       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 
 #ifndef SIMULATION_ENGINE_MQH
 #define SIMULATION_ENGINE_MQH
+
+#include "../Core/Config.mqh"
 
 struct SimulationResult
 {
@@ -131,3 +133,4 @@ string CSimulationEngine::GetSummary()
 void CSimulationEngine::LogSummary() { Print("[SIMULATION] " + GetSummary()); }
 
 #endif // SIMULATION_ENGINE_MQH
+

@@ -33,16 +33,15 @@ bool InitCompatibility()
 
    LoadBrokerSymbols();
 
-   if(!InitSymbolManager())
-   {
-      Print("ERRO SymbolManager");
-      return false;
-   }
+   // Nota (v1.2.0): InitSymbolManager() agora e chamado uma unica vez
+   // em InitializeModules() (XAU_AI_PRO.mq5), e nao aqui. Isso evita
+   // a dupla resolucao de simbolos e permite o retry automatico quando
+   // os simbolos ainda nao sincronizaram na abertura do terminal.
 
    Print("----------------------------------------");
    Print("Broker     : ",GetBrokerName());
    Print("Servidor   : ",GetBrokerServer());
-   Print("Símbolos   : ",TotalSymbols());
+   Print("Simbolos   : (inicializado em InitializeModules)");
    Print("Entrada TF : ",TimeFrameToString(GetEntryTF()));
    Print("Trend TF   : ",TimeFrameToString(GetTrendTF()));
    Print("Filtro TF  : ",TimeFrameToString(GetFilterTF()));

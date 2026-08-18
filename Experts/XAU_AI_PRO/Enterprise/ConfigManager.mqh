@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                                 ConfigManager.mqh |
 //|                                  Configuration Profile Manager   |
-//|                                            XAU_AI_PRO v1.0       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 
 #ifndef CONFIG_MANAGER_MQH

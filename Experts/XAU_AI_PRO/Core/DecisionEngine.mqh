@@ -1,3 +1,4 @@
+﻿// XAU_AI_PRO v1.2.0
 #ifndef DECISIONENGINE_MQH
 #define DECISIONENGINE_MQH
 
@@ -7,6 +8,9 @@
 
 #include "../Indicators/RSI.mqh"
 #include "../Indicators/ADX.mqh"
+
+#include <KCI\\KCI_Volatility_Distance.mqh>
+#include <KCI\\KCI_Directional_Matrix.mqh>
 
 #include "../AI/AIEngine.mqh"
 
@@ -33,6 +37,14 @@ double CalculateMarketScore(
 
    if(symbol=="")
       symbol=_Symbol;
+
+
+   // Log de diagnostico 1x por minuto (evita spam a cada tick)
+   static datetime lastLogTime = 0;
+   datetime logNow = TimeCurrent();
+   bool logOnce = (logNow - lastLogTime >= 60);
+   if(logOnce)
+      lastLogTime = logNow;
 
 
    //================================================
@@ -238,6 +250,43 @@ double CalculateMarketScore(
 
    score+=adxQuality;
 
+   //================================================
+   // KCI DIRECTIONAL QUALITY
+   //================================================
+
+   double kci_main=0.0, kdi_plus=0.0, kdi_minus=0.0;
+   GetKCIDirectionalMatrix(symbol, PERIOD_CURRENT, kci_main, kdi_plus, kdi_minus, KCI_DX_BasePeriod, KCI_DX_ZScorePeriod, KCI_DX_Sensitivity);
+
+   double kciQuality=0.0;
+
+   if(signal==1 && kdi_plus>kdi_minus && kci_main>KCI_DX_MainThreshold)
+   {
+      kciQuality=10.0;
+   }
+   else
+   if(signal==-1 && kdi_minus>kdi_plus && kci_main>KCI_DX_MainThreshold)
+   {
+      kciQuality=10.0;
+   }
+
+   score+=kciQuality;
+
+
+   //================================================
+   // KCI VOLATILITY FILTER
+   //================================================
+
+   double kci_vd=GetKCIVolatilityDistance(symbol, PERIOD_CURRENT, KCI_VD_Period, 0);
+
+   double kciVolQuality=0.0;
+
+   if(kci_vd>0.0 && kci_vd<=(GetATR(symbol)*0.5))
+   {
+      kciVolQuality=5.0;
+   }
+
+   score+=kciVolQuality;
+
 
    //================================================
    // AI CONFIDENCE
@@ -277,40 +326,41 @@ double CalculateMarketScore(
 
 
    //================================================
-   // LOG
+   // LOG (1x por minuto)
    //================================================
 
-   Print(
-      "SCORE CALCULATED | Symbol=",
-      symbol,
-      " | Signal=",
-      signal,
-      " | EMA=",
-      DoubleToString(
-         emaStrength,
-         2
-      ),
-      " | RSI=",
-      DoubleToString(
-         rsiQuality,
-         2
-      ),
-      " | ADX=",
-      DoubleToString(
-         adxQuality,
-         2
-      ),
-      " | AI=",
-      DoubleToString(
-         aiConfidence*0.50,
-         2
-      ),
-      " | TOTAL=",
-      DoubleToString(
-         MarketScore,
-         2
-      )
-   );
+   if(logOnce)
+      Print(
+         "SCORE CALCULATED | Symbol=",
+         symbol,
+         " | Signal=",
+         signal,
+         " | EMA=",
+         DoubleToString(
+            emaStrength,
+            2
+         ),
+         " | RSI=",
+         DoubleToString(
+            rsiQuality,
+            2
+         ),
+         " | ADX=",
+         DoubleToString(
+            adxQuality,
+            2
+         ),
+         " | AI=",
+         DoubleToString(
+            aiConfidence*0.50,
+            2
+         ),
+         " | TOTAL=",
+         DoubleToString(
+            MarketScore,
+            2
+         )
+      );
 
 
    return MarketScore;
@@ -334,12 +384,20 @@ bool AllowTrade(
       symbol=_Symbol;
 
 
+   // Log de diagnostico 1x por minuto (evita spam a cada tick)
+   static datetime lastAllowLog = 0;
+   datetime allowNow = TimeCurrent();
+   bool allowLogOnce = (allowNow - lastAllowLog >= 60);
+   if(allowLogOnce)
+      lastAllowLog = allowNow;
+
+
    //================================================
-   // CORREÇÃO PRINCIPAL
+   // CORREÃ‡ÃƒO PRINCIPAL
    //
    // ValidateTrade espera:
-   // 1º = string symbol
-   // 2º = int signal
+   // 1Âº = string symbol
+   // 2Âº = int signal
    //================================================
 
    if(
@@ -364,15 +422,16 @@ bool AllowTrade(
       score<60.0
    )
    {
-      Print(
-         "DECISION BLOCKED | Symbol=",
-         symbol,
-         " | Score=",
-         DoubleToString(
-            score,
-            2
-         )
-      );
+      if(allowLogOnce)
+         Print(
+            "DECISION BLOCKED | Symbol=",
+            symbol,
+            " | Score=",
+            DoubleToString(
+               score,
+               2
+            )
+         );
 
       return false;
    }
@@ -392,6 +451,14 @@ int GetDecision(
 {
    if(symbol=="")
       symbol=_Symbol;
+
+
+   // Log de diagnostico 1x por minuto (evita spam a cada tick)
+   static datetime lastDecisionLog = 0;
+   datetime decisionNow = TimeCurrent();
+   bool decisionLogOnce = (decisionNow - lastDecisionLog >= 60);
+   if(decisionLogOnce)
+      lastDecisionLog = decisionNow;
 
 
    int signal=
@@ -417,17 +484,18 @@ int GetDecision(
    }
 
 
-   Print(
-      "DECISION APPROVED | Symbol=",
-      symbol,
-      " | SIGNAL=",
-      signal,
-      " | SCORE=",
-      DoubleToString(
-         MarketScore,
-         2
-      )
-   );
+   if(decisionLogOnce)
+      Print(
+         "DECISION APPROVED | Symbol=",
+         symbol,
+         " | SIGNAL=",
+         signal,
+         " | SCORE=",
+         DoubleToString(
+            MarketScore,
+            2
+         )
+      );
 
 
    return signal;
@@ -435,3 +503,4 @@ int GetDecision(
 
 
 #endif
+

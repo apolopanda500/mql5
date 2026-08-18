@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef AICLIENT_MQH
 #define AICLIENT_MQH
 
@@ -9,7 +10,7 @@
 #include "../AI/AdaptiveWeights.mqh"
 
 //==================================================
-// AI CLIENT v2.0
+// AI CLIENT v1.2.0
 //==================================================
 
 bool g_AIConnected=false;

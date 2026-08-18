@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef TRADEPIPELINE_MQH
 #define TRADEPIPELINE_MQH
 
@@ -12,19 +13,28 @@
 
 void RunTradePipeline()
 {
+   // Log de diagnostico 1x por minuto (evita spam a cada tick)
+   static datetime lastLogTime = 0;
+   datetime now = TimeCurrent();
+   bool logOnce = (now - lastLogTime >= 60);
+   if(logOnce)
+      lastLogTime = now;
+
    int total=
       TotalSymbols();
 
-   Print(
-      "[PIPELINE] INICIO | Symbols=",
-      total
-   );
+   if(logOnce)
+      Print(
+         "[PIPELINE] INICIO | Symbols=",
+         total
+      );
 
    if(total<=0)
    {
-      Print(
-         "[PIPELINE] BLOQUEADO | Nenhum símbolo configurado"
-      );
+      if(logOnce)
+         Print(
+            "[PIPELINE] BLOQUEADO | Nenhum símbolo configurado"
+         );
 
       return;
    }
@@ -37,31 +47,34 @@ void RunTradePipeline()
 
       if(symbol=="")
       {
-         Print(
-            "[PIPELINE] Symbol vazio | Index=",
-            i
-         );
+         if(logOnce)
+            Print(
+               "[PIPELINE] Symbol vazio | Index=",
+               i
+            );
 
          continue;
       }
 
 
-      Print(
-         "[PIPELINE] PROCESSANDO | Index=",
-         i,
-         " | Symbol=",
-         symbol
-      );
+      if(logOnce)
+         Print(
+            "[PIPELINE] PROCESSANDO | Index=",
+            i,
+            " | Symbol=",
+            symbol
+         );
 
 
       if(!SymbolSelect(symbol,true))
       {
-         Print(
-            "[PIPELINE] BLOQUEADO | SymbolSelect | ",
-            symbol,
-            " | Error=",
-            GetLastError()
-         );
+         if(logOnce)
+            Print(
+               "[PIPELINE] BLOQUEADO | SymbolSelect | ",
+               symbol,
+               " | Error=",
+               GetLastError()
+            );
 
          continue;
       }
@@ -71,9 +84,10 @@ void RunTradePipeline()
    }
 
 
-   Print(
-      "[PIPELINE] FINALIZADO"
-   );
+   if(logOnce)
+      Print(
+         "[PIPELINE] FINALIZADO"
+      );
 }
 
 

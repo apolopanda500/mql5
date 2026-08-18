@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef WATCHDOG_MQH
 #define WATCHDOG_MQH
 
@@ -6,7 +7,7 @@
 #include "HealthMonitor.mqh"
 
 //==================================================
-// WATCHDOG — V1.1 Hardening
+// WATCHDOG — v1.2.0 Hardening
 // Monitora heartbeat dos modulos criticos
 //==================================================
 

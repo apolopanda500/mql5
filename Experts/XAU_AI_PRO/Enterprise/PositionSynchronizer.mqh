@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                         PositionSynchronizer.mqh |
 //|                                  Smart Execution Engine - Sync   |
-//|                                            XAU_AI_PRO v1.0       |
+//|                                            XAU_AI_PRO v1.2.0       |
 //+------------------------------------------------------------------+
 
 #ifndef POSITION_SYNCHRONIZER_MQH
@@ -60,7 +60,11 @@ void CPositionSynchronizer::Init()
 
 bool CPositionSynchronizer::IsEAPosition(ulong ticket)
 {
-   // Verifica se a posição tem magic number ou comentário do EA
+   // Verifica se a posição tem magic number ou comentário do EA.
+   // SELECIONA o ticket antes de ler propriedades (bom prática MQL5).
+   if(!PositionSelectByTicket(ticket))
+      return false;
+
    ulong magic = (ulong)PositionGetInteger(POSITION_MAGIC);
    string comment = PositionGetString(POSITION_COMMENT);
    

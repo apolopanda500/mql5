@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef SYSTEMMANAGER_MQH
 #define SYSTEMMANAGER_MQH
 

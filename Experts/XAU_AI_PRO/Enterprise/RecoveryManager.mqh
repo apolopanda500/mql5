@@ -221,6 +221,12 @@ void CRecoveryManager::Init()
 
 bool CRecoveryManager::CheckAI()
 {
+   // v1.2.0 fix: JSON opcional (RequireAIJSON=false) ou no tester
+   if(!RequireAIJSON)
+      return true;
+   if(MQLInfoInteger(MQL_TESTER)!=0)
+      return true;
+
    string fileName=
       "Data\\prediction_" +
       _Symbol +

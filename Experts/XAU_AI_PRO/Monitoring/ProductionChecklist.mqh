@@ -3,7 +3,7 @@
 //| XAU_AI_PRO - Production Readiness Checklist                     |
 //+------------------------------------------------------------------+
 #property copyright "XAU_AI_PRO"
-#property version   "1.10"
+#property version   "1.2.0"
 
 #ifndef PRODUCTION_CHECKLIST_MQH
 #define PRODUCTION_CHECKLIST_MQH

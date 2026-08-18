@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef UTILS_MQH
 #define UTILS_MQH
 
@@ -666,35 +667,6 @@ bool HasTradingVolume(string symbol)
 
 //==================================================
 // MERCADO ABERTO PARA NEGOCIAÇÃO
-//==================================================
-
-bool IsSymbolTradeable(string symbol)
-{
-   symbol = ResolveSymbol(symbol);
-
-   if(symbol == "")
-      return false;
-
-   long tradeMode =
-      SymbolInfoInteger(
-         symbol,
-         SYMBOL_TRADE_MODE
-      );
-
-   if(
-      tradeMode ==
-      SYMBOL_TRADE_MODE_DISABLED
-   )
-   {
-      return false;
-   }
-
-   return true;
-}
-
-
-//==================================================
-// FINAL
 //==================================================
 
 #endif // UTILS_MQH

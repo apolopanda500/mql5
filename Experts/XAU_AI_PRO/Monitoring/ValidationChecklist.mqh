@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef VALIDATIONCHECKLIST_MQH
 #define VALIDATIONCHECKLIST_MQH
 
@@ -10,7 +11,7 @@
 #include "HealthMonitor.mqh"
 
 //==================================================
-// VALIDACAO GERAL — V1.1
+// VALIDACAO GERAL — v1.2.0
 // Checklist automatico
 //==================================================
 
@@ -202,7 +203,7 @@ bool ValidationChecklistRun()
          (ask - bid) / point;
 
       g_checkResults[9] =
-         (spreadPoints <= MaxSpread);
+         (spreadPoints <= GetMaxSpread(_Symbol));
    }
 
    if(!g_checkResults[9])

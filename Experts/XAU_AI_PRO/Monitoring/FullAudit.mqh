@@ -1,10 +1,10 @@
 //+------------------------------------------------------------------+
 //|                                                    FullAudit.mqh |
 //|                         Full Decision Audit System                |
-//|                              XAU_AI_PRO v1.0                      |
+//|                              XAU_AI_PRO v1.2.0                      |
 //+------------------------------------------------------------------+
 #property copyright "XAU_AI_PRO"
-#property version   "1.10"
+#property version   "1.2.0"
 
 #ifndef FULL_AUDIT_MQH
 #define FULL_AUDIT_MQH

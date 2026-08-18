@@ -1,4 +1,4 @@
-#ifndef DATALOGGER_MQH
+﻿#ifndef DATALOGGER_MQH
 #define DATALOGGER_MQH
 
 #include "../Core/Config.mqh"
@@ -6,11 +6,13 @@
 #include "../Indicators/VolatilityFilter.mqh"
 #include "../Indicators/ADX.mqh"
 #include "../Indicators/RSI.mqh"
+#include <KCI\\KCI_Volatility_Distance.mqh>
+#include <KCI\\KCI_Directional_Matrix.mqh>
 
 
 //==================================================
 // DATA LOGGER
-// XAU_AI_PRO V1.1
+// XAU_AI_PRO v1.2.0
 // MULTI SYMBOL
 //==================================================
 
@@ -18,7 +20,7 @@ int dataFile=INVALID_HANDLE;
 
 
 //==================================================
-// ESTADO INDEPENDENTE POR SÍMBOLO
+// ESTADO INDEPENDENTE POR SÃMBOLO
 //==================================================
 
 string   dlSymbols[];
@@ -26,7 +28,7 @@ datetime dlLastClosedBars[];
 
 
 //==================================================
-// LOCALIZAR SÍMBOLO
+// LOCALIZAR SÃMBOLO
 //==================================================
 
 int DL_FindSymbolIndex(string symbol)
@@ -44,7 +46,7 @@ int DL_FindSymbolIndex(string symbol)
 
 
 //==================================================
-// CRIAR ESTADO DO SÍMBOLO
+// CRIAR ESTADO DO SÃMBOLO
 //==================================================
 
 int DL_GetOrCreateSymbolIndex(string symbol)
@@ -61,7 +63,7 @@ int DL_GetOrCreateSymbolIndex(string symbol)
    if(ArrayResize(dlSymbols,newSize)!=newSize)
    {
       Print(
-         "DATA LOGGER | Erro redimensionando símbolos"
+         "DATA LOGGER | Erro redimensionando sÃ­mbolos"
       );
 
       return -1;
@@ -148,7 +150,7 @@ double DL_GetSpread(
 
 
 //==================================================
-// INICIALIZAÇÃO
+// INICIALIZAÃ‡ÃƒO
 //==================================================
 
 bool DataLoggerInit()
@@ -175,7 +177,7 @@ bool DataLoggerInit()
    if(dataFile==INVALID_HANDLE)
    {
       Print(
-         "DATA LOGGER INIT ERROR | Código=",
+         "DATA LOGGER INIT ERROR | CÃ³digo=",
          GetLastError()
       );
 
@@ -191,7 +193,7 @@ bool DataLoggerInit()
 
 
    //================================================
-   // CABEÇALHO
+   // CABEÃ‡ALHO
    //================================================
 
    if(FileSize(dataFile)==0)
@@ -208,7 +210,7 @@ bool DataLoggerInit()
          "Spread",
          "ATR",
          "ADX",
-         "RSI"
+         "RSI","KCI_VD","KCI_MAIN","KDI_PLUS","KDI_MINUS"
       );
 
 
@@ -247,7 +249,7 @@ void SaveMarketData(string symbol="")
    if(dataFile==INVALID_HANDLE)
    {
       Print(
-         "DATA LOGGER | Arquivo não inicializado"
+         "DATA LOGGER | Arquivo nÃ£o inicializado"
       );
 
       return;
@@ -257,7 +259,7 @@ void SaveMarketData(string symbol="")
    if(!SymbolSelect(symbol,true))
    {
       Print(
-         "DATA LOGGER | Símbolo indisponível | ",
+         "DATA LOGGER | SÃ­mbolo indisponÃ­vel | ",
          symbol
       );
 
@@ -289,7 +291,7 @@ void SaveMarketData(string symbol="")
 
 
    //================================================
-   // ESTADO INDEPENDENTE POR SÍMBOLO
+   // ESTADO INDEPENDENTE POR SÃMBOLO
    //================================================
 
    int symbolIndex=
@@ -357,7 +359,7 @@ void SaveMarketData(string symbol="")
 
 
    //================================================
-   // VALIDAÇÃO DO CANDLE
+   // VALIDAÃ‡ÃƒO DO CANDLE
    //================================================
 
    if(
@@ -368,7 +370,7 @@ void SaveMarketData(string symbol="")
    )
    {
       Print(
-         "DATA LOGGER | OHLC inválido | ",
+         "DATA LOGGER | OHLC invÃ¡lido | ",
          symbol
       );
 
@@ -385,7 +387,7 @@ void SaveMarketData(string symbol="")
    )
    {
       Print(
-         "DATA LOGGER | Estrutura OHLC inválida | ",
+         "DATA LOGGER | Estrutura OHLC invÃ¡lida | ",
          symbol
       );
 
@@ -422,6 +424,12 @@ void SaveMarketData(string symbol="")
          symbol
       );
 
+   // --- KCI Indicators ---
+   double kci_vd = GetKCIVolatilityDistance(symbol, timeframe, KCI_VD_Period, shift);
+   double kci_main = 0.0, kdi_plus = 0.0, kdi_minus = 0.0;
+   GetKCIDirectionalMatrix(symbol, timeframe, kci_main, kdi_plus, kdi_minus, KCI_DX_BasePeriod, KCI_DX_ZScorePeriod, KCI_DX_Sensitivity);
+
+
 
    if(
       atr<=0.0 ||
@@ -431,7 +439,7 @@ void SaveMarketData(string symbol="")
    )
    {
       Print(
-         "DATA LOGGER | Indicadores inválidos | ",
+         "DATA LOGGER | Indicadores invÃ¡lidos | ",
          symbol,
          " | ATR=",
          DoubleToString(atr,6),
@@ -446,7 +454,7 @@ void SaveMarketData(string symbol="")
 
 
    //================================================
-   // GRAVAÇÃO
+   // GRAVAÃ‡ÃƒO
    //================================================
 
    FileSeek(
@@ -479,7 +487,11 @@ void SaveMarketData(string symbol="")
 
          atr,
          adx,
-         rsi
+         rsi,
+         kci_vd,
+         kci_main,
+         kdi_plus,
+         kdi_minus
       );
 
 
@@ -488,7 +500,7 @@ void SaveMarketData(string symbol="")
       Print(
          "DATA LOGGER WRITE ERROR | ",
          symbol,
-         " | Código=",
+         " | CÃ³digo=",
          GetLastError()
       );
 
@@ -499,7 +511,7 @@ void SaveMarketData(string symbol="")
    FileFlush(dataFile);
 
 
-   // Atualiza somente depois da gravação correta
+   // Atualiza somente depois da gravaÃ§Ã£o correta
    dlLastClosedBars[symbolIndex]=
       closedBarTime;
 
@@ -543,3 +555,4 @@ void DataLoggerClose()
 
 
 #endif
+

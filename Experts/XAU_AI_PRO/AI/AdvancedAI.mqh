@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef ADVANCEDAI_MQH
 #define ADVANCEDAI_MQH
 
@@ -13,7 +14,7 @@
 #include "../Indicators/VolatilityFilter.mqh"
 
 //==================================================
-// ADVANCED AI ENGINE v2.0
+// ADVANCED AI ENGINE v1.2.0
 //==================================================
 
 double ClampScore(double value)

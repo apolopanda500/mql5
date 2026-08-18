@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef REPLAYENGINE_MQH
 #define REPLAYENGINE_MQH
 
@@ -5,8 +6,8 @@
 #include "Logger.mqh"
 
 //==================================================
-// REPLAY ENGINE — V2.0
-// Compatível com Dataset.mqh V2.0
+// REPLAY ENGINE — v1.2.0
+// Compatível com Dataset.mqh v1.2.0
 //==================================================
 
 int  replayHandle   = INVALID_HANDLE;

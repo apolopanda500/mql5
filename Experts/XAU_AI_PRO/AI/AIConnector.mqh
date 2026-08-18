@@ -3,7 +3,7 @@
 
 //==================================================
 // AI CONNECTOR
-// XAU_AI_PRO V1.1
+// XAU_AI_PRO v1.2.0
 // MULTI SYMBOL
 //
 // RESPONSABILIDADE:
@@ -50,11 +50,62 @@ void ResetAIState()
 
 
 //==================================================
+// NORMALIZE AI SYMBOL
+// Converte o símbolo do broker no nome base usado
+// pelo pipeline Python. Ex: GOLD# -> XAUUSD,
+// BTCUSD# -> BTCUSD, XAUUSDc -> XAUUSD.
+//==================================================
+
+string NormalizeAISymbol(string symbol)
+{
+   if(symbol=="")
+      return "";
+
+   StringTrimLeft(symbol);
+   StringTrimRight(symbol);
+
+   string up=symbol;
+   StringToUpper(up);
+
+   // Remove sufixos de classe: #, c, m, . , _i, .pro
+   string suffixes[] = {"#", "C", "M", ".PRO", "_I", "."};
+   for(int i=0; i<ArraySize(suffixes); i++)
+   {
+      int pos=StringFind(up, suffixes[i]);
+      if(pos>0)
+      {
+         up=StringSubstr(up, 0, pos);
+         break;
+      }
+   }
+
+   // Mapeamento de aliases -> nome base do Python
+   if(up=="GOLD" || up=="XAU")
+      return "XAUUSD";
+
+   if(up=="BTC")
+      return "BTCUSD";
+
+   if(up=="ETH")
+      return "ETHUSD";
+
+   return up;
+}
+
+
+//==================================================
 // LOAD AI PREDICTION
 //==================================================
 
 bool LoadAIPrediction(string symbol="")
 {
+   // Log de diagnostico 1x por minuto (evita spam a cada tick)
+   static datetime lastLogTime = 0;
+   datetime logNow = TimeCurrent();
+   bool logOnce = (logNow - lastLogTime >= 60);
+   if(logOnce)
+      lastLogTime = logNow;
+
    if(symbol=="")
       symbol=_Symbol;
 
@@ -64,19 +115,35 @@ bool LoadAIPrediction(string symbol="")
    if(symbol=="")
       return false;
 
+   // Símbolo normalizado (nome base do pipeline Python)
+   string normalized = NormalizeAISymbol(symbol);
 
    string fileName=
       "Data\\prediction_" +
       symbol +
       ".json";
 
+   // Fallback: se o arquivo exato não existe, tenta o nome normalizado
+   // (pipeline Python gera prediction_XAUUSD.json, não prediction_GOLD#.json)
+   if(!FileIsExist(fileName) && normalized!=symbol)
+   {
+      string altName=
+         "Data\\prediction_" +
+         normalized +
+         ".json";
 
-   Print(
-      "AI LOAD | SYMBOL=",
-      symbol,
-      " | FILE=",
-      fileName
-   );
+      if(FileIsExist(altName))
+         fileName=altName;
+   }
+
+
+   if(logOnce)
+      Print(
+         "AI LOAD | SYMBOL=",
+         symbol,
+         " | FILE=",
+         fileName
+      );
 
 
    ResetLastError();
@@ -88,10 +155,11 @@ bool LoadAIPrediction(string symbol="")
 
    if(!FileIsExist(fileName))
    {
-      Print(
-         "AI FILE NOT FOUND | ",
-         fileName
-      );
+      if(logOnce)
+         Print(
+            "AI FILE NOT FOUND | ",
+            fileName
+         );
 
       return false;
    }
@@ -112,12 +180,13 @@ bool LoadAIPrediction(string symbol="")
 
    if(file==INVALID_HANDLE)
    {
-      Print(
-         "AI FILE ERROR | ",
-         symbol,
-         " | ERROR=",
-         GetLastError()
-      );
+      if(logOnce)
+         Print(
+            "AI FILE ERROR | ",
+            symbol,
+            " | ERROR=",
+            GetLastError()
+         );
 
       return false;
    }
@@ -148,10 +217,11 @@ bool LoadAIPrediction(string symbol="")
 
    if(json=="")
    {
-      Print(
-         "AI JSON EMPTY | ",
-         symbol
-      );
+      if(logOnce)
+         Print(
+            "AI JSON EMPTY | ",
+            symbol
+         );
 
       return false;
    }
@@ -216,10 +286,11 @@ bool LoadAIPrediction(string symbol="")
 
    if(jsonSymbol=="")
    {
-      Print(
-         "AI INVALID JSON SYMBOL | ",
-         symbol
-      );
+      if(logOnce)
+         Print(
+            "AI INVALID JSON SYMBOL | ",
+            symbol
+         );
 
       return false;
    }
@@ -231,10 +302,11 @@ bool LoadAIPrediction(string symbol="")
 
    if(jsonSignal=="")
    {
-      Print(
-         "AI INVALID JSON SIGNAL | ",
-         symbol
-      );
+      if(logOnce)
+         Print(
+            "AI INVALID JSON SIGNAL | ",
+            symbol
+         );
 
       return false;
    }
@@ -242,21 +314,24 @@ bool LoadAIPrediction(string symbol="")
 
    //================================================
    // SYMBOL MATCH
+   // Aceita o símbolo exato ou o normalizado
+   // (ex: arquivo prediction_XAUUSD.json com symbol=XAUUSD
+   //  é aceito para o símbolo do broker GOLD#).
    //================================================
 
-   if(
-      StringCompare(
-         jsonSymbol,
-         symbol
-      )!=0
-   )
+   bool symbolOk =
+      StringCompare(jsonSymbol, symbol, false)==0 ||
+      StringCompare(jsonSymbol, normalized, false)==0;
+
+   if(!symbolOk)
    {
-      Print(
-         "AI SYMBOL MISMATCH | REQUEST=",
-         symbol,
-         " | JSON=",
-         jsonSymbol
-      );
+      if(logOnce)
+         Print(
+            "AI SYMBOL MISMATCH | REQUEST=",
+            symbol,
+            " | JSON=",
+            jsonSymbol
+         );
 
       return false;
    }
@@ -267,7 +342,7 @@ bool LoadAIPrediction(string symbol="")
    //================================================
 
    AI_Symbol=
-      jsonSymbol;
+      symbol;
 
 
    AI_Signal=
@@ -317,40 +392,41 @@ bool LoadAIPrediction(string symbol="")
    // LOG
    //================================================
 
-   Print(
-      "AI PYTHON | ",
-      AI_Symbol,
-      " | ",
-      AI_Signal,
-      " | PRICE=",
-      DoubleToString(
-         AI_Price,
-         _Digits
-      ),
-      " | BUY=",
-      DoubleToString(
-         AI_BuyProbability,
-         2
-      ),
-      "%",
-      " | SELL=",
-      DoubleToString(
-         AI_SellProbability,
-         2
-      ),
-      "%",
-      " | SCORE=",
-      DoubleToString(
-         AI_Score,
-         2
-      ),
-      " | CONF=",
-      DoubleToString(
-         AI_Confidence,
-         2
-      ),
-      "%"
-   );
+   if(logOnce)
+      Print(
+         "AI PYTHON | ",
+         AI_Symbol,
+         " | ",
+         AI_Signal,
+         " | PRICE=",
+         DoubleToString(
+            AI_Price,
+            _Digits
+         ),
+         " | BUY=",
+         DoubleToString(
+            AI_BuyProbability,
+            2
+         ),
+         "%",
+         " | SELL=",
+         DoubleToString(
+            AI_SellProbability,
+            2
+         ),
+         "%",
+         " | SCORE=",
+         DoubleToString(
+            AI_Score,
+            2
+         ),
+         " | CONF=",
+         DoubleToString(
+            AI_Confidence,
+            2
+         ),
+         "%"
+      );
 
 
    return true;

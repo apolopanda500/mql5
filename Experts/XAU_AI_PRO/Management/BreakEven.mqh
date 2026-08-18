@@ -7,6 +7,13 @@
 
 extern CTrade trade;
 
+// Retorna o stop level do broker em pontos (fallback: BreakEvenOffset)
+double GetBreakEvenStopLevel(string symbol)
+{
+   long level = SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
+   return (level > 0) ? (double)level : (double)BreakEvenOffset;
+}
+
 void CheckBreakEven()
 {
 if(!EnableBreakEven)
@@ -54,9 +61,14 @@ ulong ticket = PositionGetTicket(i);
   double triggerPoints = 0.0;
 
   if(atr > 0.0)
-     triggerPoints = atr / point;
+     triggerPoints = MathMax(BreakEvenTrigger, atr / point);
   else
      triggerPoints = BreakEvenTrigger;
+
+  // v1.2.0 fix: trigger deve ser MAIOR que o offset (SL valido)
+  double offsetPoints = GetBreakEvenStopLevel(symbol);
+  if(offsetPoints >= triggerPoints)
+     triggerPoints = offsetPoints + 1.0;
 
   if(triggerPoints <= 0.0)
      continue;
@@ -75,14 +87,14 @@ ulong ticket = PositionGetTicket(i);
 
   if(type == POSITION_TYPE_BUY)
   {
-     newSL = openPrice + BreakEvenOffset * point;
+     newSL = openPrice + GetBreakEvenStopLevel(symbol) * point;
 
      if(currentSL > 0.0 && newSL <= currentSL)
         continue;
   }
   else
   {
-     newSL = openPrice - BreakEvenOffset * point;
+     newSL = openPrice - GetBreakEvenStopLevel(symbol) * point;
 
      if(currentSL > 0.0 && newSL >= currentSL)
         continue;
