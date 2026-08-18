@@ -540,6 +540,23 @@ int OnInit()
 // ON TICK
 //==================================================
 
+//==================================================
+// THROTTLE DE LOG (v1.2.0)
+// Evita spam de "[TRADE BLOCK]" a cada tick no OnTick.
+//==================================================
+datetime g_lastBlockPrint = 0;
+
+bool AllowBlockPrint()
+{
+   datetime now = TimeCurrent();
+   if(now - g_lastBlockPrint >= 60)
+   {
+      g_lastBlockPrint = now;
+      return true;
+   }
+   return false;
+}
+
 void OnTick()
 {
    //------------------------------------------------
@@ -590,7 +607,8 @@ void OnTick()
 
    if(!CCircuitBreaker::CanTrade())
    {
-      Print("[TRADE BLOCK] CIRCUIT BREAKER | State=", CCircuitBreaker::GetStateString(), " | Reason=", CCircuitBreaker::GetTriggerReason());
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] CIRCUIT BREAKER | State=", CCircuitBreaker::GetStateString(), " | Reason=", CCircuitBreaker::GetTriggerReason());
       return;
    }
 
@@ -606,7 +624,8 @@ void OnTick()
 
    if(!CSafetyManager::CheckAll())
    {
-      Print("[TRADE BLOCK] SAFETY | ", CSafetyManager::GetSafetySummary());
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] SAFETY | ", CSafetyManager::GetSafetySummary());
       return;
    }
 
@@ -616,7 +635,8 @@ void OnTick()
 
    if(!CheckEquityProtection())
    {
-      Print("[TRADE BLOCK] EQUITY PROTECTION");
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] EQUITY PROTECTION");
       return;
    }
 

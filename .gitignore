@@ -46,6 +46,11 @@ Files/Backup/
 .DS_Store
 Thumbs.db
 
+# --- MetaTrader Auto-generated Profiles ---
+# (arquivos criados/alterados automaticamente pelo terminal)
+Profiles/Charts/**/*.chr
+Profiles/Charts/**/*.wnd
+
 # --- MQL5 Logs Directory ---
 logs/
 
