@@ -1,10 +1,10 @@
 // recompile-trigger 19:40:47
 //==================================================
-// XAU_AI_PRO v1.10
+// XAU_AI_PRO v1.20
 //==================================================
 
 #property strict
-#property version "1.10"
+#property version "1.20"
 
 #include <Trade/Trade.mqh>
 
@@ -105,6 +105,7 @@ CTrade trade;
 #include "Monitoring/Dashboard.mqh"
 #include "Monitoring/TradeLogger.mqh"
 #include "Monitoring/PerformanceAnalyzer.mqh"
+#include "Monitoring/Statistics.mqh"
 
 
 //==================================================
@@ -116,6 +117,9 @@ CTrade trade;
 #include "Enterprise/RecoveryManager.mqh"
 #include "Enterprise/SmartExecution.mqh"
 #include "Enterprise/TradeMonitor.mqh"
+#include "Enterprise/Scheduler.mqh"
+#include "Enterprise/DatabaseManager.mqh"
+#include "Enterprise/Telemetry.mqh"
 
 
 //==================================================
@@ -244,6 +248,9 @@ bool InitializeModules()
    if(!InitSymbolManager())
       return false;
 
+   if(SymbolsPending)
+      Print("SYMBOL MANAGER | Simbolos pendentes de sincronizacao (retry automatico ativo)");
+
    AIClientInit();
 
    if(!DataLoggerInit())
@@ -261,6 +268,40 @@ bool InitializeModules()
 
    CSmartExecution::Init();
 
+   //------------------------------------------------
+   // v1.20 - TRADE LOGGER / DATABASE / SCHEDULER / STATISTICS
+   //------------------------------------------------
+
+   if(!InitTradeLogger())
+      Print("TradeLogger OFF");
+
+   CDatabaseManager::Init();
+
+   if(EnableDatabase)
+   {
+      CDatabaseManager::Connect();
+      CDatabaseManager::LogStatus();
+   }
+
+   CScheduler::Init();
+
+   if(EnableScheduler)
+   {
+      // Registra tarefa de rotina diaria (ex.: backup)
+      CScheduler::LogStatus();
+   }
+
+   StatisticsInit();
+
+//------------------------------------------------
+   // v1.20 - TELEMETRY
+   //------------------------------------------------
+
+   if(EnableTelemetry)
+   {
+      CTelemetry::Init();
+      CTelemetry::RecordBrokerLatency(0);
+   }
    return true;
 }
 
@@ -279,6 +320,10 @@ void ShutdownModules()
    DataLoggerClose();
 
    AIClientShutdown();
+
+   CloseTradeLogger();
+
+   CDatabaseManager::Disconnect();
 
    ShutdownSystem();
 }
@@ -459,7 +504,7 @@ void PerformanceSave()
 int OnInit()
 {
    Print("========================================");
-   Print("        XAU_AI_PRO v1.10");
+   Print("        XAU_AI_PRO v1.20");
    Print("========================================");
 
    Print("Conta.............: ", AccountInfoInteger(ACCOUNT_LOGIN));
@@ -510,6 +555,17 @@ void OnTick()
    //------------------------------------------------
    // Atualiza horÃ¡rio
    //------------------------------------------------
+
+   //------------------------------------------------
+   // Retry de simbolos pendentes (abertura do terminal)
+   //------------------------------------------------
+
+   if(SymbolsPending)
+   {
+      UpdateSymbolManager();
+      if(SymbolsPending)
+         return;
+   }
 
    LastTick = TimeCurrent();
 
@@ -576,7 +632,8 @@ void OnTick()
    // Scanner Multi Symbol
    //------------------------------------------------
 
-   Print("[TRADE PIPELINE] INICIANDO");
+   if(EnableVerboseDebug)
+      Print("[TRADE PIPELINE] INICIANDO");
 
    RunTradePipeline();
 
@@ -659,6 +716,30 @@ void OnTradeTransaction(
          DoubleToString(volume,2)
       );
 
+      //------------------------------------------------
+      // v1.20 - POSITION SYNC + DATABASE
+      //------------------------------------------------
+
+      CSmartExecution::Synchronize();
+
+      if(EnableDatabase)
+      {
+         int type = 0;
+         CDatabaseManager::Connect();
+
+         CDatabaseManager::InsertTrade(
+            deal,
+            symbol,
+            type,
+            volume,
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            TimeCurrent(),
+            TradeComment
+         );
+      }
+
+      StatisticsRegisterTrade(0.0);
+
       return;
    }
 
@@ -740,6 +821,57 @@ void OnTradeTransaction(
             2
          )
       );
+
+      //------------------------------------------------
+      // v1.20 - POSITION SYNC
+      //------------------------------------------------
+
+      CSmartExecution::Synchronize();
+
+      //------------------------------------------------
+      // v1.20 - TRADE LOGGER
+      //------------------------------------------------
+
+      if(tradeLoggerHandle != INVALID_HANDLE)
+      {
+         // Usa DEAL_TYPE (mais confiavel em DEAL_ENTRY_OUT,
+         // pois a posicao pode ja estar fechada).
+         ENUM_DEAL_TYPE dealType =
+            (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+         bool isBuy = (dealType == DEAL_TYPE_BUY);
+
+         LogTradeCSV(
+            isBuy,
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            SymbolInfoDouble(symbol, SYMBOL_BID),
+            profit,
+            AIScore
+         );
+      }
+
+      //------------------------------------------------
+      // v1.20 - DATABASE
+      //------------------------------------------------
+
+      if(EnableDatabase)
+      {
+         CDatabaseManager::Connect();
+
+         CDatabaseManager::UpdateTrade(
+            deal,
+            SymbolInfoDouble(symbol, SYMBOL_BID),
+            TimeCurrent(),
+            profit,
+            HistoryDealGetDouble(deal, DEAL_COMMISSION),
+            HistoryDealGetDouble(deal, DEAL_SWAP)
+         );
+      }
+
+      //------------------------------------------------
+      // v1.20 - STATISTICS
+      //------------------------------------------------
+
+      StatisticsRegisterTrade(profit);
    }
 }
 
@@ -759,6 +891,13 @@ void OnTimer()
    //------------------------------------------------
    // Recovery
    //------------------------------------------------
+
+   //------------------------------------------------
+   // Retry de simbolos pendentes
+   //------------------------------------------------
+
+   if(SymbolsPending)
+      UpdateSymbolManager();
 
    CRecoveryManager::Run();
 
@@ -788,6 +927,15 @@ void OnTimer()
    //------------------------------------------------
 
    CSmartExecution::Synchronize();
+
+   //------------------------------------------------
+   // Scheduler (v1.20)
+   //------------------------------------------------
+
+   if(EnableScheduler)
+   {
+      CScheduler::Run();
+   }
 
    //------------------------------------------------
    // Atualizar Dashboard
@@ -842,6 +990,9 @@ void OnDeinit(
    //================================================
    // PARAR TIMER
    //================================================
+
+   // v1.21 - SALVAR RESUMO (win rate) em FILE_COMMON
+   StatisticsSaveSummary();
 
    EventKillTimer();
 
