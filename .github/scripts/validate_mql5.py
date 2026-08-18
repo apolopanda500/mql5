@@ -44,6 +44,7 @@ SKIP_DIRS = {"Data", "logs", "__pycache__", "node_modules"}
 
 problems = []
 warnings = []
+eol_files = []
 
 
 def rel_path(path):
@@ -147,25 +148,33 @@ def check_braces(path):
 
 
 def check_todo(path):
-    """Relata como warning marcadores de pendencia."""
+    """Relata como warning marcadores de pendencia (apenas tokens reais).
+
+    Usa \b (word boundary) para evitar falsos positivos como:
+    - 'StringToDouble' -> contem 'ToDo' como substring
+    - 'todos os testes' -> contem 'todo' como substring
+    """
     try:
         with open(path, "r", encoding="utf-8") as f:
-            for lineno, line in enumerate(f, 1):
-                for m in TODO_MARKERS:
-                    if m in line.upper():
-                        warnings.append("%s:%d %s" % (rel_path(path), lineno, m))
-                        break
+            text = f.read()
     except Exception:
-        pass
+        return
+    pat = re.compile(
+        r"\b(?:%s)\b" % "|".join(map(re.escape, TODO_MARKERS)),
+        re.IGNORECASE)
+    for lineno, line in enumerate(text.split("\n"), 1):
+        if pat.search(line):
+            warnings.append(
+                "%s:%d %s" % (rel_path(path), lineno, pat.search(line).group()))
 
 
 def check_eol(path):
-    """Detecta CRLF para informar preferencia de LF."""
+    """Conta arquivos com CRLF (preferencia do projeto: LF via .gitattributes)."""
     try:
         with open(path, "rb") as f:
             raw = f.read()
         if b"\r\n" in raw:
-            warnings.append("[EOL] CRLF em %s" % rel_path(path))
+            eol_files.append(rel_path(path))
     except Exception:
         pass
 
@@ -213,6 +222,15 @@ def main():
     print("==> Validacao estatica MQL5")
     print("==> Raiz: %s" % ROOT)
     print("==> Arquivos fonte varridos: %d\n" % count)
+
+    if eol_files:
+        print("EOL (CRLF): %d arquivo(s) em CRLF (repo prefere LF; o checkout via "
+              ".gitattributes ja converte). Primeiros:" % len(eol_files))
+        for name in eol_files[:5]:
+            print("  - %s" % name)
+        if len(eol_files) > 5:
+            print("  ... e mais %d arquivo(s)" % (len(eol_files) - 5))
+        print()
 
     if warnings:
         print("AVISOS (%d):" % len(warnings))
