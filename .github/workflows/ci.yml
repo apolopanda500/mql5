@@ -1,0 +1,91 @@
+# ============================================================
+# GitHub Actions CI - XAU_AI_PRO (MQL5)
+#
+# O MetaEditor (compilador MQL5) e um binario proprietario da
+# MetaQuotes disponivel apenas em Windows e NAO esta pre-instalado
+# nos runners do GitHub Actions. Por isso este job de CI faz
+# VALIDACAO ESTATICA do codigo-fonte, cobrindo:
+#   1. Encoding UTF-8 (detecta caracteres quebrados de acentos)
+#   2. Balanceamento de chaves {} (deteccao de erros de bloco)
+#   3. Existencia de caminhos #include locais
+#   4. Avisos de pendencia TODO/FIXME e fim-de-linha CRLF
+#
+# O fluxo falha apenas quando ha problema real (exit 1), garantindo
+# qualidade sem depender do compilador proprietario.
+# ============================================================
+name: CI MQL5 - Validacao Estatica
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  # permite acionar manualmente em qualquer branch
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: 'Validacao do codigo XAU_AI_PRO'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Experts/XAU_AI_PRO
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Rodar validacao estatica MQL5
+        run: python "../../.github/scripts/validate_mql5.py"
+
+  # ============================================================
+  # BUILD OPCIONAL (Windows + MetaEditor)
+  #
+  # Para habilitar um build REAL, o runner `windows-latest` precisa
+  # que o MetaEditor esteja instalado numa VM auto-hospedada. Numa
+  # VM publica do GitHub nao ha MetaTrader. Este job serve de modelo
+  # para quem tenha um runner self-hosted com MetaTrader instalado.
+  # ============================================================
+  build-windows:
+    name: Build (Windows/self-hosted) [opcional]
+    runs-on: windows-latest
+    # DESABILITADO por padrao. Para ativar, mude `if` para `if: true`
+    # e rode num runner self-hosted com MetaTrader 5 / MetaEditor instalado.
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Procurar MetaEditor
+        id: find
+        shell: pwsh
+        run: |
+          $cands = @(
+            "C:\Program Files\MetaTrader 5\metaeditor64.exe",
+            "C:\Program Files (x86)\MetaTrader 5\metaeditor64.exe"
+          )
+          foreach ($c in $cands) {
+            if (Test-Path $c) {
+              Write-Output "FOUND=$c"
+              exit 0
+            }
+          }
+          Write-Output "FOUND="
+
+      - name: Compilar projeto
+        if: steps.find.outputs.FOUND != ''
+        shell: pwsh
+        run: |
+          $me = "${{ steps.find.outputs.FOUND }}"
+          & $me /compile:"$env:GITHUB_WORKSPACE\Experts\XAU_AI_PRO\XAU_AI_PRO.mq5" /log
+          $log = "$env:GITHUB_WORKSPACE\Experts\XAU_AI_PRO\XAU_AI_PRO.log"
+          if (Test-Path $log) {
+            Get-Content $log
+            if (Select-String -Path $log -Pattern 'error|Error' -Quiet) { exit 1 }
+          } else {
+            Write-Error "Nenhum log de compilacao produzido."
+            exit 1
+          }

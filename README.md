@@ -75,6 +75,29 @@ git push origin main
 git push github main
 ```
 
+### Integração Contínua (CI) — GitHub Actions
+
+O repositório inclui um fluxo de CI em `.github/workflows/ci.yml` que é
+acionado a cada **push na branch `main`** e em **pull requests**. Como o
+compilador MQL5 (MetaEditor) é proprietário e não está disponível nos
+runners públicos do GitHub, o CI executa uma **validação estática** do
+código-fonte:
+
+- **Encoding** — garante que os arquivos `.mq5`/`.mqh` são UTF-8 válidos
+  (detecta caracteres de acento "quebrados");
+- **Balanceamento de chaves `{}`** — flag erros de bloco sem dependência
+  do compilador;
+- **Integridade de `#include`** — confere que os includes locais existem;
+- **Avisos** — sinaliza `TODO`/`FIXME` e fim-de-linha CRLF.
+
+O fluxo falha (❌) apenas quando existe um **problema real** de código,
+mantendo a qualidade sem depender de ambiente Windows.
+
+Um job opcional `build-windows` (desabilitado por padrão) serve de modelo
+para compilação real via `metaeditor64.exe` em runners **self-hosted**
+com MetaTrader 5 instalado. Para ativá-lo, altere `if: false` para
+`if: true` nesse job.
+
 ### Licença
 
 Copyright 2026, APOLOPANDA500. Todos os direitos reservados.
