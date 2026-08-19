@@ -98,6 +98,23 @@ para compilação real via `metaeditor64.exe` em runners **self-hosted**
 com MetaTrader 5 instalado. Para ativá-lo, altere `if: false` para
 `if: true` nesse job.
 
+### Skills & Configs de Agentes de Código
+
+Este repositório inclui configurações/skills para assistentes de programação
+(IA de código), mantendo contexto e boas práticas consistentes para quem for
+desenvolver ou revisar este projeto:
+
+| Ferramenta | Arquivo(s) | O que faz |
+|------------|-----------|-----------|
+| **Claude Code** | `CLAUDE.md`, `.claude/skills/*/SKILL.md` | Contexto global + skills reutilizáveis (`review-mql5-code`, `compile-validate-mql5`) |
+| **Cline** | `.clinerules`, `.claude/skills/*` | Regras principais + skills compartilhadas com Claude |
+| **Cursor** | `.cursor/rules/project.mdc` | Regras com `globs` focadas em `.mq5`/`.mqh` |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | Instruções globais para completar/editar código |
+| **Padrão multi-agente** | `AGENTS.md` | Guia de contexto reconhecido por vários agentes |
+
+> Ao adicionar/remover skills, mantenha a coerência com o `AGENTS.md` e o
+> `CLAUDE.md` para que todos os agentes compartilhem as mesmas regras de ouro.
+
 ### Licença
 
 Copyright 2026, APOLOPANDA500. Todos os direitos reservados.

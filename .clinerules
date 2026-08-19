@@ -1,0 +1,24 @@
+# Cline — Regras do repositório
+
+Guia para o Cline trabalhar neste repositório **MQL5**.
+
+## Projeto
+
+Repositório MQL5 para MetaTrader 5. Artefato principal: EA **XAU_AI_PRO**
+(trading algorítmico com IA, gestão de risco, arquitetura modular).
+
+## Regras
+
+1. Nunca quebre a compilação — valide chaves `{}`, `#include` e UTF-8.
+2. Identificadores e nomes de arquivo em **inglês**; comentários/strings de
+   terminal podem estar em **português**.
+3. Não edite binários `.ex5`, `.dll` nem `Data/*.csv`; respeite o `.gitignore`.
+4. Arquitetura **modular**: risco, execução, IA, filtros, monitoramento em
+   módulos dedicados.
+5. Não altere parâmetros de risco reais (RiskPercent, MaxDailyLossPercent,
+   MaxDrawdownPercent) sem justificativa explícita.
+
+## Validação
+
+- Estática: `python .github/scripts/validate_mql5.py` (na pasta do EA).
+- Compilação real: MetaEditor sobre `Experts/XAU_AI_PRO/XAU_AI_PRO.mqproj`.
