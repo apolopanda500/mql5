@@ -4,7 +4,7 @@
 //==================================================
 
 #property strict
-#property version "1.2.0"
+#property version "1.20"
 
 #include <Trade/Trade.mqh>
 
@@ -570,6 +570,18 @@ void OnTick()
    }
 
    //------------------------------------------------
+   //------------------------------------------------
+   // Algo Trading do terminal habilitado? (v1.2.1)
+   //------------------------------------------------
+
+   if(!MQLInfoInteger(MQL_TRADE_ALLOWED) || !TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
+   {
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] ALGO TRADING OFF | Ative o botao 'Algoritmos' no MT5 (Ferramentas > Opcoes > Expert Advisors)");
+      return;
+   }
+
+   //------------------------------------------------
    // AutoTrade (input) - v1.2.0
    // O input AutoTrade agora e respeitado no OnTick.
    // Antes ele so era checado em CheckTradingConditions(),
@@ -578,7 +590,9 @@ void OnTick()
 
    if(!AutoTrade)
    {
-      Print("[TRADE BLOCK] AUTOTRADE OFF | Ative AutoTrade=true no EA");
+      // v1.2.1 - throttle do log: evita inundar o arquivo a cada tick
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] AUTOTRADE OFF | Ative AutoTrade=true no EA");
       return;
    }
 
