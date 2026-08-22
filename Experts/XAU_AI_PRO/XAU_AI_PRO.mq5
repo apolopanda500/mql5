@@ -16,6 +16,7 @@ CTrade trade;
 //==================================================
 
 #include "Core/Config.mqh"
+#include "Core/StateMachine.mqh"   // v1.4.0 (Etapa 4): maquina de estados
 #include "Core/SystemManager.mqh"
 #include "Core/BrokerConfig.mqh"
 #include "Core/BrokerInfo.mqh"
@@ -107,6 +108,17 @@ CTrade trade;
 #include "Monitoring/PerformanceAnalyzer.mqh"
 #include "Monitoring/Statistics.mqh"
 
+// ETAPA 6: Monitoring & Auditoria
+#include "Monitoring/HealthMonitor.mqh"   // HealthMonitor + WatchDog integrado
+#include "Monitoring/AuditLog.mqh"        // Auditoria (AuditLog + FullAudit fundidos)
+#include "Monitoring/Diagnostics.mqh"     // Diagnostico completo
+
+// ETAPA 7: Data Recovery, Replay & Backup
+#include "Monitoring/ReplayEngine.mqh"    // Replay de decisoes/OHLC/auditoria (REPLAY != LIVE)
+#include "Monitoring/BacktestAnalyzer.mqh" // Analise de backtest + metricas (ETAPA 8)
+#include "Monitoring/ProductionChecklist.mqh" // Readiness em producao (ETAPA 10)
+#include "Monitoring/ValidationChecklist.mqh" // Validacao READY/WARNING/BLOCKED (ETAPA 10)
+
 
 //==================================================
 // ENTERPRISE
@@ -120,13 +132,17 @@ CTrade trade;
 #include "Enterprise/Scheduler.mqh"
 #include "Enterprise/DatabaseManager.mqh"
 #include "Enterprise/Telemetry.mqh"
+#include "Enterprise/BackupManager.mqh"   // Backup/restore com validacao real (ETAPA 7)
+#include "Enterprise/BenchmarkEngine.mqh"  // Benchmark de estrategias (ETAPA 8)
+#include "Enterprise/NotificationCenter.mqh" // Central de notificacoes (ETAPA 9)
+#include "Enterprise/ConfigManager.mqh"  // Perfis de config persistidos (ETAPA 10)
+#include "Enterprise/VersionManager.mqh" // Versao/build/estado dos modulos (ETAPA 10)
 
 
 //==================================================
 // UTILS
 //==================================================
 
-#include "Utils.mqh"
 
 //==================================================
 // OBJETOS GLOBAIS
@@ -151,6 +167,11 @@ datetime LastBar              = 0;
 datetime LastDatasetBar       = 0;
 datetime LastPerformanceCheck = 0;
 datetime LastHealthCheck      = 0;
+datetime g_lastBackupTime     = 0;   // ETAPA 7: ultimo backup agendado
+// ETAPA 9: estado da central de notificacoes
+int      g_lastRejectedOrders  = 0;   // contador de rejeicoes (falhas de execucao)
+bool     g_notifyHealthFailed  = false; // dedup do alerta de saude
+datetime g_lastDailyReport     = 0;   // relatorio diario
 
 //==================================================
 // CONTROLE DE ORDENS
@@ -221,14 +242,22 @@ bool ExecutionReady     = false;
 
 bool VerboseMode = EnableVerboseDebug;
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 bool InitializeModules()
-{
+  {
    Print("=================================");
-   Print("Inicializando mÃ³dulos...");
+   Print("Inicializando modulos...");
    Print("=================================");
 
    if(!InitSystem())
       return false;
+
+// v1.2.1: cache de handles de indicadores do SignalCore
+   SignalCoreInit();
+   StateMachineInit();   // v1.4.0 (Etapa 4): maquina de estados
+   Print("[INIT] system + signalcore OK");
 
    if(!InitATR())
       Print("ATR OFF");
@@ -251,6 +280,7 @@ bool InitializeModules()
    if(SymbolsPending)
       Print("SYMBOL MANAGER | Simbolos pendentes de sincronizacao (retry automatico ativo)");
 
+   Print("[INIT] symbol manager OK");
    AIClientInit();
 
    if(!DataLoggerInit())
@@ -267,10 +297,11 @@ bool InitializeModules()
    CRecoveryManager::Init();
 
    CSmartExecution::Init();
+   Print("[INIT] execution engine OK");
 
-   //------------------------------------------------
-   // v1.2.0 - TRADE LOGGER / DATABASE / SCHEDULER / STATISTICS
-   //------------------------------------------------
+//------------------------------------------------
+// v1.2.0 - TRADE LOGGER / DATABASE / SCHEDULER / STATISTICS
+//------------------------------------------------
 
    if(!InitTradeLogger())
       Print("TradeLogger OFF");
@@ -278,35 +309,155 @@ bool InitializeModules()
    CDatabaseManager::Init();
 
    if(EnableDatabase)
-   {
+     {
       CDatabaseManager::Connect();
       CDatabaseManager::LogStatus();
-   }
+     }
 
    CScheduler::Init();
 
    if(EnableScheduler)
-   {
+     {
       // Registra tarefa de rotina diaria (ex.: backup)
       CScheduler::LogStatus();
-   }
+     }
 
    StatisticsInit();
+   Print("[INIT] all modules OK");
 
 //------------------------------------------------
-   // v1.2.0 - TELEMETRY
-   //------------------------------------------------
+// ETAPA 6 - MONITORING & AUDITORIA
+//------------------------------------------------
+
+   if(EnableHealthMonitor)
+     {
+      HealthMonitorInit();
+
+      // Heartbeat inicial dos modulos
+      HealthMonitorHeartbeat("ATR");
+      HealthMonitorHeartbeat("ADX");
+      HealthMonitorHeartbeat("RSI");
+      HealthMonitorHeartbeat("AI");
+
+      if(EnableDataset)
+        {
+         HealthMonitorHeartbeat("CSV");
+         HealthMonitorHeartbeat("JSON");
+         HealthMonitorHeartbeat("PYTHON");
+        }
+     }
+
+   if(EnableAuditLog)
+     {
+      if(!AuditLogInit())
+         Print("[AUDIT] AuditLog OFF");
+     }
+
+   if(EnableDiagnostics)
+     {
+      bool diagOK = DiagnosticsRun();
+      Print(diagOK ? "[DIAG] TODOS OS TESTES PASSARAM" : "[DIAG] FALHAS DETECTADAS (ver log)");
+     }
+
+//------------------------------------------------
+// v1.2.0 - TELEMETRY
+//------------------------------------------------
 
    if(EnableTelemetry)
-   {
+     {
       CTelemetry::Init();
       CTelemetry::RecordBrokerLatency(0);
-   }
-   return true;
-}
 
+      //------------------------------------------------
+      // ETAPA 7 - REPLAY & BACKUP
+      //------------------------------------------------
+
+      //------------------------------------------------
+      // ETAPA 8 - BACKTEST ANALYZER & BENCHMARK
+      //------------------------------------------------
+
+      if(EnableBacktestAnalyzer)
+        {
+         if(!BacktestInit())
+            Print("[BACKTEST] BacktestAnalyzer OFF");
+        }
+
+      if(EnableBenchmark)
+        {
+         CBenchmarkEngine::Init();
+        }
+
+      //------------------------------------------------
+      // ETAPA 9 - NOTIFICATION CENTER
+      //------------------------------------------------
+
+      if(EnableNotifications)
+        {
+         CNotificationCenter::Init();
+         CNotificationCenter::SetPushEnabled(NotifyPushEnabled);
+
+         if(NotifyTelegramToken != "" && NotifyTelegramChatID != "")
+            CNotificationCenter::SetTelegram(NotifyTelegramToken, NotifyTelegramChatID);
+
+         CNotificationCenter::SetCooldown(NCAT_TRADE_OPEN, NotifyCooldownSec);
+         CNotificationCenter::SetCooldown(NCAT_TRADE_CLOSE, NotifyCooldownSec);
+         CNotificationCenter::SetCooldown(NCAT_HEALTH, 600);
+         CNotificationCenter::SetCooldown(NCAT_CIRCUIT, 300);
+         CNotificationCenter::SetCooldown(NCAT_EXECUTION, 300);
+         CNotificationCenter::SetCooldown(NCAT_DRAWDOWN, 600);
+         CNotificationCenter::SetMaxPerMinute(NotifyMaxPerMinute);
+
+         Print("[NOTIFY] " + CNotificationCenter::GetStatus());
+   }
+
+   //------------------------------------------------
+   // ETAPA 10 - CONFIG MANAGER + VERSION MANAGER
+   //------------------------------------------------
+
+   CConfigManager::Init();
+   CConfigManager::SetProfile(CConfigManager::GetCurrentProfile());
+   CConfigManager::LogStatus();
+
+   CVersionManager::Init();
+   CVersionManager::RegisterModules();
+   CVersionManager::LogStatus();
+
+   //------------------------------------------------
+   // ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
+   //------------------------------------------------
+
+   CProductionChecklist::Init();
+   CProductionChecklist::Run();
+   ValidationChecklistRun();
+
+      if(EnableBackupManager)
+        {
+         CBackupManager::Init();
+        }
+
+      if(EnableReplay)
+        {
+         if(ReplayEngineInit())
+           {
+            if(ReplaySymbolFilter != "")
+               ReplayEngineSetSymbolFilter(ReplaySymbolFilter);
+
+            Print("[REPLAY] MODO REPLAY ATIVO | trades reais BLOQUEADOS | origem=", ReplayEngineSource());
+           }
+         else
+           {
+            Print("[REPLAY] Falha ao inicializar replay (operacao normal)");
+           }
+        }
+     }
+   return true;
+  }
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void ShutdownModules()
-{
+  {
    ReleaseTrendFilter();
 
    ReleaseATR();
@@ -317,6 +468,9 @@ void ShutdownModules()
 
    ReleaseMTF();
 
+// v1.2.1: libera handles cacheados do SignalCore
+   ReleaseSignalHandles();
+
    DataLoggerClose();
 
    AIClientShutdown();
@@ -326,24 +480,27 @@ void ShutdownModules()
    CDatabaseManager::Disconnect();
 
    ShutdownSystem();
-}
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void UpdatePerformance()
-{
-   //==================================================
-   // PERFORMANCE UPDATE
-   //
-   // NÃƒO chama ProcessClosedTrades() aqui.
-   //
-   // O registro de trades fechados Ã© responsabilidade
-   // exclusiva de OnTradeTransaction() (evento por deal),
-   // evitando duplicidade em RegisterTradePerformance().
-   //
-   // Antes, ProcessClosedTrades() reprocessava as Ãºltimas
-   // 24h a cada tick, somando o mesmo profit mÃºltiplas
-   // vezes e inflando DailyProfit / ConsecutiveWins /
-   // ConsecutiveLosses.
-   //==================================================
+  {
+//==================================================
+// PERFORMANCE UPDATE
+//
+// NAO chama ProcessClosedTrades() aqui.
+//
+// O registro de trades fechados e responsabilidade
+// exclusiva de OnTradeTransaction() (evento por deal),
+// evitando duplicidade em RegisterTradePerformance().
+//
+// Antes, ProcessClosedTrades() reprocessava as ultimas
+// 24h a cada tick, somando o mesmo profit multiplas
+// vezes e inflando DailyProfit / ConsecutiveWins /
+// ConsecutiveLosses.
+//==================================================
 
    DailyProfit =
       AccountInfoDouble(
@@ -359,7 +516,7 @@ void UpdatePerformance()
       PeakEquity = equity;
 
    if(PeakEquity > 0.0)
-   {
+     {
       CurrentDrawdown =
          (
             (PeakEquity - equity)
@@ -367,24 +524,30 @@ void UpdatePerformance()
             PeakEquity
          )
          * 100.0;
-   }
+     }
    else
-   {
+     {
       CurrentDrawdown = 0.0;
-   }
-}
+     }
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void UpdateSafety()
-{
+  {
    CSafetyManager::UpdateStats();
 
    CCircuitBreaker::Run();
 
    CRecoveryManager::Run();
-}
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void UpdateDataset()
-{
+  {
    if(!EnableDataset)
       return;
 
@@ -403,29 +566,35 @@ void UpdateDataset()
    int total=TotalSymbols();
 
    for(int i=0;i<total;i++)
-   {
+     {
       string symbol=
          GetTradeSymbol(i);
 
       if(symbol!="")
          SaveMarketData(symbol);
-   }
-}
+     }
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void UpdateDashboard()
-{
+  {
    if(!EnableDashboard)
       return;
 
    DashboardUpdate();
-}
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 bool CheckTradingConditions()
-{
+  {
    if(!TradingEnabled)
       return false;
 
-   if(!AutoTrade)
+   if(false)   // v1.2.1: AutoTrade nao bloqueia mais (controle = botao Algoritmos do terminal)
       return false;
 
    if(!CheckEquityProtection())
@@ -438,7 +607,7 @@ bool CheckTradingConditions()
       return false;
 
    return true;
-}
+  }
 
 //==================================================
 // FUNCOES AUXILIARES AUSENTES
@@ -446,14 +615,14 @@ bool CheckTradingConditions()
 
 // Processa trades fechados para atualizar performance
 void ProcessClosedTrades()
-{
+  {
    datetime from = TimeCurrent() - 86400; // ultimas 24h
    if(!HistorySelect(from, TimeCurrent()))
       return;
 
    int deals = HistoryDealsTotal();
    for(int i = 0; i < deals; i++)
-   {
+     {
       ulong deal = HistoryDealGetTicket(i);
       if(deal == 0)
          continue;
@@ -466,23 +635,23 @@ void ProcessClosedTrades()
 
       double profit = HistoryDealGetDouble(deal, DEAL_PROFIT);
       RegisterTradePerformance(profit);
-   }
-}
+     }
+  }
 
 // Atualiza o estado do cliente IA (fallback local)
 void UpdateAIStatus()
-{
-   // IA local - apenas mantem o estado atualizado
+  {
+// IA local - apenas mantem o estado atualizado
    if(EnableAIFilter)
-   {
+     {
       AIReady = AIClientConnected();
       AIStatus = AIReady ? "ONLINE" : "OFFLINE";
-   }
-}
+     }
+  }
 
 // Salva as estatisticas de performance em arquivo
 void PerformanceSave()
-{
+  {
    int handle = FileOpen("XAU_AI_PRO_stats.csv", FILE_WRITE | FILE_CSV | FILE_ANSI, ',');
    if(handle == INVALID_HANDLE)
       return;
@@ -495,14 +664,17 @@ void PerformanceSave()
    FileWrite(handle, "PeakEquity", DoubleToString(PeakEquity, 2));
    FileWrite(handle, "CurrentDrawdown", DoubleToString(CurrentDrawdown, 2));
    FileClose(handle);
-}
+  }
 
 //==================================================
 // ON INIT
 //==================================================
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 int OnInit()
-{
+  {
    Print("========================================");
    Print("        XAU_AI_PRO v1.2.0");
    Print("========================================");
@@ -510,7 +682,7 @@ int OnInit()
    Print("Conta.............: ", AccountInfoInteger(ACCOUNT_LOGIN));
    Print("Corretora.........: ", AccountInfoString(ACCOUNT_COMPANY));
    Print("Servidor..........: ", AccountInfoString(ACCOUNT_SERVER));
-   Print("SÃ­mbolo...........: ", _Symbol);
+   Print("Simbolo...........: ", _Symbol);
    Print("Saldo.............: ", DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2));
    Print("Equity............: ", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2));
 
@@ -518,10 +690,10 @@ int OnInit()
    trade.SetDeviationInPoints(Slippage);
 
    if(!InitializeModules())
-   {
-      Print("ERRO: Falha ao inicializar mÃ³dulos.");
+     {
+      Print("ERRO: Falha ao inicializar modulos.");
       return INIT_FAILED;
-   }
+     }
 
    PeakEquity = AccountInfoDouble(ACCOUNT_EQUITY);
    EventSetTimer(30);   // executa a cada 30 segundos
@@ -533,7 +705,7 @@ int OnInit()
    Print("----------------------------------------");
 
    return INIT_SUCCEEDED;
-}
+  }
 
 
 //==================================================
@@ -542,175 +714,230 @@ int OnInit()
 
 //==================================================
 // THROTTLE DE LOG (v1.2.0)
-// Evita spam de "[TRADE BLOCK]" a cada tick no OnTick.
+// Evita spam de "[TRADE BLOCK]" no OnTick.
 //==================================================
 datetime g_lastBlockPrint = 0;
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 bool AllowBlockPrint()
-{
+  {
    datetime now = TimeCurrent();
    if(now - g_lastBlockPrint >= 60)
-   {
+     {
       g_lastBlockPrint = now;
       return true;
-   }
+     }
    return false;
-}
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnTick()
-{
-   //------------------------------------------------
-   // Sistema inicializado?
-   //------------------------------------------------
+  {
+//------------------------------------------------
+// Sistema inicializado?
+//------------------------------------------------
 
    if(!SystemInitialized)
-   {
+     {
       Print("[TRADE BLOCK] SYSTEM NOT INITIALIZED");
       return;
-   }
+     }
 
-   //------------------------------------------------
-   //------------------------------------------------
-   // Algo Trading do terminal habilitado? (v1.2.1)
-   //------------------------------------------------
+//------------------------------------------------
+//------------------------------------------------
+// Health Monitor (ETAPA 6)
+//------------------------------------------------
+
+   if(EnableHealthMonitor)
+     {
+      HealthMonitorUpdateTicks();
+      HealthMonitorHeartbeat("ATR");
+      HealthMonitorHeartbeat("ADX");
+      HealthMonitorHeartbeat("RSI");
+      HealthMonitorHeartbeat("AI");
+      HealthMonitorCheck();
+     }
+
+//------------------------------------------------
+// Algo Trading do terminal habilitado? (v1.2.1)
+//------------------------------------------------
+//------------------------------------------------
 
    if(!MQLInfoInteger(MQL_TRADE_ALLOWED) || !TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
-   {
+     {
       if(AllowBlockPrint())
          Print("[TRADE BLOCK] ALGO TRADING OFF | Ative o botao 'Algoritmos' no MT5 (Ferramentas > Opcoes > Expert Advisors)");
       return;
-   }
+     }
 
-   //------------------------------------------------
-   // AutoTrade (input) - v1.2.0
-   // O input AutoTrade agora e respeitado no OnTick.
-   // Antes ele so era checado em CheckTradingConditions(),
-   // que nunca era chamada - o robo ignorava o input.
-   //------------------------------------------------
+//------------------------------------------------
+// AutoTrade (input) - v1.2.0
+//------------------------------------------------
 
-   if(!AutoTrade)
-   {
-      // v1.2.1 - throttle do log: evita inundar o arquivo a cada tick
+   if(false)   // v1.2.1: AutoTrade nao bloqueia mais (controle = botao Algoritmos do terminal)
+     {
+      // v1.2.1 - throttle do log
       if(AllowBlockPrint())
          Print("[TRADE BLOCK] AUTOTRADE OFF | Ative AutoTrade=true no EA");
       return;
-   }
+     }
 
-   //------------------------------------------------
-   // Atualiza horÃ¡rio
-   //------------------------------------------------
-
-   //------------------------------------------------
-   // Retry de simbolos pendentes (abertura do terminal)
-   //------------------------------------------------
+//------------------------------------------------
+// Retry de simbolos pendentes (abertura do terminal)
+//------------------------------------------------
 
    if(SymbolsPending)
-   {
+     {
       UpdateSymbolManager();
       if(SymbolsPending)
          return;
-   }
+     }
 
    LastTick = TimeCurrent();
 
-   //------------------------------------------------
-   // Circuit Breaker
-   //------------------------------------------------
+//------------------------------------------------
+// Circuit Breaker
+//------------------------------------------------
 
    CCircuitBreaker::Run();
 
    if(!CCircuitBreaker::CanTrade())
-   {
+     {
       if(AllowBlockPrint())
          Print("[TRADE BLOCK] CIRCUIT BREAKER | State=", CCircuitBreaker::GetStateString(), " | Reason=", CCircuitBreaker::GetTriggerReason());
       return;
-   }
+     }
 
-   //------------------------------------------------
-   // Recovery
-   //------------------------------------------------
+//------------------------------------------------
+// Recovery
+//------------------------------------------------
 
    CRecoveryManager::Run();
 
-   //------------------------------------------------
-   // Safety
-   //------------------------------------------------
+//------------------------------------------------
+// Safety
+//------------------------------------------------
 
    if(!CSafetyManager::CheckAll())
-   {
+     {
       if(AllowBlockPrint())
          Print("[TRADE BLOCK] SAFETY | ", CSafetyManager::GetSafetySummary());
       return;
-   }
+     }
 
-   //------------------------------------------------
-   // Equity Protection
-   //------------------------------------------------
+//------------------------------------------------
+// Equity Protection
+//------------------------------------------------
 
    if(!CheckEquityProtection())
-   {
+     {
       if(AllowBlockPrint())
          Print("[TRADE BLOCK] EQUITY PROTECTION");
       return;
-   }
+     }
 
-   //------------------------------------------------
-   // Atualiza Performance
-   //------------------------------------------------
+//------------------------------------------------
+// Atualiza Performance
+//------------------------------------------------
 
    UpdatePerformance();
 
-   //------------------------------------------------
-   // Atualiza IA
-   //------------------------------------------------
+//------------------------------------------------
+// Atualiza IA
+//------------------------------------------------
 
    if(EnableAIFilter)
-   {
+     {
       UpdateAIStatus();
-   }
+     }
 
-   //------------------------------------------------
-   // Atualiza Dataset
-   //------------------------------------------------
+//------------------------------------------------
+// Atualiza Dataset
+//------------------------------------------------
 
    UpdateDataset();
 
-   //------------------------------------------------
-   // Scanner Multi Symbol
-   //------------------------------------------------
+//------------------------------------------------
+// Health Monitor - heartbeat dataset/python (ETAPA 6)
+//------------------------------------------------
+
+   if(EnableHealthMonitor && EnableDataset)
+     {
+      HealthMonitorHeartbeat("CSV");
+      HealthMonitorHeartbeat("JSON");
+      HealthMonitorHeartbeat("PYTHON");
+     }
+
+//------------------------------------------------
+// Scanner Multi Symbol
+//------------------------------------------------
 
    if(EnableVerboseDebug)
       Print("[TRADE PIPELINE] INICIANDO");
 
-   RunTradePipeline();
+   StateSet("", STATE_MARKET_SCAN);   // v1.4.0 (Etapa 4)
 
-   //------------------------------------------------
-   // Gerenciamento das posiÃ§Ãµes
-   //------------------------------------------------
+// ETAPA 7 - SEPARACAO ABSOLUTA REPLAY vs LIVE
+   if(EnableReplay && ReplayEngineBlocksLiveTrading())
+     {
+      if(AllowBlockPrint())
+         Print("[REPLAY] Modo replay ativo - execucao real BLOQUEADA");
+     }
+   else
+     {
+      RunTradePipeline();
+     }
+
+//------------------------------------------------
+// Gerenciamento das posicoes
+//------------------------------------------------
 
    ManagePositions();
 
-   //------------------------------------------------
-   // Dashboard
-   //------------------------------------------------
+//------------------------------------------------
+// v1.4.0 (Etapa 4): posicoes abertas -> MANAGING
+//------------------------------------------------
+
+   for(int pi = PositionsTotal() - 1; pi >= 0; pi--)
+     {
+      ulong pt = PositionGetTicket(pi);
+      if(pt == 0)
+         continue;
+      if(!PositionSelectByTicket(pt))
+         continue;
+      if(PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+         continue;
+      StateSet(PositionGetString(POSITION_SYMBOL), STATE_MANAGING);
+     }
+
+//------------------------------------------------
+// Dashboard
+//------------------------------------------------
 
    UpdateDashboard();
 
-}
+  }
 
 //==================================================
 // ON TRADE TRANSACTION
 //==================================================
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnTradeTransaction(
    const MqlTradeTransaction &trans,
    const MqlTradeRequest &request,
    const MqlTradeResult &result
 )
-{
-   //------------------------------------------------
-   // Apenas DEALS
-   //------------------------------------------------
+  {
+//------------------------------------------------
+// Apenas DEALS
+//------------------------------------------------
 
    if(trans.type != TRADE_TRANSACTION_DEAL_ADD)
       return;
@@ -722,6 +949,20 @@ void OnTradeTransaction(
 
    if(!HistoryDealSelect(deal))
       return;
+
+//------------------------------------------------
+// v1.2.2 - FILTRO MAGIC + DEDUP INTER-INSTANCIA
+//------------------------------------------------
+
+   long dealMagic = HistoryDealGetInteger(deal, DEAL_MAGIC);
+   if(dealMagic != MagicNumber)
+      return;
+
+   string gvDeal = "XAI_PRO_DEAL_" + IntegerToString((long)deal);
+   if(MQLInfoInteger(MQL_TESTER)==0 && GlobalVariableCheck(gvDeal))
+      return;
+   if(MQLInfoInteger(MQL_TESTER)==0)
+      GlobalVariableSet(gvDeal, 1.0);
 
    string symbol =
       HistoryDealGetString(
@@ -748,13 +989,16 @@ void OnTradeTransaction(
          DEAL_ENTRY
       );
 
-   //------------------------------------------------
-   // Entrada
-   //------------------------------------------------
+//------------------------------------------------
+// Entrada
+//------------------------------------------------
 
    if(entry == DEAL_ENTRY_IN)
-   {
+     {
       TradesToday++;
+
+      // v1.4.0 (Etapa 4): maquina de estados
+      StateSet(symbol, STATE_POSITION_OPEN);
 
       Print(
          "TRADE OPEN | ",
@@ -770,7 +1014,7 @@ void OnTradeTransaction(
       CSmartExecution::Synchronize();
 
       if(EnableDatabase)
-      {
+        {
          int type = 0;
          CDatabaseManager::Connect();
 
@@ -783,63 +1027,145 @@ void OnTradeTransaction(
             TimeCurrent(),
             TradeComment
          );
-      }
+        }
 
       StatisticsRegisterTrade(0.0);
 
-      return;
-   }
+      //------------------------------------------------
+      // ETAPA 6 - AUDITORIA (entrada)
+      //------------------------------------------------
 
-   //------------------------------------------------
-   // SaÃ­da
-   //------------------------------------------------
+      if(EnableAuditLog)
+        {
+         ENUM_DEAL_TYPE dType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+         ulong positionId = HistoryDealGetInteger(deal, DEAL_POSITION_ID);
+
+         double spread = 0.0;
+         double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
+         double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
+         double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+
+         if(ask > 0.0 && bid > 0.0 && point > 0.0)
+            spread = (ask - bid) / point;
+
+         AuditLogTrackEntry(
+            symbol,
+            positionId,
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            GetATR(symbol),
+            GetADX(symbol),
+            GetRSI(symbol),
+            0.0,
+            spread,
+            IsTradingSession() ? "OPEN" : "CLOSED",
+            (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+            AIConfidence,
+            AIScore,
+            "ENTRY_DEAL"
+         );
+        }
+
+      //------------------------------------------------
+      // ETAPA 8 - BACKTEST ANALYZER (entrada)
+      //------------------------------------------------
+
+      if(BacktestIsReady())
+        {
+         ENUM_DEAL_TYPE bType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+         double bAsk = SymbolInfoDouble(symbol, SYMBOL_ASK);
+         double bBid = SymbolInfoDouble(symbol, SYMBOL_BID);
+         double bPoint = SymbolInfoDouble(symbol, SYMBOL_POINT);
+         double bSpread = 0.0;
+
+         if(bAsk > 0.0 && bBid > 0.0 && bPoint > 0.0)
+            bSpread = (bAsk - bBid) / bPoint;
+
+         BacktestLog(
+            (bType == DEAL_TYPE_BUY) ? 1 : -1,
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            volume,
+            bSpread,
+            GetATR(symbol),
+            GetADX(symbol),
+            GetRSI(symbol),
+            AIScore,
+            "OPEN"
+         );
+        }
+
+      //------------------------------------------------
+      // ETAPA 9 - NOTIFICACAO (entrada)
+      //------------------------------------------------
+
+      if(EnableNotifications && NotifyTradeEvents)
+        {
+         ENUM_DEAL_TYPE nType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+
+         CNotificationCenter::SendTradeOpen(
+            symbol,
+            volume,
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            (nType == DEAL_TYPE_BUY) ? "BUY" : "SELL"
+         );
+        }
+
+      return;
+     }
+
+//------------------------------------------------
+// Saida
+//------------------------------------------------
 
    if(entry == DEAL_ENTRY_OUT)
-   {
+     {
       //------------------------------------------------
       // Performance
       //------------------------------------------------
 
       RegisterTradePerformance(profit);
 
+      // v1.4.0 (Etapa 4): maquina de estados
+      StateSet(symbol, STATE_CLOSED);
+      StateSet(symbol, STATE_LEARNING);
+
       //------------------------------------------------
-      // EstatÃ­sticas
+      // Estatisticas
       //------------------------------------------------
 
       if(profit > 0)
-      {
+        {
          ConsecutiveWins++;
          ConsecutiveLosses=0;
-      }
+        }
       else
-      {
+        {
          ConsecutiveLosses++;
          ConsecutiveWins=0;
-      }
+        }
 
       //------------------------------------------------
       // Dataset
       //------------------------------------------------
 
       if(EnableDataset)
-      {
+        {
          UpdateDatasetResult(
             DatasetIndex,
             (profit>0)
          );
-      }
+        }
 
       //------------------------------------------------
       // Feedback IA
       //------------------------------------------------
 
       if(EnableAIFilter)
-      {
+        {
          LogAIFeedback(
             symbol,
             profit
          );
-      }
+        }
 
       //------------------------------------------------
       // Smart Execution
@@ -880,7 +1206,7 @@ void OnTradeTransaction(
       //------------------------------------------------
 
       if(tradeLoggerHandle != INVALID_HANDLE)
-      {
+        {
          // Usa DEAL_TYPE (mais confiavel em DEAL_ENTRY_OUT,
          // pois a posicao pode ja estar fechada).
          ENUM_DEAL_TYPE dealType =
@@ -894,14 +1220,14 @@ void OnTradeTransaction(
             profit,
             AIScore
          );
-      }
+        }
 
       //------------------------------------------------
       // v1.2.0 - DATABASE
       //------------------------------------------------
 
       if(EnableDatabase)
-      {
+        {
          CDatabaseManager::Connect();
 
          CDatabaseManager::UpdateTrade(
@@ -912,115 +1238,272 @@ void OnTradeTransaction(
             HistoryDealGetDouble(deal, DEAL_COMMISSION),
             HistoryDealGetDouble(deal, DEAL_SWAP)
          );
-      }
+        }
 
       //------------------------------------------------
       // v1.2.0 - STATISTICS
       //------------------------------------------------
 
       StatisticsRegisterTrade(profit);
-   }
-}
+
+      //------------------------------------------------
+      // ETAPA 6 - AUDITORIA (saida)
+      //------------------------------------------------
+
+      if(EnableAuditLog)
+        {
+         ulong positionId = HistoryDealGetInteger(deal, DEAL_POSITION_ID);
+
+         AuditLogTrackExit(
+            positionId,
+            (profit > 0.0 ? "WIN" : "LOSS"),
+            profit
+         );
+
+         AuditLogTradeResult(
+            symbol,
+            positionId,
+            profit,
+            (profit > 0.0 ? "WIN" : "LOSS")
+         );
+        }
+
+      //------------------------------------------------
+      // ETAPA 8 - BACKTEST ANALYZER + BENCHMARK (saida)
+      //------------------------------------------------
+
+      if(BacktestIsReady())
+        {
+         ENUM_DEAL_TYPE outType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+
+         BacktestLogResult(
+            (outType == DEAL_TYPE_BUY) ? 1 : -1,
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            volume,
+            0.0,
+            GetATR(symbol),
+            GetADX(symbol),
+            GetRSI(symbol),
+            AIScore,
+            (profit > 0.0 ? "WIN" : "LOSS"),
+            profit
+         );
+        }
+
+      if(EnableBenchmark)
+        {
+         StrategyType st = (EnableAIFilter && AIConfidence > 0.0) ? STRATEGY_HYBRID : STRATEGY_TECHNICAL;
+         CBenchmarkEngine::RecordTrade(st, profit, 0.0, 0.0);
+        }
+
+      //------------------------------------------------
+      // ETAPA 9 - NOTIFICACAO (saida)
+      //------------------------------------------------
+
+      if(EnableNotifications && NotifyTradeEvents)
+        {
+         CNotificationCenter::SendTradeClose(
+            symbol,
+            profit,
+            (profit > 0.0 ? "WIN" : "LOSS")
+         );
+        }
+
+  }
+  }
 
 //==================================================
 // ON TIMER
 //==================================================
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnTimer()
-{
-   //------------------------------------------------
-   // Sistema inicializado?
-   //------------------------------------------------
+  {
+//------------------------------------------------
+// Sistema inicializado?
+//------------------------------------------------
 
    if(!SystemInitialized)
       return;
 
-   //------------------------------------------------
-   // Recovery
-   //------------------------------------------------
-
-   //------------------------------------------------
-   // Retry de simbolos pendentes
-   //------------------------------------------------
+//------------------------------------------------
+// Retry de simbolos pendentes
+//------------------------------------------------
 
    if(SymbolsPending)
       UpdateSymbolManager();
 
    CRecoveryManager::Run();
 
-   //------------------------------------------------
-   // Circuit Breaker
-   //------------------------------------------------
+//------------------------------------------------
+// Circuit Breaker
+//------------------------------------------------
 
    CCircuitBreaker::Run();
 
-   //------------------------------------------------
-   // Safety
-   //------------------------------------------------
+//------------------------------------------------
+// Safety
+//------------------------------------------------
 
    CSafetyManager::UpdateStats();
 
-   //------------------------------------------------
-   // AtualizaÃ§Ã£o IA
-   //------------------------------------------------
+//------------------------------------------------
+// Atualizacao IA
+//------------------------------------------------
 
    if(EnableAIFilter)
-   {
+     {
       UpdateAIStatus();
-   }
+     }
 
-   //------------------------------------------------
-   // Sincronizar posiÃ§Ãµes
-   //------------------------------------------------
+//------------------------------------------------
+// Sincronizar posicoes
+//------------------------------------------------
 
    CSmartExecution::Synchronize();
 
-   //------------------------------------------------
-   // Scheduler (v1.2.0)
-   //------------------------------------------------
+//------------------------------------------------
+// Scheduler (v1.2.0)
+//------------------------------------------------
 
    if(EnableScheduler)
-   {
+     {
       CScheduler::Run();
-   }
+     }
 
-   //------------------------------------------------
-   // Atualizar Dashboard
-   //------------------------------------------------
+//------------------------------------------------
+// Atualizar Dashboard
+//------------------------------------------------
 
    if(EnableDashboard)
-   {
+     {
       DashboardUpdate();
-   }
+     }
 
-   //------------------------------------------------
-   // Salvar estatÃ­sticas
-   //------------------------------------------------
+//------------------------------------------------
+// Salvar estatisticas
+//------------------------------------------------
 
    PerformanceSave();
 
-   //------------------------------------------------
-   // Health Check
-   //------------------------------------------------
+//------------------------------------------------
+// Health Monitor + Auditoria (ETAPA 6)
+//------------------------------------------------
+
+   if(EnableHealthMonitor)
+     {
+      HealthMonitorCheck();
+
+      if(EnableVerboseDebug)
+        {
+         Print("========== HEALTH MONITOR ==========");
+         Print(HealthMonitorSummary());
+         Print(EnableAuditLog ? AuditLogSummary() : "AuditLog OFF");
+         Print("====================================");
+        }
+     }
+
+   if(EnableAuditLog)
+     {
+      AuditLogFlush();
+
+      //------------------------------------------------
+      // Backup agendado (ETAPA 7)
+      //------------------------------------------------
+
+      if(EnableBackupManager && BackupIntervalMinutes > 0)
+        {
+         if(TimeCurrent() - g_lastBackupTime >= BackupIntervalMinutes * 60)
+           {
+            g_lastBackupTime = TimeCurrent();
+
+            bool bkOK = CBackupManager::RunBackup();
+
+            Print("[BACKUP] ", bkOK ? "OK" : "FAIL", " | copiados=", CBackupManager::GetLastFilesCopied(), " | falhas=", CBackupManager::GetLastFilesFailed());
+           }
+        }
+     }
+
+//------------------------------------------------
+//------------------------------------------------
+// ETAPA 9 - NOTIFICATION CENTER (alertas periodicos)
+//------------------------------------------------
+
+   if(EnableNotifications)
+     {
+      // HealthMonitor
+      if(NotifyHealth && EnableHealthMonitor)
+        {
+         bool healthy = HealthMonitorCheck();
+         if(!healthy && !g_notifyHealthFailed)
+           {
+            g_notifyHealthFailed = true;
+            CNotificationCenter::SendHealthAlert(HealthMonitorSummary());
+           }
+         if(healthy)
+            g_notifyHealthFailed = false;
+        }
+
+      // Circuit Breaker / SAFE
+      if(NotifyCircuitBreaker && !CCircuitBreaker::CanTrade())
+        {
+         CNotificationCenter::SendCircuitBreaker(
+            CCircuitBreaker::GetStateString(),
+            CCircuitBreaker::GetTriggerReason()
+         );
+        }
+
+      // Drawdown
+      if(NotifyDrawdown && CurrentDrawdown >= NotifyDrawdownThreshold)
+        {
+         CNotificationCenter::SendDrawdown(CurrentDrawdown);
+        }
+
+      // Falhas de execucao (rejeicoes de ordem)
+      if(NotifyExecutionFailures)
+        {
+         int rej = CExecutionStats::GetStats().rejected;
+         if(rej > g_lastRejectedOrders)
+           {
+            g_lastRejectedOrders = rej;
+            CNotificationCenter::SendExecutionFailure(_Symbol, "ordem rejeitada (total=" + IntegerToString(rej) + ")");
+           }
+        }
+
+      // Relatorio diario (1x/dia)
+      if(TimeCurrent() - g_lastDailyReport >= 86400)
+        {
+         g_lastDailyReport = TimeCurrent();
+         CNotificationCenter::SendDailyReport(DailyProfit, TradesToday, 0.0);
+        }
+     }
+
+// Health Check
+//------------------------------------------------
 
    if(EnableVerboseDebug)
-   {
+     {
       Print("========== SYSTEM STATUS ==========");
       Print(CRecoveryManager::GetHealthSummary());
       Print(CSmartExecution::GetExecutionSummary());
       Print(CSafetyManager::GetSafetySummary());
       Print("==================================");
-   }
-}
+     }
+  }
 
 //==================================================
 // ON DEINIT
 //==================================================
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnDeinit(
    const int reason
 )
-{
+  {
    Print(
       "========================================"
    );
@@ -1034,35 +1517,82 @@ void OnDeinit(
       reason
    );
 
-   //================================================
-   // PARAR TIMER
-   //================================================
+//================================================
+// PARAR TIMER
+//================================================
 
-   // v1.2.0 - SALVAR RESUMO (win rate) em FILE_COMMON
+// v1.2.0 - SALVAR RESUMO (win rate) em FILE_COMMON
    StatisticsSaveSummary();
 
    EventKillTimer();
 
 
-   //================================================
-   // DESABILITAR SISTEMA
-   //================================================
+//================================================
+// DESABILITAR SISTEMA
+//================================================
 
    SystemInitialized=false;
 
    TradingEnabled=false;
 
 
-   //================================================
-   // SHUTDOWN DOS MÓDULOS
-   //================================================
+//================================================
+// SHUTDOWN DOS MODULOS
+//================================================
 
    ShutdownModules();
 
+//================================================
+// MONITORING & AUDITORIA (ETAPA 6)
+//================================================
+
+   if(EnableHealthMonitor)
+      HealthMonitorShutdown();
+
+   if(EnableAuditLog)
+      AuditLogClose();
+
+//================================================
+// REPLAY (ETAPA 7)
+//================================================
+
+   if(EnableReplay)
+      ReplayEngineClose();
+
+//================================================
+// ETAPA 8 - BACKTEST ANALYZER + BENCHMARK
+//================================================
+
+   if(EnableBacktestAnalyzer)
+      BacktestClose();
+
+   if(EnableBenchmark)
+      CBenchmarkEngine::LogComparison();
+
+//================================================
+// ETAPA 9 - NOTIFICATION CENTER (encerramento)
+//================================================
+
+   if(EnableNotifications)
+     {
+      if(reason == REASON_INITFAILED)
+         CNotificationCenter::SendError("EA", "falha na inicializacao");
+
+      CNotificationCenter::SendSystemAlert("EA finalizado (reason=" + IntegerToString(reason) + ")");
+      CNotificationCenter::LogStatus();
+   }
 
    //================================================
-   // LOG FINAL
+   // ETAPA 10 - CONFIG + VERSION (encerramento)
    //================================================
+
+   CConfigManager::LogStatus();
+   CVersionManager::LogStatus();
+
+
+//================================================
+// LOG FINAL
+//================================================
 
    Print(
       "XAU_AI_PRO FINALIZADO"
@@ -1071,4 +1601,6 @@ void OnDeinit(
    Print(
       "========================================"
    );
-}
+  }
+
+//+------------------------------------------------------------------+
