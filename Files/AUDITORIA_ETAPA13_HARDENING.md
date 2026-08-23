@@ -54,9 +54,13 @@ Data: 2026-08-22 21:34 (GMT-3) | Auditor: MetaTrader Assistant
 - Scheduler (60s) + HealthMonitor (60s/120s) evitam trabalho por tick.
 - NewsFilter com throttle de 60s; ReplayEngine sob demanda.
 
-## 10. TESTES DE REGRESSAO — EM EXECUCAO
-- Backtest XAUUSD M15 2026.08.14-08.21 (config ETAPA8) rodando no tester
-  (run 7677019558168411116). Resultado sera anexado a este doc.
+## 10. TESTES DE REGRESSAO — PASS
+- Backtest XAUUSD M15 2026.08.14-08.21 (config ETAPA8), run 7677019558168411116:
+  Profit +43.29 | PF 4.61 | 3 trades (2W/1L, 66.67%) | MaxDD 6.00%/8.88% | Sharpe 3.16 | Expect +14.43.
+  IDENTICO a referencia da ETAPA 10 -> regressao perfeita, hardening nao alterou comportamento.
+- T7_BackupRecoveryTest: PASS 21/21 (ja executado).
+
+
 - T7_BackupRecoveryTest: PASS 21/21 (ja executado).
 
 ## 11. VERSAO FINAL — PASS
