@@ -1,3 +1,4 @@
+// XAU_AI_PRO v1.2.0
 #ifndef CONFIG_MQH
 #define CONFIG_MQH
 
@@ -23,6 +24,11 @@ input double MinFreeMargin      = 20.0;  // Margem livre minima (moeda da conta)
 
 input int    MaxTradesPerDay    = 20;
 input int    MaxOpenPositions   = 5;
+
+// v1.3.0 (Etapa 3): quando o risco configurado exige lote abaixo do
+// minimo do broker. true = opera no minimo (comportamento antigo,
+// risco real maior que o configurado). false = estrito, bloqueia.
+input bool   AllowMinLotOverride = true;
 
 //==================================================
 // EXECUCAO
@@ -130,13 +136,15 @@ input bool EnableNewsFilter        = false;
 input bool EnableAIFilter          = true;
 
 //==================================================
-// NEWS FILTER v1.2.0
-// Economic Calendar nativo (filtro real).
-// Filtro base: EnableNewsFilter.
-// Ajustes de janela/impacto abaixo.
+// NEWS FILTER v1.3.0 (Etapa 6)
+// Economic Calendar nativo MQL5 com estados
+// NEWS_CLEAR/WARNING/BLOCK/ACTIVE, throttle de
+// 60s e filtro por moeda.
+// NewsCurrencies vazio = auto-derivacao pelo simbolo
+// (XAUUSD->USD, EURUSD->EUR+USD). Lista manual tem
+// prioridade sobre a auto-derivacao.
 //==================================================
-input bool   EnableNewsFilterReal  = false;
-input string NewsCurrencies        = "USD,EUR,GBP";
+input string NewsCurrencies        = "";
 input int    NewsImpactThreshold   = 2;        // 1=low, 2=medium, 3=high
 input int    NewsMinutesBefore     = 30;
 input int    NewsMinutesAfter      = 30;
@@ -232,6 +240,66 @@ input bool EnableBacktestLog    = true;
 input bool EnableDashboard      = true;
 input bool EnableLogs           = true;
 input bool DebugTradeDecision   = true;
+
+//==================================================
+// MONITORING & AUDITORIA (ETAPA 6)
+// HealthMonitor absorveu o WatchDog (heartbeat dos
+// modulos ATR/ADX/RSI/AI/PYTHON/CSV/JSON).
+// AuditLog absorveu o FullAudit (registro estruturado
+// de entrada/saida por ticket em Data\full_audit.csv).
+//==================================================
+input bool EnableHealthMonitor   = true;   // HealthMonitor + WatchDog integrado
+input int  HealthCheckInterval   = 60;     // segundos entre health checks completos
+input int  HealthWatchdogInterval= 120;    // segundos sem heartbeat para contar falha
+input bool EnableAuditLog        = true;   // Auditoria (decisoes + full audit)
+input bool EnableDiagnostics     = true;   // Diagnostico completo no OnInit
+
+//==================================================
+// REPLAY & BACKUP (ETAPA 7)
+// ReplayEngine: reproduz decisoes/eventos historicos
+// sem interferir na execucao real (REPLAY != LIVE).
+// BackupManager: snapshots em FILE_COMMON + local,
+// com wildcards, manifesto e restauracao validada.
+//==================================================
+input bool   EnableReplay          = false;  // REPLAY: reproduz historico, bloqueia trades reais
+input string ReplayDatasetFile     = "Data\\trades_dataset.csv"; // decisoes (Dataset.mqh export)
+input string ReplayOHLCFile        = "Data\\dataset.csv";        // OHLC/tick (DataLogger.mqh)
+input string ReplayAuditFile       = "Data\\full_audit.csv";     // entradas/saidas (AuditLog.mqh)
+input string ReplaySymbolFilter    = "";     // vazio = todos; ex: "XAUUSD" ou "GOLD#"
+input bool   EnableBackupManager   = true;   // Backup automatico dos dados do EA
+input int    BackupIntervalMinutes = 60;     // 0 = somente manual (OnInit)
+input int    BackupMaxKeep         = 10;     // snapshots mantidos (limpeza automatica)
+
+//==================================================
+// BACKTEST ANALYZER & BENCHMARK (ETAPA 8)
+// BacktestAnalyzer: registra cada trade do tester
+// em BacktestReport.csv e calcula metricas (win rate,
+// profit factor, drawdown, sharpe, expectativa).
+// BenchmarkEngine: compara estrategias (Technical,
+// AI, Hybrid, Ensemble) e elege a melhor.
+//==================================================
+input bool EnableBacktestAnalyzer = true;   // ANALISE: log + metricas de backtest
+input bool EnableBenchmark        = true;   // BENCHMARK: comparacao de estrategias
+
+//==================================================
+// NOTIFICATION CENTER (ETAPA 9)
+// Camada de observabilidade (Push nativo + Telegram).
+// NUNCA bloqueia o trading: falha de notificacao apenas
+// conta e registra, sem interferir no fluxo do EA.
+//==================================================
+input bool   EnableNotifications     = true;   // Central de notificacoes
+input bool   NotifyPushEnabled       = true;   // Push nativo MT5 (SendNotification)
+input string NotifyTelegramToken     = "";     // Token do bot Telegram (vazio = OFF)
+input string NotifyTelegramChatID    = "";     // Chat ID do Telegram
+input int    NotifyCooldownSec       = 30;     // cooldown entre mensagens (mesma categoria)
+input int    NotifyMaxPerMinute      = 10;     // limite anti-spam global
+input bool   NotifyTradeEvents       = true;   // notificar abertura/fechamento
+input bool   NotifyErrors            = true;   // notificar erros
+input bool   NotifyDrawdown          = true;   // notificar drawdown
+input double NotifyDrawdownThreshold = 5.0;    // % minimo de drawdown para alertar
+input bool   NotifyHealth            = true;   // notificar falha de HealthMonitor
+input bool   NotifyCircuitBreaker    = true;   // notificar Circuit Breaker / SAFE
+input bool   NotifyExecutionFailures = true;   // notificar rejeicoes de ordem
 
 //==================================================
 // MULTI SYMBOL

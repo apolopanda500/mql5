@@ -1,0 +1,6 @@
+; XAU_AI_PRO v1.2.0 - ATIVA AutoTrade=true
+; Como usar: clique direito no grafico > Expert Advisors > Propriedades >
+; aba Inputs (Parametros de entrada) > botao "Carregar" (Load) >
+; selecionar XAU_AI_PRO.AUTOTRADE_ON.set > OK
+; Este arquivo altera APENAS o parametro AutoTrade para true.
+AutoTrade=true||false||0||true||N

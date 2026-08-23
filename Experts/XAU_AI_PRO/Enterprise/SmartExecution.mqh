@@ -1,4 +1,4 @@
-//+------------------------------------------------------------------+
+﻿//+------------------------------------------------------------------+
 //|                                              SmartExecution.mqh |
 //|                                  Smart Execution Engine - Core   |
 //|                                            XAU_AI_PRO v1.2.0      |
@@ -17,6 +17,13 @@
 #include "PositionSynchronizer.mqh"
 
 #include "../Core/Config.mqh"
+
+// v1.2.2 - Janela (segundos) do guard inter-instancia de envio.
+// Impede que as 3 instancias do EA (uma por grafico) enviem a
+// mesma ordem (symbol+direcao) simultaneamente. Usa GlobalVariable
+// do terminal: compartilhada entre instancias e resistente a
+// reinicializacoes do EA (rede instavel).
+#define INTER_INSTANCE_SEND_WINDOW_SEC 10
 
 
 //==================================================
@@ -341,11 +348,24 @@ ExecResult CSmartExecution::ValidateExecution(
    //------------------------------------------------
    // VERIFICAR MARGEM
    //------------------------------------------------
+   // v1.3.0: usa o volume NORMALIZADO (step do broker).
+   // O lote fracionario da IA (ex.: 0.01 x 1.25 = 0.0125)
+   // inflava a margem requerida e rejeitava ordens que
+   // caberiam apos a normalizacao para 0.01.
+   //------------------------------------------------
+
+   double marginVolume =
+      CVolumeValidator::NormalizeVolume(
+         exec_req.volume
+      );
+
+   if(marginVolume <= 0.0)
+      return EXEC_INVALID_VOLUME;
 
    if(
       !CMarginChecker::CheckMargin(
          exec_req.symbol,
-         exec_req.volume,
+         marginVolume,
          exec_req.price
       )
    )
@@ -506,6 +526,36 @@ ExecResult CSmartExecution::OpenPosition(
    ticket=0;
 
 
+   //------------------------------------------------
+   // v1.2.2 - GUARD INTER-INSTANCIA
+   // Bloqueia se outra instancia enviou a mesma ordem
+   // (symbol+direcao) ha menos de INTER_INSTANCE_SEND_WINDOW_SEC.
+   // O registro da GlobalVariable so acontece apos confirmacao
+   // de sucesso no envio, entao falha nao cria bloqueio indevido.
+   //------------------------------------------------
+
+   string gvSent="XAI_PRO_SENT_"
+                 +exec_req.symbol+"_"
+                 +IntegerToString((int)exec_req.type);
+
+   datetime lastSent=0;
+
+   bool sgTester=(MQLInfoInteger(MQL_TESTER)!=0);
+   if(!sgTester && GlobalVariableCheck(gvSent))
+      lastSent=(datetime)GlobalVariableGet(gvSent);
+
+   if(!sgTester && TimeCurrent()-lastSent < INTER_INSTANCE_SEND_WINDOW_SEC)
+   {
+      MqlTradeResult skipResult;
+
+      ZeroMemory(skipResult);
+
+      LogExecution(exec_req, EXEC_LOOP_DETECTED, skipResult);
+
+      return EXEC_LOOP_DETECTED;
+   }
+
+
    ExecResult validationResult=
       ValidateExecution(
          exec_req
@@ -556,6 +606,10 @@ ExecResult CSmartExecution::OpenPosition(
    {
       ticket=
          result.order;
+
+      // v1.2.2 - registra o envio SOMENTE apos sucesso
+      if(MQLInfoInteger(MQL_TESTER)==0)
+         GlobalVariableSet(gvSent, (double)TimeCurrent());
    }
 
 

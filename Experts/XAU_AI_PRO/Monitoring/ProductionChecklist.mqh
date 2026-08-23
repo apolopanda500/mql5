@@ -1,38 +1,34 @@
 //+------------------------------------------------------------------+
 //| ProductionChecklist.mqh                                         |
-//| XAU_AI_PRO - Production Readiness Checklist                     |
+//| XAU_AI_PRO - Production Readiness Checklist (ETAPA 10 v2.0)     |
+//| Checagens reais de config, indicadores, IA/Python, dataset,     |
+//| execucao, risco, notificacoes, auditoria e ambiente.            |
 //+------------------------------------------------------------------+
 #property copyright "XAU_AI_PRO"
-#property version   "1.2.0"
+#property version   "1.20"
 
 #ifndef PRODUCTION_CHECKLIST_MQH
 #define PRODUCTION_CHECKLIST_MQH
 
-//==================================================
-// ITEM DO CHECKLIST
-//==================================================
-
-struct ChecklistItem
-{
-   string name;
-   bool   passed;
-   string message;
-   bool   critical;
-};
-
+#include "../Core/Config.mqh"
 
 //==================================================
-// CLASSE
+// CLASSE (arrays paralelos - seguro em MQL5)
 //==================================================
 
 class CProductionChecklist
 {
 private:
 
-   static ChecklistItem m_items[];
-   static int           m_item_count;
-   static bool          m_initialized;
-   static bool          m_all_passed;
+   static string m_names[];
+   static bool   m_passed[];
+   static string m_messages[];
+   static bool   m_critical[];
+   static int    m_item_count;
+   static bool   m_initialized;
+   static bool   m_all_passed;
+
+   static void SetResult(int idx, bool passed, string message);
 
 public:
 
@@ -76,6 +72,10 @@ public:
 
    static void CheckExecution();
 
+   static void CheckNotifications();
+
+   static void CheckAudit();
+
    static void CheckDashboard();
 
    static void CheckScanner();
@@ -83,19 +83,29 @@ public:
    static void CheckPerformance();
 };
 
+//==================================================
+// VARIAVEIS ESTATICAS
+//==================================================
+
+string CProductionChecklist::m_names[];
+bool   CProductionChecklist::m_passed[];
+string CProductionChecklist::m_messages[];
+bool   CProductionChecklist::m_critical[];
+int    CProductionChecklist::m_item_count = 0;
+bool   CProductionChecklist::m_initialized = false;
+bool   CProductionChecklist::m_all_passed = false;
 
 //==================================================
-// VARIÁVEIS ESTÁTICAS
+// HELPERS
 //==================================================
 
-ChecklistItem CProductionChecklist::m_items[];
-
-int CProductionChecklist::m_item_count = 0;
-
-bool CProductionChecklist::m_initialized = false;
-
-bool CProductionChecklist::m_all_passed = false;
-
+void CProductionChecklist::SetResult(int idx, bool passed, string message)
+{
+   if(idx < 0 || idx >= m_item_count)
+      return;
+   m_passed[idx]   = passed;
+   m_messages[idx] = message;
+}
 
 //==================================================
 // INIT
@@ -106,94 +116,48 @@ void CProductionChecklist::Init()
    if(m_initialized)
       return;
 
-   ArrayResize(m_items,15);
+   ArrayResize(m_names, 17);
+   ArrayResize(m_passed, 17);
+   ArrayResize(m_messages, 17);
+   ArrayResize(m_critical, 17);
 
-   m_item_count = 15;
+   m_item_count = 17;
 
-   // CRÍTICOS
-   m_items[0].name     = "Broker";
-   m_items[0].passed   = false;
-   m_items[0].message  = "";
-   m_items[0].critical = true;
+   // CRITICOS
+   m_names[0]  = "Broker";          m_critical[0] = true;
+   m_names[1]  = "Account";         m_critical[1] = true;
+   m_names[2]  = "Permissions";     m_critical[2] = true;
+   m_names[3]  = "Symbols";         m_critical[3] = true;
+   m_names[4]  = "Indicators";      m_critical[4] = true;
 
-   m_items[1].name     = "Account";
-   m_items[1].passed   = false;
-   m_items[1].message  = "";
-   m_items[1].critical = true;
+   // NAO CRITICOS
+   m_names[5]  = "AI";              m_critical[5] = false;
+   m_names[6]  = "Python";          m_critical[6] = false;
+   m_names[7]  = "Dataset";         m_critical[7] = false;
+   m_names[8]  = "JSON";            m_critical[8] = false;
+   m_names[9]  = "Logs";            m_critical[9] = false;
 
-   m_items[2].name     = "Permissions";
-   m_items[2].passed   = false;
-   m_items[2].message  = "";
-   m_items[2].critical = true;
+   // CRITICOS
+   m_names[10] = "Risk";            m_critical[10] = true;
+   m_names[11] = "Execution";       m_critical[11] = true;
 
-   m_items[3].name     = "Symbols";
-   m_items[3].passed   = false;
-   m_items[3].message  = "";
-   m_items[3].critical = true;
+   // NAO CRITICOS
+   m_names[12] = "Notifications";   m_critical[12] = false;
+   m_names[13] = "Audit";           m_critical[13] = false;
+   m_names[14] = "Dashboard";       m_critical[14] = false;
+   m_names[15] = "Scanner";         m_critical[15] = false;
+   m_names[16] = "Performance";     m_critical[16] = false;
 
-   m_items[4].name     = "Indicators";
-   m_items[4].passed   = false;
-   m_items[4].message  = "";
-   m_items[4].critical = true;
-
-   // NÃO CRÍTICOS
-   m_items[5].name     = "AI";
-   m_items[5].passed   = false;
-   m_items[5].message  = "";
-   m_items[5].critical = false;
-
-   m_items[6].name     = "Python";
-   m_items[6].passed   = false;
-   m_items[6].message  = "";
-   m_items[6].critical = false;
-
-   m_items[7].name     = "Dataset";
-   m_items[7].passed   = false;
-   m_items[7].message  = "";
-   m_items[7].critical = false;
-
-   m_items[8].name     = "JSON";
-   m_items[8].passed   = false;
-   m_items[8].message  = "";
-   m_items[8].critical = false;
-
-   m_items[9].name     = "Logs";
-   m_items[9].passed   = false;
-   m_items[9].message  = "";
-   m_items[9].critical = false;
-
-   // CRÍTICOS
-   m_items[10].name     = "Risk";
-   m_items[10].passed   = false;
-   m_items[10].message  = "";
-   m_items[10].critical = true;
-
-   m_items[11].name     = "Execution";
-   m_items[11].passed   = false;
-   m_items[11].message  = "";
-   m_items[11].critical = true;
-
-   // NÃO CRÍTICOS
-   m_items[12].name     = "Dashboard";
-   m_items[12].passed   = false;
-   m_items[12].message  = "";
-   m_items[12].critical = false;
-
-   m_items[13].name     = "Scanner";
-   m_items[13].passed   = false;
-   m_items[13].message  = "";
-   m_items[13].critical = false;
-
-   m_items[14].name     = "Performance";
-   m_items[14].passed   = false;
-   m_items[14].message  = "";
-   m_items[14].critical = false;
+   for(int i = 0; i < m_item_count; i++)
+   {
+      m_passed[i]   = false;
+      m_messages[i] = "pendente";
+   }
 
    m_initialized = true;
 
-   Print("[CHECKLIST] ProductionChecklist inicializado");
+   Print("[CHECKLIST] ProductionChecklist inicializado (17 itens)");
 }
-
 
 //==================================================
 // RUN
@@ -219,15 +183,17 @@ bool CProductionChecklist::Run()
    CheckRisk();
    CheckExecution();
 
+   CheckNotifications();
+   CheckAudit();
    CheckDashboard();
    CheckScanner();
    CheckPerformance();
 
    m_all_passed = true;
 
-   for(int i=0; i<m_item_count; i++)
+   for(int i = 0; i < m_item_count; i++)
    {
-      if(!m_items[i].passed && m_items[i].critical)
+      if(!m_passed[i] && m_critical[i])
       {
          m_all_passed = false;
          break;
@@ -239,7 +205,6 @@ bool CProductionChecklist::Run()
    return m_all_passed;
 }
 
-
 //==================================================
 // READY
 //==================================================
@@ -249,23 +214,16 @@ bool CProductionChecklist::IsReady()
    return m_all_passed;
 }
 
-
 //==================================================
 // BROKER
 //==================================================
 
 void CProductionChecklist::CheckBroker()
 {
-   bool ok = (bool)TerminalInfoInteger(TERMINAL_CONNECTED);
+   bool ok = (TerminalInfoInteger(TERMINAL_CONNECTED) != 0);
 
-   m_items[0].passed = ok;
-
-   if(ok)
-      m_items[0].message = "Terminal conectado";
-   else
-      m_items[0].message = "Terminal desconectado";
+   SetResult(0, ok, ok ? "Terminal conectado" : "Terminal desconectado");
 }
-
 
 //==================================================
 // ACCOUNT
@@ -277,16 +235,8 @@ void CProductionChecklist::CheckAccount()
 
    bool ok = (login > 0);
 
-   m_items[1].passed = ok;
-
-   if(ok)
-      m_items[1].message =
-         "Conta OK: " + IntegerToString(login);
-   else
-      m_items[1].message =
-         "Conta nao identificada";
+   SetResult(1, ok, ok ? ("Conta OK: " + IntegerToString(login)) : "Conta nao identificada");
 }
-
 
 //==================================================
 // PERMISSIONS
@@ -294,26 +244,13 @@ void CProductionChecklist::CheckAccount()
 
 void CProductionChecklist::CheckPermissions()
 {
-   bool terminalTrade =
-      (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+   bool terminalTrade = (TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) != 0);
+   bool accountTrade  = (AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) != 0);
 
-   bool accountTrade =
-      (bool)AccountInfoInteger(ACCOUNT_TRADE_ALLOWED);
+   bool ok = terminalTrade && accountTrade;
 
-   bool ok =
-      terminalTrade &&
-      accountTrade;
-
-   m_items[2].passed = ok;
-
-   if(ok)
-      m_items[2].message =
-         "Trading permitido";
-   else
-      m_items[2].message =
-         "Trading nao permitido";
+   SetResult(2, ok, ok ? "Trading permitido" : "Trading nao permitido (Algoritmos OFF?)");
 }
-
 
 //==================================================
 // SYMBOL
@@ -323,122 +260,61 @@ void CProductionChecklist::CheckSymbols()
 {
    string symbol = _Symbol;
 
-   bool selected =
-      SymbolSelect(symbol,true);
+   bool selected = SymbolSelect(symbol, true);
 
-   double bid =
-      SymbolInfoDouble(
-         symbol,
-         SYMBOL_BID
-      );
+   double bid = SymbolInfoDouble(symbol, SYMBOL_BID);
+   double ask = SymbolInfoDouble(symbol, SYMBOL_ASK);
 
-   double ask =
-      SymbolInfoDouble(
-         symbol,
-         SYMBOL_ASK
-      );
+   bool ok = selected && bid > 0.0 && ask > 0.0;
 
-   bool ok =
-      selected &&
-      bid > 0.0 &&
-      ask > 0.0;
-
-   m_items[3].passed = ok;
-
-   if(ok)
-      m_items[3].message =
-         "Symbol OK: " + symbol;
-   else
-      m_items[3].message =
-         "Symbol sem cotacao";
+   SetResult(3, ok, ok ? ("Symbol OK: " + symbol) : "Symbol sem cotacao");
 }
 
-
 //==================================================
-// INDICATORS
+// INDICATORS (ATR + ADX + RSI reais)
 //==================================================
 
 void CProductionChecklist::CheckIndicators()
 {
-   int handle =
-      iATR(
-         _Symbol,
-         PERIOD_CURRENT,
-         14
-      );
+   int hATR = iATR(_Symbol, PERIOD_CURRENT, ATRPeriod);
+   int hADX = iADX(_Symbol, PERIOD_CURRENT, ADXPeriod);
+   int hRSI = iRSI(_Symbol, PERIOD_CURRENT, RSIPeriod, PRICE_CLOSE);
 
-   bool ok =
-      (handle != INVALID_HANDLE);
+   bool ok = (hATR != INVALID_HANDLE) && (hADX != INVALID_HANDLE) && (hRSI != INVALID_HANDLE);
 
-   if(handle != INVALID_HANDLE)
-      IndicatorRelease(handle);
+   if(hATR != INVALID_HANDLE) IndicatorRelease(hATR);
+   if(hADX != INVALID_HANDLE) IndicatorRelease(hADX);
+   if(hRSI != INVALID_HANDLE) IndicatorRelease(hRSI);
 
-   m_items[4].passed = ok;
-
-   if(ok)
-      m_items[4].message =
-         "ATR handle criado";
-   else
-      m_items[4].message =
-         "Falha ao criar ATR";
+   SetResult(4, ok, ok ? "ATR+ADX+RSI handles OK" : "Falha ao criar handles de indicadores");
 }
 
-
 //==================================================
-// AI
+// AI (prediction JSON do simbolo)
 //==================================================
 
 void CProductionChecklist::CheckAI()
 {
-   string file =
-      "Data\\prediction_" +
-      _Symbol +
-      ".json";
+   string file = "Data\\prediction_" + _Symbol + ".json";
 
-   bool ok =
-      FileIsExist(
-         file,
-         FILE_COMMON
-      );
+   bool ok = FileIsExist(file, FILE_COMMON);
 
-   m_items[5].passed = ok;
-
-   if(ok)
-      m_items[5].message =
-         "Prediction JSON encontrado";
-   else
-      m_items[5].message =
-         "Prediction JSON nao encontrado";
+   SetResult(5, ok, ok ? "Prediction JSON encontrado" : "Prediction JSON nao encontrado (IA offline)");
 }
 
-
 //==================================================
-// PYTHON
+// PYTHON (pipeline: prediction + dataset)
 //==================================================
 
 void CProductionChecklist::CheckPython()
 {
-   string file =
-      "Data\\prediction_" +
-      _Symbol +
-      ".json";
+   string pred = "Data\\prediction_" + _Symbol + ".json";
+   string ds   = "Data\\dataset.csv";
 
-   bool ok =
-      FileIsExist(
-         file,
-         FILE_COMMON
-      );
+   bool ok = FileIsExist(pred, FILE_COMMON) && FileIsExist(ds, FILE_COMMON);
 
-   m_items[6].passed = ok;
-
-   if(ok)
-      m_items[6].message =
-         "Pipeline Python possui prediction";
-   else
-      m_items[6].message =
-         "Nenhuma prediction Python encontrada";
+   SetResult(6, ok, ok ? "Pipeline Python: prediction + dataset OK" : "Pipeline Python incompleto");
 }
-
 
 //==================================================
 // DATASET
@@ -446,25 +322,23 @@ void CProductionChecklist::CheckPython()
 
 void CProductionChecklist::CheckDataset()
 {
-   string file =
-      "Data\\dataset.csv";
+   string file = "Data\\dataset.csv";
 
-   bool ok =
-      FileIsExist(
-         file,
-         FILE_COMMON
-      );
+   bool ok = false;
 
-   m_items[7].passed = ok;
+   if(FileIsExist(file, FILE_COMMON))
+   {
+      int h = FileOpen(file, FILE_READ | FILE_BIN | FILE_COMMON);
 
-   if(ok)
-      m_items[7].message =
-         "Dataset encontrado";
-   else
-      m_items[7].message =
-         "Dataset nao encontrado";
+      if(h != INVALID_HANDLE)
+      {
+         ok = (FileSize(h) > 0);
+         FileClose(h);
+      }
+   }
+
+   SetResult(7, ok, ok ? "Dataset OK" : "Dataset ausente ou vazio");
 }
-
 
 //==================================================
 // JSON
@@ -472,40 +346,23 @@ void CProductionChecklist::CheckDataset()
 
 void CProductionChecklist::CheckJSON()
 {
-   string file =
-      "Data\\prediction_" +
-      _Symbol +
-      ".json";
+   string file = "Data\\prediction_" + _Symbol + ".json";
 
-   int handle =
-      FileOpen(
-         file,
-         FILE_READ |
-         FILE_ANSI |
-         FILE_COMMON
-      );
+   bool ok = false;
 
-   bool ok =
-      (handle != INVALID_HANDLE);
-
-   if(handle != INVALID_HANDLE)
+   if(FileIsExist(file, FILE_COMMON))
    {
-      if(FileSize(handle) <= 0)
-         ok = false;
+      int h = FileOpen(file, FILE_READ | FILE_BIN | FILE_COMMON);
 
-      FileClose(handle);
+      if(h != INVALID_HANDLE)
+      {
+         ok = (FileSize(h) > 0);
+         FileClose(h);
+      }
    }
 
-   m_items[8].passed = ok;
-
-   if(ok)
-      m_items[8].message =
-         "JSON acessivel";
-   else
-      m_items[8].message =
-         "JSON ausente ou vazio";
+   SetResult(8, ok, ok ? "JSON acessivel" : "JSON ausente ou vazio");
 }
-
 
 //==================================================
 // LOGS
@@ -513,69 +370,94 @@ void CProductionChecklist::CheckJSON()
 
 void CProductionChecklist::CheckLogs()
 {
-   m_items[9].passed = true;
-   m_items[9].message = "Sistema de logs carregado";
+   bool ok = EnableLogs;
+
+   SetResult(9, ok, ok ? "Sistema de logs habilitado" : "Logs desabilitados no input");
 }
 
-
 //==================================================
-// RISK
+// RISK (margem + parametros de risco validos)
 //==================================================
 
 void CProductionChecklist::CheckRisk()
 {
-   double freeMargin =
-      AccountInfoDouble(
-         ACCOUNT_MARGIN_FREE
-      );
+   double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
 
-   bool ok =
-      (freeMargin > 0.0);
+   bool paramsOK =
+      RiskPercent > 0.0 &&
+      MaxDailyLossPercent > 0.0 &&
+      MaxDrawdownPercent > 0.0 &&
+      MaxTradesPerDay > 0 &&
+      MaxOpenPositions > 0;
 
-   m_items[10].passed = ok;
+   bool ok = paramsOK && freeMargin >= MinFreeMargin;
 
-   if(ok)
-      m_items[10].message =
-         "Margem livre OK: " +
-         DoubleToString(freeMargin,2);
+   string msg = "";
+
+   if(!paramsOK)
+      msg = "Parametros de risco invalidos (RiskPercent/MaxDailyLoss/MaxDrawdown/MaxTrades/MaxOpen)";
+   else if(freeMargin < MinFreeMargin)
+      msg = "Margem livre insuficiente: " + DoubleToString(freeMargin, 2);
    else
-      m_items[10].message =
-         "Margem livre insuficiente";
+      msg = "Risco OK | margem livre=" + DoubleToString(freeMargin, 2);
+
+   SetResult(10, ok, msg);
 }
 
-
 //==================================================
-// EXECUTION
+// EXECUTION (bid/ask + spread)
 //==================================================
 
 void CProductionChecklist::CheckExecution()
 {
-   double bid =
-      SymbolInfoDouble(
-         _Symbol,
-         SYMBOL_BID
-      );
+   double bid   = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   double ask   = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
 
-   double ask =
-      SymbolInfoDouble(
-         _Symbol,
-         SYMBOL_ASK
-      );
+   bool ok = (bid > 0.0 && ask > 0.0);
 
-   bool ok =
-      bid > 0.0 &&
-      ask > 0.0;
+   string msg = ok ? "Bid/Ask disponiveis" : "Preco indisponivel";
 
-   m_items[11].passed = ok;
+   if(ok && point > 0.0)
+   {
+      double spreadPoints = (ask - bid) / point;
 
-   if(ok)
-      m_items[11].message =
-         "Bid/Ask disponiveis";
-   else
-      m_items[11].message =
-         "Preco indisponivel";
+      if(spreadPoints > MaxSpread)
+      {
+         ok = false;
+         msg = "Spread acima do maximo: " + DoubleToString(spreadPoints, 1) + " pts (max=" + DoubleToString(MaxSpread, 1) + ")";
+      }
+   }
+
+   SetResult(11, ok, msg);
 }
 
+//==================================================
+// NOTIFICATIONS
+//==================================================
+
+void CProductionChecklist::CheckNotifications()
+{
+   bool ok = EnableNotifications;
+
+   string msg = ok ? "Central de notificacoes habilitada" : "Notificacoes desabilitadas";
+
+   if(ok && NotifyTelegramToken != "" && NotifyTelegramChatID == "")
+      msg = "Telegram configurado sem ChatID (apenas Push)";
+
+   SetResult(12, ok, msg);
+}
+
+//==================================================
+// AUDIT
+//==================================================
+
+void CProductionChecklist::CheckAudit()
+{
+   bool ok = EnableAuditLog;
+
+   SetResult(13, ok, ok ? "Auditoria habilitada" : "Auditoria desabilitada");
+}
 
 //==================================================
 // DASHBOARD
@@ -583,11 +465,10 @@ void CProductionChecklist::CheckExecution()
 
 void CProductionChecklist::CheckDashboard()
 {
-   m_items[12].passed = true;
-   m_items[12].message =
-      "Modulo carregado";
-}
+   bool ok = EnableDashboard;
 
+   SetResult(14, ok, ok ? "Dashboard habilitado" : "Dashboard desabilitado");
+}
 
 //==================================================
 // SCANNER
@@ -595,23 +476,21 @@ void CProductionChecklist::CheckDashboard()
 
 void CProductionChecklist::CheckScanner()
 {
-   m_items[13].passed = true;
-   m_items[13].message =
-      "Modulo carregado";
+   bool ok = EnableMultiSymbol;
+
+   SetResult(15, ok, ok ? "Multi-symbol habilitado" : "Scanner multi-symbol desabilitado");
 }
 
-
 //==================================================
-// PERFORMANCE
+// PERFORMANCE (analise/benchmark ativos)
 //==================================================
 
 void CProductionChecklist::CheckPerformance()
 {
-   m_items[14].passed = true;
-   m_items[14].message =
-      "Modulo carregado";
-}
+   bool ok = EnableBacktestAnalyzer || EnableBenchmark;
 
+   SetResult(16, ok, ok ? "Metricas de performance ativas" : "Analise de performance desabilitada");
+}
 
 //==================================================
 // SUMMARY
@@ -619,72 +498,36 @@ void CProductionChecklist::CheckPerformance()
 
 string CProductionChecklist::GetSummary()
 {
-   string summary =
-      "=== PRODUCTION CHECKLIST ===\n";
+   string summary = "=== PRODUCTION CHECKLIST ===\n";
 
    int passed = 0;
    int failed = 0;
    int criticalFailed = 0;
 
-   for(int i=0; i<m_item_count; i++)
+   for(int i = 0; i < m_item_count; i++)
    {
-      string status =
-         m_items[i].passed
-         ? "PASS"
-         : "FAIL";
+      string status = m_passed[i] ? "PASS" : "FAIL";
+      string critical = m_critical[i] ? "[CRITICAL]" : "[OPTIONAL]";
 
-      string critical =
-         m_items[i].critical
-         ? "[CRITICAL]"
-         : "[OPTIONAL]";
+      summary += critical + " " + m_names[i] + ": " + status + " - " + m_messages[i] + "\n";
 
-      summary +=
-         critical +
-         " " +
-         m_items[i].name +
-         ": " +
-         status +
-         " - " +
-         m_items[i].message +
-         "\n";
-
-      if(m_items[i].passed)
-      {
+      if(m_passed[i])
          passed++;
-      }
       else
       {
          failed++;
-
-         if(m_items[i].critical)
+         if(m_critical[i])
             criticalFailed++;
       }
    }
 
-   summary +=
-      "\nResult: " +
-      IntegerToString(passed) +
-      "/" +
-      IntegerToString(m_item_count) +
-      " passed";
-
-   summary +=
-      " | " +
-      IntegerToString(failed) +
-      " failed";
-
-   summary +=
-      " | " +
-      IntegerToString(criticalFailed) +
-      " critical failed";
-
-   summary +=
-      "\nREADY: " +
-      (m_all_passed ? "YES" : "NO");
+   summary += "\nResult: " + IntegerToString(passed) + "/" + IntegerToString(m_item_count) + " passed";
+   summary += " | " + IntegerToString(failed) + " failed";
+   summary += " | " + IntegerToString(criticalFailed) + " critical failed";
+   summary += "\nREADY: " + (m_all_passed ? "YES" : "NO");
 
    return summary;
 }
-
 
 //==================================================
 // LOG RESULTS
@@ -692,12 +535,17 @@ string CProductionChecklist::GetSummary()
 
 void CProductionChecklist::LogResults()
 {
-   Print(
-      "[CHECKLIST]\n",
-      GetSummary()
-   );
-}
+   string summary = GetSummary();
+   Print("[CHECKLIST]\n", summary);
 
+   int h = FileOpen("XAU_AI_PRO\\ProductionChecklist.txt", FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON);
+   if(h != INVALID_HANDLE)
+     {
+      FileSeek(h, 0, SEEK_SET);
+      FileWriteString(h, summary);
+      FileClose(h);
+     }
+}
 
 //==================================================
 // COUNTERS
@@ -707,15 +555,14 @@ int CProductionChecklist::GetPassedCount()
 {
    int count = 0;
 
-   for(int i=0; i<m_item_count; i++)
+   for(int i = 0; i < m_item_count; i++)
    {
-      if(m_items[i].passed)
+      if(m_passed[i])
          count++;
    }
 
    return count;
 }
-
 
 //==================================================
 
@@ -723,15 +570,14 @@ int CProductionChecklist::GetFailedCount()
 {
    int count = 0;
 
-   for(int i=0; i<m_item_count; i++)
+   for(int i = 0; i < m_item_count; i++)
    {
-      if(!m_items[i].passed)
+      if(!m_passed[i])
          count++;
    }
 
    return count;
 }
-
 
 //==================================================
 
@@ -739,13 +585,10 @@ int CProductionChecklist::GetCriticalFailedCount()
 {
    int count = 0;
 
-   for(int i=0; i<m_item_count; i++)
+   for(int i = 0; i < m_item_count; i++)
    {
-      if(!m_items[i].passed &&
-         m_items[i].critical)
-      {
+      if(!m_passed[i] && m_critical[i])
          count++;
-      }
    }
 
    return count;

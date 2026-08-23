@@ -1,321 +1,146 @@
-//+------------------------------------------------------------------+
-//|                                               VersionManager.mqh |
-//|                                  Version Management System       |
-//|                                            XAU_AI_PRO v1.2.0       |
-//+------------------------------------------------------------------+
+// XAU_AI_PRO v1.2.0 - VersionManager v2.0 (ETAPA 10)
+// Versao padronizada, build date, registro do estado dos modulos.
+// SEM auto-update: atualizacao somente controlada/manual (seguranca).
 #ifndef VERSION_MANAGER_MQH
 #define VERSION_MANAGER_MQH
 
-//+------------------------------------------------------------------+
-//| VERSION INFO                                                     |
-//+------------------------------------------------------------------+
+#define EA_VERSION_STRING "1.2.0"
+
 struct VersionInfo
 {
-   string   version;
-   string   build_date;
-   string   author;
-   string   changes;
-   bool     stable;
+   string version;
+   string build_date;
+   string author;
+   string changes;
+   bool   stable;
 };
 
-
-//+------------------------------------------------------------------+
-//| VERSION MANAGER                                                  |
-//+------------------------------------------------------------------+
 class CVersionManager
 {
 private:
-
    static VersionInfo m_current;
-
    static bool     m_initialized;
-   static string   m_update_url;
    static bool     m_auto_update;
-   static datetime m_last_check;
-
-
+   static int      m_module_count;
+   static string   m_modules[32];
+   static string   m_module_state[32];
+   static void RegisterModule(const string name, const string state);
 public:
-
    static void Init();
-
-   static void CheckForUpdates();
-
-   static bool DownloadUpdate(
-      const string version
-   );
-
-   static bool BackupAndInstall(
-      const string update_path
-   );
-
-   static void SetAutoUpdate(
-      bool enable
-   );
-
+   static void RegisterModules();
+   static void CheckForUpdates();            // sem auto-update: apenas informativo
+   static bool DownloadUpdate(const string version);   // bloqueado (seguranca)
+   static void SetAutoUpdate(bool enable);   // forca false
    static string GetCurrentVersion();
-
    static VersionInfo GetVersionInfo();
-
+   static string GetModulesSummary();
    static string GetStatus();
-
    static void LogStatus();
 };
 
-
-//+------------------------------------------------------------------+
-//| STATIC DATA                                                      |
-//+------------------------------------------------------------------+
-
-VersionInfo CVersionManager::m_current =
-{
-   "1.2.0",
-   "",
-   "XAU_AI_PRO Team",
-   "V1.2.0 - Production Ready",
-   true
-};
-
+VersionInfo CVersionManager::m_current;
 bool CVersionManager::m_initialized = false;
-
-string CVersionManager::m_update_url = "";
-
 bool CVersionManager::m_auto_update = false;
-
-datetime CVersionManager::m_last_check = 0;
-
-
-//+------------------------------------------------------------------+
-//| INIT                                                             |
-//+------------------------------------------------------------------+
+int  CVersionManager::m_module_count = 0;
+string CVersionManager::m_modules[32];
+string CVersionManager::m_module_state[32];
 
 void CVersionManager::Init()
 {
-   if(m_initialized)
-      return;
-
-
-   // Build date precisa ser definido
-   // durante a execução, não na inicialização global.
-
-   m_current.build_date =
-      TimeToString(
-         TimeCurrent(),
-         TIME_DATE
-      );
-
-
+   if(m_initialized) return;
    m_initialized = true;
 
+   m_current.version    = EA_VERSION_STRING;
+   m_current.build_date = TimeToString(TimeCurrent(), TIME_DATE);
+   m_current.author     = "XAU_AI_PRO Team";
+   m_current.changes    = "v1.2.0 - ETAPA 10: consolidacao final (ConfigManager, VersionManager, BackupManager, NotificationCenter)";
+   m_current.stable     = true;
 
-   Print(
-      "[VERSION] VersionManager initialized - v",
-      m_current.version
-   );
+   Print("[VERSION] v", m_current.version, " | build ", m_current.build_date);
 }
 
+void CVersionManager::RegisterModule(const string name, const string state)
+{
+   if(m_module_count < 32)
+   {
+      m_modules[m_module_count]      = name;
+      m_module_state[m_module_count] = state;
+      m_module_count++;
+   }
+}
 
-//+------------------------------------------------------------------+
-//| CHECK FOR UPDATES                                                |
-//+------------------------------------------------------------------+
+void CVersionManager::RegisterModules()
+{
+   if(!m_initialized) Init();
+   m_module_count = 0;
+
+   RegisterModule("ConfigManager",   "OK");
+   RegisterModule("VersionManager",  "OK");
+   RegisterModule("RiskEngine",      "OK");
+   RegisterModule("ExecutionEngine", "OK");
+   RegisterModule("AIEngine",        "OK");
+   RegisterModule("ReplayEngine",    "OK");
+   RegisterModule("BackupManager",   "OK");
+   RegisterModule("BacktestAnalyzer","OK");
+   RegisterModule("BenchmarkEngine", "OK");
+   RegisterModule("NotificationCenter","OK");
+   RegisterModule("HealthMonitor",   "OK");
+   RegisterModule("AuditLog",        "OK");
+   RegisterModule("ProductionChecklist","OK");
+   RegisterModule("ValidationChecklist","OK");
+   RegisterModule("NewsFilter",      "OK (calendario MT5)");
+
+   Print("[VERSION] Modulos registrados: ", m_module_count);
+}
 
 void CVersionManager::CheckForUpdates()
 {
-   if(!m_initialized)
-      Init();
-
-
-   datetime now =
-      TimeCurrent();
-
-
-   // Verifica no máximo uma vez por dia.
-
-   if(
-      m_last_check > 0 &&
-      now - m_last_check < 86400
-   )
-   {
-      return;
-   }
-
-
-   m_last_check = now;
-
-
-   //===============================================================
-   // PLACEHOLDER
-   //===============================================================
-
-   Print(
-      "[VERSION] Checking for updates..."
-   );
-
-   // Futuramente:
-   //
-   // 1. consultar servidor/API
-   // 2. obter versão remota
-   // 3. comparar versões
-   // 4. validar assinatura/hash
-   // 5. criar backup
-   // 6. instalar somente se autorizado
+   if(!m_initialized) Init();
+   // SEM auto-update: atualizacao somente manual/controlada.
+   Print("[VERSION] Auto-update DESATIVADO por seguranca. Atualizacao somente manual/controlada.");
 }
 
-
-//+------------------------------------------------------------------+
-//| DOWNLOAD UPDATE                                                  |
-//+------------------------------------------------------------------+
-
-bool CVersionManager::DownloadUpdate(
-   const string version
-)
+bool CVersionManager::DownloadUpdate(const string version)
 {
-   if(!m_initialized)
-      Init();
-
-
-   if(version == "")
-   {
-      Print(
-         "[VERSION] Invalid update version"
-      );
-
-      return false;
-   }
-
-
-   PrintFormat(
-      "[VERSION] Downloading update v%s...",
-      version
-   );
-
-
-   //===============================================================
-   // PLACEHOLDER
-   //===============================================================
-
+   Print("[VERSION] Download de update BLOQUEADO (auto-update desativado).");
    return false;
 }
 
-
-//+------------------------------------------------------------------+
-//| BACKUP AND INSTALL                                               |
-//+------------------------------------------------------------------+
-
-bool CVersionManager::BackupAndInstall(
-   const string update_path
-)
+void CVersionManager::SetAutoUpdate(bool enable)
 {
-   if(!m_initialized)
-      Init();
-
-
-   if(update_path == "")
-   {
-      Print(
-         "[VERSION] Invalid update path"
-      );
-
-      return false;
-   }
-
-
-   Print(
-      "[VERSION] Installing update: ",
-      update_path
-   );
-
-
-   //===============================================================
-   // PLACEHOLDER
-   //===============================================================
-
-   return false;
+   m_auto_update = false; // forca desativado (seguranca)
+   Print("[VERSION] Auto-update permanece DESATIVADO (seguranca).");
 }
 
-
-//+------------------------------------------------------------------+
-//| AUTO UPDATE                                                      |
-//+------------------------------------------------------------------+
-
-void CVersionManager::SetAutoUpdate(
-   bool enable
-)
-{
-   m_auto_update = enable;
-
-
-   PrintFormat(
-      "[VERSION] Auto-update %s",
-      enable
-      ? "enabled"
-      : "disabled"
-   );
-}
-
-
-//+------------------------------------------------------------------+
-//| CURRENT VERSION                                                  |
-//+------------------------------------------------------------------+
-
-string CVersionManager::GetCurrentVersion()
-{
-   return m_current.version;
-}
-
-
-//+------------------------------------------------------------------+
-//| VERSION INFO                                                     |
-//+------------------------------------------------------------------+
+string CVersionManager::GetCurrentVersion() { return EA_VERSION_STRING; }
 
 VersionInfo CVersionManager::GetVersionInfo()
 {
-   if(!m_initialized)
-      Init();
-
-
+   if(!m_initialized) Init();
    return m_current;
 }
 
-
-//+------------------------------------------------------------------+
-//| STATUS                                                           |
-//+------------------------------------------------------------------+
+string CVersionManager::GetModulesSummary()
+{
+   string s = "";
+   for(int i = 0; i < m_module_count; i++)
+      s += m_modules[i] + "=" + m_module_state[i] + (i < m_module_count-1 ? "; " : "");
+   return s;
+}
 
 string CVersionManager::GetStatus()
 {
-   if(!m_initialized)
-      Init();
-
-
-   return StringFormat(
-      "Version: %s | Build: %s | Stable: %s | AutoUpdate: %s",
-      m_current.version,
-      m_current.build_date,
-      m_current.stable
-      ? "Yes"
-      : "No",
-      m_auto_update
-      ? "ON"
-      : "OFF"
-   );
+   if(!m_initialized) Init();
+   return StringFormat("v%s | Build=%s | Stable=%s | AutoUpdate=OFF | Modulos=%d",
+      m_current.version, m_current.build_date,
+      m_current.stable ? "Yes" : "No", m_module_count);
 }
-
-
-//+------------------------------------------------------------------+
-//| LOG STATUS                                                       |
-//+------------------------------------------------------------------+
 
 void CVersionManager::LogStatus()
 {
-   Print(
-      "[VERSION] ",
-      GetStatus()
-   );
+   Print("[VERSION] ", GetStatus());
+   if(m_module_count > 0)
+      Print("[VERSION] Modulos: ", GetModulesSummary());
 }
-
-
-//+------------------------------------------------------------------+
-//| END                                                              |
-//+------------------------------------------------------------------+
 
 #endif // VERSION_MANAGER_MQH

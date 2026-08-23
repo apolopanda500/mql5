@@ -1,321 +1,144 @@
-// XAU_AI_PRO v1.2.0
-#ifndef MARKETANALYZER_MQH
-#define MARKETANALYZER_MQH
+﻿// XAU_AI_PRO v1.2.0
+#ifndef MARKETREGIME_MQH
+#define MARKETREGIME_MQH
 
+//==================================================
+// MARKET REGIME (SUBSTITUTO do antigo MarketAnalyzer)
+//
+// ANTES (orfaos): MarketRegime.mqh criava handles
+// iMA proprios (MarketMAFastPeriod/MarketMASlowPeriod)
+// duplicando FastEMA/SlowEMA e TrendFilter, com guard
+// errado (MARKETANALYZER_MQH).
+//
+// AGORA: camada de leitura de regime SEM handles e SEM
+// inputs proprios. Reutiliza os modulos ativos:
+//   - TrendFilter  -> direcao (EMA200 H1, multi-symbol)
+//   - VolatilityFilter (ATR) -> volatilidade
+//   - ADX          -> forca da tendencia
+//==================================================
 
+#include "../Core/Config.mqh"
+#include "../Filters/TrendFilter.mqh"
 #include "../Indicators/VolatilityFilter.mqh"
+#include "../Indicators/ADX.mqh"
 
+//==================================================
+// REGIME ENUM
+//==================================================
 
-//====================================================
-// TREND ENUM
-//====================================================
-
-enum TrendDirection
+enum MarketRegimeType
 {
-   TREND_NONE = 0,
-   TREND_BUY  = 1,
-   TREND_SELL = -1
+   REGIME_NONE       = 0,
+   REGIME_TREND_UP   = 1,
+   REGIME_TREND_DOWN = -1
 };
 
+//==================================================
+// DIRECAO DA TENDENCIA (via TrendFilter - EMA200 H1)
+//==================================================
 
-//====================================================
-// INPUTS
-//====================================================
-
-input int MarketMAFastPeriod = 50;
-input int MarketMASlowPeriod = 200;
-
-
-//====================================================
-// HANDLES
-//====================================================
-
-int maFastHandle = INVALID_HANDLE;
-int maSlowHandle = INVALID_HANDLE;
-
-
-//====================================================
-// BUFFERS
-//====================================================
-
-double maFastBuffer[];
-double maSlowBuffer[];
-
-
-//====================================================
-// INIT
-//====================================================
-
-bool InitMarketAnalyzer()
+MarketRegimeType GetMarketRegime(string symbol="")
 {
+   if(symbol=="")
+      symbol=_Symbol;
 
-   maFastHandle =
-      iMA(
-         _Symbol,
-         PERIOD_CURRENT,
-         MarketMAFastPeriod,
-         0,
-         MODE_EMA,
-         PRICE_CLOSE
-      );
+   if(TrendBuy(symbol))
+      return REGIME_TREND_UP;
 
+   if(TrendSell(symbol))
+      return REGIME_TREND_DOWN;
 
-   maSlowHandle =
-      iMA(
-         _Symbol,
-         PERIOD_CURRENT,
-         MarketMASlowPeriod,
-         0,
-         MODE_EMA,
-         PRICE_CLOSE
-      );
+   return REGIME_NONE;
+}
 
+//==================================================
+// FORCA DA TENDENCIA (via ADX)
+//==================================================
 
-   if(
-      maFastHandle == INVALID_HANDLE ||
-      maSlowHandle == INVALID_HANDLE
-   )
-   {
-      Print("Erro ao criar MA Market Analyzer");
+bool IsStrongTrend(string symbol="", double minADX=20.0)
+{
+   if(symbol=="")
+      symbol=_Symbol;
+
+   double adx = GetADX(symbol);
+
+   if(adx < 0.0)
       return false;
-   }
 
+   return (adx >= minADX);
+}
 
+//==================================================
+// VOLATILIDADE (ATR como % do preco)
+// Percentual do preco -> comparavel entre simbolos
+// (ouro, FX, indices, crypto), diferente de pontos fixos.
+//==================================================
 
-   ArraySetAsSeries(
-      maFastBuffer,
-      true
-   );
+double MarketVolatilityPercent(string symbol="")
+{
+   if(symbol=="")
+      symbol=_Symbol;
 
+   double atr = GetATR(symbol);
+   double price = SymbolInfoDouble(symbol, SYMBOL_BID);
 
-   ArraySetAsSeries(
-      maSlowBuffer,
-      true
-   );
+   if(atr <= 0.0 || price <= 0.0)
+      return -1.0;
 
+   return (atr / price) * 100.0;
+}
+
+//==================================================
+// VOLATILIDADE SAUDAVEL (dentro da faixa)
+// default: ATR entre 0.05% e 2.0% do preco
+//==================================================
+
+bool IsHealthyVolatility(string symbol="", double minPct=0.05, double maxPct=2.0)
+{
+   if(symbol=="")
+      symbol=_Symbol;
+
+   double vol = MarketVolatilityPercent(symbol);
+
+   if(vol < 0.0)
+      return false;
+
+   return (vol >= minPct && vol <= maxPct);
+}
+
+//==================================================
+// QUALIDADE DE MERCADO
+// Tendencia presente + volatilidade saudavel
+// (equivalente funcional do antigo IsGoodMarket)
+//==================================================
+
+bool IsGoodMarket(string symbol="")
+{
+   if(symbol=="")
+      symbol=_Symbol;
+
+   if(GetMarketRegime(symbol) == REGIME_NONE)
+      return false;
+
+   if(!IsHealthyVolatility(symbol))
+      return false;
 
    return true;
 }
 
+//==================================================
+// NOME LEGIVEL
+//==================================================
 
-//====================================================
-// RELEASE
-//====================================================
-
-void ReleaseMarketAnalyzer()
+string MarketRegimeToString(MarketRegimeType regime)
 {
+   if(regime == REGIME_TREND_UP)
+      return "TREND_UP";
 
-   if(maFastHandle != INVALID_HANDLE)
-   {
-      IndicatorRelease(maFastHandle);
-      maFastHandle = INVALID_HANDLE;
-   }
+   if(regime == REGIME_TREND_DOWN)
+      return "TREND_DOWN";
 
-
-   if(maSlowHandle != INVALID_HANDLE)
-   {
-      IndicatorRelease(maSlowHandle);
-      maSlowHandle = INVALID_HANDLE;
-   }
-
+   return "RANGING";
 }
-
-
-//====================================================
-// UPDATE MA
-//====================================================
-
-bool UpdateMA()
-{
-
-   if(
-      maFastHandle == INVALID_HANDLE ||
-      maSlowHandle == INVALID_HANDLE
-   )
-      return false;
-
-
-
-   if(
-      CopyBuffer(
-         maFastHandle,
-         0,
-         0,
-         3,
-         maFastBuffer
-      ) <= 0
-   )
-      return false;
-
-
-
-   if(
-      CopyBuffer(
-         maSlowHandle,
-         0,
-         0,
-         3,
-         maSlowBuffer
-      ) <= 0
-   )
-      return false;
-
-
-
-   return true;
-
-}
-
-
-//====================================================
-// TREND
-//====================================================
-
-TrendDirection GetTrendDirection()
-{
-
-   if(!UpdateMA())
-      return TREND_NONE;
-
-
-
-   double fast =
-      maFastBuffer[0];
-
-
-   double slow =
-      maSlowBuffer[0];
-
-
-
-   if(fast > slow)
-      return TREND_BUY;
-
-
-
-   if(fast < slow)
-      return TREND_SELL;
-
-
-
-   return TREND_NONE;
-
-}
-
-
-//====================================================
-// HELPERS
-//====================================================
-
-bool IsBullishTrend()
-{
-   return(
-      GetTrendDirection()
-      ==
-      TREND_BUY
-   );
-}
-
-
-
-bool IsBearishTrend()
-{
-   return(
-      GetTrendDirection()
-      ==
-      TREND_SELL
-   );
-}
-
-
-
-bool IsFlatMarket()
-{
-   return(
-      GetTrendDirection()
-      ==
-      TREND_NONE
-   );
-}
-
-
-
-//====================================================
-// TREND STRENGTH
-//====================================================
-
-double GetTrendDistance()
-{
-
-   if(!UpdateMA())
-      return 0;
-
-
-   double distance =
-      MathAbs(
-         maFastBuffer[0]
-         -
-         maSlowBuffer[0]
-      )
-      /
-      _Point;
-
-
-   return distance;
-
-}
-
-
-
-//====================================================
-// VOLATILITY
-//====================================================
-
-bool IsVolatileMarket()
-{
-
-   double atr =
-      GetATR();
-
-
-
-   if(atr <= 0)
-      return false;
-
-
-
-   double threshold =
-      50 * _Point;
-
-
-
-   return(
-      atr > threshold
-   );
-
-}
-
-
-
-//====================================================
-// MARKET QUALITY
-//====================================================
-
-bool IsGoodMarket()
-{
-
-   if(IsFlatMarket())
-      return false;
-
-
-   if(!IsVolatileMarket())
-      return false;
-
-
-   return true;
-
-}
-
-
 
 #endif

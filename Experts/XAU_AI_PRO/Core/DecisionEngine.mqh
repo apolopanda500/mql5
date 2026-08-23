@@ -393,11 +393,11 @@ bool AllowTrade(
 
 
    //================================================
-   // CORREÃ‡ÃƒO PRINCIPAL
+   // CORREÃƒâ€¡ÃƒÆ’O PRINCIPAL
    //
    // ValidateTrade espera:
-   // 1Âº = string symbol
-   // 2Âº = int signal
+   // 1Ã‚Âº = string symbol
+   // 2Ã‚Âº = int signal
    //================================================
 
    if(
@@ -436,6 +436,26 @@ bool AllowTrade(
       return false;
    }
 
+
+   //------------------------------------------------
+   // v1.4.0 (Etapa 5): ADVANCED AI - veto final
+   // A IA NAO tem autoridade absoluta: pode BLOQUEAR,
+   // mas nunca cria sinal. Score ponderado (trend,
+   // strength, spread, market, execution).
+   //------------------------------------------------
+
+   if(EnableAIFilter && !FinalAIAllow(signal, symbol))
+   {
+      if(allowLogOnce)
+         Print(
+            "DECISION BLOCKED | ADV AI | Symbol=",
+            symbol,
+            " | Signal=",
+            signal
+         );
+
+      return false;
+   }
 
    return true;
 }
@@ -504,3 +524,4 @@ int GetDecision(
 
 #endif
 
+  

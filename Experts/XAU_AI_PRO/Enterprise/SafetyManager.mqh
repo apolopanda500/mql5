@@ -1,4 +1,4 @@
-//+------------------------------------------------------------------+
+﻿//+------------------------------------------------------------------+
 //|                                              SafetyManager.mqh   |
 //|                                  Safety Management System        |
 //|                                            XAU_AI_PRO v1.2.0       |
@@ -8,6 +8,7 @@
 #define SAFETY_MANAGER_MQH
 
 #include "../Core/Config.mqh"
+#include "../Core/RiskHub.mqh"
 
 //==================================================
 // SAFETY LIMITS
@@ -36,7 +37,6 @@ private:
    static bool         m_initialized;
 
    static double       m_daily_profit;
-   static int          m_daily_trades;
    static double       m_daily_peak_equity;
    static double       m_session_profit;
    static double       m_daily_start_balance;
@@ -85,7 +85,6 @@ SafetyLimits CSafetyManager::m_limits;
 bool CSafetyManager::m_initialized = false;
 
 double CSafetyManager::m_daily_profit = 0.0;
-int    CSafetyManager::m_daily_trades = 0;
 
 double CSafetyManager::m_daily_peak_equity = 0.0;
 double CSafetyManager::m_session_profit = 0.0;
@@ -162,14 +161,16 @@ void CSafetyManager::Init()
    //------------------------------------------------
 
    m_daily_profit = 0.0;
-   m_daily_trades = 0;
 
-   m_daily_start_balance = balance;
+   // v1.3.0 (Etapa 3): contadores diarios persistentes via RiskHub.
+   RiskHubNewDay();
 
-   m_daily_peak_equity =
-      AccountInfoDouble(
-         ACCOUNT_EQUITY
-      );
+   m_daily_start_balance =
+      RiskHubGet("STARTBAL", balance);
+
+   RiskHubSet("STARTBAL", m_daily_start_balance);
+
+   m_daily_peak_equity = GetDailyPeakEquity();
 
    m_session_profit = 0.0;
 
@@ -350,15 +351,7 @@ bool CSafetyManager::CheckDailyDrawdown()
    if(equity > m_daily_peak_equity)
       m_daily_peak_equity = equity;
 
-   double dd =
-      (
-         m_daily_peak_equity -
-         equity
-      )
-      /
-      m_daily_peak_equity
-      *
-      100.0;
+   double dd = GetDrawdownPercent();
 
    if(dd >= m_limits.max_daily_drawdown)
    {
@@ -383,12 +376,14 @@ bool CSafetyManager::CheckDailyTrades()
    if(m_limits.max_trades_per_day <= 0)
       return true;
 
-   if(m_daily_trades >=
+   int tradesToday = GetDailyTradesCount();
+
+   if(tradesToday >=
       m_limits.max_trades_per_day)
    {
       PrintFormat(
          "[SAFETY] Daily trades limit: %d/%d",
-         m_daily_trades,
+         tradesToday,
          m_limits.max_trades_per_day
       );
 
@@ -545,17 +540,17 @@ void CSafetyManager::UpdateStats()
       m_last_day_key)
    {
       m_daily_profit = 0.0;
-      m_daily_trades = 0;
+
+      // v1.3.0 (Etapa 3): RiskHub detecta novo dia e persiste
+      RiskHubNewDay();
 
       m_daily_start_balance =
-         AccountInfoDouble(
-            ACCOUNT_BALANCE
-         );
+         RiskHubGet("STARTBAL", AccountInfoDouble(ACCOUNT_BALANCE));
+
+      RiskHubSet("STARTBAL", m_daily_start_balance);
 
       m_daily_peak_equity =
-         AccountInfoDouble(
-            ACCOUNT_EQUITY
-         );
+         GetDailyPeakEquity();
 
       m_session_profit = 0.0;
 
@@ -571,17 +566,9 @@ void CSafetyManager::UpdateStats()
    // Atualiza peak equity
    //------------------------------------------------
 
-   double equity =
-      AccountInfoDouble(
-         ACCOUNT_EQUITY
-      );
-
-   if(equity >
-      m_daily_peak_equity)
-   {
-      m_daily_peak_equity =
-         equity;
-   }
+   // v1.3.0 (Etapa 3): peak persistente via RiskHub
+   m_daily_peak_equity =
+      GetDailyPeakEquity();
 
    //------------------------------------------------
    // P/L diário baseado no balance
@@ -606,33 +593,12 @@ void CSafetyManager::UpdateStats()
 
 string CSafetyManager::GetSafetySummary()
 {
-   double equity =
-      AccountInfoDouble(
-         ACCOUNT_EQUITY
-      );
-
-   double dd = 0.0;
-
-   if(m_daily_peak_equity > 0.0)
-   {
-      dd =
-         (
-            m_daily_peak_equity -
-            equity
-         )
-         /
-         m_daily_peak_equity
-         *
-         100.0;
-
-      if(dd < 0.0)
-         dd = 0.0;
-   }
+   double dd = GetDrawdownPercent();
 
    return StringFormat(
       "P/L: %.2f | Trades: %d/%d | DD: %.2f%%/%.2f%% | FreeMargin: %.2f",
       m_daily_profit,
-      m_daily_trades,
+      GetDailyTrades(),
       m_limits.max_trades_per_day,
       dd,
       m_limits.max_daily_drawdown,
@@ -664,7 +630,8 @@ void CSafetyManager::RegisterTrade()
    if(!m_initialized)
       Init();
 
-   m_daily_trades++;
+   // v1.3.0 (Etapa 3): contador persistente sobrevive a reinits
+   IncrementDailyTrades();
 }
 
 //==================================================
@@ -676,7 +643,8 @@ int CSafetyManager::GetDailyTrades()
    if(!m_initialized)
       Init();
 
-   return m_daily_trades;
+   // v1.3.0 (Etapa 3): fonte unica persistente
+   return GetDailyTradesCount();
 }
 
 #endif // SAFETY_MANAGER_MQH

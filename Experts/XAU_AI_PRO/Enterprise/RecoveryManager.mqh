@@ -1,4 +1,4 @@
-//+------------------------------------------------------------------+
+﻿//+------------------------------------------------------------------+
 //| RecoveryManager.mqh                                              |
 //| XAU_AI_PRO                                                      |
 //| Auto Recovery System                                            |
@@ -6,6 +6,8 @@
 
 #ifndef RECOVERY_MANAGER_MQH
 #define RECOVERY_MANAGER_MQH
+
+#include "../Core/Config.mqh"   // RequireAIJSON (input) + config global
 
 
 //==================================================

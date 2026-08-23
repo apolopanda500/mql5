@@ -523,7 +523,7 @@ bool DiagnosticsRun()
       );
 
       FileDelete(
-         testFile
+         testFile, FILE_COMMON
       );
    }
 

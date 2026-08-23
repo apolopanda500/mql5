@@ -6,83 +6,391 @@
 #include "Logger.mqh"
 
 //==================================================
-// REPLAY ENGINE — v1.2.0
-// Compatível com Dataset.mqh v1.2.0
+// REPLAY ENGINE v2.0 (ETAPA 7)
+//==================================================
+// Reproduz decisoes/eventos historicos do XAU_AI_PRO
+// usando os dados registrados, SEM interferir na
+// execucao real.
+//
+// SEPARACAO ABSOLUTA REPLAY vs LIVE:
+//  - Enquanto o replay esta ativo (ReplayEngineIsActive),
+//    o EA deve bloquear a abertura de trades reais.
+//    Use ReplayEngineBlocksLiveTrading() como guarda.
+//  - O replay e SOMENTE LEITURA: nunca envia ordens,
+//    nunca modifica posicoes, nunca altera o dataset.
+//
+// FONTES DE DADOS (compatibilidade com o pipeline):
+//  - DECISOES  : Data\trades_dataset.csv (Dataset.mqh export, 19 col)
+//  - OHLC/TICK : Data\dataset.csv        (DataLogger.mqh, 15 col)
+//  - AUDITORIA : Data\full_audit.csv     (AuditLog.mqh, 16 col, sep ';')
+//
+// CAMINHO (FILE_COMMON + fallback local):
+//  O Dataset.mqh e o DataLogger.mqh gravam no diretorio
+//  LOCAL do terminal (MQL5\Files\Data), enquanto o
+//  AuditLog grava no COMMON (Common\Files\Data).
+//  O replay procura cada arquivo primeiro em FILE_COMMON
+//  e depois no diretorio local, logando a origem.
 //==================================================
 
-int  replayHandle   = INVALID_HANDLE;
-bool g_replayActive = false;
-int  g_replayLine   = 0;
+#define REPLAY_COLS_DECISIONS 19
+#define REPLAY_COLS_OHLC      15
+#define REPLAY_COLS_AUDIT     16
 
 //==================================================
-// INIT
+// MODO DE REPLAY
 //==================================================
 
-bool ReplayEngineInit(
-   string datasetFile = "Data\\trades_dataset.csv"
+enum ENUM_REPLAY_MODE
+{
+   REPLAY_MODE_DECISIONS = 0,   // trades_dataset.csv
+   REPLAY_MODE_OHLC      = 1,   // dataset.csv (DataLogger)
+   REPLAY_MODE_AUDIT     = 2    // full_audit.csv (AuditLog)
+};
+
+//==================================================
+// ESTRUTURAS DE SAIDA
+//==================================================
+
+struct ReplayOHLC
+{
+   datetime time;
+   string   symbol;
+   double   open;
+   double   high;
+   double   low;
+   double   close;
+   double   volume;
+   double   spread;
+   double   atr;
+   double   adx;
+   double   rsi;
+   double   kci_vd;
+   double   kci_main;
+   double   kdi_plus;
+   double   kdi_minus;
+};
+
+struct ReplayAuditRecord
+{
+   datetime time;
+   ulong    ticket;
+   string   symbol;
+   double   price;
+   double   rsi;
+   double   adx;
+   double   atr;
+   double   ema;
+   double   spread;
+   string   session;
+   string   ai_signal;
+   double   ai_confidence;
+   double   ai_score;
+   string   entry_reason;
+   string   exit_reason;
+   double   result;
+};
+
+//==================================================
+// ESTADO GLOBAL
+//==================================================
+
+int             g_replayHandle     = INVALID_HANDLE;
+bool            g_replayActive     = false;
+int             g_replayLine       = 0;
+string          g_replayFile       = "";
+ENUM_REPLAY_MODE g_replayMode      = REPLAY_MODE_DECISIONS;
+string          g_replaySymbolFilter = "";
+int             g_replayRecordsRead = 0;
+int             g_replaySkipped     = 0;
+int             g_replayHeaderCols  = 0;
+
+//==================================================
+// HELPERS PRIVADOS
+//==================================================
+
+// Abre o arquivo procurando primeiro em FILE_COMMON,
+// depois no diretorio local (MQL5\Files).
+int ReplayOpenBest(
+   string path,
+   char   sep
 )
 {
-   // Fechar replay anterior
-   if(replayHandle != INVALID_HANDLE)
-   {
-      FileClose(replayHandle);
-      replayHandle = INVALID_HANDLE;
-   }
+   ResetLastError();
 
-   g_replayActive = false;
-   g_replayLine   = 0;
+   if(FileIsExist(path, FILE_COMMON))
+   {
+      int h = FileOpen(
+         path,
+         FILE_COMMON |
+         FILE_READ |
+         FILE_CSV |
+         FILE_ANSI,
+         sep
+      );
+
+      if(h != INVALID_HANDLE)
+      {
+         g_replayFile = "[COMMON] " + path;
+         return h;
+      }
+   }
 
    ResetLastError();
 
-   replayHandle = FileOpen(
+   if(FileIsExist(path))
+   {
+      int h = FileOpen(
+         path,
+         FILE_READ |
+         FILE_CSV |
+         FILE_ANSI,
+         sep
+      );
+
+      if(h != INVALID_HANDLE)
+      {
+         g_replayFile = "[LOCAL] " + path;
+         return h;
+      }
+   }
+
+   return INVALID_HANDLE;
+}
+
+// Le o cabecalho (primeira linha) e conta as colunas.
+// Retorna o numero de colunas lidas.
+int ReplaySkipHeader(
+   int expectedCols
+)
+{
+   int cols = 0;
+
+   if(g_replayHandle == INVALID_HANDLE)
+      return 0;
+
+   while(
+      !FileIsEnding(g_replayHandle) &&
+      !FileIsLineEnding(g_replayHandle)
+   )
+   {
+      FileReadString(g_replayHandle);
+      cols++;
+
+      if(cols > 64)
+         break;
+   }
+
+   g_replayHeaderCols = cols;
+
+   if(cols != expectedCols)
+   {
+      LogWarning(
+         "ReplayEngine: cabecalho com ",
+         IntegerToString(cols),
+         " colunas (esperado ",
+         IntegerToString(expectedCols),
+         ")"
+      );
+   }
+
+   return cols;
+}
+
+// Normaliza simbolo para comparacao (case-insensitive).
+bool ReplaySymbolMatches(
+   string symbol
+)
+{
+   if(g_replaySymbolFilter == "")
+      return true;
+
+   string s = symbol;
+   string f = g_replaySymbolFilter;
+
+   StringToUpper(s);
+   StringToUpper(f);
+
+   if(s == f)
+      return true;
+
+   if(StringFind(s, f) >= 0)
+      return true;
+
+   return false;
+}
+
+//==================================================
+// INIT - DECISOES (Dataset.mqh export)
+//==================================================
+
+bool ReplayEngineInit(
+   string datasetFile = ""
+)
+{
+   // Fechar replay anterior
+   if(g_replayHandle != INVALID_HANDLE)
+   {
+      FileClose(g_replayHandle);
+      g_replayHandle = INVALID_HANDLE;
+   }
+
+   g_replayActive      = false;
+   g_replayLine        = 0;
+   g_replayRecordsRead = 0;
+   g_replaySkipped     = 0;
+   g_replayMode        = REPLAY_MODE_DECISIONS;
+   g_replaySymbolFilter= ReplaySymbolFilter;
+
+   if(datasetFile == "")
+      datasetFile = ReplayDatasetFile;
+
+   ResetLastError();
+
+   g_replayHandle = ReplayOpenBest(
       datasetFile,
-      FILE_COMMON |
-      FILE_READ   |
-      FILE_CSV    |
-      FILE_ANSI,
       ','
    );
 
-   if(replayHandle == INVALID_HANDLE)
+   if(g_replayHandle == INVALID_HANDLE)
    {
       LogError(
-         "ReplayEngine: falha ao abrir dataset. Erro: ",
+         "ReplayEngine: falha ao abrir dataset (COMMON e LOCAL). Erro: ",
          IntegerToString(GetLastError())
       );
 
       return false;
    }
 
-   //==================================================
-   // PULAR CABEÇALHO
-   //==================================================
+   //================================================
+   // PULAR CABECALHO (19 colunas)
+   //================================================
 
-   if(!FileIsEnding(replayHandle))
-   {
-      // O Dataset.mqh possui 20 colunas.
-      for(int i = 0; i < 20; i++)
-      {
-         if(FileIsEnding(replayHandle))
-            break;
+   ReplaySkipHeader(REPLAY_COLS_DECISIONS);
 
-         FileReadString(replayHandle);
-      }
-
-      g_replayLine = 1;
-   }
-
+   g_replayLine = 1;
    g_replayActive = true;
 
    LogSystem(
-      "ReplayEngine inicializado. Dataset: ",
-      datasetFile
+      "ReplayEngine inicializado (DECISOES). Origem: ",
+      g_replayFile
    );
 
    return true;
 }
 
 //==================================================
-// PRÓXIMO REGISTRO
+// INIT - OHLC (DataLogger.mqh)
+//==================================================
+
+bool ReplayEngineOpenOHLC(
+   string ohlcFile = ""
+)
+{
+   if(g_replayHandle != INVALID_HANDLE)
+   {
+      FileClose(g_replayHandle);
+      g_replayHandle = INVALID_HANDLE;
+   }
+
+   g_replayActive      = false;
+   g_replayLine        = 0;
+   g_replayRecordsRead = 0;
+   g_replaySkipped     = 0;
+   g_replayMode        = REPLAY_MODE_OHLC;
+   g_replaySymbolFilter= ReplaySymbolFilter;
+
+   if(ohlcFile == "")
+      ohlcFile = ReplayOHLCFile;
+
+   ResetLastError();
+
+   g_replayHandle = ReplayOpenBest(
+      ohlcFile,
+      ','
+   );
+
+   if(g_replayHandle == INVALID_HANDLE)
+   {
+      LogError(
+         "ReplayEngine: falha ao abrir OHLC. Erro: ",
+         IntegerToString(GetLastError())
+      );
+
+      return false;
+   }
+
+   ReplaySkipHeader(REPLAY_COLS_OHLC);
+
+   g_replayLine = 1;
+   g_replayActive = true;
+
+   LogSystem(
+      "ReplayEngine inicializado (OHLC). Origem: ",
+      g_replayFile
+   );
+
+   return true;
+}
+
+//==================================================
+// INIT - AUDITORIA (AuditLog full_audit.csv)
+//==================================================
+
+bool ReplayEngineOpenAudit(
+   string auditFile = ""
+)
+{
+   if(g_replayHandle != INVALID_HANDLE)
+   {
+      FileClose(g_replayHandle);
+      g_replayHandle = INVALID_HANDLE;
+   }
+
+   g_replayActive      = false;
+   g_replayLine        = 0;
+   g_replayRecordsRead = 0;
+   g_replaySkipped     = 0;
+   g_replayMode        = REPLAY_MODE_AUDIT;
+   g_replaySymbolFilter= ReplaySymbolFilter;
+
+   if(auditFile == "")
+      auditFile = ReplayAuditFile;
+
+   ResetLastError();
+
+   g_replayHandle = ReplayOpenBest(
+      auditFile,
+      ';'
+   );
+
+   if(g_replayHandle == INVALID_HANDLE)
+   {
+      LogError(
+         "ReplayEngine: falha ao abrir auditoria. Erro: ",
+         IntegerToString(GetLastError())
+      );
+
+      return false;
+   }
+
+   ReplaySkipHeader(REPLAY_COLS_AUDIT);
+
+   g_replayLine = 1;
+   g_replayActive = true;
+
+   LogSystem(
+      "ReplayEngine inicializado (AUDITORIA). Origem: ",
+      g_replayFile
+   );
+
+   return true;
+}
+
+//==================================================
+// PRÓXIMO REGISTRO - DECISOES
+// (assinatura mantida da v1 para compatibilidade)
+// Registros vazios, com timestamp invalido ou de outro
+// simbolo (filtro) sao pulados automaticamente.
 //==================================================
 
 bool ReplayEngineNextLine(
@@ -107,220 +415,379 @@ bool ReplayEngineNextLine(
    bool &result
 )
 {
-   if(replayHandle == INVALID_HANDLE)
-      return false;
-
-   if(!g_replayActive)
-      return false;
-
-   //==================================================
-   // FIM DO ARQUIVO
-   //==================================================
-
-   if(FileIsEnding(replayHandle))
+   while(true)
    {
-      LogSystem(
-         "ReplayEngine: fim do dataset"
+      if(g_replayHandle == INVALID_HANDLE || !g_replayActive)
+         return false;
+
+      if(g_replayMode != REPLAY_MODE_DECISIONS)
+      {
+         LogError(
+            "ReplayEngine: NextLine requer modo DECISOES"
+         );
+         return false;
+      }
+
+      if(FileIsEnding(g_replayHandle))
+      {
+         LogSystem(
+            "ReplayEngine: fim do dataset | lidos=",
+            IntegerToString(g_replayRecordsRead),
+            " | pulados=",
+            IntegerToString(g_replaySkipped),
+            " | origem=" + g_replayFile
+         );
+
+         ReplayEngineClose();
+         return false;
+      }
+
+      //----------------------------------------------
+      // LEITURA DOS 19 CAMPOS
+      //----------------------------------------------
+
+      string timeValue      = FileReadString(g_replayHandle);
+      string symbolValue    = FileReadString(g_replayHandle);
+      string timeframeValue = FileReadString(g_replayHandle);
+      string signalValue    = FileReadString(g_replayHandle);
+      string priceValue     = FileReadString(g_replayHandle);
+      string volumeValue    = FileReadString(g_replayHandle);
+      string spreadValue    = FileReadString(g_replayHandle);
+      string atrValue       = FileReadString(g_replayHandle);
+      string adxValue       = FileReadString(g_replayHandle);
+      string rsiValue       = FileReadString(g_replayHandle);
+      string volatilityValue= FileReadString(g_replayHandle);
+      string trendValue     = FileReadString(g_replayHandle);
+      string aiScoreValue   = FileReadString(g_replayHandle);
+      string aiProbabilityValue = FileReadString(g_replayHandle);
+      string executionScoreValue = FileReadString(g_replayHandle);
+      string slValue        = FileReadString(g_replayHandle);
+      string tpValue        = FileReadString(g_replayHandle);
+      string profitValue    = FileReadString(g_replayHandle);
+      string resultValue    = FileReadString(g_replayHandle);
+
+      g_replayLine++;
+
+      //----------------------------------------------
+      // VALIDACAO - linha vazia
+      //----------------------------------------------
+
+      if(
+         timeValue == "" &&
+         symbolValue == "" &&
+         signalValue == ""
+      )
+      {
+         LogWarning(
+            "ReplayEngine: registro vazio na linha ",
+            IntegerToString(g_replayLine)
+         );
+         continue;
+      }
+
+      //----------------------------------------------
+      // TIME
+      //----------------------------------------------
+
+      recordTime = StringToTime(timeValue);
+
+      if(recordTime <= 0)
+      {
+         LogWarning(
+            "ReplayEngine: timestamp invalido na linha ",
+            IntegerToString(g_replayLine),
+            " | valor='",
+            timeValue,
+            "'"
+         );
+         continue;
+      }
+
+      //----------------------------------------------
+      // SYMBOL + filtro
+      //----------------------------------------------
+
+      symbol = symbolValue;
+
+      if(!ReplaySymbolMatches(symbol))
+      {
+         g_replaySkipped++;
+         continue;
+      }
+
+      //----------------------------------------------
+      // TIMEFRAME
+      //----------------------------------------------
+
+      timeframe = PERIOD_CURRENT;
+
+      if(timeframeValue == "PERIOD_M1")   timeframe = PERIOD_M1;
+      else if(timeframeValue == "PERIOD_M2")  timeframe = PERIOD_M2;
+      else if(timeframeValue == "PERIOD_M3")  timeframe = PERIOD_M3;
+      else if(timeframeValue == "PERIOD_M5")  timeframe = PERIOD_M5;
+      else if(timeframeValue == "PERIOD_M10") timeframe = PERIOD_M10;
+      else if(timeframeValue == "PERIOD_M15") timeframe = PERIOD_M15;
+      else if(timeframeValue == "PERIOD_M30") timeframe = PERIOD_M30;
+      else if(timeframeValue == "PERIOD_H1")  timeframe = PERIOD_H1;
+      else if(timeframeValue == "PERIOD_H4")  timeframe = PERIOD_H4;
+      else if(timeframeValue == "PERIOD_D1")  timeframe = PERIOD_D1;
+
+      //----------------------------------------------
+      // NUMERICOS
+      //----------------------------------------------
+
+      signal          = (int)StringToInteger(signalValue);
+      price           = StringToDouble(priceValue);
+      volume          = StringToDouble(volumeValue);
+      spread          = StringToDouble(spreadValue);
+      atr             = StringToDouble(atrValue);
+      adx             = StringToDouble(adxValue);
+      rsi             = StringToDouble(rsiValue);
+      volatility      = StringToDouble(volatilityValue);
+      trend           = StringToDouble(trendValue);
+      aiScore         = StringToDouble(aiScoreValue);
+      aiProbability   = StringToDouble(aiProbabilityValue);
+      executionScore  = StringToDouble(executionScoreValue);
+      sl              = StringToDouble(slValue);
+      tp              = StringToDouble(tpValue);
+      profit          = StringToDouble(profitValue);
+
+      //----------------------------------------------
+      // RESULTADO
+      //----------------------------------------------
+
+      StringToLower(resultValue);
+
+      result = (
+         resultValue == "true" ||
+         resultValue == "1"
       );
 
-      ReplayEngineClose();
+      g_replayRecordsRead++;
 
-      return false;
+      return true;
    }
 
-   //==================================================
-   // LEITURA DOS 20 CAMPOS
-   //==================================================
+   return false;
+}
 
-   string timeValue =
-      FileReadString(replayHandle);
+//==================================================
+// PRÓXIMO REGISTRO - OHLC (DataLogger)
+//==================================================
 
-   string symbolValue =
-      FileReadString(replayHandle);
-
-   string timeframeValue =
-      FileReadString(replayHandle);
-
-   string signalValue =
-      FileReadString(replayHandle);
-
-   string priceValue =
-      FileReadString(replayHandle);
-
-   string volumeValue =
-      FileReadString(replayHandle);
-
-   string spreadValue =
-      FileReadString(replayHandle);
-
-   string atrValue =
-      FileReadString(replayHandle);
-
-   string adxValue =
-      FileReadString(replayHandle);
-
-   string rsiValue =
-      FileReadString(replayHandle);
-
-   string volatilityValue =
-      FileReadString(replayHandle);
-
-   string trendValue =
-      FileReadString(replayHandle);
-
-   string aiScoreValue =
-      FileReadString(replayHandle);
-
-   string aiProbabilityValue =
-      FileReadString(replayHandle);
-
-   string executionScoreValue =
-      FileReadString(replayHandle);
-
-   string slValue =
-      FileReadString(replayHandle);
-
-   string tpValue =
-      FileReadString(replayHandle);
-
-   string profitValue =
-      FileReadString(replayHandle);
-
-   string resultValue =
-      FileReadString(replayHandle);
-
-   g_replayLine++;
-
-   //==================================================
-   // VALIDAÇÃO
-   //==================================================
-
-   if(
-      timeValue == "" &&
-      symbolValue == "" &&
-      timeframeValue == "" &&
-      signalValue == ""
-   )
+bool ReplayEngineNextOHLC(
+   ReplayOHLC &r
+)
+{
+   while(true)
    {
-      LogWarning(
-         "ReplayEngine: registro vazio na linha ",
-         IntegerToString(g_replayLine)
-      );
+      if(g_replayHandle == INVALID_HANDLE || !g_replayActive)
+         return false;
 
-      return false;
+      if(g_replayMode != REPLAY_MODE_OHLC)
+      {
+         LogError(
+            "ReplayEngine: NextOHLC requer modo OHLC"
+         );
+         return false;
+      }
+
+      if(FileIsEnding(g_replayHandle))
+      {
+         LogSystem(
+            "ReplayEngine: fim do OHLC | lidos=",
+            IntegerToString(g_replayRecordsRead),
+            " | origem=" + g_replayFile
+         );
+
+         ReplayEngineClose();
+         return false;
+      }
+
+      //----------------------------------------------
+      // LEITURA DOS 15 CAMPOS
+      //----------------------------------------------
+
+      string timeValue  = FileReadString(g_replayHandle);
+      string symbolValue= FileReadString(g_replayHandle);
+      string openValue  = FileReadString(g_replayHandle);
+      string highValue  = FileReadString(g_replayHandle);
+      string lowValue   = FileReadString(g_replayHandle);
+      string closeValue = FileReadString(g_replayHandle);
+      string volValue   = FileReadString(g_replayHandle);
+      string spreadValue= FileReadString(g_replayHandle);
+      string atrValue   = FileReadString(g_replayHandle);
+      string adxValue   = FileReadString(g_replayHandle);
+      string rsiValue   = FileReadString(g_replayHandle);
+      string kciVdValue = FileReadString(g_replayHandle);
+      string kciMainValue= FileReadString(g_replayHandle);
+      string kdiPlusValue= FileReadString(g_replayHandle);
+      string kdiMinusValue= FileReadString(g_replayHandle);
+
+      g_replayLine++;
+
+      //----------------------------------------------
+      // VALIDACOES
+      //----------------------------------------------
+
+      r.time = StringToTime(timeValue);
+
+      if(r.time <= 0)
+      {
+         LogWarning(
+            "ReplayEngine: timestamp invalido no OHLC linha ",
+            IntegerToString(g_replayLine)
+         );
+         continue;
+      }
+
+      r.symbol = symbolValue;
+
+      if(!ReplaySymbolMatches(r.symbol))
+      {
+         g_replaySkipped++;
+         continue;
+      }
+
+      r.open   = StringToDouble(openValue);
+      r.high   = StringToDouble(highValue);
+      r.low    = StringToDouble(lowValue);
+      r.close  = StringToDouble(closeValue);
+      r.volume = StringToDouble(volValue);
+      r.spread = StringToDouble(spreadValue);
+      r.atr    = StringToDouble(atrValue);
+      r.adx    = StringToDouble(adxValue);
+      r.rsi    = StringToDouble(rsiValue);
+      r.kci_vd= StringToDouble(kciVdValue);
+      r.kci_main = StringToDouble(kciMainValue);
+      r.kdi_plus = StringToDouble(kdiPlusValue);
+      r.kdi_minus= StringToDouble(kdiMinusValue);
+
+      // Estrutura OHLC invalida? pula
+      if(
+         r.open <= 0.0 ||
+         r.high <= 0.0 ||
+         r.low  <= 0.0 ||
+         r.close <= 0.0 ||
+         r.high < r.low
+      )
+      {
+         LogWarning(
+            "ReplayEngine: OHLC invalido na linha ",
+            IntegerToString(g_replayLine)
+         );
+         continue;
+      }
+
+      g_replayRecordsRead++;
+
+      return true;
    }
 
-   //==================================================
-   // TIME
-   //==================================================
+   return false;
+}
 
-   recordTime =
-      StringToTime(timeValue);
+//==================================================
+// PRÓXIMO REGISTRO - AUDITORIA (AuditLog)
+//==================================================
 
-   //==================================================
-   // SYMBOL
-   //==================================================
+bool ReplayEngineNextAuditRecord(
+   ReplayAuditRecord &r
+)
+{
+   while(true)
+   {
+      if(g_replayHandle == INVALID_HANDLE || !g_replayActive)
+         return false;
 
-   symbol =
-      symbolValue;
+      if(g_replayMode != REPLAY_MODE_AUDIT)
+      {
+         LogError(
+            "ReplayEngine: NextAuditRecord requer modo AUDITORIA"
+         );
+         return false;
+      }
 
-   //==================================================
-   // TIMEFRAME
-   //==================================================
+      if(FileIsEnding(g_replayHandle))
+      {
+         LogSystem(
+            "ReplayEngine: fim da auditoria | lidos=",
+            IntegerToString(g_replayRecordsRead),
+            " | origem=" + g_replayFile
+         );
 
-   timeframe =
-      PERIOD_CURRENT;
+         ReplayEngineClose();
+         return false;
+      }
 
-   if(timeframeValue == "PERIOD_M1")
-      timeframe = PERIOD_M1;
-   else
-   if(timeframeValue == "PERIOD_M2")
-      timeframe = PERIOD_M2;
-   else
-   if(timeframeValue == "PERIOD_M3")
-      timeframe = PERIOD_M3;
-   else
-   if(timeframeValue == "PERIOD_M5")
-      timeframe = PERIOD_M5;
-   else
-   if(timeframeValue == "PERIOD_M10")
-      timeframe = PERIOD_M10;
-   else
-   if(timeframeValue == "PERIOD_M15")
-      timeframe = PERIOD_M15;
-   else
-   if(timeframeValue == "PERIOD_M30")
-      timeframe = PERIOD_M30;
-   else
-   if(timeframeValue == "PERIOD_H1")
-      timeframe = PERIOD_H1;
-   else
-   if(timeframeValue == "PERIOD_H4")
-      timeframe = PERIOD_H4;
-   else
-   if(timeframeValue == "PERIOD_D1")
-      timeframe = PERIOD_D1;
+      //----------------------------------------------
+      // LEITURA DOS 16 CAMPOS (sep ';')
+      //----------------------------------------------
 
-   //==================================================
-   // NUMERICOS
-   //==================================================
+      string timeValue   = FileReadString(g_replayHandle);
+      string ticketValue = FileReadString(g_replayHandle);
+      string symbolValue = FileReadString(g_replayHandle);
+      string priceValue  = FileReadString(g_replayHandle);
+      string rsiValue    = FileReadString(g_replayHandle);
+      string adxValue    = FileReadString(g_replayHandle);
+      string atrValue    = FileReadString(g_replayHandle);
+      string emaValue    = FileReadString(g_replayHandle);
+      string spreadValue = FileReadString(g_replayHandle);
+      string sessionValue= FileReadString(g_replayHandle);
+      string aiSignalValue= FileReadString(g_replayHandle);
+      string aiConfValue = FileReadString(g_replayHandle);
+      string aiScoreValue= FileReadString(g_replayHandle);
+      string entryReasonValue = FileReadString(g_replayHandle);
+      string exitReasonValue  = FileReadString(g_replayHandle);
+      string resultValue = FileReadString(g_replayHandle);
 
-   signal =
-      (int)StringToInteger(signalValue);
+      g_replayLine++;
 
-   price =
-      StringToDouble(priceValue);
+      //----------------------------------------------
+      // VALIDACOES
+      //----------------------------------------------
 
-   volume =
-      StringToDouble(volumeValue);
+      r.time = StringToTime(timeValue);
 
-   spread =
-      StringToDouble(spreadValue);
+      if(r.time <= 0)
+      {
+         LogWarning(
+            "ReplayEngine: timestamp invalido na auditoria linha ",
+            IntegerToString(g_replayLine)
+         );
+         continue;
+      }
 
-   atr =
-      StringToDouble(atrValue);
+      r.ticket = (ulong)StringToInteger(ticketValue);
 
-   adx =
-      StringToDouble(adxValue);
+      r.symbol = symbolValue;
 
-   rsi =
-      StringToDouble(rsiValue);
+      if(!ReplaySymbolMatches(r.symbol))
+      {
+         g_replaySkipped++;
+         continue;
+      }
 
-   volatility =
-      StringToDouble(volatilityValue);
+      r.price          = StringToDouble(priceValue);
+      r.rsi            = StringToDouble(rsiValue);
+      r.adx            = StringToDouble(adxValue);
+      r.atr            = StringToDouble(atrValue);
+      r.ema            = StringToDouble(emaValue);
+      r.spread         = StringToDouble(spreadValue);
+      r.session        = sessionValue;
+      r.ai_signal      = aiSignalValue;
+      r.ai_confidence  = StringToDouble(aiConfValue);
+      r.ai_score       = StringToDouble(aiScoreValue);
+      r.entry_reason   = entryReasonValue;
+      r.exit_reason    = exitReasonValue;
+      r.result         = StringToDouble(resultValue);
 
-   trend =
-      StringToDouble(trendValue);
+      g_replayRecordsRead++;
 
-   aiScore =
-      StringToDouble(aiScoreValue);
+      return true;
+   }
 
-   aiProbability =
-      StringToDouble(aiProbabilityValue);
-
-   executionScore =
-      StringToDouble(executionScoreValue);
-
-   sl =
-      StringToDouble(slValue);
-
-   tp =
-      StringToDouble(tpValue);
-
-   profit =
-      StringToDouble(profitValue);
-
-   //==================================================
-   // RESULTADO
-   //==================================================
-
-   StringToLower(resultValue);
-
-    result =
-   (resultValue == "true" ||
-    resultValue == "1");
-
-   return true;
+   return false;
 }
 
 //==================================================
@@ -329,13 +796,10 @@ bool ReplayEngineNextLine(
 
 void ReplayEngineClose()
 {
-   if(replayHandle != INVALID_HANDLE)
+   if(g_replayHandle != INVALID_HANDLE)
    {
-      FileClose(
-         replayHandle
-      );
-
-      replayHandle = INVALID_HANDLE;
+      FileClose(g_replayHandle);
+      g_replayHandle = INVALID_HANDLE;
    }
 
    g_replayActive = false;
@@ -355,13 +819,53 @@ bool ReplayEngineIsActive()
    return g_replayActive;
 }
 
-//==================================================
-// LINHA ATUAL
-//==================================================
+// Guarda de seguranca para o EA: quando true, o modo
+// REPLAY esta ativo e NENHUM trade real pode ser aberto.
+bool ReplayEngineBlocksLiveTrading()
+{
+   return g_replayActive;
+}
 
 int ReplayEngineCurrentLine()
 {
    return g_replayLine;
+}
+
+int ReplayEngineRecordsRead()
+{
+   return g_replayRecordsRead;
+}
+
+int ReplayEngineSkipped()
+{
+   return g_replaySkipped;
+}
+
+string ReplayEngineSource()
+{
+   return g_replayFile;
+}
+
+string ReplayEngineModeName()
+{
+   switch(g_replayMode)
+   {
+      case REPLAY_MODE_DECISIONS: return "DECISOES";
+      case REPLAY_MODE_OHLC:      return "OHLC";
+      case REPLAY_MODE_AUDIT:     return "AUDITORIA";
+   }
+   return "DESCONHECIDO";
+}
+
+//==================================================
+// FILTRO DE SIMBOLO
+//==================================================
+
+void ReplayEngineSetSymbolFilter(
+   string filter
+)
+{
+   g_replaySymbolFilter = filter;
 }
 
 //==================================================
@@ -372,7 +876,9 @@ void ReplayEngineReset()
 {
    ReplayEngineClose();
 
-   g_replayLine = 0;
+   g_replayLine        = 0;
+   g_replayRecordsRead = 0;
+   g_replaySkipped     = 0;
 
    LogSystem(
       "ReplayEngine resetado"

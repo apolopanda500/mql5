@@ -1,7 +1,7 @@
 ﻿//+------------------------------------------------------------------+
 //|                                             SimulationEngine.mqh |
 //|                                  Pre-Execution Simulation        |
-//|                                            XAU_AI_PRO v1.2.0       |
+//|                                            XAU_AI_PRO v1.2.1     |
 //+------------------------------------------------------------------+
 
 #ifndef SIMULATION_ENGINE_MQH
@@ -48,8 +48,9 @@ int CSimulationEngine::m_simulation_count = 0;
 int CSimulationEngine::m_approved_count = 0;
 int CSimulationEngine::m_rejected_count = 0;
 bool CSimulationEngine::m_initialized = false;
-double CSimulationEngine::m_min_probability = 0.6;
-double CSimulationEngine::m_min_expected_profit = 0.5;
+// v1.2.1: thresholds em unidades de RISCO (R), independentes do simbolo.
+double CSimulationEngine::m_min_probability = 0.5;
+double CSimulationEngine::m_min_expected_profit = 0.05;
 double CSimulationEngine::m_max_risk = 2.0;
 
 void CSimulationEngine::Init()
@@ -62,32 +63,38 @@ void CSimulationEngine::Init()
 SimulationResult CSimulationEngine::SimulateTrade(string symbol, int type, double volume, double entry, double sl, double tp)
 {
    SimulationResult result;
-   
+
    // Calculate risk/reward
    double risk = MathAbs(entry - sl);
    double reward = MathAbs(tp - entry);
    result.risk_reward = (risk > 0) ? reward / risk : 0;
-   
+
    // Historical win rate for similar setups (simplified)
    result.probability_success = 0.5 + (result.risk_reward * 0.1); // Base probability
    if(result.probability_success > 0.95) result.probability_success = 0.95;
-   
-   // Expected profit
-   result.expected_profit = (result.probability_success * reward) - ((1 - result.probability_success) * risk);
-   
+
+   // v1.2.1 FIX: expected profit normalizado em unidades de RISCO (R):
+   // EP_R = prob*RR - (1-prob). Independe do point/preco do simbolo.
+   // Antes (v1.2.0) o EP era calculado em preco absoluto e comparado
+   // com 0.5, o que bloqueava SEMPRE pares FX (point 0.00001) com
+   // "Low expected profit" (EP ~0.003). Corrigido em v1.2.1.
+   result.expected_profit =
+      (result.probability_success * result.risk_reward) -
+      (1.0 - result.probability_success);
+
    // Max adverse/favorable excursion (simplified)
    result.max_adverse_excursion = risk * 1.5;
    result.max_favorable_excursion = reward * 1.2;
-   
-   // Decision
-   result.should_execute = (result.probability_success >= m_min_probability && 
+
+   // Decision - thresholds em unidades de R (nao preco absoluto)
+   result.should_execute = (result.probability_success >= m_min_probability &&
                            result.expected_profit >= m_min_expected_profit &&
                            result.risk_reward >= 1.0);
-   
-   result.reason = result.should_execute ? "All criteria met" : 
+
+   result.reason = result.should_execute ? "All criteria met" :
                   (result.probability_success < m_min_probability ? "Low probability" :
                   result.expected_profit < m_min_expected_profit ? "Low expected profit" : "Poor risk/reward");
-   
+
    return result;
 }
 
@@ -95,11 +102,11 @@ SimulationResult CSimulationEngine::Evaluate(string symbol, int type, double vol
 {
    if(!m_initialized) Init();
    m_simulation_count++;
-   
+
    SimulationResult result = SimulateTrade(symbol, type, volume, entry, sl, tp);
-   
+
    if(result.should_execute) m_approved_count++; else m_rejected_count++;
-   
+
    return result;
 }
 
@@ -133,4 +140,3 @@ string CSimulationEngine::GetSummary()
 void CSimulationEngine::LogSummary() { Print("[SIMULATION] " + GetSummary()); }
 
 #endif // SIMULATION_ENGINE_MQH
-

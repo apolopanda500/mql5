@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0
+﻿// XAU_AI_PRO v1.2.0
 #ifndef SPREADFILTER_MQH
 #define SPREADFILTER_MQH
 

@@ -1,4 +1,5 @@
-﻿#ifndef DATALOGGER_MQH
+﻿// XAU_AI_PRO v1.2.0
+#ifndef DATALOGGER_MQH
 #define DATALOGGER_MQH
 
 #include "../Core/Config.mqh"

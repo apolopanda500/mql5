@@ -1,3 +1,4 @@
+﻿// XAU_AI_PRO v1.2.0
 #ifndef SYMBOLMANAGER_MQH
 #define SYMBOLMANAGER_MQH
 
@@ -20,6 +21,13 @@ string ActiveSymbols[];
 bool SymbolsPending     = false;   // ha simbolos aguardando sincronizacao
 bool SymbolsResolved    = false;   // resolucao concluida com sucesso
 datetime LastSymbolRetry= 0;       // throttle do retry
+int  SymbolRetryCount   = 0;       // retries do episodio atual (cap anti-loop v1.2.1)
+
+// Maximo de retries de sincronizacao antes de desistir e liberar o
+// pipeline com os simbolos ja resolvidos. 12 x 5s = ~60s de tolerancia
+// no boot; simbolos inexistentes na corretora (ex.: US30/US500/USTEC)
+// nao devem travar o EA para sempre.
+#define SYMBOL_RETRY_MAX 12
 
 //==================================================
 // HELPERS
@@ -37,9 +45,13 @@ bool IsSymbolTradeable(string symbol)
       // 4301 = simbolo realmente desconhecido.
       // Qualquer outro erro (ex.: 4106, 4801) normalmente
       // significa que o simbolo ainda nao sincronizou.
-      if(GetLastError() != 4301)
-         SymbolsPending = true;
-
+      // v1.2.1: NAO seta mais SymbolsPending aqui. Candidatos
+      // de fallback inexistentes (US30/US500/USTEC e sufixos
+      // testados em ResolveBrokerSymbol) geram erros != 4301
+      // a cada init/retry e travavam o OnTick antes do
+      // RunTradePipeline. A pendencia real de boot continua
+      // detectada pelo Market Watch vazio (ResolveBrokerSymbol)
+      // e pelos fallbacks do _Symbol na InitSymbolManager.
       return false;
    }
 
@@ -169,6 +181,13 @@ string ResolveBrokerSymbol(string symbol)
    }
 
    // Fallback 2: match parcial (mais permissivo, mas logado)
+   // v1.2.1: protecao para Market Watch vazio (boot/sincronizacao pendente)
+   if(total <= 0)
+   {
+      Print("SYMBOL MANAGER | Market Watch vazio (sincronizacao pendente) | ", symbol);
+      SymbolsPending = true;
+      return "";
+   }
    for(int i = 0; i < total; i++)
    {
       string broker = SymbolName(i, true);
@@ -329,16 +348,39 @@ bool UpdateSymbolManager()
    if(now - LastSymbolRetry < 5)
       return false;
 
-   LastSymbolRetry = now;
+   LastSymbolRetry  = now;
+   SymbolRetryCount++;
 
-   Print("SYMBOL MANAGER | Retentando sincronizacao de simbolos...");
+   //--------------------------------------------------
+   // CAP ANTI-LOOP (v1.2.1)
+   // Se apos SYMBOL_RETRY_MAX tentativas algum simbolo
+   // continuar sem sincronizar (ex.: US30/US500/USTEC
+   // inexistentes na corretora), desiste da pendencia e
+   // libera o pipeline com os simbolos ja resolvidos.
+   // Sem isso o OnTick retorna antes do RunTradePipeline
+   // para sempre e o EA nunca avalia sinais.
+   //--------------------------------------------------
+   if(SymbolRetryCount >= SYMBOL_RETRY_MAX)
+   {
+      SymbolsPending   = false;
+      SymbolsResolved  = true;
+      SymbolRetryCount = 0;
+      Print("SYMBOL MANAGER | WARNING: sincronizacao nao concluida apos ",
+            SYMBOL_RETRY_MAX, " tentativas. Liberando operacao com ",
+            ArraySize(ActiveSymbols), " simbolo(s) ativo(s).");
+      return true;
+   }
+
+   Print("SYMBOL MANAGER | Retentando sincronizacao de simbolos (",
+         SymbolRetryCount, "/", SYMBOL_RETRY_MAX, ")...");
 
    SymbolsPending = false;
    InitSymbolManager();
 
    if(!SymbolsPending)
    {
-      SymbolsResolved = true;
+      SymbolsResolved  = true;
+      SymbolRetryCount = 0;
       Print("SYMBOL MANAGER | Simbolos sincronizados com sucesso (", ArraySize(ActiveSymbols), ")");
    }
 

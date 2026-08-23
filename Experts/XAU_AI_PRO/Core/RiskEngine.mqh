@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0
+﻿// XAU_AI_PRO v1.2.0
 #ifndef RISKENGINE_MQH
 #define RISKENGINE_MQH
 
@@ -49,7 +49,8 @@ double CalculateLotByRisk(
       return 0.0;   // bloqueia nova operacao
    }
    
-   // Calcular drawdown atual
+   // Drawdown da CONTA (acumulado vs balance). Metricas diarias
+   // (peak do dia) vivem no RiskHub (GetDrawdownPercent).
    double drawdown=0;
    if(balance > 0)
       drawdown = ((balance - equity) / balance) * 100.0;
@@ -96,7 +97,25 @@ double CalculateLotByRisk(
    double maxLot=SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
    double step=SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
 
-   lot=MathMax(minLot,lot);
+   // v1.3.0 (Etapa 3): lote abaixo do minimo NAO e mais forcado
+   // silenciosamente. AllowMinLotOverride=true mantem o comportamento
+   // antigo com log explicito do risco real; false bloqueia (estrito).
+   if(lot < minLot)
+   {
+      if(!AllowMinLotOverride)
+      {
+         Print("RISK: Lote calculado (", DoubleToString(lot, 2),
+               ") abaixo do minimo (", DoubleToString(minLot, 2),
+               ") -> trade BLOQUEADO");
+         return 0.0;
+      }
+
+      Print("RISK: ATENCAO | Lote minimo forcado (", DoubleToString(minLot, 2),
+            ") | Risco real excede o configurado (",
+            DoubleToString(riskPercent, 2), "%)");
+      lot = minLot;
+   }
+
    lot=MathMin(maxLot,lot);
 
    lot=MathFloor(lot/step)*step;

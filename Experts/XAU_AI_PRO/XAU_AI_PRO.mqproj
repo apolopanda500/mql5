@@ -75,11 +75,6 @@
       "relative_to_project":true
     },
     {
-      "path":"Utils.mqh",
-      "compile":false,
-      "relative_to_project":true
-    },
-    {
       "path":"SmartSLTP.mqh",
       "compile":false,
       "relative_to_project":true
@@ -435,11 +430,6 @@
       "relative_to_project":true
     },
     {
-      "path":"Core\\ExecutionTracker.mqh",
-      "compile":false,
-      "relative_to_project":true
-    },
-    {
       "path":"Core\\ExecutionSupervisor.mqh",
       "compile":false,
       "relative_to_project":true
@@ -660,11 +650,6 @@
       "relative_to_project":true
     },
     {
-      "path":"Enterprise\\EventManager.mqh",
-      "compile":false,
-      "relative_to_project":true
-    },
-    {
       "path":"Enterprise\\Scheduler.mqh",
       "compile":false,
       "relative_to_project":true
@@ -681,16 +666,6 @@
     },
     {
       "path":"Enterprise\\ConfigManager.mqh",
-      "compile":false,
-      "relative_to_project":true
-    },
-    {
-      "path":"Enterprise\\PluginSystem.mqh",
-      "compile":false,
-      "relative_to_project":true
-    },
-    {
-      "path":"Enterprise\\APILayer.mqh",
       "compile":false,
       "relative_to_project":true
     },

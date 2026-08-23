@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0
+﻿// XAU_AI_PRO v1.2.0
 #ifndef AIENGINE_MQH
 #define AIENGINE_MQH
 
@@ -233,6 +233,133 @@ int GetCombinedSignal(string symbol="")
 }
 
 //==================================================
+// ADVANCED AI SCORE (v1.4.0 - Etapa 5)
+//==================================================
+// O modulo orfao AI/AdvancedAI.mqh foi fundido aqui.
+// Todas as dependencias (TrendFilter, SpreadFilter,
+// ADX, TrendStrength, VolatilityFilter, AdaptiveWeights)
+// ja estao incluidos neste arquivo.
+//
+// AdvancedAIScore() gera um score 0-100 ponderado:
+//   AI base (GetAIConfidence) x ExecutionWeight
+//   Trend (StrongTrend)          x TrendWeight
+//   ADX strength                 x StrengthWeight
+//   Spread (GoodSpread)          x MarketWeight
+//   Volatilidade + bonus direcional
+//
+// FinalAIAllow() e um VETO: a IA NAO tem autoridade
+// absoluta - pode bloquear o trade, mas nunca cria
+// sinal. Usado no DecisionEngine (AllowTrade).
+//==================================================
+
+double ClampScore(double value)
+{
+   if(value < 0.0)
+      return 0.0;
+   if(value > 100.0)
+      return 100.0;
+   return value;
+}
+
+//==================================================
+
+bool StrongTrend(string symbol="")
+{
+   if(symbol == "")
+      symbol = _Symbol;
+   return(TrendBuy(symbol) || TrendSell(symbol));
+}
+
+//==================================================
+
+double AdvancedAIScore(int signal, string symbol="")
+{
+   if(signal == 0)
+      return 0.0;
+
+   if(symbol == "")
+      symbol = _Symbol;
+
+   double score = 0.0;
+
+   //------------------------------------------
+   // AI BASE
+   //------------------------------------------
+
+   score += GetAIConfidence(signal, symbol) * GetExecutionWeight();
+
+   //------------------------------------------
+   // TREND
+   //------------------------------------------
+
+   if(StrongTrend(symbol))
+      score += 100.0 * GetTrendWeight();
+   else
+      score -= 40.0 * GetTrendWeight();
+
+   //------------------------------------------
+   // TREND STRENGTH (ADX)
+   //------------------------------------------
+
+   double trend = GetADX(symbol);
+   if(trend > 100.0)
+      trend = 100.0;
+   score += trend * GetStrengthWeight();
+
+   //------------------------------------------
+   // SPREAD
+   //------------------------------------------
+
+   if(GoodSpread(symbol))
+      score += 100.0 * GetMarketWeight();
+   else
+      score -= 60.0 * GetMarketWeight();
+
+   //------------------------------------------
+   // VOLATILITY
+   //------------------------------------------
+
+   if(GoodVolatility(30))
+      score += 8.0;
+   else
+      score -= 12.0;
+
+   //------------------------------------------
+   // BONUS DIRECIONAL
+   //------------------------------------------
+
+   if(signal > 0 && TrendBuy())
+      score += 6.0;
+   if(signal < 0 && TrendSell())
+      score += 6.0;
+
+   score = ClampScore(score);
+   return NormalizeDouble(score, 2);
+}
+
+//==================================================
+
+bool FinalAIAllow(int signal, string symbol="")
+{
+   if(signal == 0)
+      return false;
+
+   if(symbol == "")
+      symbol = _Symbol;
+
+   double score = AdvancedAIScore(signal, symbol);
+
+   PrintFormat(
+      "[ADV AI] Score %.2f | Min %.2f | Symbol %s",
+      score,
+      MinAIConfidence,
+      symbol
+   );
+
+   return(score >= MinAIConfidence);
+}
+
+//==================================================
 // FEEDBACK
 //==================================================
 
@@ -286,4 +413,4 @@ void LogAIFeedback(string symbol,double profit)
    FileClose(file);
 }
 
-#endif
+#endif  f

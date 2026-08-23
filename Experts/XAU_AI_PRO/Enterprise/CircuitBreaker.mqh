@@ -1,4 +1,4 @@
-//+------------------------------------------------------------------+
+﻿//+------------------------------------------------------------------+
 //| CircuitBreaker.mqh                                               |
 //| Circuit Breaker System                                           |
 //| XAU_AI_PRO v1.2.0                                                  |
@@ -109,6 +109,7 @@ public:
       const string reason
    );
 
+   static datetime GetTriggeredTime();
    static string GetTriggerReason();
 
    static void LogStatus();
@@ -177,6 +178,33 @@ void CCircuitBreaker::Init()
 
    m_initialized=
       true;
+
+
+   // v1.3.0 (Etapa 3): SAFE_MODE persiste entre reinicializacoes.
+   // Quedas de rede nao liberam mais o circuit breaker por acidente.
+   string gvCB="XAI_PRO_CB_SAFE_UNTIL";
+
+   if(MQLInfoInteger(MQL_TESTER)==0 && GlobalVariableCheck(gvCB))
+   {
+      datetime until=(datetime)GlobalVariableGet(gvCB);
+
+      if(TimeCurrent() < until)
+      {
+         m_state=CIRCUIT_SAFE_MODE;
+
+         m_triggered_time=until - m_cooldown_seconds;
+
+         m_trigger_reason="restaurado apos reinicio";
+
+         Print("[CIRCUIT] SAFE_MODE restaurado apos reinicio ate ",
+               TimeToString(until, TIME_DATE|TIME_SECONDS));
+      }
+      else
+      {
+         if(MQLInfoInteger(MQL_TESTER)==0)
+            GlobalVariableDel(gvCB);
+      }
+   }
 
 
    Print(
@@ -263,19 +291,19 @@ bool CCircuitBreaker::CheckSpreadExplosion(
    // Circuit Breaker atua somente em
    // spread extremamente anormal.
    //
-   // O filtro normal já usa MaxSpread.
+   // O filtro normal jÃƒÆ’Ã‚Â¡ usa MaxSpread.
    //
    // IMPORTANTE (v1.2.0 - diagnostico):
-   // Em backtest, símbolos crypto (BTCUSD#, ETHUSD#)
-   // têm spread natural de ~345 pontos, enquanto
+   // Em backtest, sÃƒÆ’Ã‚Â­mbolos crypto (BTCUSD#, ETHUSD#)
+   // tÃƒÆ’Ã‚Âªm spread natural de ~345 pontos, enquanto
    // MaxSpread default = 30. Com fator 3x (=90),
    // o CircuitBreaker dispara ForceSafeMode a cada
-   // tick, travando toda a operação.
+   // tick, travando toda a operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o.
    //
-   // Solução defensiva:
-   //   - O filtro normal (ValidateTrade) já barra
-   //     spread > MaxSpread por símbolo.
-   //   - O CircuitBreaker só deve agir em explosão
+   // SoluÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o defensiva:
+   //   - O filtro normal (ValidateTrade) jÃƒÆ’Ã‚Â¡ barra
+   //     spread > MaxSpread por sÃƒÆ’Ã‚Â­mbolo.
+   //   - O CircuitBreaker sÃƒÆ’Ã‚Â³ deve agir em explosÃƒÆ’Ã‚Â£o
    //     EXTREMA (fator 10x), evitando falso-positivo
    //     em spread normal de crypto/volatilidade alta.
 
@@ -333,6 +361,8 @@ bool CCircuitBreaker::CheckHighDrawdown()
       return false;
 
 
+   // Drawdown da CONTA (acumulado vs balance) - intencional:
+   // RiskHub (GetDrawdownPercent) mede o peak DIARIO.
    double drawdown=
       (
          (balance-equity)
@@ -679,7 +709,7 @@ bool CCircuitBreaker::CheckAbnormalMarket(
 
 
    // Volatilidade extrema:
-   // ATR atual > 3x média recente
+   // ATR atual > 3x mÃƒÆ’Ã‚Â©dia recente
 
    if(
       ratio>=3.0
@@ -798,6 +828,12 @@ void CCircuitBreaker::Run()
          Print(
             "[CIRCUIT] Recovered to NORMAL mode"
          );
+
+          // v1.3.0 (Etapa 3): limpa a persistencia do SAFE_MODE
+          string gvCB="XAI_PRO_CB_SAFE_UNTIL";
+
+          if(MQLInfoInteger(MQL_TESTER)==0 && GlobalVariableCheck(gvCB))
+            GlobalVariableDel(gvCB);
       }
    }
 }
@@ -828,19 +864,19 @@ void CCircuitBreaker::RunSymbol(
       //================================================
       // SPREAD
       //
-      // Não bloquear o sistema inteiro por causa do
-      // spread de um único símbolo.
+      // NÃƒÆ’Ã‚Â£o bloquear o sistema inteiro por causa do
+      // spread de um ÃƒÆ’Ã‚Âºnico sÃƒÆ’Ã‚Â­mbolo.
       //
-      // O filtro por símbolo (ValidateTrade | SPREAD)
-      // é o responsável por barrar spread > MaxSpread,
-      // sem travar as demais operações.
+      // O filtro por sÃƒÆ’Ã‚Â­mbolo (ValidateTrade | SPREAD)
+      // ÃƒÆ’Ã‚Â© o responsÃƒÆ’Ã‚Â¡vel por barrar spread > MaxSpread,
+      // sem travar as demais operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes.
       //
-      // Em backtest, símbolos crypto (BTCUSD#, ETHUSD#)
-      // têm spread natural muito alto (ex: 2250 pontos),
+      // Em backtest, sÃƒÆ’Ã‚Â­mbolos crypto (BTCUSD#, ETHUSD#)
+      // tÃƒÆ’Ã‚Âªm spread natural muito alto (ex: 2250 pontos),
       // o que fazia o CircuitBreaker travar TUDO a cada
       // tick (Trigger #99k).
       //
-      // Este log serve apenas de diagnóstico.
+      // Este log serve apenas de diagnÃƒÆ’Ã‚Â³stico.
       //================================================
 
       Print(
@@ -860,13 +896,13 @@ void CCircuitBreaker::RunSymbol(
       //================================================
       // AI
       //
-      // Não bloquear o sistema inteiro apenas porque
-      // prediction_<symbol>.json não está disponível.
+      // NÃƒÆ’Ã‚Â£o bloquear o sistema inteiro apenas porque
+      // prediction_<symbol>.json nÃƒÆ’Ã‚Â£o estÃƒÆ’Ã‚Â¡ disponÃƒÆ’Ã‚Â­vel.
       //
       // O AIEngine possui fallback local.
       //
-      // O AITradeAllowed() será responsável pela
-      // decisão final da IA.
+      // O AITradeAllowed() serÃƒÆ’Ã‚Â¡ responsÃƒÆ’Ã‚Â¡vel pela
+      // decisÃƒÆ’Ã‚Â£o final da IA.
       //================================================
 
       Print(
@@ -1076,8 +1112,10 @@ void CCircuitBreaker::ForceSafeMode(
       reason;
 
 
-   m_trigger_count++;
-
+      m_trigger_count++;
+   // v1.3.0 (Etapa 3): persiste SAFE_MODE pelo cooldown (sobrevive a reinits)
+   if(MQLInfoInteger(MQL_TESTER)==0)
+      GlobalVariableSet("XAI_PRO_CB_SAFE_UNTIL", TimeCurrent() + m_cooldown_seconds);
 
    PrintFormat(
       "[CIRCUIT] SAFE MODE activated: %s | Trigger #%d",
@@ -1090,6 +1128,11 @@ void CCircuitBreaker::ForceSafeMode(
 //==================================================
 // TRIGGER REASON
 //==================================================
+
+datetime CCircuitBreaker::GetTriggeredTime()
+{
+   return m_triggered_time;
+}
 
 string CCircuitBreaker::GetTriggerReason()
 {
@@ -1113,7 +1156,189 @@ void CCircuitBreaker::LogStatus()
 
 
 //==================================================
+// FAILSAFE COMPAT (v1.4.0 - Etapa 5)
+//==================================================
+// O modulo orfao Monitoring/FailSafe.mqh foi fundido
+// aqui. O CircuitBreaker ja era o dono real do
+// SAFE_MODE (cooldown 300s, persistencia em
+// GlobalVariable, recovery automatico). Esta secao
+// preserva a API publica do FailSafe e adiciona os
+// contadores de erro com histerese.
+//
+// NOTA Etapa 6: o health check do antigo FailSafe
+// dependia de HealthMonitor/WatchDog (orfao). Sera
+// integrado na Etapa 6 junto com esses modulos.
+//==================================================
+
+enum ENUM_ROBOT_MODE
+{
+   ROBOT_MODE_AUTO = 0,
+   ROBOT_MODE_SAFE = 1
+};
+
+// Duracao minima do SAFE_MODE (compat FailSafe)
+int g_failSafeDuration = 300;
+
+// Limites de histerese (compat FailSafe)
+int g_failSafeMaxAIErrors = 5;
+int g_failSafeMaxBrokerErrors = 10;
+
+// Contadores acumulados (sobrevivem enquanto o EA roda)
+int g_failSafeAIErrorCount = 0;
+int g_failSafeBrokerErrorCount = 0;
+
+//==================================================
+// ACTIVATE (compat)
+//==================================================
+
+void FailSafeActivate(string reason)
+{
+   CCircuitBreaker::ForceSafeMode(reason);
+}
+
+//==================================================
+// CAN TRADE (compat)
+//==================================================
+
+bool FailSafeCanTrade()
+{
+   return CCircuitBreaker::CanTrade();
+}
+
+//==================================================
+// GET MODE (compat)
+//==================================================
+
+ENUM_ROBOT_MODE FailSafeGetMode()
+{
+   return(CCircuitBreaker::IsSafeMode() ? ROBOT_MODE_SAFE : ROBOT_MODE_AUTO);
+}
+
+//==================================================
+// GET MODE STRING (compat)
+//==================================================
+
+string FailSafeGetModeString()
+{
+   return CCircuitBreaker::GetStateString();
+}
+
+//==================================================
+// GET REASON (compat)
+//==================================================
+
+string FailSafeGetReason()
+{
+   return CCircuitBreaker::GetTriggerReason();
+}
+
+//==================================================
+// GET ELAPSED (compat)
+//==================================================
+
+int FailSafeGetElapsed()
+{
+   if(!CCircuitBreaker::IsSafeMode())
+      return 0;
+   return(int)(TimeCurrent() - CCircuitBreaker::GetTriggeredTime());
+}
+
+//==================================================
+// GET REMAINING (compat)
+//==================================================
+
+int FailSafeGetRemaining()
+{
+   if(!CCircuitBreaker::IsSafeMode())
+      return 0;
+   int remaining = g_failSafeDuration - FailSafeGetElapsed();
+   if(remaining < 0)
+      remaining = 0;
+   return remaining;
+}
+
+//==================================================
+// SET MODE (compat) - modo manual
+//==================================================
+
+void FailSafeSetMode(ENUM_ROBOT_MODE mode)
+{
+   if(mode == ROBOT_MODE_SAFE)
+   {
+      CCircuitBreaker::ForceSafeMode("MANUAL_SAFE_MODE");
+      return;
+   }
+   CCircuitBreaker::Reset();
+}
+
+//==================================================
+// RESET (compat)
+//==================================================
+
+void FailSafeReset()
+{
+   CCircuitBreaker::Reset();
+   g_failSafeAIErrorCount = 0;
+   g_failSafeBrokerErrorCount = 0;
+}
+
+//==================================================
+// SUMMARY (compat)
+//==================================================
+
+string FailSafeSummary()
+{
+   string summary = "=== FAILSAFE ===\n";
+   summary += "Mode: " + FailSafeGetModeString() + "\n";
+   summary += "CanTrade: " + (FailSafeCanTrade() ? "YES" : "NO") + "\n";
+   summary += "Reason: " + CCircuitBreaker::GetTriggerReason() + "\n";
+   if(CCircuitBreaker::IsSafeMode())
+   {
+      summary += "Elapsed: " + IntegerToString(FailSafeGetElapsed()) + "s\n";
+      summary += "Remaining: " + IntegerToString(FailSafeGetRemaining()) + "s\n";
+   }
+   summary += "AI Errors: " + IntegerToString(g_failSafeAIErrorCount) + "/" + IntegerToString(g_failSafeMaxAIErrors) + "\n";
+   summary += "Broker Errors: " + IntegerToString(g_failSafeBrokerErrorCount) + "/" + IntegerToString(g_failSafeMaxBrokerErrors) + "\n";
+   return summary;
+}
+
+//==================================================
+// SHUTDOWN (compat)
+//==================================================
+
+void FailSafeShutdown()
+{
+   Print("[FAILSAFE] Finalizado");
+}
+
+//==================================================
+// ERROR COUNTERS (v1.4.0 - Etapa 5)
+// Chamados pelo CCircuitBreaker::Run() para dar
+// histerese aos gatilhos de IA/broker.
+//==================================================
+
+void FailSafeRegisterAIError()
+{
+   g_failSafeAIErrorCount++;
+   if(g_failSafeAIErrorCount >= g_failSafeMaxAIErrors)
+   {
+      FailSafeActivate("AI_ERRORS");
+      g_failSafeAIErrorCount = 0;
+   }
+}
+
+void FailSafeRegisterBrokerError()
+{
+   g_failSafeBrokerErrorCount++;
+   if(g_failSafeBrokerErrorCount >= g_failSafeMaxBrokerErrors)
+   {
+      FailSafeActivate("BROKER_ERRORS");
+      g_failSafeBrokerErrorCount = 0;
+   }
+}
+
+//==================================================
 // END
 //==================================================
 
-#endif
+#endif  f

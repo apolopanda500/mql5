@@ -1,3 +1,4 @@
+﻿// XAU_AI_PRO v1.2.0
 #ifndef VALIDATIONENGINE_MQH
 #define VALIDATIONENGINE_MQH
 
@@ -8,6 +9,7 @@
 #include "../Filters/TrendFilter.mqh"
 #include "../Filters/MultiTimeframeFilter.mqh"
 #include "../Filters/NewsFilter.mqh"
+#include "../Filters/MarketRegime.mqh"
 
 #include "../Indicators/ADX.mqh"
 
@@ -210,6 +212,35 @@ bool ValidateTrade(
 
 
    //================================================
+   // VOLATILITY / MARKET REGIME
+   //================================================
+
+   if(EnableVolatilityFilter)
+   {
+      MarketRegimeType regime = GetMarketRegime(symbol);
+
+      if(!IsGoodMarket(symbol))
+      {
+         Print(
+            "[VALIDATION] BLOCK | VOLATILITY/REGIME | ",
+            symbol,
+            " | Regime=",
+            MarketRegimeToString(regime)
+         );
+
+         return false;
+      }
+
+      Print(
+         "[VALIDATION] REGIME OK | ",
+         symbol,
+         " | ",
+         MarketRegimeToString(regime)
+      );
+   }
+
+
+   //================================================
    // AI
    //================================================
 
@@ -258,8 +289,8 @@ bool ValidateTrade(
       }
    }
 
-//================================================
-   // NEWS (Economic Calendar v1.2.0)
+   //================================================
+   // NEWS (Economic Calendar)
    //================================================
 
    if(EnableNewsFilter)
