@@ -211,7 +211,7 @@ input double MinimumADX         = 18.0;
 
 //==================================================
 // SCHEDULER v1.2.0
-// Placeholder para fechamento do agendador/timer.
+// Agendador interno: intervalo de execucao + shutdown de fim de semana.
 //==================================================
 input bool   EnableScheduler       = true;
 input int    SchedulerIntervalSec  = 60;
@@ -219,7 +219,7 @@ input bool   EnableWeekendShutdown = true;
 
 //==================================================
 // DATABASE / TELEMETRY v1.2.0
-// Placeholder para integracao com DatabaseManager,
+// Integracao com DatabaseManager,
 // TradeLogger e Statistics.
 //==================================================
 input bool   EnableDatabase        = false;

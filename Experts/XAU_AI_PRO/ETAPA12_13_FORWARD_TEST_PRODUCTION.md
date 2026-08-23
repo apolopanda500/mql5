@@ -79,10 +79,20 @@ ETAPA 13 (Auditoria final + Documentacao operacional) = EXECUTADA nesta sessao.
 ## 3. PLANO DA ETAPA 12 — FORWARD TEST + RECOVERY (executar apos reiniciar MT5)
 
 ### 3.0 Pre-requisitos
-- [ ] MT5 reiniciado (demanda do usuario).
-- [ ] Commit do working tree atual (recomendado, ver 1.3).
-- [ ] Posicao orfa USDCHF decidida: manter sob observacao ou fechar manualmente
+- [x] MT5 reiniciado (feito 22/08 ~21:00 GMT-3).
+- [x] Commit do working tree atual -> 6e2ac9f (116 arquivos).
+- [x] Posicao orfa USDCHF: fechamento ordenado 22/08 21:32 GMT-3 -> retcode 10018 (Market closed).
+      PENDENTE: reexecutar na abertura (dom ~22:00 UTC). O EA nao gerencia este simbolo.
       (nao faz parte dos 4 simbolos dos charts atuais; o EA nao a gerencia).
+
+### 3.0a EXECUCAO REGISTRADA (22/08 21:12 GMT-3)
+- Journal pos-reinicio: 4 EAs XAU_AI_PRO carregados OK (XAUUSD/EURUSD/AUDUSD/USDBRL M5);
+  conta sincronizada (1 posicao, 0 ordens, 162 simbolos); trading habilitado (hedging).
+- Smoke test Recovery (T7_BackupRecoveryTest, tester run 7677013674074119109):
+  PASS 21/21, FAIL=0 — backup real validado, restore byte-a-byte OK
+  (evidencia: Common\Files\T7_diag.txt).
+- Mercado fechado no momento (servidor parado em 21/08 23:59 UTC) -> forward test
+  aguarda abertura (~dom 22:00 UTC / 19:00 GMT-3).
 
 ### 3.1 Forward test (demo, MetaQuotes-Demo 111194406)
 - [ ] Ativar conforme 2.1 (PRO.set + AutoTrade ON + Ctrl+E).
@@ -98,7 +108,7 @@ ETAPA 13 (Auditoria final + Documentacao operacional) = EXECUTADA nesta sessao.
   - 0 crashes / 0 hangs do EA (HealthMonitor sem alarmes criticos).
 
 ### 3.2 Teste de Recovery (falhas e recuperacao)
-- [ ] Smoke: reexecutar `T7_BackupRecoveryTest` (OnInit; resultado em Common\Files\T7_diag.txt) — PASS esperado.
+- [x] Smoke: reexecutar `T7_BackupRecoveryTest` (OnInit; resultado em Common\Files\T7_diag.txt) — PASS 21/21 (22/08 21:12 GMT-3).
 - [ ] Prova de reinicio a frio: fechar MT5 com posicao aberta; reabrir; verificar que o EA
       retoma sem duplicar gestao (PositionManager/PositionSynchronizer).
 - [ ] Prova de rede: desconectar/reconectar (ou reiniciar roteador); verificar reinit limpo
