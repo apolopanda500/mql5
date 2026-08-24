@@ -2,6 +2,9 @@
 #ifndef AICONNECTOR_MQH
 #define AICONNECTOR_MQH
 
+#include "../Core/Config.mqh"            // self-contained: inputs (MaxPredictionAgeSec etc.)
+#include "../Monitoring/EventEmitter.mqh" // self-contained: EventAIBlock (guard idempotente)
+
 //==================================================
 // AI CONNECTOR
 // XAU_AI_PRO v1.2.0
