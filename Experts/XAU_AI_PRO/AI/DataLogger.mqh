@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.0
 #ifndef DATALOGGER_MQH
 #define DATALOGGER_MQH
 
@@ -169,6 +169,7 @@ bool DataLoggerInit()
          FILE_READ |
          FILE_WRITE |
          FILE_CSV |
+         FILE_UNICODE |
          FILE_SHARE_READ |
          FILE_SHARE_WRITE,
          ','
