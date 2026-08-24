@@ -38,6 +38,7 @@
 
 #include "../Core/Config.mqh"
 #include "../Enterprise/ConnectionGuard.mqh" // self-contained: ConnectionGuardRefresh
+#include "../Enterprise/FailureMode.mqh"     // self-contained: GetFailureStateString
 #include "../Filters/NewsFilter.mqh"         // self-contained: GetNewsState
 #include "../AI/AIClient.mqh"                // self-contained: AIClientConnected/LastAIConfidence
 
