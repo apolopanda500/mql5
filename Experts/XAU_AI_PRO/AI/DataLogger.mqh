@@ -169,7 +169,6 @@ bool DataLoggerInit()
          FILE_READ |
          FILE_WRITE |
          FILE_CSV |
-         FILE_UNICODE |
          FILE_SHARE_READ |
          FILE_SHARE_WRITE,
          ','

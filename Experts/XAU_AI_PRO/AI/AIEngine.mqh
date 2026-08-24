@@ -52,14 +52,6 @@ bool AITradeAllowed(string symbol="")
 
    if(LoadAIPrediction(symbol))
    {
-      //------------------------------------------------
-      // ETAPA 15.3: sinal UNAVAILABLE = IA indisponivel.
-      // NAO confirma e NAO veta; o score base prevalece.
-      // Comportamento fail-safe identico a ausencia de JSON.
-      //------------------------------------------------
-      if(AI_Signal=="UNAVAILABLE")
-         return true;
-
       if(signal==1 && AI_Signal=="SELL")
          return false;
 
@@ -92,11 +84,7 @@ double GetAIConfidence(int signal,string symbol="")
 
    double score=50.0;
 
-   //------------------------------------------------
-   // ETAPA 15.3: UNAVAILABLE nao gera bonus de IA;
-   // cai no fallback local (trend/RSI/ADX).
-   //------------------------------------------------
-   if(LoadAIPrediction(symbol) && AI_Signal!="UNAVAILABLE")
+   if(LoadAIPrediction(symbol))
    {
       if(signal==1 && AI_Signal=="BUY")
          score+=20.0;
