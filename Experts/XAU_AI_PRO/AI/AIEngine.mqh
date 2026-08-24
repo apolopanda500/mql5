@@ -1,4 +1,4 @@
-ï»¿// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.0
 #ifndef AIENGINE_MQH
 #define AIENGINE_MQH
 
