@@ -37,6 +37,7 @@
 #define FORWARD_TEST_RUNNER_MQH
 
 #include "../Core/Config.mqh"
+#include "../Core/DecisionEngine.mqh"        // self-contained: MarketScore
 #include "../Enterprise/ConnectionGuard.mqh" // self-contained: ConnectionGuardRefresh
 #include "../Enterprise/FailureMode.mqh"     // self-contained: GetFailureStateString
 #include "../Filters/NewsFilter.mqh"         // self-contained: GetNewsState
