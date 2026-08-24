@@ -701,6 +701,21 @@ bool AIBuyAllowed(
    }
 
 
+   if(
+      AI_Signal=="UNAVAILABLE" ||
+      AI_Signal=="ERROR" ||
+      AI_Signal=="HOLD"
+   )
+   {
+      Print(
+         "AI BLOCK | Estado nao executa vel: ",
+         AI_Signal,
+         " | ",
+         symbol
+      );
+      return false;
+   }
+
    return(
       AI_Signal=="BUY" ||
       AI_Signal=="STRONG_BUY"
@@ -734,6 +749,21 @@ bool AISellAllowed(
       }
    }
 
+
+   if(
+      AI_Signal=="UNAVAILABLE" ||
+      AI_Signal=="ERROR" ||
+      AI_Signal=="HOLD"
+   )
+   {
+      Print(
+         "AI BLOCK | Estado nao executa vel: ",
+         AI_Signal,
+         " | ",
+         symbol
+      );
+      return false;
+   }
 
    return(
       AI_Signal=="SELL" ||
