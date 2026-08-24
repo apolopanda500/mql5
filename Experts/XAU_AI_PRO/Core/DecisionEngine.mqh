@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.0
 #ifndef DECISIONENGINE_MQH
 #define DECISIONENGINE_MQH
 
@@ -393,11 +393,11 @@ bool AllowTrade(
 
 
    //================================================
-   // CORREÃƒâ€¡ÃƒÆ’O PRINCIPAL
+   // CORREÃƒÆ’Ã¢â‚¬Â¡ÃƒÆ’Ã†â€™O PRINCIPAL
    //
    // ValidateTrade espera:
-   // 1Ã‚Âº = string symbol
-   // 2Ã‚Âº = int signal
+   // 1Ãƒâ€šÃ‚Âº = string symbol
+   // 2Ãƒâ€šÃ‚Âº = int signal
    //================================================
 
    if(
@@ -410,6 +410,31 @@ bool AllowTrade(
       return false;
    }
 
+
+   //------------------------------------------------
+   // ETAPA 11 - NEWS FILTER: integraÃ§Ã£o explÃ­cita
+   // ReforÃ§o a capa de noticias no DecisionEngine,
+   // NON sÃ³ via ValidateTrade. NÃ£o bloquea a gestÃ£o de
+   // posiciones abertas (solo novas entradas).
+   //------------------------------------------------
+
+   if(EnableNewsFilter && IsNewsBlocked())
+   {
+      g_newsBlockReason = GetNewsBlockDetail(symbol);
+
+      if(allowLogOnce)
+         Print(
+            "DECISION BLOCKED | NEWS | Symbol=",
+            symbol,
+            " | Signal=",
+            signal,
+            " | Reason=",
+            g_newsBlockReason
+         );
+
+      NewsLogBlock();
+      return false;
+   }
 
    double score=
       CalculateMarketScore(
@@ -524,4 +549,3 @@ int GetDecision(
 
 #endif
 
-  
