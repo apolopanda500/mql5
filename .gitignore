@@ -61,3 +61,12 @@ logs/
 # *.json      (config files at root)
 # *.md        (documentation)
 # *.set       (setting files)
+**/Data/system_status.json 
+**/Data/forward_test_events.csv 
+**/Data/forward_test_session.csv 
+**/Data/forward_test_trades.csv 
+**/Data/*.db 
+**/Data/*.json 
+  
+# --- Runtime statistics / auto-generated test outputs ---  
+Files/XAU_AI_PRO_stats.csv  
