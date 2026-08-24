@@ -25,6 +25,10 @@ CTrade trade;
 #include "Core/PathManager.mqh"
 #include "Core/TimeFrameManager.mqh"
 
+// ETAPA 11: AuditLog ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© incluÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­do cedo porque NewsFilter/DecisionEngine
+// precisam registrar o motivo do bloqueo por noticias (AuditLogSimple).
+#include "Monitoring/AuditLog.mqh"
+
 
 //==================================================
 // INDICATORS
@@ -54,6 +58,7 @@ CTrade trade;
 
 #include "AI/AIClient.mqh"
 #include "AI/AIConnector.mqh"
+#include "AI/ModelGovernance.mqh"   // ETAPA 15/16: versionamento modelo/dataset
 #include "AI/AIEngine.mqh"
 #include "AI/Dataset.mqh"
 #include "AI/DataLogger.mqh"
@@ -110,7 +115,7 @@ CTrade trade;
 
 // ETAPA 6: Monitoring & Auditoria
 #include "Monitoring/HealthMonitor.mqh"   // HealthMonitor + WatchDog integrado
-#include "Monitoring/AuditLog.mqh"        // Auditoria (AuditLog + FullAudit fundidos)
+// Auditoria (AuditLog + FullAudit fundidos) - incluÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­do no top (ETAPA 11)
 #include "Monitoring/Diagnostics.mqh"     // Diagnostico completo
 
 // ETAPA 7: Data Recovery, Replay & Backup
@@ -137,6 +142,14 @@ CTrade trade;
 #include "Enterprise/NotificationCenter.mqh" // Central de notificacoes (ETAPA 9)
 #include "Enterprise/ConfigManager.mqh"  // Perfis de config persistidos (ETAPA 10)
 #include "Enterprise/VersionManager.mqh" // Versao/build/estado dos modulos (ETAPA 10)
+#include "Enterprise/FailureMode.mqh"     // ETAPA 12: maquina de estados de resiliencia (SAFE/RECOVERY/RESUME)
+#include "Enterprise/ConnectionGuard.mqh"
+
+// ETAPA 14: matriz de avaliacao quantitativa (11 metricas) - passivo/observacao
+#include "Monitoring/QuantValidator.mqh"
+
+// ETAPA 13: colector de datos de sesion de forward test (reconciliacion Fase A/B/C)
+#include "Monitoring/ForwardTestRunner.mqh"
 
 
 //==================================================
@@ -282,6 +295,7 @@ bool InitializeModules()
 
    Print("[INIT] symbol manager OK");
    AIClientInit();
+   ModelGovernanceRefresh();   // ETAPA 15/16: metadados do modelo (vazio=nao-governado)
 
    if(!DataLoggerInit())
       Print("DataLogger OFF");
@@ -295,6 +309,8 @@ bool InitializeModules()
    CCircuitBreaker::Init();
 
    CRecoveryManager::Init();
+   FailureClassify(false, "Init");   // ETAPA 12: estado inicial NORMAL
+   ConnectionGuardRefresh();         // ETAPA 12: guard de conexao pronta
 
    CSmartExecution::Init();
    Print("[INIT] execution engine OK");
@@ -594,9 +610,6 @@ bool CheckTradingConditions()
    if(!TradingEnabled)
       return false;
 
-   if(false)   // v1.2.1: AutoTrade nao bloqueia mais (controle = botao Algoritmos do terminal)
-      return false;
-
    if(!CheckEquityProtection())
       return false;
 
@@ -609,7 +622,6 @@ bool CheckTradingConditions()
    return true;
   }
 
-//==================================================
 // FUNCOES AUXILIARES AUSENTES
 //==================================================
 
@@ -687,7 +699,9 @@ int OnInit()
    Print("Equity............: ", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2));
 
    trade.SetExpertMagicNumber(MagicNumber);
-   trade.SetDeviationInPoints(Slippage);
+      trade.SetDeviationInPoints(Slippage);
+
+   ForwardFileInit(); // ETAPA 13: abre CSV de sesion de forward test (FILE_COMMON)
 
    if(!InitializeModules())
      {
@@ -741,11 +755,18 @@ void OnTick()
 // Sistema inicializado?
 //------------------------------------------------
 
-   if(!SystemInitialized)
+      if(!SystemInitialized)
      {
       Print("[TRADE BLOCK] SYSTEM NOT INITIALIZED");
       return;
      }
+
+   // ETAPA 13 - heartbeat de sesion live (1Hz via throttle interno).
+   // Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
+   // estado de conexion/failure_mode/news/IA no forward test.
+   ForwardHeartbeat();
+
+
 
 //------------------------------------------------
 //------------------------------------------------
@@ -888,9 +909,24 @@ void OnTick()
          Print("[REPLAY] Modo replay ativo - execucao real BLOQUEADA");
      }
    else
+   if(!ConnectionGuardCanOperate())
+     {
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] CONNECTION | ", ConnectionGuardGetError());
+     }
+   else
+   if(!FailureModeOperational())
+     {
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] FAILURE MODE | State=", GetFailureStateString(), " | Reason=", g_failureReason);
+     }
+   else
      {
       RunTradePipeline();
      }
+
+   // ETAPA 12 (HARDENING): guard de conexao e failure mode bloqueiam
+   // NOVAS ENTRADAS sem parar a gestao de posicoes abertas.
 
 //------------------------------------------------
 // Gerenciamento das posicoes
@@ -1031,6 +1067,9 @@ void OnTradeTransaction(
 
       StatisticsRegisterTrade(0.0);
 
+      // ETAPA 15/16 - registra modelo usado neste trade (auditoria)
+      ModelLogTradeUsage((ulong)HistoryDealGetInteger(deal, DEAL_POSITION_ID), symbol);   // ETAPA 15/16
+
       //------------------------------------------------
       // ETAPA 6 - AUDITORIA (entrada)
       //------------------------------------------------
@@ -1057,12 +1096,27 @@ void OnTradeTransaction(
             GetRSI(symbol),
             0.0,
             spread,
-            IsTradingSession() ? "OPEN" : "CLOSED",
+                        IsTradingSession() ? "OPEN" : "CLOSED",
             (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
             AIConfidence,
             AIScore,
             "ENTRY_DEAL"
          );
+
+         // ETAPA 13 - forward test: registra entrada de posicion
+         ForwardLogTrade(symbol, "OPEN",
+            (dType == DEAL_TYPE_BUY) ? 1 : -1,
+            MarketScore,
+            DoubleToString(AIConfidence, 2),
+            (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+            HistoryDealGetDouble(deal, DEAL_VOLUME),
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            HistoryDealGetDouble(deal, DEAL_SL),
+            HistoryDealGetDouble(deal, DEAL_TP),
+            positionId,
+            "OPEN",
+            0,
+            "");
         }
 
       //------------------------------------------------
@@ -1246,6 +1300,9 @@ void OnTradeTransaction(
 
       StatisticsRegisterTrade(profit);
 
+      // ETAPA 14 - matriz quantitativa: registra resultado p/ Avg R
+      QuantRecordResult(profit, 0.0);
+
       //------------------------------------------------
       // ETAPA 6 - AUDITORIA (saida)
       //------------------------------------------------
@@ -1260,12 +1317,28 @@ void OnTradeTransaction(
             profit
          );
 
-         AuditLogTradeResult(
+                  AuditLogTradeResult(
             symbol,
             positionId,
             profit,
             (profit > 0.0 ? "WIN" : "LOSS")
          );
+
+         // ETAPA 13 - forward test: registra saida/close de posicion
+         {
+          ENUM_DEAL_TYPE exType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+          ForwardLogDeal(symbol,
+             positionId,
+             (exType == DEAL_TYPE_BUY) ? 1 : -1,
+             MarketScore,
+             DoubleToString(AIConfidence, 2),
+             (exType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+             HistoryDealGetDouble(deal, DEAL_VOLUME),
+             HistoryDealGetDouble(deal, DEAL_PRICE),
+             profit,
+             "CLOSE",
+             0);
+         }
         }
 
       //------------------------------------------------
@@ -1336,6 +1409,12 @@ void OnTimer()
       UpdateSymbolManager();
 
    CRecoveryManager::Run();
+
+   // ETAPA 12 - failure mode (recuperacion automatica)
+   bool fBrokerOK = CRecoveryManager::IsModuleHealthy("Broker");
+   bool fAiOK     = CRecoveryManager::IsModuleHealthy("AI");
+   FailureModeFeed(fBrokerOK, fAiOK);
+   FailureModeRun();
 
 //------------------------------------------------
 // Circuit Breaker
@@ -1523,6 +1602,8 @@ void OnDeinit(
 
 // v1.2.0 - SALVAR RESUMO (win rate) em FILE_COMMON
    StatisticsSaveSummary();
+   QuantSaveReport();   // ETAPA 14: matriz quantitativa (FILE_COMMON)
+   Print(QuantSummary());
 
    EventKillTimer();
 
@@ -1549,8 +1630,10 @@ void OnDeinit(
    if(EnableHealthMonitor)
       HealthMonitorShutdown();
 
-   if(EnableAuditLog)
+      if(EnableAuditLog)
       AuditLogClose();
+
+   ForwardLogClose(); // ETAPA 13: pecha CSV de sesion de forward test (flush+close)
 
 //================================================
 // REPLAY (ETAPA 7)
