@@ -39,6 +39,12 @@ string AI_FeatureHash="";
 double AI_InferenceMs=0.0;
 string AI_TimestampUTC="";
 
+// ETAPA 15.3: governanca completa (publicados pelo pipeline Python)
+string AI_Algorithm="";
+string AI_TrainDate="";
+string AI_DatasetVersion="";
+string AI_Metrics="";
+
 // Staleness (ETAPA 15.3): idade da previsao em segundos.
 // AI_IsStale=true quando a previsao excedeu MaxPredictionAgeSec
 // e foi descartada (fail-safe -> fallback local / veto).
@@ -66,6 +72,11 @@ void ResetAIState()
    AI_FeatureHash="";
    AI_InferenceMs=0.0;
    AI_TimestampUTC="";
+
+   AI_Algorithm="";
+   AI_TrainDate="";
+   AI_DatasetVersion="";
+   AI_Metrics="";
 
    AI_IsStale=false;
    AI_AgeSeconds=-1.0;
@@ -332,6 +343,31 @@ bool LoadAIPrediction(string symbol="")
          "timestamp_utc"
       );
 
+   // ETAPA 15.3: campos de governanca (publicados pelo pipeline)
+   string jsonAlgorithm=
+      ExtractJSON(
+         json,
+         "algorithm"
+      );
+
+   string jsonTrainDate=
+      ExtractJSON(
+         json,
+         "train_date"
+      );
+
+   string jsonDatasetVersion=
+      ExtractJSON(
+         json,
+         "dataset_version"
+      );
+
+   string jsonMetrics=
+      ExtractJSON(
+         json,
+         "metrics"
+      );
+
 
    //================================================
    // VALIDATE SYMBOL
@@ -460,6 +496,12 @@ bool LoadAIPrediction(string symbol="")
 
    AI_TimestampUTC=
       jsonTimestampUTC;
+
+   // ETAPA 15.3: governanca completa
+   AI_Algorithm      = jsonAlgorithm;
+   AI_TrainDate      = jsonTrainDate;
+   AI_DatasetVersion = jsonDatasetVersion;
+   AI_Metrics        = jsonMetrics;
 
 
    //================================================
@@ -962,6 +1004,19 @@ string GetAIMetaString(string key)
 
    if(key == "TIMESTAMP_UTC")
       return AI_TimestampUTC;
+
+   // ETAPA 15.3: governanca completa (publicados pelo pipeline Python)
+   if(key == "ALGORITHM")
+      return AI_Algorithm;
+
+   if(key == "MODEL_TRAIN_DATE")
+      return AI_TrainDate;
+
+   if(key == "DATASET_VERSION")
+      return AI_DatasetVersion;
+
+   if(key == "MODEL_METRICS")
+      return AI_Metrics;
 
    // Campo desconhecido -> "" (honesto)
    return "";

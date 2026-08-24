@@ -7,6 +7,7 @@
 #include "../Core/RiskCenter.mqh"
 #include "../Core/PositionManager.mqh"
 #include "../AI/AIConnector.mqh"
+#include "HealthMonitor.mqh"   // ETAPA 15.6.5: estado multi-nivel do watchdog
 
 //==================================================
 // SYSTEM STATUS SNAPSHOT
@@ -51,7 +52,9 @@ string SSHealthSection()
    bool tradeAllowed=(TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)!=0);
    bool eaTradeOK   =(MQLInfoInteger(MQL_TRADE_ALLOWED)!=0);
 
+   // ETAPA 15.6.5: estado multi-nivel (nao apenas true/false)
    return "\"health\": {"
+          "\"state\": " + SSQuote(HealthGetStateString()) + ", "
           "\"terminal_connected\": " + SSBool(connected) + ", "
           "\"algo_trading_enabled\": " + SSBool(tradeAllowed) + ", "
           "\"ea_trade_allowed\": " + SSBool(eaTradeOK) +
