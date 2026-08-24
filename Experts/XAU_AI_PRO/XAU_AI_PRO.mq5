@@ -16,10 +16,7 @@ CTrade trade;
 //==================================================
 
 #include "Core/Config.mqh"
-// ETAPA 15.6: EventEmitter - camada unica de eventos (forward_test_events.csv)
-#include "Monitoring/EventEmitter.mqh"
 #include "Core/StateMachine.mqh"   // v1.4.0 (Etapa 4): maquina de estados
-#include "Core/RiskCenter.mqh"     // ETAPA 15.5: Risk Control Center (fachada unica de risco)
 #include "Core/SystemManager.mqh"
 #include "Core/BrokerConfig.mqh"
 #include "Core/BrokerInfo.mqh"
@@ -112,14 +109,12 @@ CTrade trade;
 //==================================================
 
 #include "Monitoring/Dashboard.mqh"
-#include "Monitoring/SystemStatus.mqh"  // ETAPA 15.6: snapshot JSON para o app
 #include "Monitoring/TradeLogger.mqh"
 #include "Monitoring/PerformanceAnalyzer.mqh"
 #include "Monitoring/Statistics.mqh"
 
 // ETAPA 6: Monitoring & Auditoria
 #include "Monitoring/HealthMonitor.mqh"   // HealthMonitor + WatchDog integrado
-#include "Monitoring/EventEmitter.mqh"    // ETAPA 15.6.1/15.6.2: event stream (canonico)
 // Auditoria (AuditLog + FullAudit fundidos) - incluÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­do no top (ETAPA 11)
 #include "Monitoring/Diagnostics.mqh"     // Diagnostico completo
 
@@ -388,7 +383,6 @@ bool InitializeModules()
      {
       CTelemetry::Init();
       CTelemetry::RecordBrokerLatency(0);
-      CTelemetry::RecordExecutionStart();  // ETAPA 15.6.3: uptime real
 
       //------------------------------------------------
       // ETAPA 7 - REPLAY & BACKUP
@@ -709,11 +703,6 @@ int OnInit()
 
    ForwardFileInit(); // ETAPA 13: abre CSV de sesion de forward test (FILE_COMMON)
 
-   // ETAPA 15.6: EventEmitter (canal oficial de eventos)
-   EventInit();
-   EventSystemStart("mode=live chart=" + _Symbol);
-   EventForwardStart("forward test ativo");
-
    if(!InitializeModules())
      {
       Print("ERRO: Falha ao inicializar modulos.");
@@ -728,7 +717,6 @@ int OnInit()
    Print("----------------------------------------");
    Print("Sistema inicializado com sucesso.");
    Print("----------------------------------------");
-
 
    return INIT_SUCCEEDED;
   }
@@ -764,12 +752,6 @@ bool AllowBlockPrint()
 void OnTick()
   {
 //------------------------------------------------
-// Telemetria real: contador de ticks (ETAPA 15.6.3)
-//------------------------------------------------
-
-   CTelemetry::RecordTick();
-
-//------------------------------------------------
 // Sistema inicializado?
 //------------------------------------------------
 
@@ -798,33 +780,7 @@ void OnTick()
       HealthMonitorHeartbeat("ADX");
       HealthMonitorHeartbeat("RSI");
       HealthMonitorHeartbeat("AI");
-     }
-//------------------------------------------------
-// ETAPA 15.6 - EventEmitter: HEALTH + AI_BLOCK
-//------------------------------------------------
-   static bool g_lastEventHealthOK = true;
-   bool _hOk = HealthMonitorCheck();
-   if(!_hOk && g_lastEventHealthOK)
-     {
-      EventHealthFailure("HealthMonitor", "check falhou");
-      g_lastEventHealthOK = false;
-     }
-   else
-   if(_hOk && !g_lastEventHealthOK)
-     {
-      EventRecovery("health restaurado");
-      g_lastEventHealthOK = true;
-     }
-
-   if(AI_Signal == "UNAVAILABLE" || AI_Signal == "ERROR" || AI_Signal == "HOLD")
-     {
-      static datetime g_lastEventAIBlock = 0;
-      datetime _now = TimeCurrent();
-      if(_now - g_lastEventAIBlock >= 300)
-        {
-         EventAIBlock(_Symbol, "AI_" + AI_Signal);
-         g_lastEventAIBlock = _now;
-        }
+      HealthMonitorCheck();
      }
 
 //------------------------------------------------
@@ -1080,9 +1036,6 @@ void OnTradeTransaction(
       // v1.4.0 (Etapa 4): maquina de estados
       StateSet(symbol, STATE_POSITION_OPEN);
 
-      // ETAPA 15.6: evento de abertura
-      EventTradeOpen(symbol, (long)deal, DoubleToString(volume,2));
-
       Print(
          "TRADE OPEN | ",
          symbol,
@@ -1228,9 +1181,6 @@ void OnTradeTransaction(
       // v1.4.0 (Etapa 4): maquina de estados
       StateSet(symbol, STATE_CLOSED);
       StateSet(symbol, STATE_LEARNING);
-
-      // ETAPA 15.6: evento de fechamento
-      EventTradeClose(symbol, (long)deal, DoubleToString(profit,2));
 
       //------------------------------------------------
       // Estatisticas
@@ -1512,14 +1462,6 @@ void OnTimer()
      }
 
 //------------------------------------------------
-// System Status Snapshot (ETAPA 15.6)
-// JSON para o app: health/trading/risk/ai/news/
-// python/database. Throttle interno de 15s.
-//------------------------------------------------
-
-   SystemStatusUpdate();
-
-//------------------------------------------------
 // Salvar estatisticas
 //------------------------------------------------
 
@@ -1641,10 +1583,6 @@ void OnDeinit(
    const int reason
 )
   {
-   // ETAPA 15.6.1: ultimo evento do event stream (API canonica)
-   EventSystemStop("deinit_reason=" + IntegerToString(reason));
-   EventShutdown();
-
    Print(
       "========================================"
    );
@@ -1661,10 +1599,6 @@ void OnDeinit(
 //================================================
 // PARAR TIMER
 //================================================
-
-// ETAPA 15.6: sinaliza parada no event stream
-   EventSystemStop("reason=" + IntegerToString(reason));
-   EventShutdown();
 
 // v1.2.0 - SALVAR RESUMO (win rate) em FILE_COMMON
    StatisticsSaveSummary();
