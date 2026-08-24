@@ -154,7 +154,7 @@ string SSDatabaseSection()
    // Dataset.csv = banco operacional (contrato 15.2).
    string file="Data\\dataset.csv";
    bool exists=FileIsExist(file);
-   long size=0;
+   ulong size=0;
 
    if(exists)
    {

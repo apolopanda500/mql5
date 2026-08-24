@@ -778,6 +778,7 @@ bool AIBuyAllowed(
          " | ",
          symbol
       );
+      EventAIBlock(symbol, "AI_" + AI_Signal);  // ETAPA 15.6
       return false;
    }
 
@@ -827,6 +828,7 @@ bool AISellAllowed(
          " | ",
          symbol
       );
+      EventAIBlock(symbol, "AI_" + AI_Signal);  // ETAPA 15.6
       return false;
    }
 

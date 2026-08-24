@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0 - NEWS FILTER PROFESSIONAL (Etapa 6 + calendario MT5 nativo)
+﻿// XAU_AI_PRO v1.2.0 - NEWS FILTER PROFESSIONAL (Etapa 6 + calendario MT5 nativo)
 #ifndef NEWSFILTER_MQH
 #define NEWSFILTER_MQH
 
@@ -361,6 +361,7 @@ bool CanTradeNews()
             " | State=", EnumToString(g_newsState),
             " | Reason=", g_newsBlockReason);
       NewsLogBlock();
+      EventNewsBlock(_Symbol, g_newsBlockReason);  // ETAPA 15.6
       return false;
    }
 

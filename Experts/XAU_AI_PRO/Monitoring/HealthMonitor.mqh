@@ -3,6 +3,7 @@
 #define HEALTHMONITOR_MQH
 
 #include "../Core/Config.mqh"
+#include "../Enterprise/Telemetry.mqh"   // ETAPA 15.6.5: ENUM_TELEMETRY_STATE compartilhado
 #include "Logger.mqh"
 
 //==================================================

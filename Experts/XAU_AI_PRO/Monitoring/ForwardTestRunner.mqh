@@ -3,6 +3,14 @@
 //|                                 XAU_AI_PRO - Forward Test E13   |
 //|             Coletor de datos de sesion para reconciliacion       |
 //+------------------------------------------------------------------+
+// ATENCAO (ETAPA 15.10): este arquivo e um INCLUDE (.mqh).
+// NAO compile-o isoladamente (F7 aqui gera "undeclared identifier"
+// para ConnectionGuard/FailureMode/NewsFilter/AIClient/MarketScore,
+// que vivem em outros modulos incluidos pelo EA principal).
+//
+// Para compilar o projeto, abra e compile SEMPRE:
+//   XAU_AI_PRO.mq5  (Experts/XAU_AI_PRO/XAU_AI_PRO.mq5)
+//
 // ETAPA 13 - FORWARD TEST PROFISSIONAL
 //
 // Coletor centralizado de observabilidade para a fase A (Demo),
