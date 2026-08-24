@@ -37,6 +37,9 @@
 #define FORWARD_TEST_RUNNER_MQH
 
 #include "../Core/Config.mqh"
+#include "../Enterprise/ConnectionGuard.mqh" // self-contained: ConnectionGuardRefresh
+#include "../Filters/NewsFilter.mqh"         // self-contained: GetNewsState
+#include "../AI/AIClient.mqh"                // self-contained: AIClientConnected/LastAIConfidence
 
 input bool EnableForwardLog      = true;   // ETAPA 13: coletor de sesion live
 input int    ForwardHeartbeatSec = 1;      // intervalo minimo do heartbeat (seg)
