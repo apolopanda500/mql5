@@ -13,7 +13,7 @@
 #include "../Indicators/RSI.mqh"
 
 //==================================================
-// XAU_AI_PRO — DIAGNOSTICS PRO
+// XAU_AI_PRO - DIAGNOSTICS PRO
 // Multi-Symbol / Python / JSON / Dataset
 //==================================================
 
@@ -52,7 +52,7 @@ void DiagnosticsAdd(
 
 
 //==================================================
-// DIAGNÓSTICO PRINCIPAL
+// DIAGNOSTICO PRINCIPAL
 //==================================================
 
 bool DiagnosticsRun()
@@ -136,7 +136,7 @@ bool DiagnosticsRun()
 
 
 //==================================================
-// PERMISSÕES
+// PERMISSOES
 //==================================================
 
    bool permOK = true;
@@ -160,7 +160,7 @@ bool DiagnosticsRun()
 
 
 //==================================================
-// SÍMBOLO
+// SIMBOLO
 //==================================================
 
    bool symbolOK = true;
@@ -200,7 +200,7 @@ bool DiagnosticsRun()
 
 
 //==================================================
-// PYTHON / JSON
+// PYTHON / JSON (hardening ETAPA 14)
 //==================================================
 
    bool pythonOK = true;
@@ -211,6 +211,10 @@ bool DiagnosticsRun()
       _Symbol +
       ".json";
 
+   // ETAPA 14 (hardening): em modo sem IA obrigatoria
+   // (RequireAIJSON=false) a ausencia de prediction_*.json
+   // e o normal (backtest/forward sem pipeline Python).
+   // Nao deve gerar FALHA de diagnostico (falso positivo).
    int predHandle =
       FileOpen(
          predFile,
@@ -218,13 +222,19 @@ bool DiagnosticsRun()
          FILE_ANSI
       );
 
-   if(predHandle == INVALID_HANDLE)
+   if(RequireAIJSON && predHandle == INVALID_HANDLE)
    {
       pythonOK = false;
 
       pythonDetail =
          "Prediction JSON nao encontrado: " +
          predFile;
+   }
+   else
+   if(!RequireAIJSON && predHandle == INVALID_HANDLE)
+   {
+      pythonDetail =
+         "RequireAIJSON=false (verificacao informativa)";
    }
    else
    {
@@ -280,6 +290,7 @@ bool DiagnosticsRun()
    bool jsonOK = true;
    string jsonDetail = "";
 
+   // ETAPA 14 (hardening): mesma regra do bloco Python.
    int jsonHandle =
       FileOpen(
          predFile,
@@ -287,12 +298,18 @@ bool DiagnosticsRun()
          FILE_ANSI
       );
 
-   if(jsonHandle == INVALID_HANDLE)
+   if(RequireAIJSON && jsonHandle == INVALID_HANDLE)
    {
       jsonOK = false;
 
       jsonDetail =
          "Arquivo JSON ausente";
+   }
+   else
+   if(!RequireAIJSON && jsonHandle == INVALID_HANDLE)
+   {
+      jsonDetail =
+         "RequireAIJSON=false (verificacao informativa)";
    }
    else
    {
@@ -358,6 +375,8 @@ bool DiagnosticsRun()
    string datasetFile =
       "Data\\dataset.csv";
 
+   // ETAPA 14 (hardening): se EnableDataset=false a ausencia
+   // de dataset.csv e esperada; nao deve ser FALHA.
    int csvHandle =
       FileOpen(
          datasetFile,
@@ -365,12 +384,18 @@ bool DiagnosticsRun()
          FILE_ANSI
       );
 
-   if(csvHandle == INVALID_HANDLE)
+   if(EnableDataset && csvHandle == INVALID_HANDLE)
    {
       csvOK = false;
 
       csvDetail =
          "dataset.csv nao encontrado";
+   }
+   else
+   if(!EnableDataset && csvHandle == INVALID_HANDLE)
+   {
+      csvDetail =
+         "EnableDataset=false (verificacao informativa)";
    }
    else
    {
@@ -542,12 +567,20 @@ bool DiagnosticsRun()
    bool aiOK = true;
    string aiDetail = "";
 
-   if(!AIClientConnected())
+   // ETAPA 14 (hardening): se EnableAIFilter=false o EA opera
+   // sem IA; "AI Client nao conectado" nao e falha nesse modo.
+   if(EnableAIFilter && !AIClientConnected())
    {
       aiOK = false;
 
       aiDetail =
          "AI Client nao conectado";
+   }
+   else
+   if(!EnableAIFilter)
+   {
+      aiDetail =
+         "EnableAIFilter=false (verificacao informativa)";
    }
 
    DiagnosticsAdd(
