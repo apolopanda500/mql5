@@ -67,3 +67,6 @@ logs/
 **/Data/forward_test_trades.csv 
 **/Data/*.db 
 **/Data/*.json 
+  
+# --- Runtime statistics / auto-generated test outputs ---  
+Files/XAU_AI_PRO_stats.csv  
