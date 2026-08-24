@@ -29,6 +29,9 @@ datetime        g_newsNextEventTime  = 0;
 string          g_newsNextEventName  = "";
 int             g_newsEventsInWindow = 0;
 int             g_newsLastError      = 0;
+string          g_newsBlockReason    = "";   // ETAPA 11: motivo do bloqueo (audit)
+datetime        g_newsBlockLogAt     = 0;    // ETAPA 11: cooldown de log do bloqueo
+int             g_newsNextImportance = 0;    // ETAPA 11: impacto do próximo evento (1-3)
 
 //==================================================
 // MOEDAS FX RECONHECIDAS NA AUTO-DERIVACAO
@@ -255,20 +258,77 @@ bool NewsRefreshWindow()
       {
          nextTime = t;
          nextName = ev.name;
+         g_newsNextImportance = (int)ev.importance;
       }
    }
 
    g_newsState          = newState;
    g_newsNextEventTime  = nextTime;
    g_newsNextEventName  = nextName;
+   
    g_newsEventsInWindow = inWindow;
 
    return true;
 }
 
 //==================================================
-// API PUBLICA (compatibilidade mantida)
+// ETAPA 11 - NOTIFICAÇÃO / AUDIT DO BLOQUEO
+// Registra o motivo do bloqueo no AuditLog (anti-spam).
 //==================================================
+
+// Tiempo minimo entre logs repetidos do mesmo bloqueo (segundos)
+#define NEWS_AUDIT_COOLDOWN_SEC 300
+
+string GetNewsBlockReason()
+{
+   if(g_newsState == NEWS_CLEAR || g_newsState == NEWS_WARNING)
+      return "";
+
+   return ("NEWS_" + EnumToString(g_newsState));
+}
+
+string GetNewsBlockDetail(string symbol)
+{
+   string reason = "NEWS | Symbol=" + (symbol == "" ? _Symbol : symbol) +
+                   " | State=" + EnumToString(g_newsState);
+
+   if(g_newsNextEventTime > 0)
+   {
+      // Classificação de impacto: 1=BAJO, 2=MEDIO, 3=ALTO
+      string impact = (g_newsNextImportance >= 3 ? "ALTO"
+                      : (g_newsNextImportance >= 2 ? "MEDIO" : "BAJO"));
+
+      reason += " | Impacto=" + impact +
+                " | Next=" + TimeToString(g_newsNextEventTime, TIME_DATE | TIME_MINUTES) +
+                " " + g_newsNextEventName;
+   }
+
+   return reason;
+}
+
+// Registra o motivo do bloqueo de noticias no AuditLog.
+// Cooldown anti-spam: mesmo motivo logado no máx 1x a cada NEWS_AUDIT_COOLDOWN_SEC.
+void NewsLogBlock()
+{
+   if(!EnableAuditLog)
+   {
+      // Resetea para que, ao re-ativar o audit, o próximo bloqueo seja logado.
+      g_newsBlockLogAt = 0;
+      return;
+   }
+
+   datetime now = TimeTradeServer();
+   if(now <= 0)
+      now = TimeCurrent();
+
+   if(g_newsBlockLogAt > 0 && (now - g_newsBlockLogAt) < NEWS_AUDIT_COOLDOWN_SEC)
+      return;
+
+   g_newsBlockLogAt = now;
+
+   // AuditLogSimple(symbol, direction, result, score)
+   AuditLogSimple(_Symbol, "NEWS", "BLOCK|" + GetNewsBlockDetail(_Symbol), 0.0);
+}
 
 ENUM_NEWS_STATE GetNewsState()
 {
@@ -296,11 +356,11 @@ bool CanTradeNews()
 
    if(g_newsState == NEWS_BLOCK || g_newsState == NEWS_ACTIVE)
    {
+      g_newsBlockReason = GetNewsBlockDetail(_Symbol);
       Print("[NEWS] TRADE BLOCKED | ", _Symbol,
             " | State=", EnumToString(g_newsState),
-            (g_newsNextEventTime > 0
-               ? " | Next=" + TimeToString(g_newsNextEventTime, TIME_MINUTES) + " " + g_newsNextEventName
-               : ""));
+            " | Reason=", g_newsBlockReason);
+      NewsLogBlock();
       return false;
    }
 

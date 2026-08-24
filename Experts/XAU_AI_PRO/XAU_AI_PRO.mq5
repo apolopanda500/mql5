@@ -17,6 +17,7 @@ CTrade trade;
 
 #include "Core/Config.mqh"
 #include "Core/StateMachine.mqh"   // v1.4.0 (Etapa 4): maquina de estados
+#include "Core/RiskCenter.mqh"     // ETAPA 15.5: Risk Control Center (fachada unica de risco)
 #include "Core/SystemManager.mqh"
 #include "Core/BrokerConfig.mqh"
 #include "Core/BrokerInfo.mqh"

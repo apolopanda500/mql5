@@ -1,7 +1,7 @@
 metric,value
 TradesToday,0
 ConsecutiveWins,0
-ConsecutiveLosses,0
+ConsecutiveLosses,1
 DailyProfit,0.00
-PeakEquity,199.44
+PeakEquity,200.24
 CurrentDrawdown,0.00

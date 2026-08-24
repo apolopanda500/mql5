@@ -411,6 +411,31 @@ bool AllowTrade(
    }
 
 
+   //------------------------------------------------
+   // ETAPA 11 - NEWS FILTER: integração explícita
+   // Reforço a capa de noticias no DecisionEngine,
+   // NON só via ValidateTrade. Não bloquea a gestão de
+   // posiciones abertas (solo novas entradas).
+   //------------------------------------------------
+
+   if(EnableNewsFilter && IsNewsBlocked())
+   {
+      g_newsBlockReason = GetNewsBlockDetail(symbol);
+
+      if(allowLogOnce)
+         Print(
+            "DECISION BLOCKED | NEWS | Symbol=",
+            symbol,
+            " | Signal=",
+            signal,
+            " | Reason=",
+            g_newsBlockReason
+         );
+
+      NewsLogBlock();
+      return false;
+   }
+
    double score=
       CalculateMarketScore(
          signal,

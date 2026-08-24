@@ -39,6 +39,12 @@ string AI_FeatureHash="";
 double AI_InferenceMs=0.0;
 string AI_TimestampUTC="";
 
+// Staleness (ETAPA 15.3): idade da previsao em segundos.
+// AI_IsStale=true quando a previsao excedeu MaxPredictionAgeSec
+// e foi descartada (fail-safe -> fallback local / veto).
+bool   AI_IsStale=false;
+double AI_AgeSeconds=-1.0;
+
 
 //==================================================
 // RESET AI STATE
@@ -60,6 +66,9 @@ void ResetAIState()
    AI_FeatureHash="";
    AI_InferenceMs=0.0;
    AI_TimestampUTC="";
+
+   AI_IsStale=false;
+   AI_AgeSeconds=-1.0;
 }
 
 
@@ -451,6 +460,62 @@ bool LoadAIPrediction(string symbol="")
 
    AI_TimestampUTC=
       jsonTimestampUTC;
+
+
+   //================================================
+   // STALENESS CHECK (ETAPA 15.3)
+   // Idade da previsao = TimeGMT() - timestamp_utc.
+   // Previsao mais antiga que MaxPredictionAgeSec (>0)
+   // e descartada como indisponivel (fail-safe):
+   // o AIEngine usa o fallback local e o RequireAIJSON=true
+   // bloqueia novas entradas (fail-closed).
+   //================================================
+
+   AI_IsStale=false;
+   AI_AgeSeconds=-1.0;
+
+   if(jsonTimestampUTC!="")
+   {
+      string ts=jsonTimestampUTC;
+
+      if(StringLen(ts)>=19)
+      {
+         // ISO "yyyy-mm-ddTHH:MM:SS[.ffffff][+HH:MM]"
+         StringReplace(ts,"-",".");
+         StringReplace(ts,"T"," ");
+         ts=StringSubstr(ts,0,19);
+
+         datetime predUtc=StringToTime(ts);
+
+         if(predUtc>0)
+         {
+            long age=(long)TimeGMT()-(long)predUtc;
+
+            if(age<0)
+               age=0;
+
+            AI_AgeSeconds=(double)age;
+
+            if(MaxPredictionAgeSec>0 && age>(long)MaxPredictionAgeSec)
+            {
+               AI_IsStale=true;
+
+               Print(
+                  "AI PREDICTION STALE | ",
+                  symbol,
+                  " | AGE=",
+                  (string)age,
+                  "s > LIMIT=",
+                  IntegerToString(MaxPredictionAgeSec),
+                  "s"
+               );
+
+               ResetAIState();
+               return false;
+            }
+         }
+      }
+   }
 
 
    //================================================
