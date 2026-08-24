@@ -9,12 +9,12 @@
 //
 // RESPONSABILIDADE:
 // - Ler prediction_<SYMBOL>.json
-// - Validar o símbolo
+// - Validar o sÃ­mbolo
 // - Armazenar os dados da IA
 // - Disponibilizar getters
 //
 // OBS:
-// A função AITradeAllowed() NÃO fica aqui.
+// A funÃ§Ã£o AITradeAllowed() NÃƒO fica aqui.
 // Ela pertence ao AIEngine.mqh.
 //==================================================
 
@@ -32,6 +32,13 @@ double AI_SellProbability=0.0;
 double AI_Score=0.0;
 double AI_Confidence=0.0;
 
+// Metadados do modelo (Contrato A v2 - ETAPA 15.3)
+string AI_ModelVersion="";
+string AI_ModelID="";
+string AI_FeatureHash="";
+double AI_InferenceMs=0.0;
+string AI_TimestampUTC="";
+
 
 //==================================================
 // RESET AI STATE
@@ -47,12 +54,18 @@ void ResetAIState()
    AI_SellProbability=0.0;
    AI_Score=0.0;
    AI_Confidence=0.0;
+
+   AI_ModelVersion="";
+   AI_ModelID="";
+   AI_FeatureHash="";
+   AI_InferenceMs=0.0;
+   AI_TimestampUTC="";
 }
 
 
 //==================================================
 // NORMALIZE AI SYMBOL
-// Converte o símbolo do broker no nome base usado
+// Converte o sÃ­mbolo do broker no nome base usado
 // pelo pipeline Python. Ex: GOLD# -> XAUUSD,
 // BTCUSD# -> BTCUSD, XAUUSDc -> XAUUSD.
 //==================================================
@@ -116,7 +129,7 @@ bool LoadAIPrediction(string symbol="")
    if(symbol=="")
       return false;
 
-   // Símbolo normalizado (nome base do pipeline Python)
+   // SÃ­mbolo normalizado (nome base do pipeline Python)
    string normalized = NormalizeAISymbol(symbol);
 
    string fileName=
@@ -124,8 +137,8 @@ bool LoadAIPrediction(string symbol="")
       symbol +
       ".json";
 
-   // Fallback: se o arquivo exato não existe, tenta o nome normalizado
-   // (pipeline Python gera prediction_XAUUSD.json, não prediction_GOLD#.json)
+   // Fallback: se o arquivo exato nÃ£o existe, tenta o nome normalizado
+   // (pipeline Python gera prediction_XAUUSD.json, nÃ£o prediction_GOLD#.json)
    if(!FileIsExist(fileName) && normalized!=symbol)
    {
       string altName=
@@ -280,6 +293,36 @@ bool LoadAIPrediction(string symbol="")
          "confidence"
       );
 
+   string jsonModelVersion=
+      ExtractJSON(
+         json,
+         "model_version"
+      );
+
+   string jsonModelID=
+      ExtractJSON(
+         json,
+         "model_id"
+      );
+
+   string jsonFeatureHash=
+      ExtractJSON(
+         json,
+         "feature_hash"
+      );
+
+   string jsonInferenceMs=
+      ExtractJSON(
+         json,
+         "inference_ms"
+      );
+
+   string jsonTimestampUTC=
+      ExtractJSON(
+         json,
+         "timestamp_utc"
+      );
+
 
    //================================================
    // VALIDATE SYMBOL
@@ -315,9 +358,9 @@ bool LoadAIPrediction(string symbol="")
 
    //================================================
    // SYMBOL MATCH
-   // Aceita o símbolo exato ou o normalizado
+   // Aceita o sÃ­mbolo exato ou o normalizado
    // (ex: arquivo prediction_XAUUSD.json com symbol=XAUUSD
-   //  é aceito para o símbolo do broker GOLD#).
+   //  Ã© aceito para o sÃ­mbolo do broker GOLD#).
    //================================================
 
    bool symbolOk =
@@ -387,6 +430,27 @@ bool LoadAIPrediction(string symbol="")
    if(AI_Confidence<=0.0)
       AI_Confidence=
          AI_Score;
+
+   //=================================
+   // ATUALIZAR METADADOS (Contrato A v2)
+   //=================================
+
+   AI_ModelVersion=
+      jsonModelVersion;
+
+   AI_ModelID=
+      jsonModelID;
+
+   AI_FeatureHash=
+      jsonFeatureHash;
+
+   AI_InferenceMs=
+      StringToDouble(
+         jsonInferenceMs
+      );
+
+   AI_TimestampUTC=
+      jsonTimestampUTC;
 
 
    //================================================
@@ -771,4 +835,40 @@ bool AIDataForSymbol(
 // END
 //==================================================
 
+//==================================================
+// GET AI META STRING (ETAPA 15/16 - ModelGovernance)
+// Retorna "" com seguranca quando o campo nao existe.
+// O parse atual do JSON NAO expoe metadados de modelo;
+// portanto retornamos "" (honesto) e o ModelGovernance
+// fica NAO-governado (fail-open, comportamento v1.2.0).
+// Quando o pipeline Python publicar estes campos no JSON,
+// basta adicionar a leitura aqui.
+//==================================================
+string GetAIMetaString(string key)
+{
+   // STATUS_DO_MODELO: derivado (producao) - politica v1.2.0
+   if(key == "MODEL_STATUS")
+      return "production";
+
+   // Campos publicados pelo pipeline Python (Contrato A v2 - ETAPA 15.2.3)
+   if(key == "MODEL_VERSION")
+      return AI_ModelVersion;
+
+   if(key == "MODEL_ID")
+      return AI_ModelID;
+
+   if(key == "FEATURE_HASH")
+      return AI_FeatureHash;
+
+   if(key == "INFERENCE_MS")
+      return DoubleToString(AI_InferenceMs, 2);
+
+   if(key == "TIMESTAMP_UTC")
+      return AI_TimestampUTC;
+
+   // Campo desconhecido -> "" (honesto)
+   return "";
+}
+
 #endif
+  
