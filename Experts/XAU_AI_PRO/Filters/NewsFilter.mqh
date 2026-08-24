@@ -3,6 +3,8 @@
 #define NEWSFILTER_MQH
 
 #include "../Core/Config.mqh"
+#include "../Monitoring/AuditLog.mqh"     // self-contained: AuditLogSimple
+#include "../Monitoring/EventEmitter.mqh" // self-contained: EventNewsBlock
 
 //==================================================
 // ESTADOS EXPLICITOS DO FILTRO
