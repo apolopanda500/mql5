@@ -8,6 +8,7 @@
 #include "../Core/PositionManager.mqh"
 #include "../AI/AIConnector.mqh"
 #include "HealthMonitor.mqh"   // ETAPA 15.6.5: estado multi-nivel do watchdog
+#include "../Filters/NewsFilter.mqh"   // self-contained: IsNewsBlocked
 
 //==================================================
 // SYSTEM STATUS SNAPSHOT
