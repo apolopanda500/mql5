@@ -12,6 +12,17 @@
 #
 # O fluxo falha apenas quando ha problema real (exit 1), garantindo
 # qualidade sem depender do compilador proprietario.
+#
+# NOTIFICACOES SLACK (inicio / sucesso / falha)
+# --------------------------------------------
+# IMPORTANTE (correcao do erro "400 no_text"):
+#   A slack-github-action assume SLACK_WEBHOOK_TYPE=WORKFLOW_TRIGGER
+#   por padrao e ACHATA o payload (blocks.0.type=...), o que o Slack
+#   rejeita com "no_text". Para Incoming Webhooks classicos
+#   (hooks.slack.com/services/...) e obrigatorio definir:
+#       env.SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+#   E o payload DEVE conter o campo "text" (fallback obrigatorio do
+#   Slack), alem dos "blocks" opcionais.
 # ============================================================
 name: CI MQL5 - Validacao Estatica
 
@@ -27,10 +38,33 @@ jobs:
   validate:
     name: 'Validacao do codigo XAU_AI_PRO'
     runs-on: ubuntu-latest
+    env:
+      # Webhook do Slack (Incoming Webhook). Configurar em
+      # Settings > Secrets and variables > Actions > SLACK_WEBHOOK_URL
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # CRITICO: sem esta variavel a action achata o payload e o
+      # Slack responde "400 no_text".
+      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
     defaults:
       run:
         working-directory: Experts/XAU_AI_PRO
     steps:
+      # ----------------------------------------------------------
+      # NOTIFICACAO DE INICIO (roda sempre, antes de qualquer passo)
+      # ----------------------------------------------------------
+      - name: Notificar Slack (inicio do CI)
+        if: always() && env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":rocket: CI XAU AI PRO iniciado",
+              "blocks": [
+                {"type":"section","text":{"type":"mrkdwn","text":":rocket: *CI XAU AI PRO iniciado*"}},
+                {"type":"section","text":{"type":"mrkdwn","text":"*Branch:* `${{ github.ref_name }}`\n*Commit:* `${{ github.sha }}`\n*Run:* #${{ github.run_number }}\n*Link:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}}
+              ]
+            }
+
       - name: Checkout do repositorio
         uses: actions/checkout@v4
 
@@ -41,6 +75,38 @@ jobs:
 
       - name: Rodar validacao estatica MQL5
         run: python "../../.github/scripts/validate_mql5.py"
+
+      # ----------------------------------------------------------
+      # NOTIFICACAO DE FIM OK (so roda se todos os passos passaram)
+      # ----------------------------------------------------------
+      - name: Notificar Slack (sucesso do CI)
+        if: success() && env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":white_check_mark: CI XAU AI PRO concluido com sucesso",
+              "blocks": [
+                {"type":"section","text":{"type":"mrkdwn","text":":white_check_mark: *CI XAU AI PRO concluido com sucesso*"}},
+                {"type":"section","text":{"type":"mrkdwn","text":"*Branch:* `${{ github.ref_name }}`\n*Run:* #${{ github.run_number }}\n*Veja:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}}
+              ]
+            }
+
+      # ----------------------------------------------------------
+      # NOTIFICACAO DE ERRO (so roda se algum passo anterior falhou)
+      # ----------------------------------------------------------
+      - name: Notificar Slack (falha do CI)
+        if: failure() && env.SLACK_WEBHOOK_URL != ''
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: |
+            {
+              "text": ":x: Falha no CI XAU AI PRO",
+              "blocks": [
+                {"type":"section","text":{"type":"mrkdwn","text":":x: *Falha no CI XAU AI PRO*"}},
+                {"type":"section","text":{"type":"mrkdwn","text":"*Branch:* `${{ github.ref_name }}`\n*Run:* #${{ github.run_number }}\n*Veja:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}}
+              ]
+            }
 
   # ============================================================
   # BUILD OPCIONAL (Windows + MetaEditor)
