@@ -20,7 +20,7 @@
 #   por padrao e ACHATA o payload (blocks.0.type=...), o que o Slack
 #   rejeita com "no_text". Para Incoming Webhooks classicos
 #   (hooks.slack.com/services/...) e obrigatorio definir:
-#       env.SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+#       env.webhook-type: incoming-webhook (via input no step)
 #   E o payload DEVE conter o campo "text" (fallback obrigatorio do
 #   Slack), alem dos "blocks" opcionais.
 # ============================================================
@@ -44,7 +44,6 @@ jobs:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       # CRITICO: sem esta variavel a action achata o payload e o
       # Slack responde "400 no_text".
-      SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
     defaults:
       run:
         working-directory: Experts/XAU_AI_PRO
@@ -54,7 +53,7 @@ jobs:
       # ----------------------------------------------------------
       - name: Notificar Slack (inicio do CI)
         if: always() && env.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.26.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           payload: |
             {
@@ -64,6 +63,7 @@ jobs:
                 {"type":"section","text":{"type":"mrkdwn","text":"*Branch:* `${{ github.ref_name }}`\n*Commit:* `${{ github.sha }}`\n*Run:* #${{ github.run_number }}\n*Link:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}}
               ]
             }
+          webhook-type: incoming-webhook
 
       - name: Checkout do repositorio
         uses: actions/checkout@v4
@@ -81,7 +81,7 @@ jobs:
       # ----------------------------------------------------------
       - name: Notificar Slack (sucesso do CI)
         if: success() && env.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.26.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           payload: |
             {
@@ -91,13 +91,14 @@ jobs:
                 {"type":"section","text":{"type":"mrkdwn","text":"*Branch:* `${{ github.ref_name }}`\n*Run:* #${{ github.run_number }}\n*Veja:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}}
               ]
             }
+          webhook-type: incoming-webhook
 
       # ----------------------------------------------------------
       # NOTIFICACAO DE ERRO (so roda se algum passo anterior falhou)
       # ----------------------------------------------------------
       - name: Notificar Slack (falha do CI)
         if: failure() && env.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.26.0
+        uses: slackapi/slack-github-action@v4.0.0
         with:
           payload: |
             {
@@ -107,6 +108,7 @@ jobs:
                 {"type":"section","text":{"type":"mrkdwn","text":"*Branch:* `${{ github.ref_name }}`\n*Run:* #${{ github.run_number }}\n*Veja:* https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"}}
               ]
             }
+          webhook-type: incoming-webhook
 
   # ============================================================
   # BUILD OPCIONAL (Windows + MetaEditor)
