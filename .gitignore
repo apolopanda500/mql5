@@ -51,6 +51,7 @@ Thumbs.db
 Profiles/Charts/**/*.chr
 Profiles/Charts/**/*.wnd
 Profiles/deleted/
+Profiles/Tester/*.ini
 
 # --- MQL5 Logs Directory ---
 logs/
