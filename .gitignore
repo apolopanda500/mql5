@@ -50,6 +50,7 @@ Thumbs.db
 # (arquivos criados/alterados automaticamente pelo terminal)
 Profiles/Charts/**/*.chr
 Profiles/Charts/**/*.wnd
+Profiles/deleted/
 
 # --- MQL5 Logs Directory ---
 logs/
@@ -69,4 +70,11 @@ logs/
 **/Data/*.json 
   
 # --- Runtime statistics / auto-generated test outputs ---  
-Files/XAU_AI_PRO_stats.csv  
+Files/XAU_AI_PRO_stats.csv
+
+# --- Dados gerados pelo pipeline AI (nao versionar) ---
+*.pkl
+**/Data/*.pkl
+Files/Common/
+Files/Data/*.json
+Files/Data/prediction.json  
