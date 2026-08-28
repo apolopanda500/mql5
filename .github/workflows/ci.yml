@@ -16,11 +16,11 @@
 # NOTIFICACOES SLACK (inicio / sucesso / falha)
 # --------------------------------------------
 # IMPORTANTE (correcao do erro "400 no_text"):
-#   A slack-github-action assume SLACK_WEBHOOK_TYPE=WORKFLOW_TRIGGER
+#   A slack-github-action v1 achata o payload sem SLACK_WEBHOOK_TYPE
 #   por padrao e ACHATA o payload (blocks.0.type=...), o que o Slack
 #   rejeita com "no_text". Para Incoming Webhooks classicos
 #   (hooks.slack.com/services/...) e obrigatorio definir:
-#       env.webhook-type: incoming-webhook (via input no step)
+#       o webhook-type: incoming-webhook e definido em cada step (with)
 #   E o payload DEVE conter o campo "text" (fallback obrigatorio do
 #   Slack), alem dos "blocks" opcionais.
 # ============================================================
