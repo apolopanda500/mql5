@@ -155,3 +155,44 @@ final → 20.10 Release → 20.11 Gate financeiro.
 | 30d ativo / gate | ~30 sessões | ~meados out | — |
 
 > Nota: marcos em **horas de mercado ativo** substituem o relógio de parede. O 24h **ativo** cai na segunda 31/08 (~15:35–16:35 Brasília) — coincide com o marco 72h de parede; mantemos ambos registrados. Nenhuma alteração de código.
+
+---
+
+## 10. ETAPA 20.14 — ENDURANCE PROFISSIONAL (registro oficial)
+
+> Adicionado: 2026-08-28 20:51 UTC (MetaTrader Assistant)
+> Regime: **passivo** — nenhuma alteração de EA/código/pipeline durante a janela.
+> Protocolo completo: `ETAPA_20_14_ENDURANCE.md` (repo XAU_AI_PRO).
+
+### 10.1 Baseline DAY 01 (snapshot 28/08 23:59:58 servidor)
+
+| Item | Valor | Veredito |
+|---|---|---|
+| Estado | HEALTHY · terminal OK · algo ON · trade OK | ✅ |
+| Símbolos (congelado) | 11 charts M5, 1 EA cada (magic 2026001) | ✅ |
+| Drawdown | 2,07% | ⚠️ dentro do limite (15%) |
+| Trades hoje | 5 (aberturas) | — |
+| Balance / Equity | 116,81 / 114,40 | — |
+| AI | STALE (mercado fechado — esperado, recupera na reabertura) | ⏳ recovery natural |
+| Dataset | 173.230.046 B (crescendo) | ✅ |
+| Posições abertas | 5: GBPUSD SELL, USDCHF BUY, USDCAD BUY, **2× USDJPY BUY** | ⚠️ ver 10.2 |
+
+### 10.2 🔴 ACHADO — duplicação de execução USDJPY (EM INVESTIGAÇÃO)
+
+- **2 posições BUY USDJPY abertas em 22:15:02/03** (mesmo candle, mesmo preço 160.118, SL 300/TP 600):
+  - `#10264640104` (22:15:02) e `#10264640153` (22:15:03), ambas volume 0.02 (full_audit), lotes 0.01
+- **Não** é chart duplicado (11 charts, 1 EA cada — auditado via list_open_charts).
+- **full_audit.csv confirma 2 tickets reais distintos** (não é log duplicado).
+- Explicação provável: retry de execução duplicado no OrderManager (2 envios no mesmo tick) OU
+  MarketScanner/TradePipeline chamado 2× no mesmo tick para o mesmo símbolo.
+- **Sem intervenção** (regra passiva): posições seguem com SL/TP; entram na reconciliação com tag `dup-exec`.
+- Ação futura (FORA da janela, pós-20.14): revisar guarda de deduplicação por símbolo/tick no OrderManager.
+- Impacto em métricas: **NFU x2 no mesmo símbolo** — registrar manualmente no checkpoint para não
+  inflar PF (`dup-exec` conta como 1 decisão, 2 execuções).
+
+### 10.3 Contrato do checkpoint 24h (mantido do tracker §8)
+
+Entregáveis: trades novos da janela, WinRate, PF, Expectancy, MaxDD, Sharpe, rejeições, uptime,
+eventos, AI status, SAFE/RECOVERY, reconciliação 4 fontes (BROKER × full_audit × events ×
+forward_test_trades). Tratamento das posições herdadas: `carried` (entrada pré-janela), sem impacto
+em PF/WinRate novos. Duplicação USDJPY: tag `dup-exec`.
