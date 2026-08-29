@@ -10,20 +10,25 @@ gera alerta. Também consolida métricas para os checkpoints.
 |---|---|
 | `heartbeat_watchdog.py` | watchdog principal (once / daemon / checkpoint) |
 | `smart_read.py` | leitura com detecção de encoding (Event Stream é UTF-16 LE) |
-| `iniciar_watchdog.bat` | launcher do daemon (Windows) |
+| `iniciar_watchdog.bat` | launcher manual do daemon (Windows) |
 
-## Uso
+## Uso (modo manual — sem agendamento automático)
+
+A automação via Task Scheduler (`iniciar_agendado.py`) foi removida por
+decisão do projeto; o watchdog agora roda **manualmente** quando necessário.
 
 ```bash
-# verificação única (bom para cron/agendador)
+# verificação única (bom para rodada manual)
 python heartbeat_watchdog.py --once
 
-# daemon contínuo (verifica a cada 5 min)
+# daemon contínuo em segundo plano (verifica a cada 5 min)
 python heartbeat_watchdog.py --daemon --interval 300
 
 # consolidar checkpoint (24h/72h/7d) — imprime status + contagem de eventos
 python heartbeat_watchdog.py --checkpoint
 ```
+
+Para o checkpoint de 24h rode `--checkpoint` e confira a saída.
 
 ## Variáveis de ambiente
 
@@ -43,22 +48,6 @@ python heartbeat_watchdog.py --checkpoint
 Quando detecta problema (`system_status.json` parado, health != HEALTHY/SAFE,
 Event Stream parado), envia mensagem via Slack e/ou Pushover (se configurados).
 No fim de semana, `AI STALE` é **esperado** (mercado fechado) → não gera alerta.
-
-## Agendamento (Windows Task Scheduler)
-
-Recomendado — agendar `iniciar_agendado.py` a cada 5 min (instância única + auto-recuperação):
-
-```bat
-schtasks /Create /SC MINUTE /MO 5 /TN "XAU_AI_PRO_Watchdog" ^
-  /TR "\"C:\...\python.exe\" \"C:\...\MQL5\Python\watchdog\iniciar_agendado.py\""
-```
-
-`iniciar_agendado.py` usa lock por PID (com checagem do comando do processo,
-evitando PID reusado após reboot): daemon já ativo → sai sem duplicar; daemon
-caiu → o próximo trigger reinicia. **Não** agendar `--daemon` direto no
-triggador (empilharia um processo a cada 5 minutos).
-
-Rodada manual: `iniciar_watchdog.bat` (primeiro preencha `SLACK_WEBHOOK_URL` dentro dele).
 
 ## Regras da endurance
 
