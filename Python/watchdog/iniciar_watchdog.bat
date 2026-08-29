@@ -13,7 +13,8 @@ REM set "SLACK_WEBHOOK_URL=https://hooks.slack.com/services/XXXX/YYYY/ZZZZ"
 
 REM --- Limites ---
 set "MAX_IDLE_SEC=900"
-set "AUDIT_MAX_IDLE_SEC=86400"
+REM 48h cobre fim de semana (~43h de mercado fechado) sem falso positivo
+set "AUDIT_MAX_IDLE_SEC=172800"
 set "ALERT_THROTTLE_SEC=3600"
 
 REM --- Caminho do watchdog ---

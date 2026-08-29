@@ -206,7 +206,7 @@ def check_once(conf, verbose=True):
     # 3) audit (opcional) - atualiza SOMENTE por trade; limite generoso
     audit_path = conf['audit']
     aage = file_age_seconds(audit_path)
-    audit_max = conf.get('audit_max_idle', 86400)  # 24h sem trade = ok
+    audit_max = conf.get('audit_max_idle', 172800)  # 24h sem trade = ok
     if aage == float('inf'):
         if verbose:
             print('  audit: nao encontrado (opcional)')
@@ -285,7 +285,7 @@ def main():
         'audit': env_path('AUDIT_PATH', DEFAULT_AUDIT),
         'max_idle': int(os.getenv('MAX_IDLE_SEC', '900')),
         'throttle': int(os.getenv('ALERT_THROTTLE_SEC', '3600')),
-        'audit_max_idle': int(os.getenv('AUDIT_MAX_IDLE_SEC', '86400')),
+        'audit_max_idle': int(os.getenv('AUDIT_MAX_IDLE_SEC', '172800')),
         'last_alert': 0,
     }
 
