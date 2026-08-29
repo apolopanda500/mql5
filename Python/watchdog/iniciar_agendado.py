@@ -22,7 +22,11 @@ HERE = Path(__file__).resolve().parent
 PYTHON = sys.executable
 DAEMON = HERE / 'heartbeat_watchdog.py'
 DAEMON_NAME = 'heartbeat_watchdog.py'
-LOCK = Path(os.environ.get('TEMP', str(HERE))) / 'xau_ai_pro_watchdog.pid'
+# Caminho FIXO no Temp do usuario: o terminal MT5 redefine TEMP no shell
+# (para MQL5\Files\Temp), enquanto o Task Scheduler usa o TEMP padrao do
+# usuario. Lock dependente de TEMP -> 2 daemons (bug real observado).
+USER_TEMP = Path.home() / 'AppData' / 'Local' / 'Temp'
+LOCK = Path(os.environ.get('WATCHDOG_PID_FILE', str(USER_TEMP))) / 'xau_ai_pro_watchdog.pid'
 LOG = HERE / 'daemon.log'
 ERR = HERE / 'daemon_err.log'
 INTERVALO = os.getenv('WATCHDOG_INTERVAL_SEC', '300')
@@ -51,6 +55,20 @@ def pid_e_daemon(pid):
         return True  # se faltar ferramenta, confia no check de PID
 
 
+def daemon_alive_pids():
+    """PIDs de processos python rodando o nosso daemon (CommandLine match)."""
+    try:
+        out = subprocess.run(
+            ['powershell', '-NoProfile', '-Command',
+             "Get-CimInstance Win32_Process -Filter \"Name='python.exe'\" | "
+             "Where-Object { $_.CommandLine -like '*heartbeat_watchdog.py*' } | "
+             "Select-Object -ExpandProperty ProcessId"],
+            capture_output=True, text=True, timeout=25).stdout or ''
+        return [int(x.strip()) for x in out.split() if x.strip().isdigit()]
+    except Exception:
+        return []
+
+
 def main():
     # --- pre-flight: lock existente ---
     if LOCK.exists():
@@ -67,6 +85,17 @@ def main():
             LOCK.unlink()
         except OSError:
             pass
+
+    # --- pre-flight 2: guarda global (cobre divergencia de TEMP/reboot) ---
+    vivos = daemon_alive_pids()
+    if vivos:
+        pid = vivos[0]
+        try:
+            LOCK.write_text(str(pid), encoding='ascii')
+        except OSError:
+            pass
+        print('[XAU_AI_PRO] Daemon ja ativo (PID %d, scan global). Nada a fazer.' % pid)
+        return 0
 
     # --- inicia daemon destacado, com logs em arquivo ---
     cmd = [PYTHON, '-u', str(DAEMON), '--daemon', '--interval', INTERVALO]
