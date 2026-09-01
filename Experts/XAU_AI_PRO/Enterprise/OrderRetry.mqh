@@ -1,4 +1,4 @@
-﻿//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //|                                                   OrderRetry.mqh |
 //|                     Smart Execution Engine - Retry               |
 //|                                            XAU_AI_PRO v1.2.0      |
@@ -381,6 +381,56 @@ void COrderRetry::SaveLastResult(
 }
 
 //==================================================
+// F2 v1.2.1 - LOCK GLOBAL ATOMICO DE EXECUCAO
+// Elimina a janela CHECK->OrderSend->SET entre instancias.
+// Primitiva: GlobalVariableSetOnCondition (CAS atomico).
+// Lock livre = 0.0 | Ocupado = timestamp do dono.
+// TTL recupera lock orfao (processo/EA encerrado).
+//==================================================
+#define EXEC_LOCK_NAME        "XAI_PRO_EXEC_LOCK"
+#define EXEC_LOCK_TTL_SEC     5
+
+static double g_exec_lock_token=0.0;
+
+bool ExecLockAcquire()
+{
+   long now=(long)TimeLocal();
+   g_exec_lock_token=0.0;
+
+   if(!GlobalVariableCheck(EXEC_LOCK_NAME))
+      GlobalVariableSet(EXEC_LOCK_NAME, 0.0);
+
+   // 1) Reserva atomica: 0.0 -> dono
+   if(GlobalVariableSetOnCondition(EXEC_LOCK_NAME, (double)now, 0.0))
+   {
+      g_exec_lock_token=(double)now;
+      return true;
+   }
+
+   // 2) Ocupado: TTL para recuperar lock orfao
+   double cur=GlobalVariableGet(EXEC_LOCK_NAME);
+   if(cur>0.0 && (now-(long)cur)>EXEC_LOCK_TTL_SEC)
+   {
+      if(GlobalVariableSetOnCondition(EXEC_LOCK_NAME, (double)now, cur))
+      {
+         g_exec_lock_token=(double)now;
+         return true;
+      }
+   }
+
+   return false;
+}
+
+void ExecLockRelease()
+{
+   if(g_exec_lock_token<=0.0)
+      return;
+   // Libera somente se o lock ainda e deste dono (CAS)
+   GlobalVariableSetOnCondition(EXEC_LOCK_NAME, 0.0, g_exec_lock_token);
+   g_exec_lock_token=0.0;
+}
+
+//==================================================
 // EXECUTE WITH RETRY
 //==================================================
 
@@ -436,6 +486,24 @@ RetryResult COrderRetry::ExecuteWithRetry(
       attempt++
    )
    {
+      //------------------------------------------------
+      // F2: adquire o lock global atomico antes do envio.
+      // Se outra instancia estiver executando, NAO envia.
+      //------------------------------------------------
+      bool sgTester=(MQLInfoInteger(MQL_TESTER)!=0);
+      if(!sgTester && !ExecLockAcquire())
+      {
+         m_total_failures++;
+         m_last_retcode=TRADE_RETCODE_LOCKED;
+         m_last_error=0;
+         m_last_comment="lock global ocupado";
+
+         PrintFormat("[RETRY] LOCK BUSY | Symbol=%s | Lock global ocupado, envio adiado",
+                     request.symbol);
+
+         return RETRY_INVALID;
+      }
+
       ResetLastError();
 
       ZeroMemory(result);
@@ -448,6 +516,8 @@ RetryResult COrderRetry::ExecuteWithRetry(
       {
          m_last_error=GetLastError();
          m_total_failures++;
+
+         ExecLockRelease();
 
          return RETRY_INVALID;
       }
@@ -474,6 +544,8 @@ RetryResult COrderRetry::ExecuteWithRetry(
          );
 
          m_total_failures++;
+
+         ExecLockRelease();
 
          return RETRY_INVALID;
       }
@@ -510,6 +582,8 @@ RetryResult COrderRetry::ExecuteWithRetry(
             result.deal
          );
 
+         ExecLockRelease();
+
          return RETRY_SUCCESS;
       }
 
@@ -527,6 +601,8 @@ RetryResult COrderRetry::ExecuteWithRetry(
             result.retcode,
             result.comment
          );
+
+         ExecLockRelease();
 
          return RETRY_INVALID;
       }
@@ -546,6 +622,8 @@ RetryResult COrderRetry::ExecuteWithRetry(
             m_last_error,
             result.comment
          );
+
+         ExecLockRelease();
 
          return RETRY_ERROR;
       }
@@ -599,6 +677,8 @@ RetryResult COrderRetry::ExecuteWithRetry(
       result.retcode,
       result.comment
    );
+
+   ExecLockRelease();
 
    return RETRY_TIMEOUT;
 }
@@ -798,4 +878,3 @@ void COrderRetry::LogSummary()
 }
 
 #endif // ORDER_RETRY_MQH
-
