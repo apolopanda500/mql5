@@ -74,7 +74,7 @@ CTrade trade;
 
 #include "Core/SignalCore.mqh"
 #include "Core/DecisionEngine.mqh"
-#include "Core/ValidationEngine.mqh"
+#include "Core/ValidationEngine.mqh"1
 
 
 //==================================================
@@ -122,6 +122,7 @@ CTrade trade;
 #include "Monitoring/EventEmitter.mqh"    // ETAPA 15.6.1/15.6.2: event stream (canonico)
 // Auditoria (AuditLog + FullAudit fundidos) - incluÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­do no top (ETAPA 11)
 #include "Monitoring/Diagnostics.mqh"     // Diagnostico completo
+#include "Integration/EAHeartbeat.mqh"    // ponte somente leitura EA -> app
 
 // ETAPA 7: Data Recovery, Replay & Backup
 #include "Monitoring/ReplayEngine.mqh"    // Replay de decisoes/OHLC/auditoria (REPLAY != LIVE)
@@ -783,6 +784,10 @@ void OnTick()
    // Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
    // estado de conexion/failure_mode/news/IA no forward test.
    ForwardHeartbeat();
+
+   // Heartbeat operacional para o app. Somente leitura; nao participa
+   // da decisao, validacao ou envio de ordens.
+   EAHeartbeatWrite("RUNNING");
 
 
 
