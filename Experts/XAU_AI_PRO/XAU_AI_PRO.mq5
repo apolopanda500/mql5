@@ -74,7 +74,7 @@ CTrade trade;
 
 #include "Core/SignalCore.mqh"
 #include "Core/DecisionEngine.mqh"
-#include "Core/ValidationEngine.mqh"1
+#include "Core/ValidationEngine.mqh"
 
 
 //==================================================
