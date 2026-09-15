@@ -7,7 +7,7 @@ int g_heartbeat_write_count = 0;
 
 bool EAHeartbeatWrite(const string state = "RUNNING")
   {
-   const datetime now = TimeCurrent();1
+   const datetime now = TimeCurrent();
    if(g_heartbeat_last_write == now)
       return true;
 
