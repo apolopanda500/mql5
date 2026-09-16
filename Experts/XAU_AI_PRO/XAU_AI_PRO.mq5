@@ -174,6 +174,33 @@ CTrade trade;
 
 bool SystemInitialized = false;
 bool TradingEnabled    = true;
+string EACommandValue(const string body,const string key)
+  {
+   string needle="\""+key+"\":\""; int p=StringFind(body,needle);
+   if(p<0) { needle=key+"="; p=StringFind(body,needle); if(p<0) return ""; p+=StringLen(needle); int e=StringFind(body,"\n",p); return e>p ? StringSubstr(body,p,e-p) : StringSubstr(body,p); }
+   p+=StringLen(needle); int e=StringFind(body,"\"",p);
+   return e>p ? StringSubstr(body,p,e-p) : "";
+  }
+void EACommandPoll()
+  {
+   const string file="XAU_AI_PRO_ea_command.json";
+   if(!FileIsExist(file,FILE_COMMON)) return;
+   int h=FileOpen(file,FILE_READ|FILE_TXT|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
+   if(h==INVALID_HANDLE) return;
+   string body=FileReadString(h); FileClose(h); FileDelete(file,FILE_COMMON);
+   string cmd=EACommandValue(body,"command"); string value=EACommandValue(body,"value");
+   string status="ok"; string detail="applied";
+   if(cmd=="start" || cmd=="resume") TradingEnabled=true;
+   else if(cmd=="stop" || cmd=="pause") TradingEnabled=false;
+   else if(cmd=="set-symbol" && value!="") { if(!SymbolSelect(value,true) || !ChartSetSymbolPeriod(0,value,Period())) { status="error"; detail="symbol_or_chart_rejected"; } }
+   else if(cmd=="set-timeframe" && value!="") { ENUM_TIMEFRAMES tf=(ENUM_TIMEFRAMES)StringToInteger(value); if(!ChartSetSymbolPeriod(0,_Symbol,tf)) { status="error"; detail="timeframe_rejected"; } }
+   else if(cmd=="set-autotrading") { status="error"; detail="terminal_autotrading_must_be_changed_in_MT5"; }
+   else if(cmd=="set-mode") { status="error"; detail="mode_is_input_configuration"; }
+   else { status="error"; detail="unknown_command"; }
+   int a=FileOpen("XAU_AI_PRO_ea_command_result.json",FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
+   if(a!=INVALID_HANDLE) { FileWriteString(a,StringFormat("{\"command\":\"%s\",\"status\":\"%s\",\"detail\":\"%s\"}",cmd,status,detail)); FileClose(a); }
+   PrintFormat("EA command %s: %s (%s)",cmd,status,detail);
+  }
 bool AIReady           = false;
 bool DatasetReady      = false;
 
@@ -722,7 +749,7 @@ int OnInit()
      }
 
    PeakEquity = AccountInfoDouble(ACCOUNT_EQUITY);
-   EventSetTimer(30);   // executa a cada 30 segundos
+   EventSetTimer(10);   // heartbeat e saude operacional sem depender de tick
 
    SystemInitialized = true;
 
@@ -1449,6 +1476,9 @@ void OnTradeTransaction(
 //+------------------------------------------------------------------+
 void OnTimer()
   {
+   EACommandPoll();
+   // Mantem o liveness mesmo quando o ativo fica sem novos ticks.
+   EAHeartbeatWrite("RUNNING");
 //------------------------------------------------
 // Sistema inicializado?
 //------------------------------------------------
