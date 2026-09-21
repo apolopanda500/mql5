@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.0
 #ifndef DASHBOARD_MQH
 #define DASHBOARD_MQH
 
@@ -91,7 +91,7 @@ void DashboardUpdate()
 
 
    int signal =
-      GetSignal(_Symbol);
+      GetActiveSignal(_Symbol);
 
 
    string signalText =
