@@ -5,6 +5,7 @@
 #include "../Core/Config.mqh"
 
 #include "../Core/SignalCore.mqh"
+#include "../Core/SignalCoreV2.mqh"
 
 #include "../Filters/TrendFilter.mqh"
 #include "../Filters/SpreadFilter.mqh"
@@ -40,7 +41,7 @@ bool AITradeAllowed(string symbol="")
    if(symbol=="")
       symbol=_Symbol;
 
-   int signal=GetSignal(symbol);
+   int signal=GetActiveSignal(symbol);
 
    if(signal==0)
       return false;
@@ -229,7 +230,7 @@ int GetCombinedSignal(string symbol="")
    if(symbol=="")
       symbol=_Symbol;
 
-   int tech=GetSignal(symbol);
+   int tech=GetActiveSignal(symbol);
    int ai=GetAIEngineSignal(symbol);
 
    if(tech==ai)
@@ -316,6 +317,9 @@ double AdvancedAIScore(int signal, string symbol="")
    double trend = GetADX(symbol);
    if(trend > 100.0)
       trend = 100.0;
+   // F4/20.15 §3: ADX indisponivel (negativo) -> neutro, sem penalizar
+   if(trend < 0.0)
+      trend = 0.0;
    score += trend * GetStrengthWeight();
 
    //------------------------------------------
