@@ -16,6 +16,8 @@ CTrade trade;
 //==================================================
 
 #include "Core/Config.mqh"
+// Signal Core v2 (paralelo): seletor SignalCoreVersion + GetActiveSignal em Core/SignalCoreV2.mqh
+#include "Core/SignalCoreV2.mqh"
 // ETAPA 15.6: EventEmitter - camada unica de eventos (forward_test_events.csv)
 #include "Monitoring/EventEmitter.mqh"
 #include "Core/StateMachine.mqh"   // v1.4.0 (Etapa 4): maquina de estados
@@ -181,6 +183,52 @@ string EACommandValue(const string body,const string key)
    p+=StringLen(needle); int e=StringFind(body,"\"",p);
    return e>p ? StringSubstr(body,p,e-p) : "";
   }
+long EACommandLong(const string body,const string key)
+  {
+   string value=EACommandValue(body,key);
+   if(value=="") return 0;
+   return (long)StringToInteger(value);
+  }
+bool EACommandClose(const string body,string &detail)
+  {
+   string symbol=EACommandValue(body,"symbol");
+   ulong ticket=(ulong)EACommandLong(body,"ticket");
+   bool closed=false;
+   if(ticket>0 && PositionSelectByTicket(ticket))
+     {
+      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+        { detail="ticket_magic_mismatch"; return false; }
+      closed=trade.PositionClose(ticket);
+     }
+   else if(symbol!="")
+     {
+      for(int i=PositionsTotal()-1;i>=0;i--)
+        {
+         ulong current=(ulong)PositionGetTicket(i);
+         if(current==0 || !PositionSelectByTicket(current)) continue;
+         if(PositionGetString(POSITION_SYMBOL)!=symbol) continue;
+         if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber) continue;
+         closed=trade.PositionClose(current) || closed;
+        }
+     }
+   else
+     { detail="ticket_or_symbol_required"; return false; }
+   if(!closed) detail=trade.ResultRetcodeDescription();
+   return closed;
+  }
+bool EACommandCloseAll(string &detail)
+  {
+   bool closed=false;
+   for(int i=PositionsTotal()-1;i>=0;i--)
+     {
+      ulong ticket=(ulong)PositionGetTicket(i);
+      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
+      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber) continue;
+      closed=trade.PositionClose(ticket) || closed;
+     }
+   if(!closed) detail="no_positions_closed";
+   return closed;
+  }
 void EACommandPoll()
   {
    const string file="XAU_AI_PRO_ea_command.json";
@@ -194,6 +242,8 @@ void EACommandPoll()
    else if(cmd=="stop" || cmd=="pause") TradingEnabled=false;
    else if(cmd=="set-symbol" && value!="") { if(!SymbolSelect(value,true) || !ChartSetSymbolPeriod(0,value,Period())) { status="error"; detail="symbol_or_chart_rejected"; } }
    else if(cmd=="set-timeframe" && value!="") { ENUM_TIMEFRAMES tf=(ENUM_TIMEFRAMES)StringToInteger(value); if(!ChartSetSymbolPeriod(0,_Symbol,tf)) { status="error"; detail="timeframe_rejected"; } }
+   else if(cmd=="close") { if(!EACommandClose(body,detail)) status="error"; }
+   else if(cmd=="close-all") { if(!EACommandCloseAll(detail)) status="error"; }
    else if(cmd=="set-autotrading") { status="error"; detail="terminal_autotrading_must_be_changed_in_MT5"; }
    else if(cmd=="set-mode") { status="error"; detail="mode_is_input_configuration"; }
    else { status="error"; detail="unknown_command"; }
@@ -302,6 +352,7 @@ bool InitializeModules()
 
 // v1.2.1: cache de handles de indicadores do SignalCore
    SignalCoreInit();
+   SignalCoreV2Init();
    StateMachineInit();   // v1.4.0 (Etapa 4): maquina de estados
    Print("[INIT] system + signalcore OK");
 
@@ -520,6 +571,7 @@ void ShutdownModules()
 
 // v1.2.1: libera handles cacheados do SignalCore
    ReleaseSignalHandles();
+   SignalCoreV2Release();
 
    DataLoggerClose();
 
