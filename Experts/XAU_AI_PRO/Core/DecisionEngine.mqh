@@ -509,7 +509,7 @@ int GetDecision(
 
 
    int signal=
-      GetSignal(
+      GetActiveSignal(
          symbol
       );
 
