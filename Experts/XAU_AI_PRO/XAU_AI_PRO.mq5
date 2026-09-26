@@ -178,17 +178,35 @@ bool SystemInitialized = false;
 bool TradingEnabled    = true;
 string EACommandValue(const string body,const string key)
   {
-   string needle="\""+key+"\":\""; int p=StringFind(body,needle);
-   if(p<0) { needle=key+"="; p=StringFind(body,needle); if(p<0) return ""; p+=StringLen(needle); int e=StringFind(body,"\n",p); return e>p ? StringSubstr(body,p,e-p) : StringSubstr(body,p); }
-   p+=StringLen(needle); int e=StringFind(body,"\"",p);
+   string needle="\""+key+"\":\"";
+   int p=StringFind(body,needle);
+   if(p<0)
+     {
+      needle=key+"=";
+      p=StringFind(body,needle);
+      if(p<0)
+         return "";
+      p+=StringLen(needle);
+      int e=StringFind(body,"\n",p);
+      return e>p ? StringSubstr(body,p,e-p) : StringSubstr(body,p);
+     }
+   p+=StringLen(needle);
+   int e=StringFind(body,"\"",p);
    return e>p ? StringSubstr(body,p,e-p) : "";
   }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 long EACommandLong(const string body,const string key)
   {
    string value=EACommandValue(body,key);
-   if(value=="") return 0;
+   if(value=="")
+      return 0;
    return (long)StringToInteger(value);
   }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 bool EACommandClose(const string body,string &detail)
   {
    string symbol=EACommandValue(body,"symbol");
@@ -200,55 +218,123 @@ bool EACommandClose(const string body,string &detail)
         { detail="ticket_magic_mismatch"; return false; }
       closed=trade.PositionClose(ticket);
      }
-   else if(symbol!="")
-     {
-      for(int i=PositionsTotal()-1;i>=0;i--)
-        {
-         ulong current=(ulong)PositionGetTicket(i);
-         if(current==0 || !PositionSelectByTicket(current)) continue;
-         if(PositionGetString(POSITION_SYMBOL)!=symbol) continue;
-         if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber) continue;
-         closed=trade.PositionClose(current) || closed;
-        }
-     }
    else
-     { detail="ticket_or_symbol_required"; return false; }
-   if(!closed) detail=trade.ResultRetcodeDescription();
+      if(symbol!="")
+        {
+         for(int i=PositionsTotal()-1;i>=0;i--)
+           {
+            ulong current=(ulong)PositionGetTicket(i);
+            if(current==0 || !PositionSelectByTicket(current))
+               continue;
+            if(PositionGetString(POSITION_SYMBOL)!=symbol)
+               continue;
+            if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+               continue;
+            closed=trade.PositionClose(current) || closed;
+           }
+        }
+      else
+        { detail="ticket_or_symbol_required"; return false; }
+   if(!closed)
+      detail=trade.ResultRetcodeDescription();
    return closed;
   }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 bool EACommandCloseAll(string &detail)
   {
    bool closed=false;
    for(int i=PositionsTotal()-1;i>=0;i--)
      {
       ulong ticket=(ulong)PositionGetTicket(i);
-      if(ticket==0 || !PositionSelectByTicket(ticket)) continue;
-      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber) continue;
+      if(ticket==0 || !PositionSelectByTicket(ticket))
+         continue;
+      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
+         continue;
       closed=trade.PositionClose(ticket) || closed;
      }
-   if(!closed) detail="no_positions_closed";
+   if(!closed)
+      detail="no_positions_closed";
    return closed;
   }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void EACommandPoll()
   {
    const string file="XAU_AI_PRO_ea_command.json";
-   if(!FileIsExist(file,FILE_COMMON)) return;
+   if(!FileIsExist(file,FILE_COMMON))
+      return;
    int h=FileOpen(file,FILE_READ|FILE_TXT|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
-   if(h==INVALID_HANDLE) return;
-   string body=FileReadString(h); FileClose(h); FileDelete(file,FILE_COMMON);
-   string cmd=EACommandValue(body,"command"); string value=EACommandValue(body,"value");
-   string status="ok"; string detail="applied";
-   if(cmd=="start" || cmd=="resume") TradingEnabled=true;
-   else if(cmd=="stop" || cmd=="pause") TradingEnabled=false;
-   else if(cmd=="set-symbol" && value!="") { if(!SymbolSelect(value,true) || !ChartSetSymbolPeriod(0,value,Period())) { status="error"; detail="symbol_or_chart_rejected"; } }
-   else if(cmd=="set-timeframe" && value!="") { ENUM_TIMEFRAMES tf=(ENUM_TIMEFRAMES)StringToInteger(value); if(!ChartSetSymbolPeriod(0,_Symbol,tf)) { status="error"; detail="timeframe_rejected"; } }
-   else if(cmd=="close") { if(!EACommandClose(body,detail)) status="error"; }
-   else if(cmd=="close-all") { if(!EACommandCloseAll(detail)) status="error"; }
-   else if(cmd=="set-autotrading") { status="error"; detail="terminal_autotrading_must_be_changed_in_MT5"; }
-   else if(cmd=="set-mode") { status="error"; detail="mode_is_input_configuration"; }
-   else { status="error"; detail="unknown_command"; }
+   if(h==INVALID_HANDLE)
+      return;
+   string body=FileReadString(h);
+   FileClose(h);
+   FileDelete(file,FILE_COMMON);
+   string cmd=EACommandValue(body,"command");
+   string value=EACommandValue(body,"value");
+   string status="ok";
+   string detail="applied";
+   if(cmd=="start" || cmd=="resume")
+      TradingEnabled=true;
+   else
+      if(cmd=="stop" || cmd=="pause")
+         TradingEnabled=false;
+      else
+         if(cmd=="set-symbol" && value!="")
+           {
+            if(!SymbolSelect(value,true) || !ChartSetSymbolPeriod(0,value,Period()))
+              {
+               status="error";
+               detail="symbol_or_chart_rejected";
+              }
+           }
+         else
+            if(cmd=="set-timeframe" && value!="")
+              {
+               ENUM_TIMEFRAMES tf=(ENUM_TIMEFRAMES)StringToInteger(value);
+               if(!ChartSetSymbolPeriod(0,_Symbol,tf))
+                 {
+                  status="error";
+                  detail="timeframe_rejected";
+                 }
+              }
+            else
+               if(cmd=="close")
+                 {
+                  if(!EACommandClose(body,detail))
+                     status="error";
+                 }
+               else
+                  if(cmd=="close-all")
+                    {
+                     if(!EACommandCloseAll(detail))
+                        status="error";
+                    }
+                  else
+                     if(cmd=="set-autotrading")
+                       {
+                        status="error";
+                        detail="terminal_autotrading_must_be_changed_in_MT5";
+                       }
+                     else
+                        if(cmd=="set-mode")
+                          {
+                           status="error";
+                           detail="mode_is_input_configuration";
+                          }
+                        else
+                          {
+                           status="error";
+                           detail="unknown_command";
+                          }
    int a=FileOpen("XAU_AI_PRO_ea_command_result.json",FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
-   if(a!=INVALID_HANDLE) { FileWriteString(a,StringFormat("{\"command\":\"%s\",\"status\":\"%s\",\"detail\":\"%s\"}",cmd,status,detail)); FileClose(a); }
+   if(a!=INVALID_HANDLE)
+     {
+      FileWriteString(a,StringFormat("{\"command\":\"%s\",\"status\":\"%s\",\"detail\":\"%s\"}",cmd,status,detail));
+      FileClose(a);
+     }
    PrintFormat("EA command %s: %s (%s)",cmd,status,detail);
   }
 bool AIReady           = false;
@@ -509,27 +595,27 @@ bool InitializeModules()
          CNotificationCenter::SetMaxPerMinute(NotifyMaxPerMinute);
 
          Print("[NOTIFY] " + CNotificationCenter::GetStatus());
-   }
+        }
 
-   //------------------------------------------------
-   // ETAPA 10 - CONFIG MANAGER + VERSION MANAGER
-   //------------------------------------------------
+      //------------------------------------------------
+      // ETAPA 10 - CONFIG MANAGER + VERSION MANAGER
+      //------------------------------------------------
 
-   CConfigManager::Init();
-   CConfigManager::SetProfile(CConfigManager::GetCurrentProfile());
-   CConfigManager::LogStatus();
+      CConfigManager::Init();
+      CConfigManager::SetProfile(CConfigManager::GetCurrentProfile());
+      CConfigManager::LogStatus();
 
-   CVersionManager::Init();
-   CVersionManager::RegisterModules();
-   CVersionManager::LogStatus();
+      CVersionManager::Init();
+      CVersionManager::RegisterModules();
+      CVersionManager::LogStatus();
 
-   //------------------------------------------------
-   // ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
-   //------------------------------------------------
+      //------------------------------------------------
+      // ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
+      //------------------------------------------------
 
-   CProductionChecklist::Init();
-   CProductionChecklist::Run();
-   ValidationChecklistRun();
+      CProductionChecklist::Init();
+      CProductionChecklist::Run();
+      ValidationChecklistRun();
 
       if(EnableBackupManager)
         {
@@ -785,11 +871,11 @@ int OnInit()
    Print("Equity............: ", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2));
 
    trade.SetExpertMagicNumber(MagicNumber);
-      trade.SetDeviationInPoints(Slippage);
+   trade.SetDeviationInPoints(Slippage);
 
    ForwardFileInit(); // ETAPA 13: abre CSV de sesion de forward test (FILE_COMMON)
 
-   // ETAPA 15.6: EventEmitter (canal oficial de eventos)
+// ETAPA 15.6: EventEmitter (canal oficial de eventos)
    EventInit();
    EventSystemStart("mode=live chart=" + _Symbol);
    EventForwardStart("forward test ativo");
@@ -853,19 +939,19 @@ void OnTick()
 // Sistema inicializado?
 //------------------------------------------------
 
-      if(!SystemInitialized)
+   if(!SystemInitialized)
      {
       Print("[TRADE BLOCK] SYSTEM NOT INITIALIZED");
       return;
      }
 
-   // ETAPA 13 - heartbeat de sesion live (1Hz via throttle interno).
-   // Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
-   // estado de conexion/failure_mode/news/IA no forward test.
+// ETAPA 13 - heartbeat de sesion live (1Hz via throttle interno).
+// Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
+// estado de conexion/failure_mode/news/IA no forward test.
    ForwardHeartbeat();
 
-   // Heartbeat operacional para o app. Somente leitura; nao participa
-   // da decisao, validacao ou envio de ordens.
+// Heartbeat operacional para o app. Somente leitura; nao participa
+// da decisao, validacao ou envio de ordens.
    EAHeartbeatWrite("RUNNING");
 
 
@@ -894,11 +980,11 @@ void OnTick()
       g_lastEventHealthOK = false;
      }
    else
-   if(_hOk && !g_lastEventHealthOK)
-     {
-      EventRecovery("health restaurado");
-      g_lastEventHealthOK = true;
-     }
+      if(_hOk && !g_lastEventHealthOK)
+        {
+         EventRecovery("health restaurado");
+         g_lastEventHealthOK = true;
+        }
 
    if(AI_Signal == "UNAVAILABLE" || AI_Signal == "ERROR" || AI_Signal == "HOLD")
      {
@@ -1037,24 +1123,24 @@ void OnTick()
          Print("[REPLAY] Modo replay ativo - execucao real BLOQUEADA");
      }
    else
-   if(!ConnectionGuardCanOperate())
-     {
-      if(AllowBlockPrint())
-         Print("[TRADE BLOCK] CONNECTION | ", ConnectionGuardGetError());
-     }
-   else
-   if(!FailureModeOperational())
-     {
-      if(AllowBlockPrint())
-         Print("[TRADE BLOCK] FAILURE MODE | State=", GetFailureStateString(), " | Reason=", g_failureReason);
-     }
-   else
-     {
-      RunTradePipeline();
-     }
+      if(!ConnectionGuardCanOperate())
+        {
+         if(AllowBlockPrint())
+            Print("[TRADE BLOCK] CONNECTION | ", ConnectionGuardGetError());
+        }
+      else
+         if(!FailureModeOperational())
+           {
+            if(AllowBlockPrint())
+               Print("[TRADE BLOCK] FAILURE MODE | State=", GetFailureStateString(), " | Reason=", g_failureReason);
+           }
+         else
+           {
+            RunTradePipeline();
+           }
 
-   // ETAPA 12 (HARDENING): guard de conexao e failure mode bloqueiam
-   // NOVAS ENTRADAS sem parar a gestao de posicoes abertas.
+// ETAPA 12 (HARDENING): guard de conexao e failure mode bloqueiam
+// NOVAS ENTRADAS sem parar a gestao de posicoes abertas.
 
 //------------------------------------------------
 // Gerenciamento das posicoes
@@ -1227,7 +1313,7 @@ void OnTradeTransaction(
             GetRSI(symbol),
             0.0,
             spread,
-                        IsTradingSession() ? "OPEN" : "CLOSED",
+            IsTradingSession() ? "OPEN" : "CLOSED",
             (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
             AIConfidence,
             AIScore,
@@ -1236,18 +1322,18 @@ void OnTradeTransaction(
 
          // ETAPA 13 - forward test: registra entrada de posicion
          ForwardLogTrade(symbol, "OPEN",
-            (dType == DEAL_TYPE_BUY) ? 1 : -1,
-            MarketScore,
-            DoubleToString(AIConfidence, 2),
-            (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
-            HistoryDealGetDouble(deal, DEAL_VOLUME),
-            HistoryDealGetDouble(deal, DEAL_PRICE),
-            HistoryDealGetDouble(deal, DEAL_SL),
-            HistoryDealGetDouble(deal, DEAL_TP),
-            positionId,
-            "OPEN",
-            0,
-            "");
+                         (dType == DEAL_TYPE_BUY) ? 1 : -1,
+                         MarketScore,
+                         DoubleToString(AIConfidence, 2),
+                         (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+                         HistoryDealGetDouble(deal, DEAL_VOLUME),
+                         HistoryDealGetDouble(deal, DEAL_PRICE),
+                         HistoryDealGetDouble(deal, DEAL_SL),
+                         HistoryDealGetDouble(deal, DEAL_TP),
+                         positionId,
+                         "OPEN",
+                         0,
+                         "");
         }
 
       //------------------------------------------------
@@ -1451,7 +1537,7 @@ void OnTradeTransaction(
             profit
          );
 
-                  AuditLogTradeResult(
+         AuditLogTradeResult(
             symbol,
             positionId,
             profit,
@@ -1459,20 +1545,20 @@ void OnTradeTransaction(
          );
 
          // ETAPA 13 - forward test: registra saida/close de posicion
-         {
-          ENUM_DEAL_TYPE exType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
-          ForwardLogDeal(symbol,
-             positionId,
-             (exType == DEAL_TYPE_BUY) ? 1 : -1,
-             MarketScore,
-             DoubleToString(AIConfidence, 2),
-             (exType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
-             HistoryDealGetDouble(deal, DEAL_VOLUME),
-             HistoryDealGetDouble(deal, DEAL_PRICE),
-             profit,
-             "CLOSE",
-             0);
-         }
+           {
+            ENUM_DEAL_TYPE exType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+            ForwardLogDeal(symbol,
+                           positionId,
+                           (exType == DEAL_TYPE_BUY) ? 1 : -1,
+                           MarketScore,
+                           DoubleToString(AIConfidence, 2),
+                           (exType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+                           HistoryDealGetDouble(deal, DEAL_VOLUME),
+                           HistoryDealGetDouble(deal, DEAL_PRICE),
+                           profit,
+                           "CLOSE",
+                           0);
+           }
         }
 
       //------------------------------------------------
@@ -1516,7 +1602,7 @@ void OnTradeTransaction(
          );
         }
 
-  }
+     }
   }
 
 //==================================================
@@ -1529,7 +1615,7 @@ void OnTradeTransaction(
 void OnTimer()
   {
    EACommandPoll();
-   // Mantem o liveness mesmo quando o ativo fica sem novos ticks.
+// Mantem o liveness mesmo quando o ativo fica sem novos ticks.
    EAHeartbeatWrite("RUNNING");
 //------------------------------------------------
 // Sistema inicializado?
@@ -1547,7 +1633,7 @@ void OnTimer()
 
    CRecoveryManager::Run();
 
-   // ETAPA 12 - failure mode (recuperacion automatica)
+// ETAPA 12 - failure mode (recuperacion automatica)
    bool fBrokerOK = CRecoveryManager::IsModuleHealthy("Broker");
    bool fAiOK     = CRecoveryManager::IsModuleHealthy("AI");
    FailureModeFeed(fBrokerOK, fAiOK);
@@ -1728,7 +1814,7 @@ void OnDeinit(
    const int reason
 )
   {
-   // ETAPA 15.6.1: ultimo evento do event stream (API canonica)
+// ETAPA 15.6.1: ultimo evento do event stream (API canonica)
    EventSystemStop("deinit_reason=" + IntegerToString(reason));
    EventShutdown();
 
@@ -1783,7 +1869,7 @@ void OnDeinit(
    if(EnableHealthMonitor)
       HealthMonitorShutdown();
 
-      if(EnableAuditLog)
+   if(EnableAuditLog)
       AuditLogClose();
 
    ForwardLogClose(); // ETAPA 13: pecha CSV de sesion de forward test (flush+close)
@@ -1816,11 +1902,11 @@ void OnDeinit(
 
       CNotificationCenter::SendSystemAlert("EA finalizado (reason=" + IntegerToString(reason) + ")");
       CNotificationCenter::LogStatus();
-   }
+     }
 
-   //================================================
-   // ETAPA 10 - CONFIG + VERSION (encerramento)
-   //================================================
+//================================================
+// ETAPA 10 - CONFIG + VERSION (encerramento)
+//================================================
 
    CConfigManager::LogStatus();
    CVersionManager::LogStatus();
