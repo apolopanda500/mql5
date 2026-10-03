@@ -1,4 +1,3 @@
-#pragma once
 
 // Heartbeat somente leitura para integração EA -> Gateway -> App.
 // Não envia ordens, não altera risco e não interfere no TradePipeline.
