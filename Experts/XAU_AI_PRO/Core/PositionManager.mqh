@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.0
 #ifndef POSITIONMANAGER_MQH
 #define POSITIONMANAGER_MQH
 
@@ -268,10 +268,31 @@ void PartialClose(string symbol, ulong ticket)
    else
       currentPrice=SymbolInfoDouble(symbol,SYMBOL_ASK);
 
+// Gatilho em DINHEIRO, nao em pontos.
+//
+// MEDIDO 08/10/2026: `PartialTrigger` continuava em PONTOS enquanto o SL e o TP
+// tinham virado DOLARES. Com alvo de US$ 2, 150 pontos e 75% do alvo no GOLD e
+// no EURUSD, e 1,5% do alvo no BTCUSD. O fechamento parcial disparava num
+// momento completamente diferente em cada simbolo.
+//
+// `POSITION_PROFIT` ja e dinheiro: e o lucro flutuante da posicao na moeda da
+// conta. Nao ha conversao a fazer nem `point` a multiplicar, que era
+// exatamente a fonte do erro.
+double profitUSD=PositionGetDouble(POSITION_PROFIT);
+
+if(PartialTriggerUsd>0.0)
+{
+   if(profitUSD<PartialTriggerUsd)
+      return;
+}
+else
+{
+   // Caminho de fuga: so quando o gatilho em dollar esta desligado.
    double profitPoints=MathAbs(currentPrice-openPrice)/point;
 
    if(profitPoints<PartialTrigger)
       return;
+}
 
    double closeVolume=volume*(PartialPercent/100.0);
    double minLot=SymbolInfoDouble(symbol,SYMBOL_VOLUME_MIN);
