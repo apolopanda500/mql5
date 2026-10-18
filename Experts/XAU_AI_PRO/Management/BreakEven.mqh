@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.0
 #ifndef BREAKEVEN_MQH
 #define BREAKEVEN_MQH
 
@@ -9,10 +9,25 @@
 extern CTrade trade;
 
 // Retorna o stop level do broker em pontos (fallback: BreakEvenOffset)
-double GetBreakEvenStopLevel(string symbol)
+// MEDIDO 08/10/2026: com SL/TP em DOLARES, `BreakEvenOffset` em PONTOS parou de
+// ter relacao com o risco — 10 pontos e US$ 0,10 no GOLD/EURUSD e US$ 0,001 no
+// BTCUSD. Agora o offset e derivado do valor em dollar quando existe.
+double GetBreakEvenOffsetPoints(string symbol, double volume)
 {
+   if(BreakEvenOffsetUsd > 0.0)
+   {
+      double pontos = DistanciaPontosParaRiscoUSD(symbol, volume, BreakEvenOffsetUsd);
+
+      if(pontos > 0.0)
+         return(pontos);
+   }
+
    long level = SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL);
-   return (level > 0) ? (double)level : (double)BreakEvenOffset;
+
+   if(level > 0)
+      return((double)level);
+
+   return((double)BreakEvenOffset);
 }
 
 void CheckBreakEven()
@@ -58,18 +73,36 @@ ulong ticket = PositionGetTicket(i);
   if(point <= 0.0)
      point = _Point;
 
-  double atr = GetATR(symbol);
-  double triggerPoints = 0.0;
+double atr = GetATR(symbol);
+   double triggerPoints = 0.0;
 
-  if(atr > 0.0)
-     triggerPoints = MathMax(BreakEvenTrigger, atr / point);
-  else
-     triggerPoints = BreakEvenTrigger;
+   // Gatilho em DINHEIRO (decisao do dono, 08/10/2026). `POSITION_PROFIT` ja
+   // e a moeda da conta: comparar lucro com ponto era comparar dinheiro com
+   // distancia, e o resultado dependia do simbolo.
+   double volume = PositionGetDouble(POSITION_VOLUME);
 
-  // v1.2.0 fix: trigger deve ser MAIOR que o offset (SL valido)
-  double offsetPoints = GetBreakEvenStopLevel(symbol);
-  if(offsetPoints >= triggerPoints)
-     triggerPoints = offsetPoints + 1.0;
+   if(BreakEvenTriggerUsd > 0.0)
+   {
+      triggerPoints = DistanciaPontosParaRiscoUSD(symbol, volume, BreakEvenTriggerUsd);
+
+      // ATR pode dar um gatilho MENOR que o pedido em dinheiro; o dono pediu
+      // um minimo, entao o maior dos dois manda.
+      if(atr > 0.0)
+         triggerPoints = MathMax(triggerPoints, atr / point);
+   }
+   else if(atr > 0.0)
+   {
+      triggerPoints = MathMax(BreakEvenTrigger, atr / point);
+   }
+   else
+   {
+      triggerPoints = BreakEvenTrigger;
+   }
+
+   // v1.2.0 fix: trigger deve ser MAIOR que o offset (SL valido)
+   double offsetPoints = GetBreakEvenOffsetPoints(symbol, volume);
+   if(offsetPoints >= triggerPoints)
+      triggerPoints = offsetPoints + 1.0;
 
   if(triggerPoints <= 0.0)
      continue;
@@ -84,22 +117,23 @@ ulong ticket = PositionGetTicket(i);
   if(profitPoints < triggerPoints)
      continue;
 
-  double newSL = 0.0;
+double newSL = 0.0;
 
-  if(type == POSITION_TYPE_BUY)
-  {
-     newSL = openPrice + GetBreakEvenStopLevel(symbol) * point;
+   // `offsetPoints` ja foi calculado acima com o volume desta posicao.
+   if(type == POSITION_TYPE_BUY)
+   {
+      newSL = openPrice + offsetPoints * point;
 
-     if(currentSL > 0.0 && newSL <= currentSL)
-        continue;
-  }
-  else
-  {
-     newSL = openPrice - GetBreakEvenStopLevel(symbol) * point;
+      if(currentSL > 0.0 && newSL <= currentSL)
+         continue;
+   }
+   else
+   {
+      newSL = openPrice - offsetPoints * point;
 
-     if(currentSL > 0.0 && newSL >= currentSL)
-        continue;
-  }
+      if(currentSL > 0.0 && newSL >= currentSL)
+         continue;
+   }
 
   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
   newSL = NormalizeDouble(newSL, digits);
