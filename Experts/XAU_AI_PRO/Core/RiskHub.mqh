@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.3.0 - RISK HUB (Etapa 3: hierarquia unica de risco)
+// XAU_AI_PRO v1.3.0 - RISK HUB (Etapa 3: hierarquia unica de risco)
 #ifndef RISKHUB_MQH
 #define RISKHUB_MQH
 
@@ -135,6 +135,48 @@ double GetDrawdownPercent()
 int GetDailyTradesCount()
 {
    return (int)RiskHubGet("TRADES", 0);
+}
+
+// Conta entradas efetivamente executadas no historico do terminal.
+// O contador persistente continua sendo usado para cobrir novas ordens
+// antes de o historico ficar imediatamente disponivel.
+int GetDailyHistoryTradesCount()
+{
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   dt.hour = 0;
+   dt.min  = 0;
+   dt.sec  = 0;
+
+   datetime dayStart = StructToTime(dt);
+   datetime now      = TimeCurrent();
+
+   if(now < dayStart || !HistorySelect(dayStart, now))
+      return 0;
+
+   int count = 0;
+   int total = HistoryDealsTotal();
+
+   for(int i = 0; i < total; i++)
+   {
+      ulong deal = HistoryDealGetTicket(i);
+      if(deal == 0)
+         continue;
+
+      if((long)HistoryDealGetInteger(deal, DEAL_MAGIC) != MagicNumber)
+         continue;
+
+      long entry = HistoryDealGetInteger(deal, DEAL_ENTRY);
+      if(entry == DEAL_ENTRY_IN || entry == DEAL_ENTRY_INOUT)
+         count++;
+   }
+
+   return count;
+}
+
+int GetEffectiveDailyTradesCount()
+{
+   return MathMax(GetDailyTradesCount(), GetDailyHistoryTradesCount());
 }
 
 void IncrementDailyTrades()
