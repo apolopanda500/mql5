@@ -240,6 +240,28 @@ def send_alerts(conf, problems):
     return True
 
 
+def event_breakdown(path, hours=24):
+    """Conta eventos por tipo nas ultimas N horas (coluna Time do stream).
+
+    Usa smart_read.read_rows (encoding detectado, BOM removido, '\r' limpo).
+    """
+    cutoff = time.time() - hours * 3600
+    stats = {}
+    total = 0
+    for row in smart_read.read_rows(path):
+        t = (row.get('Time') or '').strip()
+        m = re.match(r'^(\d{4})\.(\d{2})\.(\d{2})[ T](\d{2}):(\d{2}):(\d{2})', t)
+        if not m:
+            continue
+        y, mo, d, h, mi, s = map(int, m.groups())
+        ts = time.mktime((y, mo, d, h, mi, s, 0, 0, -1))
+        if ts >= cutoff:
+            total += 1
+            ev = (row.get('Event') or '?').strip()
+            stats[ev] = stats.get(ev, 0) + 1
+    return total, stats
+
+
 def consolidate(conf, verbose=True):
     """Modo checkpoint: imprime consolidacao p/ 24h/72h/7d (sem alterar nada)."""
     print('=== CHECKPOINT XAU_AI_PRO (reconciliacao observacional) ===')
@@ -253,6 +275,10 @@ def consolidate(conf, verbose=True):
     n72 = count_events_today(events_path, 72)
     n7d = count_events_today(events_path, 168)
     print(f'Eventos stream: 24h={n24} 72h={n72} 7d={n7d}')
+    total_ev, stats = event_breakdown(events_path, 24)
+    print(f'Eventos por tipo (24h, coluna Event): total={total_ev}')
+    for ev, c in sorted(stats.items(), key=lambda kv: -kv[1]):
+        print(f'  {c:6d}  {ev}')
     print(f'Status: {status_path}')
     print(f'Events: {events_path}')
     print(f'Audit : {audit_path}')
