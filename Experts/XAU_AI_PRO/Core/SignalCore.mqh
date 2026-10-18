@@ -48,7 +48,7 @@ int GetSignal(string symbol)
    // Indicadores
    int emaFastHandle=iMA(
       symbol,
-      PERIOD_CURRENT,
+      SignalTF,
       FastEMA,
       0,
       MODE_EMA,
@@ -57,7 +57,7 @@ int GetSignal(string symbol)
 
    int emaSlowHandle=iMA(
       symbol,
-      PERIOD_CURRENT,
+      SignalTF,
       SlowEMA,
       0,
       MODE_EMA,
@@ -66,7 +66,7 @@ int GetSignal(string symbol)
 
    int signalRSIHandle=iRSI(
       symbol,
-      PERIOD_CURRENT,
+      SignalTF,
       RSIPeriod,
       PRICE_CLOSE
    );
