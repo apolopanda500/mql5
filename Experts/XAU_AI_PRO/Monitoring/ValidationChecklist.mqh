@@ -180,10 +180,10 @@ bool ValidationChecklistRun()
    if(ask > 0.0 && bid > 0.0 && point > 0.0)
    {
       double spreadPoints = (ask - bid) / point;
-      if(spreadPoints > MaxSpread)
+      if(spreadPoints > GetMaxSpread())
       {
          spreadOK = false;
-         spreadMsg = "Spread " + DoubleToString(spreadPoints, 1) + " > max " + DoubleToString(MaxSpread, 1);
+         spreadMsg = "Spread " + DoubleToString(spreadPoints, 1) + " > max " + DoubleToString(GetMaxSpread(), 1);
       }
    }
 
