@@ -9,6 +9,15 @@
 #include "../Core/Config.mqh"
 
 //==================================================
+// F4/20.15 - GUARD DUP-EXEC (fix §1b)
+// Janela (segundos) para detectar que uma posicao (symbol+magic)
+// ja foi aberta com ENTRY_IN ha pouco tempo. Se um reenvio (retry)
+// estiver prestes a disparar e a posicao ja existir nesta janela,
+// NAO reenviamos -> evita 1 decisao produzir >1 fill (dup-exec).
+//==================================================
+#define EXEC_FILL_DUP_WINDOW_SEC 8
+
+//==================================================
 // RETRY RESULT
 //==================================================
 
@@ -76,6 +85,14 @@ private:
 
    static void IncreaseDeviation(
       MqlTradeRequest &request
+   );
+
+   // F4/20.15 §1b: true se ja existe posicao (symbol+magic) com
+   // ENTRY_IN dentro de EXEC_FILL_DUP_WINDOW_SEC. Previne reenvio
+   // de uma ordem que jah foi preenchida (dup-exec).
+   static bool RecentFillExists(
+      const string symbol,
+      const ulong  magic
    );
 
    static void SaveLastResult(
@@ -368,6 +385,73 @@ void COrderRetry::IncreaseDeviation(
 }
 
 //==================================================
+// RECENT FILL EXISTS (F4/20.15 §1b)
+// Retorna true se ja existe um deal de ENTRADA (DEAL_ENTRY_IN)
+// para symbol+magic dentro da janela EXEC_FILL_DUP_WINDOW_SEC.
+// Se o 1o envio de um retry foi na realidade preenchido (ex.: o
+// servidor aceitou mas a resposta se perdeu), o reenvio nao
+// deve abrir uma 2a posicao. Este guard fecha essa janela.
+//==================================================
+
+bool COrderRetry::RecentFillExists(
+   const string symbol,
+   const ulong  magic
+)
+{
+   if(symbol=="")
+      return false;
+
+   datetime from=
+      TimeCurrent()-
+      EXEC_FILL_DUP_WINDOW_SEC;
+
+   if(!HistorySelect(from, TimeCurrent()))
+      return false;
+
+   int total=HistoryDealsTotal();
+
+   for(int i=0; i<total; i++)
+   {
+      ulong ticket=
+         HistoryDealGetTicket(i);
+
+      if(ticket==0)
+         continue;
+
+      if(
+         HistoryDealGetString(
+            ticket,
+            DEAL_SYMBOL
+         )!=
+         symbol
+      )
+         continue;
+
+      if(
+         HistoryDealGetInteger(
+            ticket,
+            DEAL_MAGIC
+         )!=
+         (long)magic
+      )
+         continue;
+
+      if(
+         HistoryDealGetInteger(
+            ticket,
+            DEAL_ENTRY
+         )!=
+         DEAL_ENTRY_IN
+      )
+         continue;
+
+      return true;
+   }
+
+   return false;
+}
+
+//==================================================
 // SAVE LAST RESULT
 //==================================================
 
@@ -478,6 +562,34 @@ RetryResult COrderRetry::ExecuteWithRetry(
    {
       m_total_failures++;
       return RETRY_INVALID;
+   }
+
+   //------------------------------------------------
+   // F4/20.15 §1b: antes de QUALQUER envio (incl. reenvios),
+   // se a posicao (symbol+magic) ja foi preenchida com ENTRY_IN
+   // dentro da janela, NAO enviamos de novo. Isso evita que um
+   // retry reabra uma posicao cujo 1o envio jah vingou (dup-exec).
+   //------------------------------------------------
+   if(
+      request.action==TRADE_ACTION_DEAL &&
+      (
+         request.type==ORDER_TYPE_BUY ||
+         request.type==ORDER_TYPE_SELL
+      )
+   )
+   {
+      if(RecentFillExists(request.symbol, request.magic))
+      {
+         m_total_successes++;
+
+         PrintFormat(
+            "[RETRY] DUP-EXEC GUARD | Symbol=%s | Magic=%I64u | Fill recente detectado, envio ignorado (cap=1/decisao)",
+            request.symbol,
+            request.magic
+         );
+
+         return RETRY_SUCCESS;
+      }
    }
 
    for(
