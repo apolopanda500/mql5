@@ -7,7 +7,7 @@
 #include "Logger.mqh"
 
 //==================================================
-// XAU_AI_PRO — HEALTH MONITOR (ETAPA 6)
+// XAU_AI_PRO - HEALTH MONITOR (ETAPA 6)
 // Sistema central de monitoramento de saúde.
 //
 // Absorveu o antigo WatchDog.mqh: heartbeat dos
@@ -46,19 +46,28 @@ datetime g_healthUptimeStart = 0;
 ulong    g_healthTotalTicks  = 0;
 ulong    g_healthCheckCount  = 0;
 bool     g_healthLastCheckOK = true;
+int      g_healthConsecutiveFails = 0;   // F4/P1-1: falhas consecutivas p/ backoff exponencial
 
 //==================================================
-// WATCHDOG — HEARTBEAT DOS MÓDULOS (ETAPA 6)
+// WATCHDOG - HEARTBEAT DOS MÓDULOS (ETAPA 6)
 // Absorvido do antigo WatchDog.mqh
 //==================================================
 
 #define HEALTH_WD_MODULES      7
 #define HEALTH_WD_MAX_FAILURES 3
+#define HEALTH_BACKOFF_BASE_SEC  2      // F4/P1-1: fator base do backoff exponencial
+#define HEALTH_BACKOFF_MAX_LEVEL 5      // F4/P1-1: nivel maximo de backoff (2^5 = 32x)
 
 string g_wdModuleNames[HEALTH_WD_MODULES] = {"ATR", "ADX", "RSI", "AI", "PYTHON", "CSV", "JSON"};
 ulong  g_wdLastTime[HEALTH_WD_MODULES];
 int    g_wdFailures[HEALTH_WD_MODULES];
 bool   g_wdActive[HEALTH_WD_MODULES];
+
+// PIPELINE PROGRESS (LIVENESS vs PROGRESS): canal separado para modulos
+// de dataset/python (CSV/JSON/PYTHON). g_wdLastTime registra liveness do EA;
+// g_wdLastProgress registra avanzo real pos-UpdateDataset (progresso).
+ulong  g_wdLastProgress[HEALTH_WD_MODULES];
+int    g_wdProgressFails[HEALTH_WD_MODULES];
 
 //==================================================
 // ESTADO
@@ -66,6 +75,13 @@ bool   g_wdActive[HEALTH_WD_MODULES];
 
 bool g_healthInitialized = false;
 bool g_healthStatus      = true;
+
+//==================================================
+// TESTER-AWARE (SPEC v0.1)
+//==================================================
+
+bool   g_healthIsTester   = false;         // SPEC v0.1 #4: cache de ambiente (MQL_TESTER)
+string g_healthLastReason = "HEALTH_NONE"; // SPEC v0.1 #8: reason-code do ultimo check
 
 //==================================================
 // ÍNDICE DO MÓDULO
@@ -101,6 +117,7 @@ bool HealthMonitorInit()
    g_healthTotalTicks  = 0;
    g_healthCheckCount  = 0;
    g_healthLastCheckOK = true;
+   g_healthConsecutiveFails = 0;
 
    // WatchDog (ETAPA 6)
    for(int i = 0; i < HEALTH_WD_MODULES; i++)
@@ -108,10 +125,20 @@ bool HealthMonitorInit()
       g_wdLastTime[i] = 0;
       g_wdFailures[i] = 0;
       g_wdActive[i]   = true;
+      g_wdLastProgress[i]   = 0;
+      g_wdProgressFails[i]  = 0;
    }
 
    g_healthStatus      = true;
    g_healthInitialized = true;
+
+   // SPEC v0.1 #4: detecta ambiente (cache, sem custo por check)
+   g_healthIsTester = (bool)MQLInfoInteger(MQL_TESTER);
+
+   if(g_healthIsTester)
+      LogSystem("HealthMonitor: Ambiente = TESTER (tick-liveness -> NOT_APPLICABLE)");
+   else
+      LogSystem("HealthMonitor: Ambiente = LIVE/DEMO (tick-liveness ativo, TickTimeout=15s)");
 
    LogSystem("HealthMonitor inicializado (WatchDog integrado)");
 
@@ -162,8 +189,31 @@ bool HealthMonitorCheckTickTimeout(int maxSeconds = 10)
 
    int secondsSinceLastTick = (int)(now - g_lastTickTime);
 
+   // SPEC v0.1 #6.1: no tester (Model=1 / M1 OHLC) o EA recebe ticks em rajadas
+   // por barra com vao simulado >= 15s, entao o timeout absoluto de tick NAO e
+   // indicador valido de saude. O check vira NOT_APPLICABLE: o diagnostico
+   // "Segundos sem tick" continua registrado, mas sem FAILURE, sem incrementar
+   // consecutiveFails e sem alimentar o backoff (neutro).
+   if(g_healthIsTester)
+   {
+      g_healthLastReason = "HEALTH_TICK_LIVENESS_NA_TESTER";
+
+      if(secondsSinceLastTick > maxSeconds)
+      {
+         LogInfo(
+            "HealthMonitor: tick-liveness N/A (TESTER)",
+            "Seconds=" + IntegerToString(secondsSinceLastTick) + " (diagnostico, sem FAILURE)"
+         );
+      }
+
+      return true;
+   }
+
    if(secondsSinceLastTick > maxSeconds)
    {
+      // SPEC v0.1 #8: reason-code do timeout real (live/demo)
+      g_healthLastReason = "HEALTH_TICK_TIMEOUT";
+
       LogError(
          "HealthMonitor: timeout de tick",
          "Seconds=" + IntegerToString(secondsSinceLastTick)
@@ -205,7 +255,7 @@ void HealthMonitorLogError(string module)
 }
 
 //==================================================
-// HEARTBEAT (ETAPA 6 — absorve WatchDogHeartbeat)
+// HEARTBEAT (ETAPA 6 - absorve WatchDogHeartbeat)
 //==================================================
 
 void HealthMonitorHeartbeat(string module)
@@ -223,7 +273,72 @@ void HealthMonitorHeartbeat(string module)
 }
 
 //==================================================
-// RESET HEARTBEAT (ETAPA 6 — absorve WatchDogResetFailures)
+// PIPELINE PROGRESS (F4/1.2 -- LIVENESS vs PROGRESS)
+// A diferencia do Heartbeat (liveness do EA), este rexistro so avanza cando
+// o pipeline de dataset/python realmente executou (pos-UpdateDataset).
+// Permite detectar parada real do pipeline sen disparar o falso HEALTH_FAILURE
+// cando o trading esta bloqueado por un early-return lexitimo (ex.: SAFETY 20/20).
+//==================================================
+
+void HealthMonitorProgress(string module)
+{
+   if(!g_healthInitialized)
+      return;
+
+   int idx = HealthModuleIndex(module);
+
+   if(idx < 0)
+      return;
+
+   g_wdLastProgress[idx] = GetTickCount64();
+   g_wdProgressFails[idx] = 0;
+}
+
+//==================================================
+// E pipeline? (modulos que so fan progress pos-UpdateDataset)
+//==================================================
+
+bool HealthIsPipeline(int idx)
+{
+   if(idx < 0 || idx >= HEALTH_WD_MODULES)
+      return false;
+
+   string m = g_wdModuleNames[idx];
+   if(m == "PYTHON" || m == "CSV" || m == "JSON")
+      return true;
+
+   return false;
+}
+
+//==================================================
+// PIPELINE PROGRESS TIMEOUT (F4/1.2) [LIVENESS vs PROGRESS]
+// Separado do liveness: a cadencia normal do pipeline e a cadencia
+// de velas do timeframe (M1 ~60s, M5 ~300s, H1 ~3600s). O timeout
+// de progresso DEBE superar esa cadencia para nao xerar HEALTH_FAILURE
+// falso en produccion. 0 (default) => auto: 2x cadencia, minimo
+// HealthWatchdogInterval. O tester/hook pode forzar outro valor
+// (ex.: 20s) via input HealthPipelineProgressTimeout.
+//==================================================
+
+int HealthGetPipelineProgressTimeoutSec()
+{
+   if(HealthPipelineProgressTimeout > 0)
+      return HealthPipelineProgressTimeout;
+
+   int cadenceSec = PeriodSeconds(PERIOD_CURRENT);
+
+   if(cadenceSec <= 0)
+      cadenceSec = 300;   // fallback conservador (M5)
+
+   int autoSec = cadenceSec * 2;
+
+   if(autoSec < HealthWatchdogInterval)
+      autoSec = HealthWatchdogInterval;
+
+   return autoSec;
+}
+
+// RESET HEARTBEAT (ETAPA 6 - absorve WatchDogResetFailures)
 //==================================================
 
 void HealthMonitorResetHeartbeat(string module)
@@ -249,38 +364,84 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
    if(!g_wdActive[idx])
       return true;
 
-   // Módulo nunca enviou heartbeat -> não é falha
-   if(g_wdLastTime[idx] == 0)
-      return true;
+   // LIVENESS vs PROGRESS (F4/1.2): para módulos de pipeline usamos o canal
+   // de progresso (avanza só con UpdateDataset real). Para indicadores e AI
+   // usamos o heartbeat de liveness (avanza cada tick do OnTick).
+   bool isPipeline = HealthIsPipeline(idx);
 
-   ulong now       = GetTickCount64();
-   ulong timeoutMs = (ulong)HealthWatchdogInterval * 1000;
-
-   if(now - g_wdLastTime[idx] > timeoutMs)
+   if(!isPipeline)
    {
-      g_wdFailures[idx]++;
+      // Módulo nunca enviou heartbeat -> não é falha
+      if(g_wdLastTime[idx] == 0)
+         return true;
 
-      if(g_wdFailures[idx] >= HEALTH_WD_MAX_FAILURES)
+      ulong now       = GetTickCount64();
+      ulong timeoutMs = (ulong)HealthWatchdogInterval * 1000;
+
+      if(now - g_wdLastTime[idx] > timeoutMs)
       {
-         LogWarning(
-            "HealthMonitor: módulo sem heartbeat",
-            g_wdModuleNames[idx],
-            "Segundos=" + IntegerToString((int)((now - g_wdLastTime[idx]) / 1000))
-         );
+         g_wdFailures[idx]++;
 
-         return false;
+         if(g_wdFailures[idx] >= HEALTH_WD_MAX_FAILURES)
+         {
+            LogWarning(
+               "HealthMonitor: módulo sem heartbeat",
+               g_wdModuleNames[idx],
+               "Segundos=" + IntegerToString((int)((now - g_wdLastTime[idx]) / 1000))
+            );
+
+            // SPEC v0.1 #8: reason-code do modulo que parou
+            g_healthLastReason = "HEALTH_WD_MODULE_TIMEOUT:" + g_wdModuleNames[idx];
+
+            return false;
+         }
+
+         return true;
       }
+
+      g_wdFailures[idx] = 0;
 
       return true;
    }
+   else
+   {
+      // Pipeline nunca avanzou progress -> non é falha (permite bloqueo
+      // lexítimo do trading; só falla se xa avanzou e despois parou).
+      if(g_wdLastProgress[idx] == 0)
+         return true;
 
-   g_wdFailures[idx] = 0;
+      ulong now       = GetTickCount64();
+      ulong timeoutMs = (ulong)HealthGetPipelineProgressTimeoutSec() * 1000;
 
-   return true;
+      if(now - g_wdLastProgress[idx] > timeoutMs)
+      {
+         g_wdProgressFails[idx]++;
+
+         if(g_wdProgressFails[idx] >= HEALTH_WD_MAX_FAILURES)
+         {
+            LogWarning(
+               "HealthMonitor: módulo de pipeline parado",
+               g_wdModuleNames[idx],
+               "Segundos=" + IntegerToString((int)((now - g_wdLastProgress[idx]) / 1000))
+            );
+
+            // SPEC v0.1 #8: reason-code do pipeline parado
+            g_healthLastReason = "HEALTH_PIPELINE_STALL:" + g_wdModuleNames[idx];
+
+            return false;
+         }
+
+         return true;
+      }
+
+      g_wdProgressFails[idx] = 0;
+
+      return true;
+   }
 }
 
 //==================================================
-// CHECK HEARTBEATS (ETAPA 6 — absorve WatchDogRunCheck)
+// CHECK HEARTBEATS (ETAPA 6 - absorve WatchDogRunCheck)
 //==================================================
 
 bool HealthMonitorCheckHeartbeats()
@@ -297,6 +458,34 @@ bool HealthMonitorCheckHeartbeats()
 }
 
 //==================================================
+// BACKOFF (F4/P1-1)
+// Retorna o intervalo efetivo (segundos) entre checks com
+// backoff exponencial baseado em falhas consecutivas:
+//   nivel 0 -> HealthCheckInterval (nominal)
+//   nivel n -> HealthCheckInterval * 2^n (limitado a MAX_LEVEL)
+// Isso evita "storm" de checks repetidos durante uma falha
+// sustentada, espacando as tentativas de recuperacao.
+//==================================================
+
+int HealthGetBackoffInterval(int baseIntervalSec)
+{
+   int level = g_healthConsecutiveFails;
+
+   if(level < 0)
+      level = 0;
+
+   if(level > HEALTH_BACKOFF_MAX_LEVEL)
+      level = HEALTH_BACKOFF_MAX_LEVEL;
+
+   int multiplier = 1;
+
+   for(int i = 0; i < level; i++)
+      multiplier *= 2;
+
+   return baseIntervalSec * multiplier;
+}
+
+//==================================================
 // HEALTH CHECK
 //==================================================
 
@@ -308,13 +497,20 @@ bool HealthMonitorCheck()
    datetime now = TimeCurrent();
 
    // Não executa análise completa em todos os ticks.
-   if(now - g_lastHealthCheck < HealthCheckInterval)
+   // F4/P1-1: intervalo efetivo cresce com backoff quando ha
+   // falhas consecutivas, espacando retentativas.
+   int effectiveInterval = HealthGetBackoffInterval(HealthCheckInterval);
+
+   if(now - g_lastHealthCheck < effectiveInterval)
       return g_healthStatus;
 
    g_lastHealthCheck = now;
    g_healthCheckCount++;
 
    bool healthy = true;
+
+   // SPEC v0.1 #8: reason-code do check (default por ambiente)
+   g_healthLastReason = g_healthIsTester ? "HEALTH_TICK_LIVENESS_NA_TESTER" : "HEALTH_OK";
 
    //================================================
    // TICK
@@ -327,7 +523,7 @@ bool HealthMonitorCheck()
    }
 
    //================================================
-   // HEARTBEATS (WatchDog integrado — ETAPA 6)
+   // HEARTBEATS (WatchDog integrado - ETAPA 6)
    //================================================
 
    if(!HealthMonitorCheckHeartbeats())
@@ -339,6 +535,7 @@ bool HealthMonitorCheck()
 
    if(g_healthBrokerErrors > 5)
    {
+      g_healthLastReason = "HEALTH_ERR_COUNTER:BROKER:" + IntegerToString(g_healthBrokerErrors);
       LogError("HealthMonitor: erros de broker", IntegerToString(g_healthBrokerErrors));
       healthy = false;
    }
@@ -349,6 +546,7 @@ bool HealthMonitorCheck()
 
    if(g_healthAIErrors > 3)
    {
+      g_healthLastReason = "HEALTH_ERR_COUNTER:AI:" + IntegerToString(g_healthAIErrors);
       LogError("HealthMonitor: erros de IA", IntegerToString(g_healthAIErrors));
       healthy = false;
    }
@@ -359,6 +557,7 @@ bool HealthMonitorCheck()
 
    if(g_healthDatasetErrors > 2)
    {
+      g_healthLastReason = "HEALTH_ERR_COUNTER:DATASET:" + IntegerToString(g_healthDatasetErrors);
       LogError("HealthMonitor: erros de dataset", IntegerToString(g_healthDatasetErrors));
       healthy = false;
    }
@@ -369,6 +568,7 @@ bool HealthMonitorCheck()
 
    if(g_healthFileErrors > 2)
    {
+      g_healthLastReason = "HEALTH_ERR_COUNTER:FILE:" + IntegerToString(g_healthFileErrors);
       LogError("HealthMonitor: erros de arquivo", IntegerToString(g_healthFileErrors));
       healthy = false;
    }
@@ -379,6 +579,7 @@ bool HealthMonitorCheck()
 
    if(g_healthJSONErrors > 2)
    {
+      g_healthLastReason = "HEALTH_ERR_COUNTER:JSON:" + IntegerToString(g_healthJSONErrors);
       LogError("HealthMonitor: erros de JSON", IntegerToString(g_healthJSONErrors));
       healthy = false;
    }
@@ -389,6 +590,7 @@ bool HealthMonitorCheck()
 
    if(g_healthPythonErrors > 1)
    {
+      g_healthLastReason = "HEALTH_ERR_COUNTER:PYTHON:" + IntegerToString(g_healthPythonErrors);
       LogError("HealthMonitor: erros de Python", IntegerToString(g_healthPythonErrors));
       healthy = false;
    }
@@ -399,6 +601,7 @@ bool HealthMonitorCheck()
 
    if(g_healthIndicatorErrors > 5)
    {
+      g_healthLastReason = "HEALTH_ERR_COUNTER:INDICATOR:" + IntegerToString(g_healthIndicatorErrors);
       LogError("HealthMonitor: erros de indicadores", IntegerToString(g_healthIndicatorErrors));
       healthy = false;
    }
@@ -410,15 +613,21 @@ bool HealthMonitorCheck()
    g_healthStatus      = healthy;
    g_healthLastCheckOK = healthy;
 
-   // ETAPA 15.6.5: ponte com telemetria real —
+   // F4/P1-1: atualiza o contador de falhas consecutivas p/ backoff
+   if(!healthy)
+      g_healthConsecutiveFails++;
+   else
+      g_healthConsecutiveFails = 0;
+
+   // ETAPA 15.6.5: ponte com telemetria real -
    // falha de health alimenta o contador global de erros.
    if(!healthy)
       CTelemetry::RecordError();
 
    if(healthy)
-      LogInfo("HealthMonitor: HEALTH OK");
+      LogInfo("HealthMonitor: HEALTH OK" + (g_healthIsTester ? " (TESTER)" : "") + " | Reason=" + g_healthLastReason);
    else
-      LogWarning("HealthMonitor: HEALTH FAILURE");
+      LogWarning("HealthMonitor: HEALTH FAILURE", "Reason=" + g_healthLastReason);
 
    return healthy;
 }
@@ -584,6 +793,49 @@ string HealthGetStateString()
 }
 
 //==================================================
+// TESTER-AWARE: ESTADO E GETTERS (SPEC v0.1 #5/#8)
+// Estados observados: HEALTHY / DEGRADED / NOT_APPLICABLE / FAILURE.
+// Nao altera ENUM_TELEMETRY_STATE (Telemetry.mqh permanece intocado).
+//==================================================
+
+bool HealthIsTesterEnv()
+{
+   return g_healthIsTester;
+}
+
+string HealthGetLastReason()
+{
+   return g_healthLastReason;
+}
+
+bool HealthTickLivenessNA()
+{
+   return g_healthIsTester;
+}
+
+string HealthGetStateTesterAwareString()
+{
+   if(!g_healthInitialized)
+      return "UNAVAILABLE";
+
+   if(!g_healthStatus)
+      return "FAILURE";
+
+   // DEGRADED: watchdog/pipeline com falhas parciais (1..2 de 3)
+   for(int i = 0; i < HEALTH_WD_MODULES; i++)
+   {
+      if((g_wdFailures[i] > 0 && g_wdFailures[i] < HEALTH_WD_MAX_FAILURES) ||
+         (g_wdProgressFails[i] > 0 && g_wdProgressFails[i] < HEALTH_WD_MAX_FAILURES))
+         return "DEGRADED";
+   }
+
+   if(g_healthIsTester)
+      return "HEALTHY (TESTER)";
+
+   return "HEALTHY";
+}
+
+//==================================================
 // SUMMARY
 //==================================================
 
@@ -591,12 +843,18 @@ string HealthMonitorSummary()
 {
    string summary = "=== HEALTH MONITOR ===\n";
 
-   summary += "Status: " + (g_healthStatus ? "HEALTHY" : "FAILURE") + "\n";
+   summary += "Ambiente: " + (g_healthIsTester ? "TESTER" : "LIVE/DEMO") + "\n";
+   summary += "Status: " + HealthGetStateTesterAwareString() + "\n";
+   summary += "Reason: " + g_healthLastReason + "\n";
+   summary += "TickLiveness: " + (g_healthIsTester ? "NOT_APPLICABLE (TESTER)" : "ATIVO (TickTimeout=15s)") + "\n";
+   summary += "ConsecutiveFails (acionaveis): " + IntegerToString(g_healthConsecutiveFails) + "\n";
    summary += "Uptime (s): " + IntegerToString(HealthGetUptimeSeconds()) + "\n";
    summary += "Ticks/seg: " + IntegerToString(g_ticksPerSecond) + "\n";
    summary += "Total ticks: " + IntegerToString((long)g_healthTotalTicks) + "\n";
    summary += "Checks: " + IntegerToString((long)g_healthCheckCount) + "\n";
-   summary += "Segundos sem tick: " + IntegerToString(HealthGetSecondsSinceTick()) + "\n\n";
+   summary += "Segundos sem tick: " + IntegerToString(HealthGetSecondsSinceTick()) + "\n";
+   summary += "Backoff: nivel=" + IntegerToString(g_healthConsecutiveFails) +
+              " intervalo_efetivo=" + IntegerToString(HealthGetBackoffInterval(HealthCheckInterval)) + "s\n\n";
 
    summary += "--- Heartbeats ---\n";
 
@@ -639,6 +897,7 @@ void HealthMonitorResetErrors()
 
    g_healthStatus      = true;
    g_healthLastCheckOK = true;
+   g_healthConsecutiveFails = 0;
 
    LogSystem("HealthMonitor: contadores resetados");
 }
