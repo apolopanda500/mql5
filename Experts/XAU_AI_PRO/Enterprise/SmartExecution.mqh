@@ -1,4 +1,4 @@
-﻿//+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
 //|                                              SmartExecution.mqh |
 //|                                  Smart Execution Engine - Core   |
 //|                                            XAU_AI_PRO v1.2.0      |
@@ -37,9 +37,10 @@ enum ExecResult
    EXEC_SPREAD_TOO_HIGH,
    EXEC_NO_MARGIN,
    EXEC_INVALID_PRICE,
-   EXEC_RETRY_FAILED,
-   EXEC_LOOP_DETECTED,
-   EXEC_ERROR
+   EXEC_PREPARE_FAILED,      // PrepareRequest nao montou a request
+   EXEC_BROKER_REJECT,       // COrderRetry falhou (retry_res != RETRY_SUCCESS)
+   EXEC_LOOP_DETECTED,       // guard inter-instancia bloqueou (nome historico mantido)
+   EXEC_ERROR                // fallback generico (uso restrito)
 };
 
 
@@ -277,7 +278,7 @@ ExecResult CSmartExecution::ValidateExecution(
 )
 {
    if(exec_req.symbol=="")
-      return EXEC_ERROR;
+      return EXEC_PREPARE_FAILED;
 
 
    if(
@@ -441,7 +442,7 @@ ExecResult CSmartExecution::ExecuteOrder(
       )
    )
    {
-      return EXEC_ERROR;
+      return EXEC_PREPARE_FAILED;
    }
 
 
@@ -506,7 +507,16 @@ ExecResult CSmartExecution::ExecuteOrder(
    );
 
 
-   return EXEC_RETRY_FAILED;
+   PrintFormat(
+      "[EXECUTION] BROKER_REJECT | %s | retry=%s | retcode=%u | error=%d | comment=%s",
+      exec_req.symbol,
+      COrderRetry::GetRetryResultString(retry_res),
+      result.retcode,
+      COrderRetry::GetLastErrorCode(),
+      result.comment
+   );
+
+   return EXEC_BROKER_REJECT;
 }
 
 
@@ -800,7 +810,7 @@ ExecResult CSmartExecution::ClosePosition(
    }
 
 
-   return EXEC_RETRY_FAILED;
+   return EXEC_ERROR;
 }
 
 
@@ -975,12 +985,12 @@ string CSmartExecution::GetExecutionSummary()
 
    summary+=
       IntegerToString(
-         CPositionSynchronizer::GetTotalPositions()
+         CPositionSynchronizer::GetTerminalPositions()
       );
 
 
    summary+=
-      " total\n";
+      " total EA (terminal)\n";
 
 
    QualityScore lastScore=
@@ -1056,9 +1066,15 @@ void CSmartExecution::LogExecution(
          break;
 
 
-      case EXEC_RETRY_FAILED:
+      case EXEC_PREPARE_FAILED:
          resultString=
-            "RETRY_FAILED";
+            "PREPARE_FAILED";
+         break;
+
+
+      case EXEC_BROKER_REJECT:
+         resultString=
+            "BROKER_REJECT";
          break;
 
 
@@ -1093,12 +1109,14 @@ void CSmartExecution::LogExecution(
    else
    {
       PrintFormat(
-         "[EXECUTION] %s %.2f %s @ %.5f | FAILED: %s",
+         "[EXECUTION] %s %.2f %s @ %.5f | FAILED: %s | retcode=%u | comment=%s",
          type,
          req.volume,
          req.symbol,
          req.price,
-         resultString
+         resultString,
+         result.retcode,
+         result.comment
       );
    }
 }
