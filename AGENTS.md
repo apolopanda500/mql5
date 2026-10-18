@@ -65,7 +65,42 @@ Experts/XAU_AI_PRO/
 - Compilar: use MetaEditor sobre `Experts/XAU_AI_PRO/XAU_AI_PRO.mqproj`
   (construção real só funciona em Windows com MetaEditor instalado).
 - Validação estática (sem MetaEditor): rode
-  `python .github/scripts/validate_mql5.py` direto na pasta do EA.
+  `python ../../.github/scripts/validate_mql5.py` direto na pasta do EA. No
+  Windows, use `py -3 ../../.github/scripts/validate_mql5.py` quando `python`
+  não estiver no `PATH`.
+
+## Skills compartilhadas
+
+O Codex descobre as skills do projeto em `.agents/skills/`. As entradas desse
+diretório apontam para as definições canônicas em `.claude/skills/`, mantendo
+Claude e Codex sincronizados:
+
+- `compile-validate-mql5` — validação estática e compilação MQL5;
+- `review-mql5-code` — revisão estruturada de código MQL5.
+
+Ao alterar um procedimento compartilhado, edite a definição correspondente em
+`.claude/skills/`; o Codex carregará a versão atualizada pelo encaminhamento.
+
+## Integrações do Codex
+
+- **Git local:** preserve alterações existentes no worktree e nunca faça
+  `commit`, `push`, `merge`, `reset` ou troca de branch sem pedido explícito.
+- **GitHub:** o repositório remoto principal para colaboração é
+  `apolopanda500/mql5` (`github`). Use a integração GitHub para consultar CI,
+  issues e pull requests; qualquer escrita externa exige intenção explícita.
+- **MQL5 CodeBase:** o remote `origin` aponta para o Forge MQL5. Não presuma que
+  sincronizar com GitHub também autoriza publicar no CodeBase.
+- **Vercel:** a conta pode ser usada por ferramentas auxiliares web, mas este
+  repositório MQL5 não é um alvo Vercel por padrão. Não execute `vercel link`,
+  `deploy` ou crie projeto sem um artefato web e autorização explícita.
+- **Slack:** use o plugin conectado para leitura e preparação de atualizações.
+  Prefira rascunho; enviar, editar ou apagar mensagens requer pedido explícito.
+- **Sentry:** a configuração local pode apontar para componentes Python do
+  projeto. Confirme organização/projeto antes de mutações, releases ou deploys;
+  não registre tokens, DSNs ou conteúdo sensível no repositório.
+- **Segredos:** credenciais de GitHub, Vercel, Slack e Sentry pertencem aos
+  armazenamentos globais/seguros de cada ferramenta, nunca a arquivos
+  versionados deste projeto.
 
 ## Workflow sugerido
 
