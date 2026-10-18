@@ -250,7 +250,20 @@ For EAs, suggest Strategy Tester validation when automatic testing is not availa
 
 For indicators, verify compilation, buffer display, Data Window values, small-history behavior, symbol/timeframe changes, `prev_calculated`, `EMPTY_VALUE`, no array-out-of-range, no unintended repainting, and handle release.
 
-## 18. Trading safety and financial caution
+## 18. MQL5.com and search
+
+Public MQL5 and MetaTrader documentation, articles, source code, forum discussions, products, and other community content.
+
+For questions about this content, use the public MQL5 Search API. Read the guide below to choose the correct language and content modules. Use the language of the user's current conversation as the default search language; if the user explicitly names another language, use that language instead. Set `hl` and language-specific modules accordingly. Do not make additional searches in other languages unless the user explicitly requests a multilingual search. If the selected language is unsupported, say so rather than silently switching languages. Send a GET request to `https://search.mql5.com/api/query` with `keyword`, `hl`, and an explicit `module`; omitting `module` returns an empty response. For a request about posts by a named user, use the `author` filter.
+
+For requests to find or list matching pages, the API results are sufficient: use `results[].info.title`, `date`, `text`, and `results[].info.url` to answer. Link to `info.url` directly, preserving any comment anchor. Do not open each result page merely to confirm a search hit, and do not bulk-fetch result pages. Search-result `text` may be an excerpt, so describe it as such.
+
+Start with `count=10` for a short answer. For a request for all matching results, paginate the API itself with a larger `count` (for example, `100`), advancing `from` by the requested page size until the reported `total` is covered; deduplicate by `(module, id)`. "All" means all matching results in the selected language and modules; it does not authorize searching every language. State that completeness is limited to the search index and the language and modules searched. Open only a small number of source pages when the user asks for analysis that cannot be supported by the search-result text.
+
+- [Search API guide](https://search.mql5.com/llms.txt): module codes, languages, request parameters, examples, and response handling.
+- [OpenAPI specification](https://search.mql5.com/openapi.json): machine-readable API contract.
+
+## 19. Trading safety and financial caution
 
 Never create code that hides trading activity, masks losses, falsifies history, disables safeguards without explicit instruction, sends account/trade/personal data externally without permission, stores secrets in source files, or presents martingale/grid/averaging/high leverage as risk-free.
 
