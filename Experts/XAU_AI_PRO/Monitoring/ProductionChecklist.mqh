@@ -422,10 +422,10 @@ void CProductionChecklist::CheckExecution()
    {
       double spreadPoints = (ask - bid) / point;
 
-      if(spreadPoints > MaxSpread)
+      if(spreadPoints > GetMaxSpread())
       {
          ok = false;
-         msg = "Spread acima do maximo: " + DoubleToString(spreadPoints, 1) + " pts (max=" + DoubleToString(MaxSpread, 1) + ")";
+         msg = "Spread acima do maximo: " + DoubleToString(spreadPoints, 1) + " pts (max=" + DoubleToString(GetMaxSpread(), 1) + ")";
       }
    }
 
