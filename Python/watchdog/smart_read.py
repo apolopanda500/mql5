@@ -1,7 +1,20 @@
 # -*- coding: utf-8 -*-
-"""Bloco de leitura com deteccao de encoding para o heartbeat_watchdog.py"""
+"""Bloco de leitura com deteccao de encoding para o heartbeat_watchdog.py
 
+Regra 20.14 (forward_test_events.csv):
+  BOM FF FE -> UTF-16 LE -> csv.DictReader (delimiter ',')
+  - NUNCA converter o arquivo nem alterar o EA (o problema e do leitor).
+  - Usar codec 'utf-16' quando ha BOM: o Python determina a ordem dos bytes
+    pelo BOM e o REMOVE durante a leitura (diferente de 'utf-16-le', que
+    deixaria '\ufeff' no inicio da primeira linha).
+  - O Event Stream grava linhas com terminator '\r\r\n' em UTF-16LE:
+    ler com newline='' e limpar os '\r' antes do DictReader.
+"""
+
+import csv
 import codecs
+import io
+import os
 
 
 def detect_encoding(head: bytes) -> str:
@@ -15,28 +28,39 @@ def detect_encoding(head: bytes) -> str:
     return 'utf-8'
 
 
+def decode_codec(enc: str) -> str:
+    """Codec de DECODIFICACAO a partir do encoding detectado.
+
+    Mantem a deteccao do watchdog (detect_encoding), mas ao abrir o arquivo
+    usa 'utf-16' quando ha BOM UTF-16: o decoder consome o BOM e remove o
+    caractere '\ufeff' da primeira linha. Arquivos sem BOM seguem utf-8.
+    """
+    if enc in ('utf-16-le', 'utf-16-be'):
+        return 'utf-16'
+    if enc == 'utf-8-sig':
+        return 'utf-8-sig'
+    return 'utf-8'
+
+
 def read_last_lines(path, n=5, chunk=65536):
     """Le as ultimas n linhas de um arquivo texto com encoding detectado.
 
     Abre com FileShare (o arquivo pode estar sendo escrito pelo EA).
     Se o arquivo nao pode ser aberto, retorna lista vazia.
     """
-    import os
-    import io
-
     if not os.path.exists(path):
         return []
     try:
         # le o cabecalho para detectar encoding
         with open(path, 'rb') as f:
             head = f.read(4)
-        enc = detect_encoding(head)
+        enc = decode_codec(detect_encoding(head))
         # tenta abrir em modo texto com o encoding
         # (usa io.open com buffering e tentativa simples; se der
         #  PermissionError, tenta via leitura por blocos)
         try:
-            with io.open(path, 'r', encoding=enc, errors='replace') as f:
-                lines = f.readlines()
+            with io.open(path, 'r', encoding=enc, errors='replace', newline='') as f:
+                lines = f.read().splitlines()
                 return lines[-n:]
         except PermissionError:
             # fallback: le por blocos no final com os.open (share read/write)
@@ -74,6 +98,36 @@ def read_last_lines(path, n=5, chunk=65536):
         return []
 
 
+def read_rows(path, max_rows=0):
+    """Le o CSV de eventos como lista de dicts (colunas do cabecalho).
+
+    Regra 20.14:
+      forward_test_events.csv
+        -> BOM FF FE detectado -> UTF-16 LE
+        -> csv.DictReader (delimiter ',', newline='')
+        -> eventos reais (sem BOM, sem '\r' residual) p/ reconciliacao/metricas
+
+    max_rows=0 retorna todas as linhas; >0 limita as ULTIMAS max_rows.
+    Nao converte o arquivo e nao altera o EA.
+    """
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path, 'rb') as f:
+            head = f.read(4)
+        enc = decode_codec(detect_encoding(head))
+        with io.open(path, 'r', encoding=enc, errors='replace', newline='') as f:
+            text = f.read()
+        # limpa '\r' residual (terminator \r\r\n do Event Stream)
+        text = text.replace('\r', '')
+        rows = list(csv.DictReader(io.StringIO(text)))
+        if max_rows and len(rows) > max_rows:
+            rows = rows[-max_rows:]
+        return rows
+    except Exception:
+        return []
+
+
 # ---- atalhos de compatibilidade para o watchdog original ----
 
 def smart_open_lines(path, n=5, chunk=65536):
@@ -88,3 +142,9 @@ if __name__ == '__main__':
     print('ultimas linhas:')
     for l in lines:
         print(' ', l.rstrip()[:120])
+    rows = read_rows(p)
+    print('total rows:', len(rows))
+    if rows:
+        print('colunas:', list(rows[0].keys()))
+        for r in rows[-3:]:
+            print(' ', {k: v for k, v in r.items() if k not in ('EventId',)})
