@@ -1,10 +1,18 @@
 // recompile-trigger 19:40:47
 //==================================================
-// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.9
 //==================================================
 
 #property strict
-#property version "1.20"
+// Fonte unica da versao: `VERSION` na raiz, propagada por
+// `scripts/sync_version.py` para os 8 manifestos (pyproject, package.json x2,
+// Cargo.toml x2, tauri.conf.json, version.ts). Este `#property` e a MESMA
+// versao; o MT5 mostra na aba de propriedades do EA.
+//
+// Antes dizia "1.20", que e diferente de 1.2.0 e de 1.2.4 — tres respostas
+// diferentes para "qual versao". `sync_version.py --check` nao pegava porque o
+// `.mq5` nao esta na lista de manifestos dele.
+#property version "1.290"
 
 #include <Trade/Trade.mqh>
 
@@ -16,8 +24,6 @@ CTrade trade;
 //==================================================
 
 #include "Core/Config.mqh"
-// Signal Core v2 (paralelo): seletor SignalCoreVersion + GetActiveSignal em Core/SignalCoreV2.mqh
-#include "Core/SignalCoreV2.mqh"
 // ETAPA 15.6: EventEmitter - camada unica de eventos (forward_test_events.csv)
 #include "Monitoring/EventEmitter.mqh"
 #include "Core/StateMachine.mqh"   // v1.4.0 (Etapa 4): maquina de estados
@@ -30,7 +36,7 @@ CTrade trade;
 #include "Core/PathManager.mqh"
 #include "Core/TimeFrameManager.mqh"
 
-// ETAPA 11: AuditLog ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â© incluÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­do cedo porque NewsFilter/DecisionEngine
+// ETAPA 11: o AuditLog e incluido cedo porque NewsFilter/DecisionEngine
 // precisam registrar o motivo do bloqueo por noticias (AuditLogSimple).
 #include "Monitoring/AuditLog.mqh"
 
@@ -75,6 +81,13 @@ CTrade trade;
 //==================================================
 
 #include "Core/SignalCore.mqh"
+// Signal Core v2 (paralelo): seletor SignalCoreVersion + GetActiveSignal.
+// Modulo paralelo ao v1 por decisao propria do autor: nao altera RiskHub,
+// SafetyManager, ExecutionEngine nem a gestao de posicoes.
+#include "Core/SignalCoreV2.mqh"
+// Ponte somente leitura EA -> Gateway -> App. Grava
+// XAU_AI_PRO_heartbeat.json em FILE_COMMON, consumido por backend/ea_manager.py.
+#include "Integration/EAHeartbeat.mqh"
 #include "Core/DecisionEngine.mqh"
 #include "Core/ValidationEngine.mqh"
 
@@ -121,10 +134,8 @@ CTrade trade;
 
 // ETAPA 6: Monitoring & Auditoria
 #include "Monitoring/HealthMonitor.mqh"   // HealthMonitor + WatchDog integrado
-#include "Monitoring/EventEmitter.mqh"    // ETAPA 15.6.1/15.6.2: event stream (canonico)
 // Auditoria (AuditLog + FullAudit fundidos) - incluÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â­do no top (ETAPA 11)
 #include "Monitoring/Diagnostics.mqh"     // Diagnostico completo
-#include "Integration/EAHeartbeat.mqh"    // ponte somente leitura EA -> app
 
 // ETAPA 7: Data Recovery, Replay & Backup
 #include "Monitoring/ReplayEngine.mqh"    // Replay de decisoes/OHLC/auditoria (REPLAY != LIVE)
@@ -176,167 +187,6 @@ CTrade trade;
 
 bool SystemInitialized = false;
 bool TradingEnabled    = true;
-string EACommandValue(const string body,const string key)
-  {
-   string needle="\""+key+"\":\"";
-   int p=StringFind(body,needle);
-   if(p<0)
-     {
-      needle=key+"=";
-      p=StringFind(body,needle);
-      if(p<0)
-         return "";
-      p+=StringLen(needle);
-      int e=StringFind(body,"\n",p);
-      return e>p ? StringSubstr(body,p,e-p) : StringSubstr(body,p);
-     }
-   p+=StringLen(needle);
-   int e=StringFind(body,"\"",p);
-   return e>p ? StringSubstr(body,p,e-p) : "";
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-long EACommandLong(const string body,const string key)
-  {
-   string value=EACommandValue(body,key);
-   if(value=="")
-      return 0;
-   return (long)StringToInteger(value);
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-bool EACommandClose(const string body,string &detail)
-  {
-   string symbol=EACommandValue(body,"symbol");
-   ulong ticket=(ulong)EACommandLong(body,"ticket");
-   bool closed=false;
-   if(ticket>0 && PositionSelectByTicket(ticket))
-     {
-      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
-        { detail="ticket_magic_mismatch"; return false; }
-      closed=trade.PositionClose(ticket);
-     }
-   else
-      if(symbol!="")
-        {
-         for(int i=PositionsTotal()-1;i>=0;i--)
-           {
-            ulong current=(ulong)PositionGetTicket(i);
-            if(current==0 || !PositionSelectByTicket(current))
-               continue;
-            if(PositionGetString(POSITION_SYMBOL)!=symbol)
-               continue;
-            if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
-               continue;
-            closed=trade.PositionClose(current) || closed;
-           }
-        }
-      else
-        { detail="ticket_or_symbol_required"; return false; }
-   if(!closed)
-      detail=trade.ResultRetcodeDescription();
-   return closed;
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-bool EACommandCloseAll(string &detail)
-  {
-   bool closed=false;
-   for(int i=PositionsTotal()-1;i>=0;i--)
-     {
-      ulong ticket=(ulong)PositionGetTicket(i);
-      if(ticket==0 || !PositionSelectByTicket(ticket))
-         continue;
-      if(PositionGetInteger(POSITION_MAGIC)!=MagicNumber)
-         continue;
-      closed=trade.PositionClose(ticket) || closed;
-     }
-   if(!closed)
-      detail="no_positions_closed";
-   return closed;
-  }
-//+------------------------------------------------------------------+
-//|                                                                  |
-//+------------------------------------------------------------------+
-void EACommandPoll()
-  {
-   const string file="XAU_AI_PRO_ea_command.json";
-   if(!FileIsExist(file,FILE_COMMON))
-      return;
-   int h=FileOpen(file,FILE_READ|FILE_TXT|FILE_ANSI|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
-   if(h==INVALID_HANDLE)
-      return;
-   string body=FileReadString(h);
-   FileClose(h);
-   FileDelete(file,FILE_COMMON);
-   string cmd=EACommandValue(body,"command");
-   string value=EACommandValue(body,"value");
-   string status="ok";
-   string detail="applied";
-   if(cmd=="start" || cmd=="resume")
-      TradingEnabled=true;
-   else
-      if(cmd=="stop" || cmd=="pause")
-         TradingEnabled=false;
-      else
-         if(cmd=="set-symbol" && value!="")
-           {
-            if(!SymbolSelect(value,true) || !ChartSetSymbolPeriod(0,value,Period()))
-              {
-               status="error";
-               detail="symbol_or_chart_rejected";
-              }
-           }
-         else
-            if(cmd=="set-timeframe" && value!="")
-              {
-               ENUM_TIMEFRAMES tf=(ENUM_TIMEFRAMES)StringToInteger(value);
-               if(!ChartSetSymbolPeriod(0,_Symbol,tf))
-                 {
-                  status="error";
-                  detail="timeframe_rejected";
-                 }
-              }
-            else
-               if(cmd=="close")
-                 {
-                  if(!EACommandClose(body,detail))
-                     status="error";
-                 }
-               else
-                  if(cmd=="close-all")
-                    {
-                     if(!EACommandCloseAll(detail))
-                        status="error";
-                    }
-                  else
-                     if(cmd=="set-autotrading")
-                       {
-                        status="error";
-                        detail="terminal_autotrading_must_be_changed_in_MT5";
-                       }
-                     else
-                        if(cmd=="set-mode")
-                          {
-                           status="error";
-                           detail="mode_is_input_configuration";
-                          }
-                        else
-                          {
-                           status="error";
-                           detail="unknown_command";
-                          }
-   int a=FileOpen("XAU_AI_PRO_ea_command_result.json",FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
-   if(a!=INVALID_HANDLE)
-     {
-      FileWriteString(a,StringFormat("{\"command\":\"%s\",\"status\":\"%s\",\"detail\":\"%s\"}",cmd,status,detail));
-      FileClose(a);
-     }
-   PrintFormat("EA command %s: %s (%s)",cmd,status,detail);
-  }
 bool AIReady           = false;
 bool DatasetReady      = false;
 
@@ -438,7 +288,8 @@ bool InitializeModules()
 
 // v1.2.1: cache de handles de indicadores do SignalCore
    SignalCoreInit();
-   SignalCoreV2Init();
+   SignalCoreV2Init();   // modulo paralelo (SignalCoreVersion)
+   EAHeartbeatWrite("RUNNING");
    StateMachineInit();   // v1.4.0 (Etapa 4): maquina de estados
    Print("[INIT] system + signalcore OK");
 
@@ -554,87 +405,83 @@ bool InitializeModules()
       CTelemetry::Init();
       CTelemetry::RecordBrokerLatency(0);
       CTelemetry::RecordExecutionStart();  // ETAPA 15.6.3: uptime real
+     }
 
-      //------------------------------------------------
-      // ETAPA 7 - REPLAY & BACKUP
-      //------------------------------------------------
+   //------------------------------------------------
+   // ETAPA 8 - BACKTEST ANALYZER & BENCHMARK
+   //------------------------------------------------
 
-      //------------------------------------------------
-      // ETAPA 8 - BACKTEST ANALYZER & BENCHMARK
-      //------------------------------------------------
+   if(EnableBacktestAnalyzer)
+     {
+      if(!BacktestInit())
+         Print("[BACKTEST] BacktestAnalyzer OFF");
+     }
 
-      if(EnableBacktestAnalyzer)
+   if(EnableBenchmark)
+     {
+      CBenchmarkEngine::Init();
+     }
+
+   //------------------------------------------------
+   // ETAPA 9 - NOTIFICATION CENTER
+   //------------------------------------------------
+
+   if(EnableNotifications)
+     {
+      CNotificationCenter::Init();
+      CNotificationCenter::SetPushEnabled(NotifyPushEnabled);
+
+      if(NotifyTelegramToken != "" && NotifyTelegramChatID != "")
+         CNotificationCenter::SetTelegram(NotifyTelegramToken, NotifyTelegramChatID);
+
+      CNotificationCenter::SetCooldown(NCAT_TRADE_OPEN, NotifyCooldownSec);
+      CNotificationCenter::SetCooldown(NCAT_TRADE_CLOSE, NotifyCooldownSec);
+      CNotificationCenter::SetCooldown(NCAT_HEALTH, 600);
+      CNotificationCenter::SetCooldown(NCAT_CIRCUIT, 300);
+      CNotificationCenter::SetCooldown(NCAT_EXECUTION, 300);
+      CNotificationCenter::SetCooldown(NCAT_DRAWDOWN, 600);
+      CNotificationCenter::SetMaxPerMinute(NotifyMaxPerMinute);
+
+      Print("[NOTIFY] " + CNotificationCenter::GetStatus());
+     }
+
+   //------------------------------------------------
+   // ETAPA 10 - CONFIG MANAGER + VERSION MANAGER
+   //------------------------------------------------
+
+   CConfigManager::Init();
+   CConfigManager::SetProfile(CConfigManager::GetCurrentProfile());
+   CConfigManager::LogStatus();
+
+   CVersionManager::Init();
+   CVersionManager::RegisterModules();
+   CVersionManager::LogStatus();
+
+   //------------------------------------------------
+   // ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
+   //------------------------------------------------
+
+   CProductionChecklist::Init();
+   CProductionChecklist::Run();
+   ValidationChecklistRun();
+
+   if(EnableBackupManager)
+     {
+      CBackupManager::Init();
+     }
+
+   if(EnableReplay)
+     {
+      if(ReplayEngineInit())
         {
-         if(!BacktestInit())
-            Print("[BACKTEST] BacktestAnalyzer OFF");
+         if(ReplaySymbolFilter != "")
+            ReplayEngineSetSymbolFilter(ReplaySymbolFilter);
+
+         Print("[REPLAY] MODO REPLAY ATIVO | trades reais BLOQUEADOS | origem=", ReplayEngineSource());
         }
-
-      if(EnableBenchmark)
+      else
         {
-         CBenchmarkEngine::Init();
-        }
-
-      //------------------------------------------------
-      // ETAPA 9 - NOTIFICATION CENTER
-      //------------------------------------------------
-
-      if(EnableNotifications)
-        {
-         CNotificationCenter::Init();
-         CNotificationCenter::SetPushEnabled(NotifyPushEnabled);
-
-         if(NotifyTelegramToken != "" && NotifyTelegramChatID != "")
-            CNotificationCenter::SetTelegram(NotifyTelegramToken, NotifyTelegramChatID);
-
-         CNotificationCenter::SetCooldown(NCAT_TRADE_OPEN, NotifyCooldownSec);
-         CNotificationCenter::SetCooldown(NCAT_TRADE_CLOSE, NotifyCooldownSec);
-         CNotificationCenter::SetCooldown(NCAT_HEALTH, 600);
-         CNotificationCenter::SetCooldown(NCAT_CIRCUIT, 300);
-         CNotificationCenter::SetCooldown(NCAT_EXECUTION, 300);
-         CNotificationCenter::SetCooldown(NCAT_DRAWDOWN, 600);
-         CNotificationCenter::SetMaxPerMinute(NotifyMaxPerMinute);
-
-         Print("[NOTIFY] " + CNotificationCenter::GetStatus());
-        }
-
-      //------------------------------------------------
-      // ETAPA 10 - CONFIG MANAGER + VERSION MANAGER
-      //------------------------------------------------
-
-      CConfigManager::Init();
-      CConfigManager::SetProfile(CConfigManager::GetCurrentProfile());
-      CConfigManager::LogStatus();
-
-      CVersionManager::Init();
-      CVersionManager::RegisterModules();
-      CVersionManager::LogStatus();
-
-      //------------------------------------------------
-      // ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
-      //------------------------------------------------
-
-      CProductionChecklist::Init();
-      CProductionChecklist::Run();
-      ValidationChecklistRun();
-
-      if(EnableBackupManager)
-        {
-         CBackupManager::Init();
-        }
-
-      if(EnableReplay)
-        {
-         if(ReplayEngineInit())
-           {
-            if(ReplaySymbolFilter != "")
-               ReplayEngineSetSymbolFilter(ReplaySymbolFilter);
-
-            Print("[REPLAY] MODO REPLAY ATIVO | trades reais BLOQUEADOS | origem=", ReplayEngineSource());
-           }
-         else
-           {
-            Print("[REPLAY] Falha ao inicializar replay (operacao normal)");
-           }
+         Print("[REPLAY] Falha ao inicializar replay (operacao normal)");
         }
      }
    return true;
@@ -657,7 +504,8 @@ void ShutdownModules()
 
 // v1.2.1: libera handles cacheados do SignalCore
    ReleaseSignalHandles();
-   SignalCoreV2Release();
+   SignalCoreV2Release();   // libera handles do modulo paralelo
+   EAHeartbeatWrite("STOPPED");
 
    DataLoggerClose();
 
@@ -734,10 +582,12 @@ void UpdateSafety()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
-void UpdateDataset()
+// F4/1.2: retorna TRUE apenas com progresso REAL (nova vela detectada),
+// para que HealthMonitorProgress seja chamado somente com avance verificado.
+bool UpdateDataset()
   {
    if(!EnableDataset)
-      return;
+      return false;
 
    datetime candle =
       iTime(
@@ -747,7 +597,7 @@ void UpdateDataset()
       );
 
    if(candle==LastDatasetBar)
-      return;
+      return false;   // sem nova vela => sem progresso
 
    LastDatasetBar=candle;
 
@@ -761,6 +611,8 @@ void UpdateDataset()
       if(symbol!="")
          SaveMarketData(symbol);
      }
+
+   return true;   // nova vela processada => progresso real do pipeline
   }
 
 //+------------------------------------------------------------------+
@@ -860,7 +712,7 @@ void PerformanceSave()
 int OnInit()
   {
    Print("========================================");
-   Print("        XAU_AI_PRO v1.2.0");
+   Print("        XAU_AI_PRO v" + EA_VERSION_STRING);
    Print("========================================");
 
    Print("Conta.............: ", AccountInfoInteger(ACCOUNT_LOGIN));
@@ -871,11 +723,11 @@ int OnInit()
    Print("Equity............: ", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2));
 
    trade.SetExpertMagicNumber(MagicNumber);
-   trade.SetDeviationInPoints(Slippage);
+      trade.SetDeviationInPoints(Slippage);
 
    ForwardFileInit(); // ETAPA 13: abre CSV de sesion de forward test (FILE_COMMON)
 
-// ETAPA 15.6: EventEmitter (canal oficial de eventos)
+   // ETAPA 15.6: EventEmitter (canal oficial de eventos)
    EventInit();
    EventSystemStart("mode=live chart=" + _Symbol);
    EventForwardStart("forward test ativo");
@@ -887,7 +739,7 @@ int OnInit()
      }
 
    PeakEquity = AccountInfoDouble(ACCOUNT_EQUITY);
-   EventSetTimer(10);   // heartbeat e saude operacional sem depender de tick
+   EventSetTimer(30);   // executa a cada 30 segundos
 
    SystemInitialized = true;
 
@@ -939,20 +791,16 @@ void OnTick()
 // Sistema inicializado?
 //------------------------------------------------
 
-   if(!SystemInitialized)
+      if(!SystemInitialized)
      {
       Print("[TRADE BLOCK] SYSTEM NOT INITIALIZED");
       return;
      }
 
-// ETAPA 13 - heartbeat de sesion live (1Hz via throttle interno).
-// Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
-// estado de conexion/failure_mode/news/IA no forward test.
+   // ETAPA 13 - heartbeat de sesion live (1Hz via throttle interno).
+   // Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
+   // estado de conexion/failure_mode/news/IA no forward test.
    ForwardHeartbeat();
-
-// Heartbeat operacional para o app. Somente leitura; nao participa
-// da decisao, validacao ou envio de ordens.
-   EAHeartbeatWrite("RUNNING");
 
 
 
@@ -980,11 +828,11 @@ void OnTick()
       g_lastEventHealthOK = false;
      }
    else
-      if(_hOk && !g_lastEventHealthOK)
-        {
-         EventRecovery("health restaurado");
-         g_lastEventHealthOK = true;
-        }
+   if(_hOk && !g_lastEventHealthOK)
+     {
+      EventRecovery("health restaurado");
+      g_lastEventHealthOK = true;
+     }
 
    if(AI_Signal == "UNAVAILABLE" || AI_Signal == "ERROR" || AI_Signal == "HOLD")
      {
@@ -1010,14 +858,31 @@ void OnTick()
      }
 
 //------------------------------------------------
-// AutoTrade (input) - v1.2.0
+// AutoTrade (input) - RELIGADO em 05/10/2026
 //------------------------------------------------
-
-   if(false)   // v1.2.1: AutoTrade nao bloqueia mais (controle = botao Algoritmos do terminal)
+// Antes era `if(false)`, com o comentario "AutoTrade nao bloqueia mais
+// (controle = botao Algoritmos do terminal)". O input existia em
+// `Config.mqh:8`, aparecia na aba Inputs do MT5 e NUNCA era lido.
+//
+// MEDIDO: quem barra o trade e o gate real acima (`MQL_TRADE_ALLOWED` /
+// `TERMINAL_TRADE_ALLOWED`), o CircuitBreaker, o SafetyManager e o EquityProtection.
+// O `AutoTrade` e o UNICO ponto em que o operador desliga o EA sem fechar
+// o MT5 — e ele estava inerte.
+//
+// Deixar assim e pior do que nao existir: o painel mostra um interruptor que
+// nao faz nada, e o operador acredita que parou o sistema quando nao parou.
+// Este bloco nao substitui os gates; e o interruptor que eles nao cobrem.
+//
+   if(!AutoTrade)
      {
-      // v1.2.1 - throttle do log
-      if(AllowBlockPrint())
-         Print("[TRADE BLOCK] AUTOTRADE OFF | Ative AutoTrade=true no EA");
+      static datetime g_lastEventAutoTradeBlock = 0;
+      datetime _now = TimeCurrent();
+      if(_now - g_lastEventAutoTradeBlock >= 300)
+        {
+         if(AllowBlockPrint())
+            Print("[TRADE BLOCK] AUTOTRADE OFF | AutoTrade=false neste EA");
+         g_lastEventAutoTradeBlock = _now;
+        }
       return;
      }
 
@@ -1094,17 +959,19 @@ void OnTick()
 // Atualiza Dataset
 //------------------------------------------------
 
-   UpdateDataset();
+   bool datasetProgressed = UpdateDataset();
 
 //------------------------------------------------
 // Health Monitor - heartbeat dataset/python (ETAPA 6)
 //------------------------------------------------
+// Progresso REAL (F4/1.2): HealthMonitorProgress avanza SOLO quando
+// UpdateDataset reporta nova vela (datasetProgressed==true). Nunca por tick.
 
-   if(EnableHealthMonitor && EnableDataset)
+   if(EnableHealthMonitor && EnableDataset && datasetProgressed)
      {
-      HealthMonitorHeartbeat("CSV");
-      HealthMonitorHeartbeat("JSON");
-      HealthMonitorHeartbeat("PYTHON");
+      HealthMonitorProgress("CSV");
+      HealthMonitorProgress("JSON");
+      HealthMonitorProgress("PYTHON");
      }
 
 //------------------------------------------------
@@ -1123,24 +990,24 @@ void OnTick()
          Print("[REPLAY] Modo replay ativo - execucao real BLOQUEADA");
      }
    else
-      if(!ConnectionGuardCanOperate())
-        {
-         if(AllowBlockPrint())
-            Print("[TRADE BLOCK] CONNECTION | ", ConnectionGuardGetError());
-        }
-      else
-         if(!FailureModeOperational())
-           {
-            if(AllowBlockPrint())
-               Print("[TRADE BLOCK] FAILURE MODE | State=", GetFailureStateString(), " | Reason=", g_failureReason);
-           }
-         else
-           {
-            RunTradePipeline();
-           }
+   if(!ConnectionGuardCanOperate())
+     {
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] CONNECTION | ", ConnectionGuardGetError());
+     }
+   else
+   if(!FailureModeOperational())
+     {
+      if(AllowBlockPrint())
+         Print("[TRADE BLOCK] FAILURE MODE | State=", GetFailureStateString(), " | Reason=", g_failureReason);
+     }
+   else
+     {
+      RunTradePipeline();
+     }
 
-// ETAPA 12 (HARDENING): guard de conexao e failure mode bloqueiam
-// NOVAS ENTRADAS sem parar a gestao de posicoes abertas.
+   // ETAPA 12 (HARDENING): guard de conexao e failure mode bloqueiam
+   // NOVAS ENTRADAS sem parar a gestao de posicoes abertas.
 
 //------------------------------------------------
 // Gerenciamento das posicoes
@@ -1179,6 +1046,50 @@ void OnTick()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
+//+------------------------------------------------------------------+
+//| Risco em DINHEIRO de uma posicao, lido do SL do deal de entrada.  |
+//| Devolve 0.0 quando o broker nao devolve SL no deal: quem consome   |
+//| trata 0.0 como "nao sei" e nao inventa R.                          |
+//+------------------------------------------------------------------+
+double RiscoDaPosicao(ulong positionId, double volumeFechado)
+{
+   if(positionId == 0 || volumeFechado <= 0.0)
+      return(0.0);
+
+   if(!HistorySelectByPosition(positionId))
+      return(0.0);
+
+   for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
+   {
+      ulong d = HistoryDealGetTicket(i);
+      if(d == 0)
+         continue;
+      if((ENUM_DEAL_ENTRY)HistoryDealGetInteger(d, DEAL_ENTRY) != DEAL_ENTRY_IN)
+         continue;
+
+      double sl    = HistoryDealGetDouble(d, DEAL_SL);
+      double price = HistoryDealGetDouble(d, DEAL_PRICE);
+      string sym   = HistoryDealGetString(d, DEAL_SYMBOL);
+
+      if(sl <= 0.0 || price <= 0.0 || sym == "")
+         return(0.0);
+
+      double point    = SymbolInfoDouble(sym, SYMBOL_POINT);
+      double tickVal  = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
+      double tickSize = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
+
+      if(point <= 0.0 || tickVal <= 0.0 || tickSize <= 0.0)
+         return(0.0);
+
+      double valorPorPonto = (tickVal / tickSize) * point;
+      double distancia     = MathAbs(price - sl) / point;
+
+      return(distancia * valorPorPonto * volumeFechado);
+   }
+
+   return(0.0);
+}
+
 void OnTradeTransaction(
    const MqlTradeTransaction &trans,
    const MqlTradeRequest &request,
@@ -1268,7 +1179,7 @@ void OnTradeTransaction(
 
       if(EnableDatabase)
         {
-         int type = 0;
+         int type = (int)HistoryDealGetInteger(deal, DEAL_TYPE);
          CDatabaseManager::Connect();
 
          CDatabaseManager::InsertTrade(
@@ -1281,8 +1192,6 @@ void OnTradeTransaction(
             TradeComment
          );
         }
-
-      StatisticsRegisterTrade(0.0);
 
       // ETAPA 15/16 - registra modelo usado neste trade (auditoria)
       ModelLogTradeUsage((ulong)HistoryDealGetInteger(deal, DEAL_POSITION_ID), symbol);   // ETAPA 15/16
@@ -1313,7 +1222,7 @@ void OnTradeTransaction(
             GetRSI(symbol),
             0.0,
             spread,
-            IsTradingSession() ? "OPEN" : "CLOSED",
+                        IsTradingSession() ? "OPEN" : "CLOSED",
             (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
             AIConfidence,
             AIScore,
@@ -1322,18 +1231,18 @@ void OnTradeTransaction(
 
          // ETAPA 13 - forward test: registra entrada de posicion
          ForwardLogTrade(symbol, "OPEN",
-                         (dType == DEAL_TYPE_BUY) ? 1 : -1,
-                         MarketScore,
-                         DoubleToString(AIConfidence, 2),
-                         (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
-                         HistoryDealGetDouble(deal, DEAL_VOLUME),
-                         HistoryDealGetDouble(deal, DEAL_PRICE),
-                         HistoryDealGetDouble(deal, DEAL_SL),
-                         HistoryDealGetDouble(deal, DEAL_TP),
-                         positionId,
-                         "OPEN",
-                         0,
-                         "");
+            (dType == DEAL_TYPE_BUY) ? 1 : -1,
+            GetMarketScoreFor(symbol),
+            DoubleToString(AIConfidence, 2),
+            (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+            HistoryDealGetDouble(deal, DEAL_VOLUME),
+            HistoryDealGetDouble(deal, DEAL_PRICE),
+            HistoryDealGetDouble(deal, DEAL_SL),
+            HistoryDealGetDouble(deal, DEAL_TP),
+            positionId,
+            "OPEN",
+            0,
+            "");
         }
 
       //------------------------------------------------
@@ -1387,11 +1296,17 @@ void OnTradeTransaction(
 // Saida
 //------------------------------------------------
 
-   if(entry == DEAL_ENTRY_OUT)
+   if(entry == DEAL_ENTRY_OUT || entry == DEAL_ENTRY_OUT_BY)
      {
       //------------------------------------------------
       // Performance
       //------------------------------------------------
+
+      ulong posIdRisco  = HistoryDealGetInteger(deal, DEAL_POSITION_ID);
+      double riscoPos   = RiscoDaPosicao(posIdRisco, volume);
+      double rMultiplo  = (riscoPos > 0.0) ? (profit / riscoPos) : 0.0;
+
+      HistoryDealSelect(deal);   // RiscoDaPosicao troca a selecao de historico
 
       RegisterTradePerformance(profit);
 
@@ -1521,7 +1436,7 @@ void OnTradeTransaction(
       StatisticsRegisterTrade(profit);
 
       // ETAPA 14 - matriz quantitativa: registra resultado p/ Avg R
-      QuantRecordResult(profit, 0.0);
+      QuantRecordResult(profit, rMultiplo);
 
       //------------------------------------------------
       // ETAPA 6 - AUDITORIA (saida)
@@ -1533,32 +1448,32 @@ void OnTradeTransaction(
 
          AuditLogTrackExit(
             positionId,
-            (profit > 0.0 ? "WIN" : "LOSS"),
+            (profit > 0.0 ? "WIN" : (profit < 0.0 ? "LOSS" : "BE")),
             profit
          );
 
-         AuditLogTradeResult(
+                  AuditLogTradeResult(
             symbol,
             positionId,
             profit,
-            (profit > 0.0 ? "WIN" : "LOSS")
+            (profit > 0.0 ? "WIN" : (profit < 0.0 ? "LOSS" : "BE"))
          );
 
          // ETAPA 13 - forward test: registra saida/close de posicion
-           {
-            ENUM_DEAL_TYPE exType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
-            ForwardLogDeal(symbol,
-                           positionId,
-                           (exType == DEAL_TYPE_BUY) ? 1 : -1,
-                           MarketScore,
-                           DoubleToString(AIConfidence, 2),
-                           (exType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
-                           HistoryDealGetDouble(deal, DEAL_VOLUME),
-                           HistoryDealGetDouble(deal, DEAL_PRICE),
-                           profit,
-                           "CLOSE",
-                           0);
-           }
+         {
+          ENUM_DEAL_TYPE exType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+          ForwardLogDeal(symbol,
+             positionId,
+             (exType == DEAL_TYPE_BUY) ? 1 : -1,
+             GetMarketScoreFor(symbol),
+             DoubleToString(AIConfidence, 2),
+             (exType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+             HistoryDealGetDouble(deal, DEAL_VOLUME),
+             HistoryDealGetDouble(deal, DEAL_PRICE),
+             profit,
+             "CLOSE",
+             0);
+         }
         }
 
       //------------------------------------------------
@@ -1578,7 +1493,7 @@ void OnTradeTransaction(
             GetADX(symbol),
             GetRSI(symbol),
             AIScore,
-            (profit > 0.0 ? "WIN" : "LOSS"),
+            (profit > 0.0 ? "WIN" : (profit < 0.0 ? "LOSS" : "BE")),
             profit
          );
         }
@@ -1598,11 +1513,11 @@ void OnTradeTransaction(
          CNotificationCenter::SendTradeClose(
             symbol,
             profit,
-            (profit > 0.0 ? "WIN" : "LOSS")
+            (profit > 0.0 ? "WIN" : (profit < 0.0 ? "LOSS" : "BE"))
          );
         }
 
-     }
+  }
   }
 
 //==================================================
@@ -1614,9 +1529,6 @@ void OnTradeTransaction(
 //+------------------------------------------------------------------+
 void OnTimer()
   {
-   EACommandPoll();
-// Mantem o liveness mesmo quando o ativo fica sem novos ticks.
-   EAHeartbeatWrite("RUNNING");
 //------------------------------------------------
 // Sistema inicializado?
 //------------------------------------------------
@@ -1633,7 +1545,7 @@ void OnTimer()
 
    CRecoveryManager::Run();
 
-// ETAPA 12 - failure mode (recuperacion automatica)
+   // ETAPA 12 - failure mode (recuperacion automatica)
    bool fBrokerOK = CRecoveryManager::IsModuleHealthy("Broker");
    bool fAiOK     = CRecoveryManager::IsModuleHealthy("AI");
    FailureModeFeed(fBrokerOK, fAiOK);
@@ -1711,6 +1623,7 @@ void OnTimer()
          Print("========== HEALTH MONITOR ==========");
          Print(HealthMonitorSummary());
          Print(EnableAuditLog ? AuditLogSummary() : "AuditLog OFF");
+         Print(ADXMetricsSummary() + " | block=" + IntegerToString(g_adxBlockCount));
          Print("====================================");
         }
      }
@@ -1810,14 +1723,24 @@ void OnTimer()
 //+------------------------------------------------------------------+
 //|                                                                  |
 //+------------------------------------------------------------------+
+double OnTester()
+{
+   const double profit       = TesterStatistics(STAT_PROFIT);
+   const double profitFactor = TesterStatistics(STAT_PROFIT_FACTOR);
+   const double drawdownPct  = TesterStatistics(STAT_EQUITY_DDREL_PERCENT);
+   const double trades       = TesterStatistics(STAT_TRADES);
+
+   // O criterio so ordena os passes do Strategy Tester; nunca altera ordens.
+   if(trades <= 0.0 || profit <= 0.0 || profitFactor <= 1.0)
+      return 0.0;
+
+   return (profit * profitFactor) / (1.0 + MathMax(0.0, drawdownPct));
+}
+
 void OnDeinit(
    const int reason
 )
   {
-// ETAPA 15.6.1: ultimo evento do event stream (API canonica)
-   EventSystemStop("deinit_reason=" + IntegerToString(reason));
-   EventShutdown();
-
    Print(
       "========================================"
    );
@@ -1867,10 +1790,14 @@ void OnDeinit(
 //================================================
 
    if(EnableHealthMonitor)
+     {
       HealthMonitorShutdown();
+     }
 
    if(EnableAuditLog)
+     {
       AuditLogClose();
+     }
 
    ForwardLogClose(); // ETAPA 13: pecha CSV de sesion de forward test (flush+close)
 
@@ -1902,11 +1829,11 @@ void OnDeinit(
 
       CNotificationCenter::SendSystemAlert("EA finalizado (reason=" + IntegerToString(reason) + ")");
       CNotificationCenter::LogStatus();
-     }
+   }
 
-//================================================
-// ETAPA 10 - CONFIG + VERSION (encerramento)
-//================================================
+   //================================================
+   // ETAPA 10 - CONFIG + VERSION (encerramento)
+   //================================================
 
    CConfigManager::LogStatus();
    CVersionManager::LogStatus();
