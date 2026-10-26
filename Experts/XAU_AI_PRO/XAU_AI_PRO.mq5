@@ -407,9 +407,9 @@ bool InitializeModules()
       CTelemetry::RecordExecutionStart();  // ETAPA 15.6.3: uptime real
      }
 
-   //------------------------------------------------
-   // ETAPA 8 - BACKTEST ANALYZER & BENCHMARK
-   //------------------------------------------------
+//------------------------------------------------
+// ETAPA 8 - BACKTEST ANALYZER & BENCHMARK
+//------------------------------------------------
 
    if(EnableBacktestAnalyzer)
      {
@@ -422,9 +422,9 @@ bool InitializeModules()
       CBenchmarkEngine::Init();
      }
 
-   //------------------------------------------------
-   // ETAPA 9 - NOTIFICATION CENTER
-   //------------------------------------------------
+//------------------------------------------------
+// ETAPA 9 - NOTIFICATION CENTER
+//------------------------------------------------
 
    if(EnableNotifications)
      {
@@ -445,9 +445,9 @@ bool InitializeModules()
       Print("[NOTIFY] " + CNotificationCenter::GetStatus());
      }
 
-   //------------------------------------------------
-   // ETAPA 10 - CONFIG MANAGER + VERSION MANAGER
-   //------------------------------------------------
+//------------------------------------------------
+// ETAPA 10 - CONFIG MANAGER + VERSION MANAGER
+//------------------------------------------------
 
    CConfigManager::Init();
    CConfigManager::SetProfile(CConfigManager::GetCurrentProfile());
@@ -457,9 +457,9 @@ bool InitializeModules()
    CVersionManager::RegisterModules();
    CVersionManager::LogStatus();
 
-   //------------------------------------------------
-   // ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
-   //------------------------------------------------
+//------------------------------------------------
+// ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
+//------------------------------------------------
 
    CProductionChecklist::Init();
    CProductionChecklist::Run();
@@ -723,11 +723,11 @@ int OnInit()
    Print("Equity............: ", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2));
 
    trade.SetExpertMagicNumber(MagicNumber);
-      trade.SetDeviationInPoints(Slippage);
+   trade.SetDeviationInPoints(Slippage);
 
    ForwardFileInit(); // ETAPA 13: abre CSV de sesion de forward test (FILE_COMMON)
 
-   // ETAPA 15.6: EventEmitter (canal oficial de eventos)
+// ETAPA 15.6: EventEmitter (canal oficial de eventos)
    EventInit();
    EventSystemStart("mode=live chart=" + _Symbol);
    EventForwardStart("forward test ativo");
@@ -791,15 +791,15 @@ void OnTick()
 // Sistema inicializado?
 //------------------------------------------------
 
-      if(!SystemInitialized)
+   if(!SystemInitialized)
      {
       Print("[TRADE BLOCK] SYSTEM NOT INITIALIZED");
       return;
      }
 
-   // ETAPA 13 - heartbeat de sesion live (1Hz via throttle interno).
-   // Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
-   // estado de conexion/failure_mode/news/IA no forward test.
+// ETAPA 13 - heartbeat de sesion live (1Hz via throttle interno).
+// Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
+// estado de conexion/failure_mode/news/IA no forward test.
    ForwardHeartbeat();
 
 
@@ -828,11 +828,11 @@ void OnTick()
       g_lastEventHealthOK = false;
      }
    else
-   if(_hOk && !g_lastEventHealthOK)
-     {
-      EventRecovery("health restaurado");
-      g_lastEventHealthOK = true;
-     }
+      if(_hOk && !g_lastEventHealthOK)
+        {
+         EventRecovery("health restaurado");
+         g_lastEventHealthOK = true;
+        }
 
    if(AI_Signal == "UNAVAILABLE" || AI_Signal == "ERROR" || AI_Signal == "HOLD")
      {
@@ -990,24 +990,24 @@ void OnTick()
          Print("[REPLAY] Modo replay ativo - execucao real BLOQUEADA");
      }
    else
-   if(!ConnectionGuardCanOperate())
-     {
-      if(AllowBlockPrint())
-         Print("[TRADE BLOCK] CONNECTION | ", ConnectionGuardGetError());
-     }
-   else
-   if(!FailureModeOperational())
-     {
-      if(AllowBlockPrint())
-         Print("[TRADE BLOCK] FAILURE MODE | State=", GetFailureStateString(), " | Reason=", g_failureReason);
-     }
-   else
-     {
-      RunTradePipeline();
-     }
+      if(!ConnectionGuardCanOperate())
+        {
+         if(AllowBlockPrint())
+            Print("[TRADE BLOCK] CONNECTION | ", ConnectionGuardGetError());
+        }
+      else
+         if(!FailureModeOperational())
+           {
+            if(AllowBlockPrint())
+               Print("[TRADE BLOCK] FAILURE MODE | State=", GetFailureStateString(), " | Reason=", g_failureReason);
+           }
+         else
+           {
+            RunTradePipeline();
+           }
 
-   // ETAPA 12 (HARDENING): guard de conexao e failure mode bloqueiam
-   // NOVAS ENTRADAS sem parar a gestao de posicoes abertas.
+// ETAPA 12 (HARDENING): guard de conexao e failure mode bloqueiam
+// NOVAS ENTRADAS sem parar a gestao de posicoes abertas.
 
 //------------------------------------------------
 // Gerenciamento das posicoes
@@ -1052,7 +1052,7 @@ void OnTick()
 //| trata 0.0 como "nao sei" e nao inventa R.                          |
 //+------------------------------------------------------------------+
 double RiscoDaPosicao(ulong positionId, double volumeFechado)
-{
+  {
    if(positionId == 0 || volumeFechado <= 0.0)
       return(0.0);
 
@@ -1060,7 +1060,7 @@ double RiscoDaPosicao(ulong positionId, double volumeFechado)
       return(0.0);
 
    for(int i = HistoryDealsTotal() - 1; i >= 0; i--)
-   {
+     {
       ulong d = HistoryDealGetTicket(i);
       if(d == 0)
          continue;
@@ -1085,11 +1085,14 @@ double RiscoDaPosicao(ulong positionId, double volumeFechado)
       double distancia     = MathAbs(price - sl) / point;
 
       return(distancia * valorPorPonto * volumeFechado);
-   }
+     }
 
    return(0.0);
-}
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnTradeTransaction(
    const MqlTradeTransaction &trans,
    const MqlTradeRequest &request,
@@ -1222,7 +1225,7 @@ void OnTradeTransaction(
             GetRSI(symbol),
             0.0,
             spread,
-                        IsTradingSession() ? "OPEN" : "CLOSED",
+            IsTradingSession() ? "OPEN" : "CLOSED",
             (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
             AIConfidence,
             AIScore,
@@ -1231,18 +1234,18 @@ void OnTradeTransaction(
 
          // ETAPA 13 - forward test: registra entrada de posicion
          ForwardLogTrade(symbol, "OPEN",
-            (dType == DEAL_TYPE_BUY) ? 1 : -1,
-            GetMarketScoreFor(symbol),
-            DoubleToString(AIConfidence, 2),
-            (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
-            HistoryDealGetDouble(deal, DEAL_VOLUME),
-            HistoryDealGetDouble(deal, DEAL_PRICE),
-            HistoryDealGetDouble(deal, DEAL_SL),
-            HistoryDealGetDouble(deal, DEAL_TP),
-            positionId,
-            "OPEN",
-            0,
-            "");
+                         (dType == DEAL_TYPE_BUY) ? 1 : -1,
+                         GetMarketScoreFor(symbol),
+                         DoubleToString(AIConfidence, 2),
+                         (dType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+                         HistoryDealGetDouble(deal, DEAL_VOLUME),
+                         HistoryDealGetDouble(deal, DEAL_PRICE),
+                         HistoryDealGetDouble(deal, DEAL_SL),
+                         HistoryDealGetDouble(deal, DEAL_TP),
+                         positionId,
+                         "OPEN",
+                         0,
+                         "");
         }
 
       //------------------------------------------------
@@ -1452,7 +1455,7 @@ void OnTradeTransaction(
             profit
          );
 
-                  AuditLogTradeResult(
+         AuditLogTradeResult(
             symbol,
             positionId,
             profit,
@@ -1460,20 +1463,20 @@ void OnTradeTransaction(
          );
 
          // ETAPA 13 - forward test: registra saida/close de posicion
-         {
-          ENUM_DEAL_TYPE exType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
-          ForwardLogDeal(symbol,
-             positionId,
-             (exType == DEAL_TYPE_BUY) ? 1 : -1,
-             GetMarketScoreFor(symbol),
-             DoubleToString(AIConfidence, 2),
-             (exType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
-             HistoryDealGetDouble(deal, DEAL_VOLUME),
-             HistoryDealGetDouble(deal, DEAL_PRICE),
-             profit,
-             "CLOSE",
-             0);
-         }
+           {
+            ENUM_DEAL_TYPE exType = (ENUM_DEAL_TYPE)HistoryDealGetInteger(deal, DEAL_TYPE);
+            ForwardLogDeal(symbol,
+                           positionId,
+                           (exType == DEAL_TYPE_BUY) ? 1 : -1,
+                           GetMarketScoreFor(symbol),
+                           DoubleToString(AIConfidence, 2),
+                           (exType == DEAL_TYPE_BUY) ? "BUY" : "SELL",
+                           HistoryDealGetDouble(deal, DEAL_VOLUME),
+                           HistoryDealGetDouble(deal, DEAL_PRICE),
+                           profit,
+                           "CLOSE",
+                           0);
+           }
         }
 
       //------------------------------------------------
@@ -1517,7 +1520,7 @@ void OnTradeTransaction(
          );
         }
 
-  }
+     }
   }
 
 //==================================================
@@ -1545,7 +1548,7 @@ void OnTimer()
 
    CRecoveryManager::Run();
 
-   // ETAPA 12 - failure mode (recuperacion automatica)
+// ETAPA 12 - failure mode (recuperacion automatica)
    bool fBrokerOK = CRecoveryManager::IsModuleHealthy("Broker");
    bool fAiOK     = CRecoveryManager::IsModuleHealthy("AI");
    FailureModeFeed(fBrokerOK, fAiOK);
@@ -1724,19 +1727,22 @@ void OnTimer()
 //|                                                                  |
 //+------------------------------------------------------------------+
 double OnTester()
-{
+  {
    const double profit       = TesterStatistics(STAT_PROFIT);
    const double profitFactor = TesterStatistics(STAT_PROFIT_FACTOR);
    const double drawdownPct  = TesterStatistics(STAT_EQUITY_DDREL_PERCENT);
    const double trades       = TesterStatistics(STAT_TRADES);
 
-   // O criterio so ordena os passes do Strategy Tester; nunca altera ordens.
+// O criterio so ordena os passes do Strategy Tester; nunca altera ordens.
    if(trades <= 0.0 || profit <= 0.0 || profitFactor <= 1.0)
       return 0.0;
 
    return (profit * profitFactor) / (1.0 + MathMax(0.0, drawdownPct));
-}
+  }
 
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
 void OnDeinit(
    const int reason
 )
@@ -1829,11 +1835,11 @@ void OnDeinit(
 
       CNotificationCenter::SendSystemAlert("EA finalizado (reason=" + IntegerToString(reason) + ")");
       CNotificationCenter::LogStatus();
-   }
+     }
 
-   //================================================
-   // ETAPA 10 - CONFIG + VERSION (encerramento)
-   //================================================
+//================================================
+// ETAPA 10 - CONFIG + VERSION (encerramento)
+//================================================
 
    CConfigManager::LogStatus();
    CVersionManager::LogStatus();
