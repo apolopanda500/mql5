@@ -1,11 +1,10 @@
-// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.9
 #ifndef AIENGINE_MQH
 #define AIENGINE_MQH
 
 #include "../Core/Config.mqh"
 
 #include "../Core/SignalCore.mqh"
-#include "../Core/SignalCoreV2.mqh"
 
 #include "../Filters/TrendFilter.mqh"
 #include "../Filters/SpreadFilter.mqh"
@@ -41,7 +40,7 @@ bool AITradeAllowed(string symbol="")
    if(symbol=="")
       symbol=_Symbol;
 
-   int signal=GetActiveSignal(symbol);
+   int signal=GetSignal(symbol);
 
    if(signal==0)
       return false;
@@ -131,6 +130,13 @@ double GetAIConfidence(int signal,string symbol="")
          score+=10;
    }
 
+   // Fallback NAO e IA. MEDIDO 23/10/2026: sem gateway, o score chegava a 85
+   // (50 de base + 15 tendencia + 10 RSI + 10 ADX), o multiplicador de lote ia
+   // a 1,00 e o piso de veto (50) passava sem nenhum modelo responder. O
+   // numero era de indicador com nome de IA.
+   if(!AllowTradeWithoutAI)
+      score = MathMin(score, AIUnavailableConfidenceCap);
+
    score *= MemoryBoost(symbol);
 
    if(score>100)
@@ -201,6 +207,19 @@ double GetAILotMultiplier(double confidence)
 // AI SIGNAL
 //==================================================
 
+//==================================================
+// SINAL DA IA A PARTIR DO `signal` TEXTUAL (05/10/2026)
+//==================================================
+// MEDIDO: o backend devolve `signal` ("BUY", "SELL", "NEUTRAL",
+// "STRONG_BUY"), e `AI_BuyProbability`/`AI_SellProbability` chegam 0.0
+// porque o payload canonico usa `prob_buy`/`prob_sell`. Ler as
+// probabilidades dava 0 contra 0, a diferenca de 10 pontos nunca era
+// atingida, e `GetAIEngineSignal` devolvia SEMPRE 0 — a IA nao decidia
+// nada, so vetava.
+//
+// A funcao abaixo le o texto, que e o que o backend realmente publica.
+// `AI_Score<MinAIConfidence` continua barrando: e o mesmo piso do veto,
+// e um score alto com sinal BUY e exatamente o caso que deve operar.
 int GetAIEngineSignal(string symbol="")
 {
    if(symbol=="")
@@ -212,6 +231,25 @@ int GetAIEngineSignal(string symbol="")
    if(AI_Score<MinAIConfidence)
       return 0;
 
+   // O TEXTO PRIMEIRO, e so depois as probabilidades.
+   //
+   // "STRONG_BUY"/"STRONG_SELL" sao os sinais de maior conviccao que o
+   // backend emite, e o `AIBuyAllowed`/`AISellAllowed` ja os tratavam
+   // (AIConnector.mqh). Aqui o mesmo criterio, no mesmo lugar da decisao.
+   if(AI_Signal=="STRONG_BUY")
+      return 1;
+
+   if(AI_Signal=="STRONG_SELL")
+      return -1;
+
+   if(AI_Signal=="BUY" && AI_BuyProbability>AI_SellProbability)
+      return 1;
+
+   if(AI_Signal=="SELL" && AI_SellProbability>AI_BuyProbability)
+      return -1;
+
+   // Fallback para as probabilidades: vale quando o sinal vier de um
+   // pipeline antigo, que mandava so os numeros.
    if(AI_BuyProbability>AI_SellProbability+10)
       return 1;
 
@@ -230,8 +268,29 @@ int GetCombinedSignal(string symbol="")
    if(symbol=="")
       symbol=_Symbol;
 
-   int tech=GetActiveSignal(symbol);
+   int tech=GetSignal(symbol);
    int ai=GetAIEngineSignal(symbol);
+
+   // IA COM AUTORIDADE (05/10/2026)
+   // =================================
+   // Quando `AIHasSignalAuthority` esta ligado, a IA DECIDE — e o que o dono
+   // pediu ("a IA pode fazer tudo, operar so quando eu decidir quem opera").
+   // O sinal tecnico vira APOIO, e nao dono da decisao.
+   //
+   // O piso e `AIAuthorityMinScore` e nao `MinAIConfidence`: os dois medem
+   // coisas diferentes. O veto e "esta IA ta confiavel?"; assumir a decisao e
+   // "esta IA ta confiavel O BASTANTE para falar por mim?". Num numero so,
+   // o operador nao consegue explicar por que a ordem saiu.
+   if(AIHasSignalAuthority)
+     {
+      // Sem sinal da IA, NAO HAI FALLBACK TECNICO: e a diferenca entre
+      // "operar guiado por IA" e "operar por tecnico com uma IA olhando".
+      // Com a autoridade ligada e a IA calada, o certo e NAO operar.
+      if(ai!=0)
+         return ai;
+
+      return 0;
+     }
 
    if(tech==ai)
       return tech;
@@ -363,14 +422,42 @@ bool FinalAIAllow(int signal, string symbol="")
    if(symbol == "")
       symbol = _Symbol;
 
+   // Sem IA nao ha veto; e sem veto nao ha entrada. `AllowTradeWithoutAI=true`
+   // e o caminho do Strategy Tester, onde o pipeline Python nao roda.
+   if(!AllowTradeWithoutAI)
+   {
+      if(!LoadAIPrediction(symbol) || AI_Signal=="UNAVAILABLE" || AI_Signal=="ERROR")
+      {
+         static datetime lastNoAI = 0;
+         datetime agora = TimeCurrent();
+
+         if(agora - lastNoAI >= 60)
+         {
+            lastNoAI = agora;
+            Print("[ADV AI] BLOQUEADO | IA indisponivel (", AI_Signal, ") | ", symbol);
+         }
+
+         return false;
+      }
+   }
+
    double score = AdvancedAIScore(signal, symbol);
 
-   PrintFormat(
-      "[ADV AI] Score %.2f | Min %.2f | Symbol %s",
-      score,
-      MinAIConfidence,
-      symbol
-   );
+   // Este log era impresso a CADA tick, por simbolo: 11 simbolos x ~20 ticks/s
+   // viravam milhares de linhas por minuto no journal. Throttle de 1/min.
+   static datetime lastScoreLog = 0;
+   datetime logNow = TimeCurrent();
+
+   if(logNow - lastScoreLog >= 60)
+   {
+      lastScoreLog = logNow;
+      PrintFormat(
+         "[ADV AI] Score %.2f | Min %.2f | Symbol %s",
+         score,
+         MinAIConfidence,
+         symbol
+      );
+   }
 
    return(score >= MinAIConfidence);
 }
