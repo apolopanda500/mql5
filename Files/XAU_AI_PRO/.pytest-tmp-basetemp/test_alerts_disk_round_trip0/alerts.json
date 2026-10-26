@@ -1,0 +1,16 @@
+[
+  {
+    "symbol": "XAUUSD",
+    "price": 4350.5,
+    "cond": "acima",
+    "active": true,
+    "fired": false
+  },
+  {
+    "symbol": "EURUSD",
+    "price": 1.1,
+    "cond": "abaixo",
+    "active": false,
+    "fired": true
+  }
+]

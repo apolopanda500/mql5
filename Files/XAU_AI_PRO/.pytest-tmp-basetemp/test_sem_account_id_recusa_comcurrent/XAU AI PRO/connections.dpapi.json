@@ -1,0 +1,1 @@
+{"mt5:forex:XMGlobal": {"broker": "mt5", "market": "forex", "active": true, "credential_source": "session"}, "mt5:forex:Demo": {"broker": "mt5", "market": "forex", "active": true, "credential_source": "session"}}

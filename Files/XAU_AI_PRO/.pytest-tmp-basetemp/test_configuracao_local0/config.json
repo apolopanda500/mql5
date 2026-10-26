@@ -1,0 +1,8 @@
+{
+  "theme": "dark",
+  "language": "pt-BR",
+  "precision": 2,
+  "marketAutoRefresh": true,
+  "dashboardAutoRefresh": true,
+  "historyAutoRefresh": true
+}

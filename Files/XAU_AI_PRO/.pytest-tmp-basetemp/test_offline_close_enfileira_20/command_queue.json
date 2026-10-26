@@ -1,0 +1,17 @@
+[
+ {
+  "queue_id": "bea22b3261bd",
+  "kind": "close",
+  "route": "close",
+  "payload": {
+   "ticket": 123
+  },
+  "kwargs": {},
+  "status": "manual_review",
+  "attempts": 0,
+  "max_attempts": 5,
+  "last_error": "terminal offline; resultado incerto",
+  "created_at": "2026-10-25T21:58:40.282514",
+  "updated_at": "2026-10-25T21:58:40.284027"
+ }
+]

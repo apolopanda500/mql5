@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "users": {
+    "local": {
+      "plan_id": "vip",
+      "status": "local_active",
+      "source": "local",
+      "activated_at": "2026-10-26T00:58:36.115Z",
+      "expires_at": null,
+      "billing": "not_configured"
+    }
+  },
+  "updated_at": "2026-10-26T00:58:36.115Z",
+  "integrity_sha256": "2eeaeaf86152757e098d3229abb43e3dbd91b5c158cd16cb72334a2929682c9a"
+}

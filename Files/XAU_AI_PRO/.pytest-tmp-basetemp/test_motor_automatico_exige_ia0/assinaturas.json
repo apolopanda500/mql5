@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "users": {
+    "local": {
+      "plan_id": "free",
+      "status": "local_active",
+      "source": "local",
+      "activated_at": "2026-10-26T00:58:36.085Z",
+      "expires_at": null,
+      "billing": "not_configured"
+    }
+  },
+  "updated_at": "2026-10-26T00:58:36.085Z",
+  "integrity_sha256": "38b1308a44c5050d285338d23dceece48c513fe9d6bda77adee6667537f6dd5e"
+}

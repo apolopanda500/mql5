@@ -1,0 +1,1 @@
+{"name": "Servidor Bom", "description": "d", "type": "http", "default_endpoint": "http://127.0.0.1:9001", "enabled": true}
