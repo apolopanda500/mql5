@@ -1,0 +1,64 @@
+{
+  "symbol": "NZDUSD",
+  "timeframe": "M15",
+  "feature_version": "25F-v2",
+  "feature_hash": "27727ee00bc30b7f",
+  "feature_count": 25,
+  "algorithm": "RandomForestClassifier",
+  "metrics": {
+    "accuracy": 0.39622037155669443,
+    "f1_score": 0.39449579280895647,
+    "baseline": 0.3333333333333333,
+    "edge": 0.06288703822336111,
+    "train_samples": 12515,
+    "test_samples": 3122,
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.3909600791817882,
+        "baseline": 0.3333333333333333,
+        "edge": 0.0576267458484549,
+        "train": 500,
+        "test": 3031
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.3642362256680963,
+        "baseline": 0.3333333333333333,
+        "edge": 0.03090289233476301,
+        "train": 3531,
+        "test": 3031
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.40580666446717256,
+        "baseline": 0.3333333333333333,
+        "edge": 0.07247333113383925,
+        "train": 6562,
+        "test": 3031
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.40613658858462554,
+        "baseline": 0.3333333333333333,
+        "edge": 0.07280325525129222,
+        "train": 9593,
+        "test": 3031
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.3979490572279193,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06461572389458597,
+        "train": 12624,
+        "test": 3023
+      }
+    ],
+    "edge_estavel": true
+  },
+  "publicable": true,
+  "publish_reason": "",
+  "min_edge": 0.05,
+  "train_date": "2026-10-22T23:01:34.287751+00:00"
+}

@@ -1,0 +1,64 @@
+{
+  "symbol": "USDCAD",
+  "timeframe": "H1",
+  "feature_version": "25F-v2",
+  "feature_hash": "27727ee00bc30b7f",
+  "feature_count": 25,
+  "algorithm": "RandomForestClassifier",
+  "metrics": {
+    "accuracy": 0.4138817480719794,
+    "f1_score": 0.3859602451073864,
+    "baseline": 0.3333333333333333,
+    "edge": 0.0805484147386461,
+    "train_samples": 3142,
+    "test_samples": 778,
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.45348837209302323,
+        "baseline": 0.3333333333333333,
+        "edge": 0.12015503875968991,
+        "train": 500,
+        "test": 688
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.42441860465116277,
+        "baseline": 0.3333333333333333,
+        "edge": 0.09108527131782945,
+        "train": 1188,
+        "test": 688
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.4811046511627907,
+        "baseline": 0.3333333333333333,
+        "edge": 0.1477713178294574,
+        "train": 1876,
+        "test": 688
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.3938953488372093,
+        "baseline": 0.3333333333333333,
+        "edge": 0.060562015503875966,
+        "train": 2564,
+        "test": 688
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.4365781710914454,
+        "baseline": 0.3333333333333333,
+        "edge": 0.1032448377581121,
+        "train": 3252,
+        "test": 678
+      }
+    ],
+    "edge_estavel": true
+  },
+  "publicable": true,
+  "publish_reason": "",
+  "min_edge": 0.05,
+  "train_date": "2026-10-22T23:02:29.395297+00:00"
+}

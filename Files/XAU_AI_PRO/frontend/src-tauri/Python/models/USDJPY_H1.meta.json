@@ -1,0 +1,64 @@
+{
+  "symbol": "USDJPY",
+  "timeframe": "H1",
+  "feature_version": "25F-v2",
+  "feature_hash": "27727ee00bc30b7f",
+  "feature_count": 25,
+  "algorithm": "RandomForestClassifier",
+  "metrics": {
+    "accuracy": 0.4987146529562982,
+    "f1_score": 0.4890256055241262,
+    "baseline": 0.3333333333333333,
+    "edge": 0.16538131962296487,
+    "train_samples": 3141,
+    "test_samples": 778,
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.44250363901018924,
+        "baseline": 0.3333333333333333,
+        "edge": 0.10917030567685593,
+        "train": 500,
+        "test": 687
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.40611353711790393,
+        "baseline": 0.3333333333333333,
+        "edge": 0.07278020378457062,
+        "train": 1187,
+        "test": 687
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.462882096069869,
+        "baseline": 0.3333333333333333,
+        "edge": 0.1295487627365357,
+        "train": 1874,
+        "test": 687
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.3682678311499272,
+        "baseline": 0.3333333333333333,
+        "edge": 0.03493449781659391,
+        "train": 2561,
+        "test": 687
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.447870778267254,
+        "baseline": 0.3333333333333333,
+        "edge": 0.1145374449339207,
+        "train": 3248,
+        "test": 681
+      }
+    ],
+    "edge_estavel": true
+  },
+  "publicable": true,
+  "publish_reason": "",
+  "min_edge": 0.05,
+  "train_date": "2026-10-22T23:03:26.004386+00:00"
+}
