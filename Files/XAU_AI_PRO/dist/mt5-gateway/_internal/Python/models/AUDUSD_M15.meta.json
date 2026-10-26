@@ -1,0 +1,64 @@
+{
+  "symbol": "AUDUSD",
+  "timeframe": "M15",
+  "feature_version": "25F-v2",
+  "feature_hash": "27727ee00bc30b7f",
+  "feature_count": 25,
+  "algorithm": "RandomForestClassifier",
+  "metrics": {
+    "accuracy": 0.3973743195645213,
+    "f1_score": 0.36989439096931126,
+    "baseline": 0.3333333333333333,
+    "edge": 0.06404098623118798,
+    "train_samples": 12520,
+    "test_samples": 3123,
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.3855540897097625,
+        "baseline": 0.3333333333333333,
+        "edge": 0.0522207563764292,
+        "train": 500,
+        "test": 3032
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.3928100263852243,
+        "baseline": 0.3333333333333333,
+        "edge": 0.05947669305189096,
+        "train": 3532,
+        "test": 3032
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.4346965699208443,
+        "baseline": 0.3333333333333333,
+        "edge": 0.10136323658751101,
+        "train": 6564,
+        "test": 3032
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.43271767810026385,
+        "baseline": 0.3333333333333333,
+        "edge": 0.09938434476693053,
+        "train": 9596,
+        "test": 3032
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.39570247933884295,
+        "baseline": 0.3333333333333333,
+        "edge": 0.062369146005509635,
+        "train": 12628,
+        "test": 3025
+      }
+    ],
+    "edge_estavel": true
+  },
+  "publicable": true,
+  "publish_reason": "",
+  "min_edge": 0.05,
+  "train_date": "2026-10-22T22:55:44.982624+00:00"
+}
