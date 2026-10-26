@@ -1,0 +1,260 @@
+"""
+XAU AI PRO - API Backend (FastAPI)
+Endpoints:
+  GET  /                          -> status
+  GET  /health                    -> health (alias de /)
+  GET  /prediction/{symbol}       -> predição de um símbolo
+  GET  /account                   -> dados da conta (SQLite)
+  GET  /market/live               -> cotações em tempo real (MT5/yfinance)
+  GET  /market/live/{symbol}      -> cotação de um símbolo
+  GET  /predictions               -> lista todas as predições
+  POST /login                     -> autenticação (JSON {username,password})
+  POST /train                     -> dispara treinamento
+  POST /predict                   -> dispara geração de predições
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sqlite3
+import subprocess
+import sys
+from pathlib import Path
+
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+app = FastAPI(title="XAU AI PRO API", version="1.2.0")
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from backend.planos.caminhos import get_mql_data_path
+
+DATA_DIR = get_mql_data_path()
+try:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    pass
+
+DB_PATH = PROJECT_ROOT / "database" / "trading.db"
+PREDICTIONS_DIR = DATA_DIR
+PY_DIR = PROJECT_ROOT / "Python"
+ULT = PROJECT_ROOT / "Ultimate"
+
+# Tenta carregar auth/config do config_store (se presente)
+try:
+    sys.path.insert(0, str(ULT))
+    import config_store as cs
+except Exception:
+    cs = None
+
+
+# ============================================================
+# MODELOS
+# ============================================================
+class LoginBody(BaseModel):
+    username: str
+    password: str
+
+
+# ============================================================
+# HELPERS
+# ============================================================
+def _market() -> object | None:
+    """Retorna uma instância do MarketLive (ou None se indisponível)."""
+    try:
+        sys.path.insert(0, str(ULT))
+        import market_live as ml
+
+        return ml.MarketLive()
+    except Exception:
+        return None
+
+
+def _py() -> str:
+    return sys.executable or "python"
+
+
+def _read_prediction_file(symbol: str) -> dict:
+    """Lê e retorna o conteúdo do arquivo de predição de forma segura.
+
+    O símbolo é validado por whitelist estrita (A-Z, 0-9, underscore) e o
+    arquivo é localizado via glob() no diretório base. Como o path nunca é
+    derivado da entrada do usuário, não existe fluxo de dados controlado
+    pelo usuário em expressões de caminho (path injection eliminada por
+    construção).
+    """
+    # Normaliza o símbolo
+    normalized = symbol.strip().upper()
+
+    # Validação de tamanho
+    if not normalized or len(normalized) > 64:
+        raise ValueError("Invalid symbol")
+
+    # Whitelist estrita: apenas A-Z, 0-9 e underscore
+    if not re.fullmatch(r"[A-Z0-9_]+", normalized):
+        raise ValueError("Invalid symbol")
+
+    # Localiza o arquivo via glob no diretório base (path NÃO derivado da
+    # entrada do usuário — elimina path injection por construção)
+    expected_name = f"prediction_{normalized}.json"
+    for p in PREDICTIONS_DIR.glob("prediction_*.json"):
+        if p.name == expected_name:
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except FileNotFoundError:
+                raise
+            except (OSError, json.JSONDecodeError) as e:
+                raise ValueError(f"Error reading file: {e}")
+
+    raise FileNotFoundError(expected_name)
+
+
+# ============================================================
+# ROTAS
+# ============================================================
+@app.get("/")
+def read_root():
+    return {"status": "online", "app": "XAU AI PRO API", "version": "1.2.0"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/prediction/{symbol}")
+def get_prediction(symbol: str):
+    try:
+        return _read_prediction_file(symbol)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid symbol")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Prediction not found")
+
+
+@app.get("/predictions")
+def list_predictions():
+    out = []
+    for p in sorted(PREDICTIONS_DIR.glob("prediction_*.json")):
+        try:
+            out.append(json.loads(p.read_text(encoding="utf-8")))
+        except Exception:
+            continue
+    return out
+
+
+@app.get("/account")
+def get_account():
+    try:
+        conn = sqlite3.connect(str(DB_PATH))
+        c = conn.cursor()
+        c.execute("SELECT * FROM account WHERE id=1")
+        row = c.fetchone()
+        conn.close()
+        if row:
+            return {"login": row[0], "balance": row[1], "equity": row[2],
+                    "margin": row[3]}
+        return {"error": "Account not found"}
+    except Exception:
+        return {"error": "Database error"}
+
+
+@app.get("/market/live")
+def market_live(symbols: str = ""):
+    """Cota ao vivo dos simbolos PEDIDOS, ou dos configurados.
+
+    POR QUE A LISTA SUMIU
+    =====================
+    A rota tinha `symbols = ["XAUUSD", "BTCUSD", "ETHUSD", "EURUSD",
+    "GBPUSD", "USDJPY"]` fixo. Tres problemas, todos do mesmo tipo:
+
+    1. **Presumia os ativos do operador.** Quem opera NIKKEI ou PETROLEIO
+       recebia cotacao de seis pares que nao pediu.
+    2. **Esqueceria silenciosamente.** Um par novo nao aparecia, sem erro.
+    3. **Contradizia o AGENTS.md**: "nenhum simbolo pode ser presumido".
+
+    Agora a lista vem do chamador (`?symbols=A,B`) ou da configuracao do
+    operador. Sem os dois, a resposta e recusa com motivo — e nao seis pares
+    inventados.
+    """
+    m = _market()
+    if m is None:
+        raise HTTPException(status_code=503, detail="Market provider unavailable")
+
+    pedidos = [s.strip().upper() for s in (symbols or "").split(",") if s.strip()]
+    if not pedidos:
+        configurados = _simbolos_configurados()
+        if not configurados:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "nenhum simbolo informado e nenhum configurado. "
+                    "informe ?symbols=XAUUSD,EURUSD ou configure em Configuracoes > Mercado"
+                ),
+            )
+        pedidos = configurados
+
+    quotes = m.get_many(pedidos)
+    return {"count": len(quotes), "symbols": pedidos, "quotes": quotes}
+
+
+def _simbolos_configurados() -> list[str]:
+    """Simbolos que o OPERADOR configurou. Vazio e honesto, nunca um default."""
+    try:
+        from app.config_manager import get_config
+
+        lista = get_config().get("market", "symbols", default=[]) or []
+        return [str(s).strip().upper() for s in lista if str(s).strip()]
+    except Exception:
+        return []
+
+
+@app.get("/market/live/{symbol}")
+def market_live_symbol(symbol: str):
+    m = _market()
+    if m is None:
+        raise HTTPException(status_code=503, detail="Market provider unavailable")
+    q = m.get_quote(symbol)
+    if not q:
+        raise HTTPException(status_code=404, detail="No quote available")
+    return q
+
+
+@app.post("/login")
+def login(body: LoginBody):
+    if cs is None:
+        raise HTTPException(status_code=500, detail="auth disabled")
+    if cs.authenticate(body.username, body.password):
+        cs.set_session(body.username)
+        return {"ok": True, "user": body.username}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+@app.post("/train")
+def train():
+    r = subprocess.run([_py(), "train.py"], cwd=str(PY_DIR),
+                       capture_output=True, text=True, timeout=1800)
+    return {"ok": r.returncode == 0, "returncode": r.returncode,
+            "output": (r.stdout or "")[-1500:], "error": (r.stderr or "")[-500:]}
+
+
+@app.post("/predict")
+def predict():
+    r = subprocess.run([_py(), "predict.py"], cwd=str(PY_DIR),
+                       capture_output=True, text=True, timeout=1800)
+    return {"ok": r.returncode == 0, "returncode": r.returncode,
+            "output": (r.stdout or "")[-1500:], "error": (r.stderr or "")[-500:]}
+
+
+if __name__ == "__main__":
+    uvicorn.run(
+        app,
+        host=os.getenv("XAU_AI_PRO_API_HOST", "127.0.0.1"),
+        port=int(os.getenv("XAU_AI_PRO_API_PORT", "8000")),
+    )
