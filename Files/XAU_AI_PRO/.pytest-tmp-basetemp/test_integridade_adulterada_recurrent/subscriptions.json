@@ -1,1 +1,0 @@
-{"version": 2, "users": {"user-1": {"plan_id": "vips", "status": "local_active", "source": "local", "activated_at": "2026-10-26T01:00:17.192Z", "expires_at": null, "billing": "not_configured"}}, "updated_at": "2026-10-26T01:00:17.194Z", "integrity_sha256": "8966793dff2720ee57646d8fa77a906ef73f933e5e9250fdf9e01b0b1a03dbd0"}
