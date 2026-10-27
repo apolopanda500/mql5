@@ -1,0 +1,4 @@
+; XAU_AI_PRO v1.3 - TESTE B (NOVA ESTRATEGIA)
+; SignalCore v1.3: EMA + ADX + Breakout (H1 tendencia/M5 breakout)
+; Usado no protocolo A/B (Etapa 8) - compara so a geracao de sinal
+XAU_UseNewStrategy=true||true||0||1||N

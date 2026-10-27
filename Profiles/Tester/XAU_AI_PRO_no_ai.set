@@ -1,0 +1,14 @@
+EnableAIFilter=0
+RequireAIJSON=0
+EnableTelemetry=0
+EnableDashboard=0
+EnableBacktestLog=1
+EnableLogs=1
+DebugTradeDecision=1
+AutoTrade=1
+UseRiskManagement=1
+MaxOpenPositions=5
+MaxTradesPerDay=20
+RiskPercent=1.0
+StopLossPoints=300
+TakeProfitPoints=600

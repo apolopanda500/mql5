@@ -1,0 +1,5 @@
+;TESTE_C - nova entrada + IA (conf 60)
+XAU_UseNewStrategy=true
+EnableAIFilter=true
+RequireAIJSON=false
+MinAIConfidence=60.0

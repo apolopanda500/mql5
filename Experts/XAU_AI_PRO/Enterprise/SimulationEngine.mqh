@@ -1,7 +1,7 @@
 ﻿//+------------------------------------------------------------------+
 //|                                             SimulationEngine.mqh |
 //|                                  Pre-Execution Simulation        |
-//|                                            XAU_AI_PRO v1.2.1     |
+//|                                            XAU_AI_PRO v1.2.9     |
 //+------------------------------------------------------------------+
 
 #ifndef SIMULATION_ENGINE_MQH

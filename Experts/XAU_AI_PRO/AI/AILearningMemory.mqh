@@ -3,7 +3,7 @@
 #define AILEARNINGMEMORY_MQH
 
 //==================================================
-// AI LEARNING MEMORY v1.2.0
+// AI LEARNING MEMORY v1.2.9
 // XAU_AI_PRO ENTERPRISE
 //==================================================
 

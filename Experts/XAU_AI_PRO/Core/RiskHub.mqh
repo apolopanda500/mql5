@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.3.0 - RISK HUB (Etapa 3: hierarquia unica de risco)
+﻿// XAU_AI_PRO v1.3.0 - RISK HUB (Etapa 3: hierarquia unica de risco)
 #ifndef RISKHUB_MQH
 #define RISKHUB_MQH
 

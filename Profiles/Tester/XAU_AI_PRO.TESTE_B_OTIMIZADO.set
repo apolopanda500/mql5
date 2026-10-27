@@ -1,0 +1,8 @@
+;TESTE_B_OTIMIZADO - nova entrada (EMA+ADX+Breakout), IA off
+XAU_UseNewStrategy=true
+EnableAIFilter=false
+RequireAIJSON=false
+EnableBacktestLog=false
+EnableLogs=false
+DebugTradeDecision=false
+EnableBacktestAnalyzer=false

@@ -79,3 +79,10 @@ Files/XAU_AI_PRO_stats.csv
 Files/Common/
 Files/Data/*.json
 Files/Data/prediction.json  
+  
+# --- App XAU_AI_PRO: repo git aninhado (sincronizado em Files/XAU_AI_PRO/.git) ---  
+Files/XAU_AI_PRO/  
+  
+# --- Artefatos locais / screenshots ---  
+Files/*.png  
+Files/ChatGPT Image *.png  

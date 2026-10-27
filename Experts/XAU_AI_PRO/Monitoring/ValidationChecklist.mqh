@@ -6,7 +6,7 @@
 //| READY    = operacional                                          |
 //+------------------------------------------------------------------+
 #property copyright "XAU_AI_PRO"
-#property version   "1.20"
+#property version   "1.2.9"
 
 #ifndef VALIDATIONCHECKLIST_MQH
 #define VALIDATIONCHECKLIST_MQH
@@ -180,10 +180,14 @@ bool ValidationChecklistRun()
    if(ask > 0.0 && bid > 0.0 && point > 0.0)
    {
       double spreadPoints = (ask - bid) / point;
-      if(spreadPoints > GetMaxSpread())
+      // `GetMaxSpread()`, e nao o input cru `MaxSpread`: ver
+      // `Monitoring/ProductionChecklist.mqh` no mesmo ponto. O input virou
+      // porcentagem; quem converte para PONTOS e o getter.
+      double maxSpreadPts = GetMaxSpread();
+      if(spreadPoints > maxSpreadPts)
       {
          spreadOK = false;
-         spreadMsg = "Spread " + DoubleToString(spreadPoints, 1) + " > max " + DoubleToString(GetMaxSpread(), 1);
+         spreadMsg = "Spread " + DoubleToString(spreadPoints, 1) + " > max " + DoubleToString(maxSpreadPts, 1);
       }
    }
 

@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.9
 #ifndef SIGNALCORE_MQH
 #define SIGNALCORE_MQH
 
@@ -48,7 +48,7 @@ int GetSignal(string symbol)
    // Indicadores
    int emaFastHandle=iMA(
       symbol,
-      SignalTF,
+      PERIOD_CURRENT,
       FastEMA,
       0,
       MODE_EMA,
@@ -57,7 +57,7 @@ int GetSignal(string symbol)
 
    int emaSlowHandle=iMA(
       symbol,
-      SignalTF,
+      PERIOD_CURRENT,
       SlowEMA,
       0,
       MODE_EMA,
@@ -66,7 +66,7 @@ int GetSignal(string symbol)
 
    int signalRSIHandle=iRSI(
       symbol,
-      SignalTF,
+      PERIOD_CURRENT,
       RSIPeriod,
       PRICE_CLOSE
    );

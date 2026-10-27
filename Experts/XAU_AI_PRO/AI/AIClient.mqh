@@ -10,7 +10,7 @@
 #include "../AI/AdaptiveWeights.mqh"
 
 //==================================================
-// AI CLIENT v1.2.0
+// AI CLIENT v1.2.9
 //==================================================
 
 bool g_AIConnected=false;

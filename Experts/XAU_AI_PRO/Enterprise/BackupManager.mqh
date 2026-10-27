@@ -1,9 +1,15 @@
 //+------------------------------------------------------------------+
 //|                                               BackupManager.mqh  |
 //|                                  Backup Manager System v2.0      |
-//|                                            XAU_AI_PRO v1.2.0     |
+//|                                            XAU_AI_PRO v1.2.9     |
 //+------------------------------------------------------------------+
 // ETAPA 7 - DATA RECOVERY & BACKUP
+//
+// `VersionManager` entra AQUI, e nao so pelo `.mq5`: o manifesto do backup
+// grava a versao do EA e este arquivo e incluido (linha 162 do `.mq5`) ANTES
+// do `VersionManager` (linha 166). Sem este include, `EA_VERSION_STRING` nao
+// existe neste ponto e a compilacao falha com `error 256`.
+// O `#ifndef` do VersionManager torna a segunda inclusao um no-op.
 //
 // Correcoes vs v1:
 //  1. WILDCARDS: FileCopy() NAO expande *.set/*.json/*.db/*.log.
@@ -26,6 +32,8 @@
 //  7. LIMPEZA: CleanupOldBackups() remove snapshots antigos
 //     mantendo apenas BackupMaxKeep, recursivamente.
 //+------------------------------------------------------------------+
+
+#include "VersionManager.mqh"   // EA_VERSION_STRING (fonte unica da versao)
 
 #ifndef BACKUP_MANAGER_MQH
 #define BACKUP_MANAGER_MQH
@@ -211,20 +219,11 @@ int CBackupManager::ExpandPattern(
    string itemName
 )
 {
-   // MEDIDO em 08/10/2026 22:14: `[BACKUP] Backup com problemas |
-   // copiados=64 | falhas=44`, com 44 linhas `[BACKUP] Origem nao encontrada:`
-   // e o CAMINHO VAZIO depois dos dois pontos.
-   //
-   // Esta funcao escrevia sempre a partir de `out[0]` e nao aceitava indice
-   // inicial. O chamador a usava DUAS vezes no mesmo array — uma para
-   // FILE_COMMON e outra para LOCAL — e somava os retornos em `found`. A
-   // segunda chamada sobrescrevia a primeira, e `found` contava as duas: 44 do
-   // COMMON + 64 do LOCAL = 108 posicoas percorridas, com so 64 preenchidas.
-   // As 44 restantes eram lixo de execucao anterior, com `origPath` vazio — e
-   // e por isso que a mensagem saia sem caminho nenhum.
-   //
-   // Agora `start` e o indice inicial e o retorno e a QUANTIDADE encontrada, de
-   // modo que o `found +=` do chamador continua correto.
+   // MEDIDO em 08/10/2026 22:14: copiados=64 | falhas=44 com caminho vazio.
+   // A funcao escrevia sempre a partir de out[0] e nao aceitava indice inicial;
+   // o chamador a usava duas vezes no mesmo array e somava os retornos, entao a
+   // segunda sobrescrevia a primeira e o laco lia lixo. Agora `start` e o indice
+   // inicial e o retorno e a quantidade encontrada.
    int count = start;
 
    int last = LastIndexOf(pattern, '\\');
@@ -442,7 +441,12 @@ bool CBackupManager::WriteManifest(
    FileWrite(h, "#XAU_AI_PRO_BACKUP_MANIFEST|v2");
    FileWrite(h, "created|" + TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS));
    FileWrite(h, "snapshot|" + timestamp);
-   FileWrite(h, "ea|XAU_AI_PRO v1.2.0");
+   // Versao do EA gravada no manifesto do backup. Usa a MESMA fonte do
+// `VersionManager` (`EA_VERSION_STRING`) em vez de um literal solto: dois
+// literais independentes divergem, e este aparecia como "v1.2.0" em um backup
+// cujo produto era 1.2.4. O campo e lido na restauracao, entao a divergencia
+// nao era visivel na tela — so no arquivo.
+FileWrite(h, "ea|XAU_AI_PRO v" + EA_VERSION_STRING);
    FileWrite(h, "files|" + IntegerToString(m_recordCount));
 
    for(int i = 0; i < m_recordCount; i++)
@@ -878,9 +882,8 @@ bool CBackupManager::RunBackup()
 
    bool all_ok = true;
 
-   // Total de entradas sem caminho, somadas de todos os itens. Vira um campo
-   // do relatorio: se reaparecer, o numero diz que a lista voltou a vir
-   // suja, sem precisar caçar as linhas "[BACKUP] Origem nao encontrada:".
+   // Total de entradas sem caminho: se reaparecer no relatorio, a lista voltou
+   // a vir suja.
    int sem_caminho_total = 0;
 
    for(int i = 0; i < m_item_count; i++)
@@ -893,9 +896,8 @@ bool CBackupManager::RunBackup()
 
       int found = 0;
 
-      // Procura nos DOIS roots: COMMON e LOCAL.
-      // `found` e o indice inicial de cada chamada: a segunda ANEXA depois da
-      // primeira. Sem isso ela sobrescrevia, e o laço seguinte lia lixo.
+      // Procura nos DOIS roots: COMMON e LOCAL. `found` e o indice inicial de
+      // cada chamada: a segunda ANEXA depois da primeira.
       found += ExpandPattern(
          m_items[i].path,
          FILE_COMMON,
@@ -928,10 +930,6 @@ bool CBackupManager::RunBackup()
 
       int seq = 0;
 
-      // Visto em 08/10/2026 22:14: `falhas=44` com caminho vazio na mensagem.
-      // Agora uma entrada sem caminho e contada e dita, em vez de virar uma
-      // copia de string vazia com erro sem caminho — que e o que fez o operador
-      // procurar arquivo faltando em vez de indice faltando.
       int sem_caminho = 0;
 
       for(int j = 0; j < found; j++)

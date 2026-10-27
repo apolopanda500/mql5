@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.9
 #ifndef EXECUTIONENGINE_MQH
 #define EXECUTIONENGINE_MQH
 
@@ -6,6 +6,7 @@
 #include "../Core/StateMachine.mqh"   // v1.4.0 (Etapa 4): StateSet/STATE_*
 #include "../Core/OrderManager.mqh"
 #include "../Core/RiskEngine.mqh"
+#include "../Core/RiskCenter.mqh"       // ETAPA 15.5: gate unificado de risco
 #include "../Core/PositionManager.mqh"
 #include "../Core/TradeController.mqh"
 #include "../Core/SymbolValidator.mqh"
@@ -45,16 +46,42 @@ bool ExecuteTrade(string symbol,int signal)
       return false;
    }
 
-   // v1.4.0 (Etapa 4): risco verificado
-   StateSet(symbol, STATE_RISK_CHECK);
+    // v1.4.0 (Etapa 4): risco verificado
+    StateSet(symbol, STATE_RISK_CHECK);
 
-   // Verificar limite diario
-   if(!CanTradeToday())
-   {
-      Print("EXECUTION: Limite diario atingido");
-      EventRiskBlock(symbol, "limite diario de trades atingido");
-      return false;
-   }
+    // Verificar limite diario
+    if(!CanTradeToday())
+    {
+       Print("EXECUTION: Limite diario atingido");
+       EventRiskBlock(symbol, "limite diario de trades atingido");
+       return false;
+    }
+
+    //==================================================
+    // RISK CENTER — GATE UNIFICADO (ETAPA 15.5)
+    //==================================================
+    // RiskCenter.mqh existia mas NAO era chamado no fluxo
+    // de execução. As checagens eram feitas de forma
+    // espalhada: CanTradeToday() aqui, CSafetyManager::
+    // CheckAll() no OnTick, EquityProtection no OnTick.
+    //
+    // Agora o RiskCenter é o gate ÚNICO e OBRIGATÓRIO
+    // para novas entradas. Ele consolida em ordem
+    // determinística:
+    //   1. DAILY_LOSS      — perda diária vs limite
+    //   2. DAILY_DRAWDOWN  — drawdown vs limite
+    //   3. MAX_TRADES_PER_DAY — contagem de trades
+    //   4. FREE_MARGIN     — margem livre mínima
+    //   5. TOTAL_EXPOSURE  — exposição total
+    //
+    // Fail-closed: se qualquer leitura falhar, bloqueia.
+    string riskReason = "";
+    if(!RiskAllowEntry(symbol, riskReason))
+    {
+       Print("EXECUTION: RISK CENTER BLOCK | ", symbol, " | Motivo=", riskReason);
+       EventRiskBlock(symbol, "RiskCenter bloqueou: " + riskReason);
+       return false;
+    }
 
    double lot=0.0;
 
@@ -167,38 +194,31 @@ bool ExecuteTrade(string symbol,int signal)
    {
       double slUSD = DistanciaPontosParaRiscoUSD(symbol, lot, RiskPerTradeUsd);
 
-      if(slUSD > 0.0)
+      // MEDIDO 23/10/2026: quando a distancia em dinheiro nao podia ser
+      // calculada, este bloco caia CALADO para os pontos do input. O risco
+      // configurado deixava de valer sem ninguem saber. "Nao sei" tem saida:
+      // bloqueia e diz o motivo.
+      if(slUSD <= 0.0)
       {
-         slPontos = slUSD;
-         tpPontos = DistanciaPontosParaRiscoUSD(
-            symbol,
-            lot,
-            RiskPerTradeUsd * RewardRatio
-         );
-
-         // Alvo em dinheiro sem alvo em pontos e um alvo que nao existe.
-         if(tpPontos <= 0.0)
-            tpPontos = 0.0;
+         Print("EXECUTION: BLOQUEADA | ", symbol,
+               " | risco em US$ configurado mas a distancia em pontos nao pode ser calculada",
+               " | tick_value=", DoubleToString(SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE), 5),
+               " | tick_size=", DoubleToString(SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE), 5),
+               " | point=", DoubleToString(SymbolInfoDouble(symbol, SYMBOL_POINT), 5));
+         EventTradeRejected(symbol, "distancia de risco nao calculavel", "RISK_DISTANCE_UNKNOWN");
+         return false;
       }
-   }
 
-   //----------------------------------------------
-   // SEM STOP a partir de um lote (decisao do dono)
-   //----------------------------------------------
-   // Log alto e explicito de proposito: sem stop, o limite diario de 5% BLOQUEIA
-   // operacoes novas mas nao mexe na que ja esta aberta. Quem ler isto no
-   // journal tem de ver que e decisao configurada, nao falha.
-   if(NoStopFromLot > 0.0 && lot >= NoStopFromLot)
-   {
-      slPontos = 0.0;
-
-      PrintFormat(
-         "[RISCO] SEM STOP | %s | lote %.2f >= NoStopFromLot %.2f | alvo em %.0f pontos",
+      slPontos = slUSD;
+      tpPontos = DistanciaPontosParaRiscoUSD(
          symbol,
          lot,
-         NoStopFromLot,
-         tpPontos
+         RiskPerTradeUsd * RewardRatio
       );
+
+      // Alvo em dinheiro sem alvo em pontos e um alvo que nao existe.
+      if(tpPontos <= 0.0)
+         tpPontos = 0.0;
    }
 
    if(signal == 1) // BUY
@@ -227,6 +247,45 @@ bool ExecuteTrade(string symbol,int signal)
    {
       return false;
    }
+
+   //==================================================
+   // RISCO EM DINHEIRO x ORCAMENTO DO DIA (23/10/2026)
+   //==================================================
+   // O risco desta entrada e comparado com o orcamento que o proprio sistema
+   // usa para parar (`MaxDailyLossPercent` do saldo). Sem esta comparacao, um
+   // `RiskPerTradeUsd` maior que o orcamento faz UMA operacao estourar o dia.
+   double riscoUSD = RiscoEmDinheiroDaOrdem(symbol, lot, slPontos);
+   string motivoOrcamento = "";
+
+   if(!RiscoCabeNoOrcamento(riscoUSD, motivoOrcamento))
+   {
+      Print("EXECUTION: RISCO BLOQUEADO | ", symbol, " | ", motivoOrcamento);
+      EventRiskBlock(symbol, motivoOrcamento);
+      return false;
+   }
+
+   //==================================================
+   // STOP LOSS OBRIGATORIO (05/10/2026)
+   //==================================================
+   // MEDIDO na conta real 391773676: posicao aberta no MT5 com `sl = 0.0`
+   // e TP 86.584,30. Sem protecao, uma queda de 2% no BTCUSD levava o
+   // equity de 11,63 para -5,65 — STOP OUT, nao apenas perda.
+   //
+   // As linhas acima so calculam o SL quando `StopLossPoints > 0`. Com zero,
+   // `req.sl` fica 0.0 e a ordem SAI MESMO ASSIM. O backend ja recusava
+   // ("Stop Loss calculou zero", `auto_engine.py`); o EA nao recusava.
+   // Essa era a diferenca entre os dois caminhos de ordem.
+   //
+   // A ordem do teste importa: `req.sl <= 0` cobre os dois casos, o SL
+   // desligado E o SL calculado em zero por falta de espaco de preco.
+   if(RequireStopLoss && req.sl <= 0.0)
+     {
+      Print("EXECUTION: BLOQUEADA | ", symbol,
+            " | stop loss obrigatorio e o SL calculado e ",
+            DoubleToString(req.sl, (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS)),
+            " | ative StopLossPoints>0 ou desmarque RequireStopLoss");
+      return false;
+     }
 
    if(req.price <= 0.0)
    {
@@ -317,16 +376,69 @@ bool ExecuteTrade(string symbol,int signal)
    }
    else
    {
+      // O `retcode` e o unico campo que diz POR QUE o broker recusou. Sem
+      // ele, os 4.246 BROKER_ERROR do forward test tinham uma unica mensagem
+      // ("Erro de broker") e a taxa de 3,4 erros por ciclo nao era
+      // diagnosticavel: sabia-se que falhou, nunca por que.
+      //
+      // Os dois codigos sao necessarios e significam coisas diferentes:
+      // `retcode` vem do SERVIDOR do broker (10004 = requote, 10006 =
+      // rejeitado) e `GetLastError()` vem da API local (134 = sem margem,
+      // 4108 = ordem invalida). O servidor pode recusar por politica
+      // enquanto a API estava correta.
+      //
+      // COMO PEGAR O retcode (03/10/2026)
+      // ----------------------------------
+      // `OrderSendResult()` NAO EXISTE em MQL5 — nao e funcao da linguagem e
+      // nao de `Trade.mqh`. A linha `uint erroBroker = (uint)OrderSendResult();`
+      // foi introduzida no commit dbdce10 e nunca compilou:
+      //
+      //   ExecutionEngine.mqh(278,31) : error 256: undeclared identifier 'OrderSendResult'
+      //   Result: 2 errors, 3 warnings
+      //
+      // Nao havia `.ex5` no repositorio para revelar isso: o EA estava
+      // quebrado desde entao e a suite Python nao compila MQL5.
+      //
+      // A forma correta neste ponto do codigo e `GetLastError()`. O
+      // `MqlTradeResult` com o `retcode` do servidor vive dentro de
+      // `CSmartExecution::ExecuteOrder`, que e `private`; o `ExecResult`
+      // devolvido por `OpenPosition` aqui e um enum local que nao carrega o
+      // retcode. Entao este ponto registra o codigo da API, que e 134 =
+      // "Not enough money" — exatamente o `EXEC_NO_MARGIN` medido.
+      int  erroApi = GetLastError();
+
+      // O `EXEC_NO_MARGIN` mapeia para o erro 134 da API do MT5
+      // (TRADE_RETCODE_ERROR / ERROR_TRADE_NOT_ENOUGH_MONEY). Traduzir aqui
+      // deixa o log do broker legivel sem inventar um retcode de servidor.
+      string causaBroker;
+      if(execResult == EXEC_NO_MARGIN)
+         causaBroker = StringFormat(
+            "margem insuficiente (erro_api=%d, sem_margem=%d)",
+            erroApi, 134);
+      else if(execResult == EXEC_SPREAD_TOO_HIGH)
+         causaBroker = StringFormat("spread alto demais (erro_api=%d)", erroApi);
+      else
+         causaBroker = StringFormat("erro_api=%d", erroApi);
+
+      string motivo = causaBroker;
+
       Print(
          "ERRO EXECUCAO | ",
          symbol,
          " | Signal=",
          signal,
          " | Result=",
-         EnumToString(execResult)
+         EnumToString(execResult),
+         " | CAUSA=",
+         motivo,
+         " | ERRO_API=",
+         erroApi
       );
 
-      EventBrokerError(EnumToString(execResult));
+      // A causa vai no campo `reason`, que e o que o log e a tela leem. Era
+      // aqui que a informacao se perdia: o evento saia com o motivo vazio
+      // e o forward test so conseguia contar falhas, nunca explica-las.
+      EventBrokerError(EnumToString(execResult) + " | " + motivo);
 
       return false;
    }

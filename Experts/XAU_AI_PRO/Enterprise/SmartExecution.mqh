@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                              SmartExecution.mqh |
 //|                                  Smart Execution Engine - Core   |
-//|                                            XAU_AI_PRO v1.2.0      |
+//|                                            XAU_AI_PRO v1.2.9      |
 //+------------------------------------------------------------------+
 
 #ifndef SMART_EXECUTION_MQH
@@ -37,10 +37,9 @@ enum ExecResult
    EXEC_SPREAD_TOO_HIGH,
    EXEC_NO_MARGIN,
    EXEC_INVALID_PRICE,
-   EXEC_PREPARE_FAILED,      // PrepareRequest nao montou a request
-   EXEC_BROKER_REJECT,       // COrderRetry falhou (retry_res != RETRY_SUCCESS)
-   EXEC_LOOP_DETECTED,       // guard inter-instancia bloqueou (nome historico mantido)
-   EXEC_ERROR                // fallback generico (uso restrito)
+   EXEC_RETRY_FAILED,
+   EXEC_LOOP_DETECTED,
+   EXEC_ERROR
 };
 
 
@@ -278,7 +277,7 @@ ExecResult CSmartExecution::ValidateExecution(
 )
 {
    if(exec_req.symbol=="")
-      return EXEC_PREPARE_FAILED;
+      return EXEC_ERROR;
 
 
    if(
@@ -442,7 +441,7 @@ ExecResult CSmartExecution::ExecuteOrder(
       )
    )
    {
-      return EXEC_PREPARE_FAILED;
+      return EXEC_ERROR;
    }
 
 
@@ -507,16 +506,7 @@ ExecResult CSmartExecution::ExecuteOrder(
    );
 
 
-   PrintFormat(
-      "[EXECUTION] BROKER_REJECT | %s | retry=%s | retcode=%u | error=%d | comment=%s",
-      exec_req.symbol,
-      COrderRetry::GetRetryResultString(retry_res),
-      result.retcode,
-      COrderRetry::GetLastErrorCode(),
-      result.comment
-   );
-
-   return EXEC_BROKER_REJECT;
+   return EXEC_RETRY_FAILED;
 }
 
 
@@ -810,7 +800,7 @@ ExecResult CSmartExecution::ClosePosition(
    }
 
 
-   return EXEC_ERROR;
+   return EXEC_RETRY_FAILED;
 }
 
 
@@ -1066,15 +1056,9 @@ void CSmartExecution::LogExecution(
          break;
 
 
-      case EXEC_PREPARE_FAILED:
+      case EXEC_RETRY_FAILED:
          resultString=
-            "PREPARE_FAILED";
-         break;
-
-
-      case EXEC_BROKER_REJECT:
-         resultString=
-            "BROKER_REJECT";
+            "RETRY_FAILED";
          break;
 
 
@@ -1109,14 +1093,12 @@ void CSmartExecution::LogExecution(
    else
    {
       PrintFormat(
-         "[EXECUTION] %s %.2f %s @ %.5f | FAILED: %s | retcode=%u | comment=%s",
+         "[EXECUTION] %s %.2f %s @ %.5f | FAILED: %s",
          type,
          req.volume,
          req.symbol,
          req.price,
-         resultString,
-         result.retcode,
-         result.comment
+         resultString
       );
    }
 }

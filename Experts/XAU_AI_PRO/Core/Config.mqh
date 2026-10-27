@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0
+// XAU_AI_PRO v1.2.9
 #ifndef CONFIG_MQH
 #define CONFIG_MQH
 
@@ -8,6 +8,45 @@
 input bool   AutoTrade          = true;
 input long   MagicNumber        = 2026001;
 input string TradeComment       = "XAU_AI_PRO";
+
+//==================================================
+// FONTE DA IA
+//==================================================
+// `AIConnector.mqh` Historically lia `Data\prediction_<SIMBOLO>.json`. Medido em
+// 05/10/2026: essa pasta NAO EXISTE na maquina — o backend responde por HTTP e
+// nunca escreve arquivo. Resultado: o EA rodava sem sinal nenhum, e nao havia
+// log de erro porque a ausencia de arquivo e um caminho previsto.
+//
+// AIUseGateway=true passa a chamar o proprio backend, que e a FONTE DE VERDADE
+// dos 25 modelos publicados. O arquivo continua disponivel como fallback: se o
+// gateway estiver fora do ar, `AIUseGateway` volta a true sozinho no proximo
+// ciclo, e o arquivo so e lido se a tentativa HTTP falhar.
+//
+// A URL tem que estar AUTORIZADA em
+// Ferramentas > Opcoes > Expert Advisors > "Allow WebRequest for listed URL".
+// Sem isso o MT5 devolve -401 e o EA registra "gateway recusou" uma vez por
+// minuto no log — e segue operando pela leitura de arquivo.
+input bool   AIUseGateway       = true;
+input string AIGatewayUrl       = "http://127.0.0.1:9001/api/ai/predict";
+input string AIGatewayToken     = "";
+// Segundos entre uma consulta e outra. 15 s alinha com o ciclo do motor e com
+// a leitura de latencia: mais rapido e consumo sem ganho, mais lento e o EA
+// age sobre previsao velha.
+input int    AIPollSeconds      = 15;
+// Tempo maximo de espera da resposta HTTP.
+//
+// MEDIDO em 05/10/2026, nos 25 modelos validados pela rota real:
+//   primeiro acesso ao par   2096 ms   (carrega o `.pkl` do disco)
+//   acesso seguinte          144 ms   (o `_CACHE` do backend segura)
+//   pior caso no lote        450 ms   (apos o cache aquecer)
+//
+// O limite e 15 s, e nao 5: em disco frio o carregamento do artefato passa de
+// 2 s, e um timeout curto faria o EA cair no fallback de arquivo — que tambem
+// nao existe — justamente na primeira consulta, que e a que importa.
+//
+// NINGUM TIMEOUT PODE SER MENOR QUE O CUSTO REAL. Cortar o tempo para "ir
+// mais rapido" troca um sinal atrasado por um sinal ausente.
+input int    AIRequestTimeoutMs = 15000;
 
 //==================================================
 // RISCO
@@ -178,7 +217,7 @@ input int StopLossPoints        = 300;
 input int TakeProfitPoints      = 600;
 
 //----------------------------------------------
-// Risco por operacao em DINHEIRO (decisao do dono, 08/10/2026)
+// RISCO por operacao em DINHEIRO (decisao do dono, 08/10/2026)
 //----------------------------------------------
 // MEDIDO na conta 391773676: `StopLossPoints=300` e PONTOS CRUOS, e ponto nao
 // e dinheiro. No GOLD (point 0,01) dava US$ 3,00; no EURUSD (point 0,00001)
@@ -197,38 +236,6 @@ input int TakeProfitPoints      = 600;
 input double RiskPerTradeUsd     = 2.0;   // risco do STOP por operacao, em moeda da conta
 input double RewardRatio         = 1.0;   // alvo = risco x isto. 1.0 = 1:1
 
-//----------------------------------------------
-// SEM STOP a partir de um LOTE (decisao do dono, 08/10/2026)
-//----------------------------------------------
-// "apartir de 0.4 nao tem stop, alvos curtos". Implementado como pedido, com o
-// numero que o dono escolheu — nao troquei por um que coubesse na conta.
-//
-// MEDIDO 08/10/2026 na conta 391773676 (balance 12,13, margem livre 15,48):
-// 0,4 de lote NAO ABRE. Exige 165,91 no GOLD, 44,87 no EURUSD, 32,72 no
-// BTCUSD. O maior lote que passa e 0,05. Portanto ESTA REGRA NAO DISPARA HOJE:
-// ela so acende se a conta for funded. E por isso que o log abaixo e alto e
-// explicito — quem ler um "sem stop" no journal tem de saber que e uma
-// decisao configured, nao um bug.
-//
-// AVISO DE RISCO, medido e nao teorico: sem stop, uma vela M5 tipica de 0,2
-// lote no EURUSD move US$ 6,20 = 51% do balance, e o p90 de 24h move US$ 13,00
-// = 107%. O limite diario de 5% (US$ 0,61) BLOQUEIA OPERACOES NOVAS, mas nao
-// fecha nem limita a que ja esta aberta. Sem stop, a posicao nao tem teto.
-input double NoStopFromLot      = 0.4;   // >= este lote: abrir SEM stop loss
-
-//----------------------------------------------
-// Gatilhos de gestao em DINHEIRO (mesma doenca dos pontos crus)
-//----------------------------------------------
-// MEDIDO 08/10/2026: com SL e TP em dolares, `PartialTrigger`, `BreakEvenTrigger`
-// e `BreakEvenOffset` continuaram em PONTOS, e pararam de ter relacao com o
-// risco. 150 pontos num trade de US$ 2 e 75% do alvo; no BTCUSD, 150 pontos e
-// 1,5% do alvo. Terceira vez que a mesma doenca aparece (spread, SL/TP, agora
-// os gatilhos). Todos em dolar, com os inputs em pontos como caminho de fuga
-// quando o valor em dollar for <= 0, para nenhum controle ficar sem consumidor.
-input double PartialTriggerUsd  = 2.0;   // lucro flutuante que dispara o fechamento parcial
-input double BreakEvenTriggerUsd = 1.0;  // lucro flutuante que arma o break-even
-input double BreakEvenOffsetUsd = 0.1;   // quanto o SL passa do preco de entrada
-
 //==================================================
 // BREAK EVEN
 //==================================================
@@ -245,9 +252,47 @@ input double ATRMultiplier      = 1.2;
 //==================================================
 // PARCIAL
 //==================================================
+// `PartialTrigger` esta em PONTOS do input original. MEDIDO 05/10/2026: 150
+// pontos e 0,17% no BTCUSD (86.439) e 1,5% no EURUSD (1,125) — a mesma
+// configuracao e uma distancia智能 em um ativo e colada em outro. E a mesma
+// armadilha do `XAUUSD`/`GOLD`: o numero e o mesmo, o significado nao.
+//
+// `PartialTriggerInATR=true` passa a medir em MULTIPLOS DE ATR, que e a
+// unica escala que significa a mesma coisa em metais, forex e cripto.
+// `false` mantem o comportamento antigo em pontos.
 input bool   EnablePartialClose = true;
 input int    PartialTrigger     = 150;
 input double PartialPercent     = 30.0;
+input bool   PartialTriggerInATR = true;
+// Quando `PartialTriggerInATR`, este e o multiplicador de ATR que substitui
+// `PartialTrigger`. 1,0 = fecha a parte quando o preco percorre 1 ATR a
+// favor. Medido: em BTCUSD (ATR ~2.500) isso e 1 ATR; em EURUSD (ATR ~0,006)
+// e 0,006 — a mesma leitura de volatilidade, nao a mesma distancia bruta.
+input double PartialTriggerATRMult = 1.0;
+
+//==================================================
+// TP QUE SO APROXIMA (05/10/2026)
+//==================================================
+// MEDIDO: o SL se movia (`TrailingStopATR`), o parcial fechava
+// (`PartialClose`), mas o TP NUNCA se mexia. O alvo ficava no numero original
+// enquanto o preco ia e voltava — e o "quase la e voltou" que o operador
+//relsse ao vivo na conta real.
+//
+// POR QUE SO APROXIMA, E NAO PERSEGUE
+// ------------------------------------
+// Se o TP perseguisse o preco como o SL, uma oscilacao contra moveria os DOIS
+// para baixo, e o alvo que estava quase alcancado se afastaria junto. Com
+// `ApproximatesOnly`, o TP so chega mais perto: um degrau que ja foi
+// alcancado nunca recua. O preco pode ter recuperado, mas o alvo continua
+// valendo — e um alvo que recua deixa de ser alvo.
+input bool   EnableDynamicTP     = true;
+// Multiplos de ATR que o TP avanca a cada vez. 0,5 = passos curtos e
+// frequentes (mais modificacoes); 2,0 = passos largos e raros.
+input double TPAproxStepATRMult  = 1.0;
+// Fração do caminho ate o TP original que o TP pode ter andado. 1.0 = pode
+// chegar no alvo original. Abaixo disso, para antes — util quando o alvo
+// original era longe demais.
+input double TPAproxMaxFraction  = 1.0;
 
 //==================================================
 // FILTROS
@@ -281,6 +326,47 @@ input int    NewsMinutesAfter      = 30;
 //==================================================
 input double MinAIConfidence    = 50.0;
 
+//----------------------------------------------
+// IA AUSENTE x CONFIANCA (23/10/2026)
+//----------------------------------------------
+// MEDIDO: quando o gateway nao responde, `GetAIConfidence` caia no fallback
+// local e devolvia ate 85 (50 de base + 15 tendencia + 10 RSI + 10 ADX). Com
+// 85 o multiplicador de lote era 1,00 e o filtro de IA (piso 50) passava sem
+// nenhuma IA existir. O painel dizia "IA", o numero vinha dos indicadores.
+//
+// `AllowTradeWithoutAI=false` (padrao) faz a ausencia de IA ser MOTIVO DE
+// BLOQUEIO para novas entradas: a IA veta, e sem ela nao ha veto — logo nao
+// ha entrada. Posicoes ja abertas continuam sendo geridas normalmente.
+//
+// `true` existe para o Strategy Tester, onde o pipeline Python nao roda.
+// Nesse modo o fallback e CAPADO em `AIUnavailableConfidenceCap`, para que o
+// numero nao volte a mentir sobre a existencia de uma IA.
+input bool   AllowTradeWithoutAI           = false;
+input double AIUnavailableConfidenceCap    = 40.0;
+
+//==================================================
+// IA - AUTORIDADE DE SINAL (05/10/2026)
+//==================================================
+// MEDIDO em 05/10/2026: o `AIEngine` lia `AI_BuyProbability` e
+// `AI_SellProbability`, que o backend NAO publica — a rota
+// `/api/ai/predict` devolve `prob_buy`/`prob_sell` (0.0 no payload
+// canonico) e, sobretudo, um `signal` TEXTUAL ("BUY", "SELL",
+// "NEUTRAL", "STRONG_BUY"). O `AI_Signal` nunca era lido para decidir.
+//
+// Resultado: a IA era so veto e redutor de lote, e o sinal de compra e
+// venda vinha do tecnico (EMA+RSI). Ligando isto, a IA passa a DECIDIR —
+// que e o que o dono pediu ("a IA pode fazer tudo").
+//
+// false (padrao) = comportamento anterior: IA veta, tecnico decide. È a
+// opcao segura e a que estava valendo antes desta mudanca.
+input bool   AIHasSignalAuthority = false;
+
+// Minimo de score para a IA ASSUMIR a decisao, separado do veto.
+// `MinAIConfidence` e o piso do veto; este e o piso para mandar.
+// 75 = o mesmo valor que `GetCombinedSignal` ja usava para dar autoridade
+// a IA sobre o tecnico — o numero nao e novo, so passa a ter nome.
+input double AIAuthorityMinScore  = 75.0;
+
 //==================================================
 // IA - JSON (v1.2.0)
 //==================================================
@@ -291,7 +377,26 @@ input double MinAIConfidence    = 50.0;
 // nao roda dentro do Strategy Tester.
 // RequireAIJSON=true: exige o JSON do pipeline Python
 // para liberar o simbolo (modo producao estrito).
+//
+// MEDIDO 05/10/2026: com `false`, o EA opera MESMO SEM IA — que e o
+// oposto de "operar guiado por IA". Quem quer a IA no comando liga isto.
 input bool   RequireAIJSON      = false;
+
+//==================================================
+// RISCO - STOP LOSS OBRIGATORIO (05/10/2026)
+//==================================================
+// MEDIDO na conta real 391773676: uma posicao aberta no MT5 com
+// `sl = 0.0` e TP 86.584,30. Sem protecao, uma queda de 2% no BTCUSD
+// levava o equity de 11,63 para -5,65 — STOP OUT.
+//
+// O backend ja recusava ("Stop Loss calculou zero", `auto_engine.py`),
+// mas o EA nao: `ExecutionEngine.mqh` calculava o SL e, se o resultado
+// fosse 0, seguia com a ordem. Este input fecha essa diferenca.
+//
+// true = recusa ordem sem SL. Nao existe caso em que desligar seja
+// seguro com dinheiro real; existe para backtest, onde o SL as vezes e
+// calculado depois.
+input bool   RequireStopLoss     = true;
 
 //==================================================
 // IA - STALENESS (ETAPA 15.3)
@@ -324,7 +429,6 @@ input int TradeEndHour          = 24;
 //==================================================
 // INDICADORES
 //==================================================
-input ENUM_TIMEFRAMES SignalTF     = PERIOD_CURRENT;
 input int FastEMA               = 50;
 input int SlowEMA               = 200;
 
@@ -462,19 +566,29 @@ input string Symbols=
 //==================================================
 // RISCO EM DINHEIRO -> DISTANCIA EM PONTOS
 //==================================================
-// Definicao UNICA do "quanto de preco corresponde a N dolares de risco" para um
-// simbolo e um lote. `ExecutionEngine` e `OrderManager` consomem ISTA funcao.
+// Definicao UNICA do "quanto de preco corresponde a N dolares de risco" para
+// um simbolo e um lote. `ExecutionEngine` e `OrderManager` consomem ISTA funcao.
 //
 // Se cada um dividisse por conta propria, um deles acabaria com um numero e o
 // outro com outro — e o sintoma seria o mesmo que ja-investigamos: o cliente
 // lendo um nome e o servidor entregando outra medida.
 //
-// `distancia = risco_usd / (contrato x volume x point)`
-//
 // `SYMBOL_TRADE_CONTRACT_SIZE` e propriedade DOUBLE, nao enum inteiro: no MT5 o
 // tamanho de contrato pode ser fracionario, e o compilador rejeita com
 // "cannot convert enum" quando ele e pedido como `SymbolInfoInteger`. Medido
 // em 08/10/2026: e o primeiro erro que aparece ao compilar este trecho.
+//
+// MEDIDO em 23/10/2026: a formula antiga era `risco / (contrato x volume x
+// point)`, e ela so vale quando a moeda de COTACAO e a moeda da conta. Em
+// USDJPY (point 0,001, contrato 100.000, 0,01 lote) ela devolvia 2 pontos para
+// US$ 2,00 de risco — 0,2 pip, dentro do spread. O valor real de 1 ponto em
+// USDJPY e ~US$ 0,66 por lote, nao US$ 100,00; a razao e o proprio cambio
+// (100 / 0,66 = ~151x). USDJPY, USDSEK, USDCNH e USDBRL estao na lista padrao
+// de simbolos, entao o defeito abria stop colado no preco em 4 dos 11.
+//
+// A fonte correta e a ficha do simbolo: `TICK_VALUE` ja vem na MOEDA DA CONTA.
+// O fallback por contrato continua existindo, mas DEPOIS, e so quando a ficha
+// nao responde — nunca como primeira escolha.
 double DistanciaPontosParaRiscoUSD(
    string symbol,
    double volume,
@@ -484,13 +598,118 @@ double DistanciaPontosParaRiscoUSD(
    if(risco_usd <= 0.0 || volume <= 0.0)
       return(0.0);
 
-   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   double point    = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   double tickVal  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+
+   if(point <= 0.0)
+      return(0.0);
+
+   if(tickVal > 0.0 && tickSize > 0.0)
+   {
+      double valorPorPonto = (tickVal / tickSize) * point;
+
+      if(valorPorPonto <= 0.0)
+         return(0.0);
+
+      return(risco_usd / (valorPorPonto * volume));
+   }
+
    double contrato = SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE);
 
-   if(point <= 0.0 || contrato <= 0.0)
+   if(contrato <= 0.0)
       return(0.0);
 
    return(risco_usd / (contrato * volume * point));
+}
+
+//==================================================
+// ORCAMENTO DIARIO x RISCO POR OPERACAO
+//==================================================
+// `RiskPerTradeUsd` e um valor ABSOLUTO: ele nao acompanha o tamanho da conta.
+// Quando ele passa do orcamento do dia (`MaxDailyLossPercent` do saldo), UMA
+// operacao estoura o limite que o `SafetyManager` usa para parar de operar.
+//
+// MEDIDO em 08/10/2026: risco de US$ 3,00 contra orcamento de US$ 0,61 numa
+// conta de US$ 12,13. A correcao da epoca trocou o numero para US$ 2,00 e NAO
+// criou a comparacao — o defeito de escala continuou, so que menor.
+//
+// A trava compara os DOIS numeros que o sistema ja possui. `MaxTradeRiskPctOfBudget`
+// diz quanto do orcamento do dia uma unica entrada pode consumir (100 = o dia
+// inteiro; 50 = metade). Para desligar a comparacao, use um valor <= 0.
+input double MaxTradeRiskPctOfBudget = 100.0;
+
+double OrcamentoDiarioPerda()
+{
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+
+   if(balance <= 0.0 || MaxDailyLossPercent <= 0.0)
+      return(0.0);
+
+   return(balance * MaxDailyLossPercent / 100.0);
+}
+
+// Valor em dinheiro de uma distancia em PONTOS, para um lote. Mesma fonte da
+// distancia (TICK_VALUE/TICK_SIZE), no sentido inverso: quem dimensiona a
+// ordem e quem cobra o orcamento leem a MESMA unidade.
+double RiscoEmDinheiroDaOrdem(
+   string symbol,
+   double volume,
+   double pontos
+)
+{
+   if(volume <= 0.0 || pontos <= 0.0)
+      return(0.0);
+
+   double point    = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   double tickVal  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+   double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+
+   if(point <= 0.0 || tickVal <= 0.0 || tickSize <= 0.0)
+      return(0.0);
+
+   double valorPorPonto = (tickVal / tickSize) * point;
+
+   if(valorPorPonto <= 0.0)
+      return(0.0);
+
+   return(pontos * valorPorPonto * volume);
+}
+
+bool RiscoCabeNoOrcamento(double risco_usd, string &motivo)
+{
+   motivo = "";
+
+   if(risco_usd <= 0.0)
+   {
+      motivo = "risco por operacao invalido (0)";
+      return(false);
+   }
+
+   if(MaxTradeRiskPctOfBudget <= 0.0)
+      return(true);
+
+   double orcamento = OrcamentoDiarioPerda();
+
+   // Limite diario desligado (MaxDailyLossPercent <= 0): nao ha o que comparar.
+   if(orcamento <= 0.0)
+      return(true);
+
+   double teto = orcamento * MaxTradeRiskPctOfBudget / 100.0;
+
+   if(risco_usd > teto + 1e-8)
+   {
+      motivo = StringFormat(
+         "risco US$ %.2f > teto US$ %.2f (%.0f%% do orcamento diario %.2f%% de saldo %.2f)",
+         risco_usd,
+         teto,
+         MaxTradeRiskPctOfBudget,
+         MaxDailyLossPercent,
+         AccountInfoDouble(ACCOUNT_BALANCE));
+      return(false);
+   }
+
+   return(true);
 }
 
 //==================================================

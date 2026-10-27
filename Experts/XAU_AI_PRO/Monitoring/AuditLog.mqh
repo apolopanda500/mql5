@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.2
+// XAU_AI_PRO v1.2.9
 #ifndef AUDITLOG_MQH
 #define AUDITLOG_MQH
 

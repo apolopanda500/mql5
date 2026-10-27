@@ -1,0 +1,4 @@
+; XAU_AI_PRO v1.3 - TESTE A (BASELINE)
+; SignalCore legado: EMA + RSI pullback
+; Usado no protocolo A/B (Etapa 8) - compara so a geracao de sinal
+XAU_UseNewStrategy=false||true||0||1||N

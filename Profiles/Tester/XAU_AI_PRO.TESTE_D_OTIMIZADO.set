@@ -1,0 +1,18 @@
+;TESTE_D_OTIMIZADO - nova entrada + IA + gestao (BE/trailing/parcial)
+XAU_UseNewStrategy=true
+EnableAIFilter=true
+RequireAIJSON=false
+AIMinConfidence=60.0
+AIRequireDirection=true
+EnableBreakEven=true
+BreakEvenTrigger=80
+BreakEvenOffset=10
+EnableTrailingATR=true
+ATRMultiplier=1.0
+EnablePartialClose=true
+PartialTrigger=150
+PartialPercent=30.0
+EnableBacktestLog=false
+EnableLogs=false
+DebugTradeDecision=false
+EnableBacktestAnalyzer=false

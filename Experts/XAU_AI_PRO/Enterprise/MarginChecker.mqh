@@ -1,7 +1,7 @@
 //+------------------------------------------------------------------+
 //|                                               MarginChecker.mqh |
 //|                                  Smart Execution Engine - Margin |
-//|                                            XAU_AI_PRO v1.2.0       |
+//|                                            XAU_AI_PRO v1.2.9       |
 //+------------------------------------------------------------------+
 
 #ifndef MARGIN_CHECKER_MQH
@@ -10,18 +10,14 @@
 //==================================================
 // COOLDOWN — CONSTANTES
 //==================================================
-// Definidas AQUI, antes da classe, porque os arrays usam a constante no
-// proprio tamanho. Declarar depois da classe compila como array de tamanho
-// desconhecido e quebra em runtime.
+// Definidas AQUI, antes da classe, porque `m_symbol_names[MARGIN_COOLDOWN_MAX_SYMBOLS]`
+// usa a constante no proprio tamanho do array. Declarar depois da classe
+// compila como array de tamanho desconhecido e quebra em runtime.
 //
-// Medido no forward test (CSV UTF-16, 24/08 a 02/10): 4.165 `EXEC_NO_MARGIN`,
-// intervalo MEDIANO de 2 a 3 s entre recusas do mesmo simbolo, rajada de 4 no
-// mesmo segundo, 1.452 recusas so em 17/09. A trava de margem ja existia e
-// funcionava — recusava a ordem. O que faltava era PARAR de tentar: margem
-// esgotada so volta com swap, deposito ou fechamento de posicao.
-//
-// 60s e o piso (corta as rajadas de 2-3 s). Teto de 3600s evita ficar mudo a
-// noite inteira. 64 simbolos cobrem qualquer lista de pares do EA.
+// 60s e o piso: e o intervalo tipico de um ciclo de forward test e ja corta
+// as rajadas de 2-3s medidas. O teto de 3600s (1 h) evita que o sistema fique
+// mudo a noite inteira apos um pico de margem. 64 simbolos cobrem qualquer
+// lista de pares que o EA usa.
 #define MARGIN_COOLDOWN_BASE_SEC   60
 #define MARGIN_COOLDOWN_MAX_SEC 3600
 #define MARGIN_COOLDOWN_MAX_SYMBOLS 64
@@ -34,14 +30,43 @@ private:
    static double m_margin_level;
    static bool   m_initialized;
 
-   // COOLDOWN POR SIMBOLO. Estado do processo do EA: dois EAs com
-   // magics diferentes nao compartilham a mesma trava.
+   //--------------------------------------------------------------
+   // COOLDOWN APOS RECUSA POR MARGEM
+   //--------------------------------------------------------------
+   // Medido no forward test: 4.165 `EXEC_NO_MARGIN`, com intervalo MEDIO
+   // de 2 a 3 segundos entre duas tentativas do MESMO simbolo e rajada
+   // de 4 no mesmo segundo. Em 17/09 foram 1.452 bloqueios num dia.
+   //
+   // A trava de margem ja existia e funcionava: recusava a ordem. O que
+   // faltava era o sistema PARAR de TENTAR. Margem esgotada nao se
+   // resolve em 2 segundos — ela so volta com swap, deposito ou fechamento
+   // de posicao. Retentar e portanto trabalho garantidamente perdido, e o
+   // log de 1.452 eventos por dia esconde o sinal que importa.
+   //
+   // Agora: apos uma recusa, o simbolo fica bloqueado por
+   // `MARGIN_COOLDOWN_BASE_SEC`, dobrando a cada recusa ate
+   // `MARGIN_COOLDOWN_MAX_SEC`, porque margem esgotada costuma ser persistente
+   // e nao um pico passageiro.
+   //
+   // O bloqueio e POR SIMBOLO de proposito: conta sem margem para GBPUSD
+   // continua apta para um par cujo lote exija menos.
    static datetime m_cooldown_until[MARGIN_COOLDOWN_MAX_SYMBOLS];
    static int      m_consecutive_blocks[MARGIN_COOLDOWN_MAX_SYMBOLS];
-   static string   m_symbol_names[MARGIN_COOLDOWN_MAX_SYMBOLS];
    static int      m_blocked_symbols;
 
+   // Nome do simbolo em cada indice. Os arrays sao ESTATICOS e de TAMANHO FIXO
+   // em vez de dinamicos: `ArrayResize` em array estatico gera
+   // `warning 63: cannot be used for static allocated array`.
+   static string   m_symbol_names[MARGIN_COOLDOWN_MAX_SYMBOLS];
+
+   // Indice do simbolo nos arrays acima, ou -1 se ainda nao existe.
    static int SymbolIndex(string symbol);
+
+   // Maior indice de simbolo suportado pela trava. Acima disso a funcao
+   // recua para o comportamento antigo (bloqueia global) em vez de escrever
+   // fora do array — um acesso fora de faixa aqui seria falha silenciosa em
+   // producao, que e exatamente o tipo de defeito que o ciclo anterior rastreou. 64 cobre qualquer lista de pares que o EA usa hoje.
+   static int MaxTrackedSymbols() { return m_blocked_symbols; }
 
 public:
    static void Init();
@@ -52,12 +77,22 @@ public:
    static string GetMarginError(string symbol, double volume, double price);
    static void LogMarginStatus();
 
+   //--------------------------------------------------------------
+   // API DA TRAVA
+   //--------------------------------------------------------------
+   // `IsInCooldown` e a consulta que `SmartExecution` faz ANTES do calculo
+   // de margem: recusar cedo evita ate o `OrderCalcMargin`. Registrar o
+   // bloqueio acontece dentro de `CheckMargin`, que ja e o ponto unico onde
+   // a recusa e decidida.
    static bool   IsInCooldown(string symbol);
    static void   RegisterBlock(string symbol);
    static string GetCooldownError(string symbol);
    static int    GetCooldownRemaining(string symbol);
    static int    GetBlockedCount();
    static void   ClearCooldowns();
+
+   // Consulta o cooldown de forma SEGURA para simbolos nao rastreados, e o
+   // que o chamador usa quando o array ainda nao foi alocado.
    static bool   CooldownActive(string symbol);
 };
 
@@ -66,15 +101,25 @@ double CMarginChecker::m_free_margin = 0;
 double CMarginChecker::m_margin_level = 0;
 bool CMarginChecker::m_initialized = false;
 
+//==================================================
+// COOLDOWN — ESTADO
+//==================================================
+// Nome do simbolo em cada indice. Os arrays sao ESTATICOS e de TAMANHO FIXO
+// (MARGIN_COOLDOWN_MAX_SYMBOLS) em vez de dinamicos: `ArrayResize` em array
+// estatico gera `warning 63: cannot be used for static allocated array`, e
+// um aviso que enche o log de compilacao esconde aviso novo.
+string CMarginChecker::m_symbol_names[MARGIN_COOLDOWN_MAX_SYMBOLS];
 datetime CMarginChecker::m_cooldown_until[MARGIN_COOLDOWN_MAX_SYMBOLS];
 int      CMarginChecker::m_consecutive_blocks[MARGIN_COOLDOWN_MAX_SYMBOLS];
-string   CMarginChecker::m_symbol_names[MARGIN_COOLDOWN_MAX_SYMBOLS];
 int      CMarginChecker::m_blocked_symbols = 0;
 
 //==================================================
 // COOLDOWN — INTERNOS
 //==================================================
 
+// Indice do simbolo, ou -1 se ainda nao existe / nao cabe.
+// Busca LINEAR e proposital: a lista tem poucos pares e o custo e irrelevante
+// perto de um `OrderSend`. `StringFind` casaria "EUR" dentro de "EURUSD".
 int CMarginChecker::SymbolIndex(string symbol)
 {
    if(symbol == "") symbol = _Symbol;
@@ -101,12 +146,24 @@ bool CMarginChecker::IsInCooldown(string symbol)
    datetime now = TimeCurrent();
    if(now >= m_cooldown_until[idx])
    {
-      // NAO zera `m_consecutive_blocks` aqui. Medido por simulacao com esta
-      // mesma logica e os mesmos parametros:
-      //   zerando o contador -> 1.440 bloqueios/dia por simbolo
-      //   mantendo o contador ->    27 bloqueios/dia por simbolo
-      // Zerar devolvia a trava ao estado inicial a cada 60 s e mantinha a taxa
-      // do defeito. O contador so zera quando a margem VOLTA (ver CheckMargin).
+      //--------------------------------------------------------------
+      // NAO ZERA `m_consecutive_blocks` AQUI
+      //--------------------------------------------------------------
+      // A primeira versao zerava o contador quando a janela expirava. Medido
+      // por simulacao com a mesma logica e os mesmos parametros:
+      //
+      //   zerando o contador   ->  1.440 bloqueios/dia por simbolo
+      //   mantendo o contador   ->     27 bloqueios/dia por simbolo
+      //
+      // Zerar fazia a trava VOLTAR ao estado inicial a cada 60 s, e o par
+      // (60 s de espera + 1 bloqueio) se repetia ~1.080 vezes por dia. Ou
+      // seja: a "correcao" mantinha exatamente a taxa do defeito que ela
+      //a media de 1.452/dia com 8 simbolos — e nao melhorava nada.
+      //
+      // O contador so zera quando o simbolo VOLTA A TER MARGEM, e quem faz
+      // isso e `RegisterBlock` nunca sendo chamado de novo, porque
+      // `CheckMargin` so registra quando a margem real falha. O
+      // "recuperacao" e observavel, nao precisa de timer.
       m_cooldown_until[idx] = 0;
       return false;
    }
@@ -123,18 +180,22 @@ void CMarginChecker::RegisterBlock(string symbol)
 
    int idx = SymbolIndex(symbol);
 
-   // Sem espaco no rastreio: NAO registra e devolve. Perder o cooldown de um par
-   // e aceitavel; escrever fora do array nao e. Degenera para o comportamento
-   // antigo (tenta e a trava recusa), que e o estado seguro.
+   // Sem espaco no rastreio: NAO registra nada e devolve. Perder o cooldown
+   // de um par e aceitavel; escrever fora do array nao e. O comportamento
+   // degenera para o comportamento antigo (tenta e a trava de margem recusa),
+   // que e o estado seguro.
    if(idx < 0 && m_blocked_symbols >= MARGIN_COOLDOWN_MAX_SYMBOLS)
    {
-      PrintFormat("[MARGIN] cooldown sem espaco para %s (%d rastreados): usando trava sem cooldown",
+      PrintFormat("[MARGIN] cooldown sem espaco para %s (%d simbolos rastreados): usando trava sem cooldown",
                   symbol, m_blocked_symbols);
       return;
    }
 
    if(idx < 0)
    {
+      // Array de tamanho FIXO: nao ha `ArrayResize`. O indice novo e o
+      // proximo livre, e `m_blocked_symbols` passa a ser o TAMANHO USADO
+      // (0 = vazio). E esse contador que `SymbolIndex` percorre.
       idx = m_blocked_symbols;
       m_blocked_symbols++;
       m_symbol_names[idx]       = symbol;
@@ -144,6 +205,7 @@ void CMarginChecker::RegisterBlock(string symbol)
 
    m_consecutive_blocks[idx]++;
 
+   // Backoff exponencial com teto. 1a recusa = 60s, 2a = 120s, 3a = 240s...
    int cooldown = MARGIN_COOLDOWN_BASE_SEC * (1 << MathMin(m_consecutive_blocks[idx] - 1, 10));
    if(cooldown > MARGIN_COOLDOWN_MAX_SEC) cooldown = MARGIN_COOLDOWN_MAX_SEC;
 
@@ -168,12 +230,13 @@ string CMarginChecker::GetCooldownError(string symbol)
    int consecutive = (idx >= 0) ? m_consecutive_blocks[idx] : 1;
 
    return StringFormat("%s em cooldown apos %d recusa(s) por margem: faltam %ds. "
-                       "Margem esgotada nao se resolve em segundos.",
+                       "Margem esgotada nao se resolve em segundos — so volta com swap, "
+                       "deposito ou fechamento de posicao.",
                        symbol, consecutive, remaining);
 }
 
 //==================================================
-// GET COOLDOWN REMAINING
+// GET COOLDOWN REMAINING (segundos; 0 se livre)
 //==================================================
 
 int CMarginChecker::GetCooldownRemaining(string symbol)
@@ -216,6 +279,10 @@ void CMarginChecker::ClearCooldowns()
    }
 }
 
+//==================================================
+// COOLDOWN ACTIVE (alias seguro)
+//==================================================
+
 bool CMarginChecker::CooldownActive(string symbol)
 {
    return IsInCooldown(symbol);
@@ -235,9 +302,12 @@ bool CMarginChecker::CheckMargin(string symbol, double volume, double price)
    if(!m_initialized) Init();
    if(symbol == "") symbol = _Symbol;
 
-   // COOLDOWN PRIMEIRO. Antes de qualquer leitura de conta: um
-   // simbolo recem bloqueado nao precisa de OrderCalcMargin para saber que a
-   // resposta sera "nao" — e essa era a repeticao de 2 em 2 segundos.
+   //--------------------------------------------------------------
+   // COOLDOWN PRIMEIRO
+   //--------------------------------------------------------------
+   // Antes de qualquer leitura de conta. Um simbolo recem bloqueado nao
+   // precisa de `OrderCalcMargin` para saber que a resposta sera "nao" —
+   // e essa era exatamente a repeticao de 2 em 2 segundos.
    if(IsInCooldown(symbol))
       return false;
 
@@ -245,9 +315,12 @@ bool CMarginChecker::CheckMargin(string symbol, double volume, double price)
    m_free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
    m_margin_level = AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
 
-   // Cada recusa abaixo vira um cooldown. Sem isto a trava recusa a ordem e o
-   // proximo tick tenta de novo, infinitamente — foram as 4.165
-   // EXEC_NO_MARGIN do forward test.
+   //--------------------------------------------------------------
+   // REGISTRO DO BLOQUEIO
+   //--------------------------------------------------------------
+   // Cada `return false` abaixo vira um cooldown. Sem isto a trava recusa a
+   // ordem e o proximo tick tenta de novo, infinitamente — foi o que gerou
+   // 4.165 `EXEC_NO_MARGIN` no forward test.
    if(m_free_margin <= 0)
    {
       RegisterBlock(symbol);
@@ -268,10 +341,15 @@ bool CMarginChecker::CheckMargin(string symbol, double volume, double price)
       return false;
    }
 
-   // MARGEM VOLTOU. Chegou aqui = passou pelo cooldown E a margem esta
-   // suficiente, entao a serie de recusas encerra. Sem isto o par ficaria
-   // travado em 1 h para sempre mesmo com a conta sadia, e trocar "muitas
-   // ordens recusadas" por "nenhuma ordem aceita" tambem e defeito.
+   //--------------------------------------------------------------
+   // MARGEM VOLTOU
+   //--------------------------------------------------------------
+   // Chegou ate aqui = passou pelo cooldown E a margem esta suficiente.
+   // O backoff so pode crescer enquanto o simbolo segue bloqueado; uma
+   // unica concessao encerra a serie. Sem isto o par ficaria travado em
+   // 1 h para sempre depois do primeiro transbordo, mesmo com a conta
+   // sadia — e trocar "muitas ordens recusadas" por "nenhuma ordem
+   // aceita" tambem e defeito.
    int idx = SymbolIndex(symbol);
    if(idx >= 0 && m_consecutive_blocks[idx] > 0)
    {

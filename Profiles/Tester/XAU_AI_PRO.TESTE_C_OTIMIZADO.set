@@ -1,0 +1,10 @@
+;TESTE_C_OTIMIZADO - nova entrada + IA (delay JSON valido p/ walk-forward)
+XAU_UseNewStrategy=true
+EnableAIFilter=true
+RequireAIJSON=false
+AIMinConfidence=60.0
+AIRequireDirection=true
+EnableBacktestLog=false
+EnableLogs=false
+DebugTradeDecision=false
+EnableBacktestAnalyzer=false

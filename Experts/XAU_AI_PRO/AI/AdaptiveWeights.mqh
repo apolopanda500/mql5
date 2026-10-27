@@ -3,7 +3,7 @@
 #define ADAPTIVEWEIGHTS_MQH
 
 //==================================================
-// ADAPTIVE AI WEIGHTS ENGINE v1.2.0
+// ADAPTIVE AI WEIGHTS ENGINE v1.2.9
 //==================================================
 
 struct AdaptiveWeights

@@ -1,0 +1,8 @@
+;TESTE_A_OTIMIZADO - baseline (RSI), IA off
+XAU_UseNewStrategy=false
+EnableAIFilter=false
+RequireAIJSON=false
+EnableBacktestLog=false
+EnableLogs=false
+DebugTradeDecision=false
+EnableBacktestAnalyzer=false

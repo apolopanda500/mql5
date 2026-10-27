@@ -12,7 +12,7 @@
 // Antes dizia "1.20", que e diferente de 1.2.0 e de 1.2.4 — tres respostas
 // diferentes para "qual versao". `sync_version.py --check` nao pegava porque o
 // `.mq5` nao esta na lista de manifestos dele.
-#property version "1.290"
+#property version "1.2.9"
 
 #include <Trade/Trade.mqh>
 

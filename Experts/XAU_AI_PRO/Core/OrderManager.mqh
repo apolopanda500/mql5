@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.0
+﻿// XAU_AI_PRO v1.2.9
 #ifndef ORDERMANAGER_MQH
 #define ORDERMANAGER_MQH
 
@@ -43,7 +43,7 @@ bool OpenBuy(string symbol,double lot)
    // Mesma regra de `ExecutionEngine`: risco em DOLARES quando
    // `RiskPerTradeUsd > 0`, e a mesma funcao de conversao. Antes esta
    // formulas estava duplicada aqui e la; duas copias divergem, e quem lê o
-   // nome do input acredita que as duas obliviousamente falam a mesma coisa.
+   // nome do input acredita que as duas falam a mesma coisa.
    double slPontos=(double)StopLossPoints;
    double tpPontos=(double)TakeProfitPoints;
 
@@ -126,6 +126,9 @@ bool OpenSell(string symbol,double lot)
    double tp=0;
 
    // Mesma regra e mesma funcao do lado da compra, acima.
+   // `RiskPerTradeUsd > 0`, e a mesma funcao de conversao. Antes esta
+   // formulas estava duplicada aqui e la; duas copias divergem, e quem lê o
+   // nome do input acredita que as duas falam a mesma coisa.
    double slPontos=(double)StopLossPoints;
    double tpPontos=(double)TakeProfitPoints;
 

@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.0
+﻿// XAU_AI_PRO v1.2.9
 #ifndef STATISTICS_MQH
 #define STATISTICS_MQH
 
@@ -6,7 +6,7 @@
 #include "Logger.mqh"
 
 //==================================================
-// XAU_AI_PRO — STATISTICS ENGINE v1.2.0
+// XAU_AI_PRO — STATISTICS ENGINE v1.2.9
 // Estatísticas diárias, semanais e mensais
 //==================================================
 
