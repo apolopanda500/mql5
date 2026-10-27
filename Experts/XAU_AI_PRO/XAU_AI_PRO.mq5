@@ -15,10 +15,10 @@
 //     MetaEditor emite `warning 68: version '1.2.9' is incompatible with
 //     MQL5 Market, must be xxx.yyy`. Forma valida desde a v1.2.0: "1.290",
 //     que e 1.2.9 com minor+patch encaixados em duas casas (2.9 -> 290).
-// A versao legivel vai em `#property description`, tambem exibida pelo MT5
-// na aba de propriedades, para nao haver duvida sobre qual versao e.
+// A versao legivel ("1.2.9") vai na descricao do projeto (XAU_AI_PRO.mqproj),
+// tambem exibida na aba de propriedades. O build do projeto ja injeta essa
+// propriedade; repetir com `#property description` gera `warning 90`.
 #property version "1.290"
-#property description "XAU_AI_PRO v1.2.9"
 
 #include <Trade/Trade.mqh>
 
