@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.9
+﻿// XAU_AI_PRO v1.2.9
 #ifndef AIENGINE_MQH
 #define AIENGINE_MQH
 
@@ -18,6 +18,7 @@
 #include "AdaptiveWeights.mqh"
 #include "AIConnector.mqh"
 #include "AILearningMemory.mqh"
+#include "AIMetrics.mqh"
 
 //==================================================
 // PROTOTYPES
@@ -468,12 +469,21 @@ bool FinalAIAllow(int signal, string symbol="")
 
 void LogAIFeedback(string symbol,double profit)
 {
+   // Uma unica leitura da direcao: alimenta o aprendizado E as metricas.
+   const int aiSignal = GetAIEngineSignal(symbol);
+
    StoreExperience(
    symbol,
-   GetAIEngineSignal(symbol),
+   aiSignal,
    AI_Score,
    profit>0
 );
+
+   // Metricas de IA (AI/AIMetrics.mqh). Somente observabilidade: nao
+   // altera sinal, risco nem execucao. Direcao 0 = IA sem opiniao, fica
+   // fora da conta, senao a accuracy ficaria diluida por abstencoes.
+   if(aiSignal != 0)
+      AIMetricsRegister(aiSignal, profit);
 
    int file=
       FileOpen(

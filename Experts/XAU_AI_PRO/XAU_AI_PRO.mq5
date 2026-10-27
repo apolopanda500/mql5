@@ -1,4 +1,4 @@
-// recompile-trigger 19:40:47
+﻿// recompile-trigger 19:40:47
 //==================================================
 // XAU_AI_PRO v1.2.9
 //==================================================
@@ -94,6 +94,7 @@ CTrade trade;
 // Ponte somente leitura EA -> Gateway -> App. Grava
 // XAU_AI_PRO_heartbeat.json em FILE_COMMON, consumido por backend/ea_manager.py.
 #include "Integration/EAHeartbeat.mqh"
+#include "Integration/ExternalBridge.mqh"
 #include "Core/DecisionEngine.mqh"
 #include "Core/ValidationEngine.mqh"
 
@@ -749,6 +750,10 @@ int OnInit()
 
    SystemInitialized = true;
 
+   // Ponte app -> EA: recupera o ultimo request_id processado, para um
+   // comando nao ser reexecutado depois de reattach. Inerte se desligada.
+   ExternalBridgeInit();
+
    Print("----------------------------------------");
    Print("Sistema inicializado com sucesso.");
    Print("----------------------------------------");
@@ -807,6 +812,10 @@ void OnTick()
 // Corre SEMPRE que recibe tick, incluso cando bloqueado, para monitorizar
 // estado de conexion/failure_mode/news/IA no forward test.
    ForwardHeartbeat();
+
+// Ponte app -> EA (Integration/ExternalBridge.mqh). Throttle interno de 1 Hz e
+// duas comparacoes quando desligada. So leitura: nao manda ordem.
+   ExternalBridgePoll();
 
 
 
@@ -1612,6 +1621,15 @@ void OnTimer()
 //------------------------------------------------
 
    SystemStatusUpdate();
+
+//------------------------------------------------
+// Ponte app -> EA (Integration/ExternalBridge.mqh)
+// Tambem aqui, e nao so no OnTick: sem tick (mercado fechado, simbolo
+// parado) o app ficaria sem resposta ao ping. O throttle interno e por
+// segundo, entao chamar nos dois lugares nao duplica leitura de disco.
+//------------------------------------------------
+
+   ExternalBridgePoll();
 
 //------------------------------------------------
 // Salvar estatisticas

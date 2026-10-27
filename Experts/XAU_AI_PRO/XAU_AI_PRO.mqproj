@@ -219,6 +219,12 @@
       "relative_to_project":true
     },
     {
+      "path":"AI\\AIMetrics.mqh",
+      "compile":false,
+      "enable":true,
+      "relative_to_project":true
+    },
+    {
       "path":"Indicators\\ATR.mqh",
       "compile":false,
       "enable":true,
@@ -616,6 +622,12 @@
     },
     {
       "path":"Integration\\EAHeartbeat.mqh",
+      "compile":false,
+      "enable":true,
+      "relative_to_project":true
+    },
+    {
+      "path":"Integration\\ExternalBridge.mqh",
       "compile":false,
       "enable":true,
       "relative_to_project":true

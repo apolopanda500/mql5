@@ -49,6 +49,22 @@ input int    AIPollSeconds      = 15;
 input int    AIRequestTimeoutMs = 15000;
 
 //==================================================
+// APP EXTERNO (ponte app -> EA)
+//==================================================
+// Canal por arquivo em FILE_COMMON (`Common\Files`), o MESMO caminho que o
+// backend ja le para o heartbeat. Contrato completo em
+// `Integration/ExternalBridge.mqh`.
+//
+// Fechada por padrao, e com DUAS condicoes para abrir: chave ligada E token
+// com 8+ caracteres. Arquivo em Common nao identifica quem escreveu, entao
+// sem token isto viraria um controle remoto aberto na maquina.
+//
+// Somente acoes de leitura (ping/status/heartbeat). Nenhuma acao daqui
+// envia, modifica ou fecha ordem; nada aqui altera risco.
+input bool   EnableExternalBridge = false;
+input string ExternalBridgeToken  = "";
+
+//==================================================
 // RISCO
 //==================================================
 input bool   UseRiskManagement  = true;
