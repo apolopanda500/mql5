@@ -5,7 +5,7 @@
 //| execucao, risco, notificacoes, auditoria e ambiente.            |
 //+------------------------------------------------------------------+
 #property copyright "XAU_AI_PRO"
-#property version   "1.2.9"
+#property version   "1.290"   // 1.2.9 no formato xxx.yyy exigido pelo compilador
 
 #ifndef PRODUCTION_CHECKLIST_MQH
 #define PRODUCTION_CHECKLIST_MQH

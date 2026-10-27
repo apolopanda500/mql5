@@ -4,15 +4,21 @@
 //==================================================
 
 #property strict
-// Fonte unica da versao: `VERSION` na raiz, propagada por
-// `scripts/sync_version.py` para os 8 manifestos (pyproject, package.json x2,
-// Cargo.toml x2, tauri.conf.json, version.ts). Este `#property` e a MESMA
-// versao; o MT5 mostra na aba de propriedades do EA.
+// Versao canonica: `VERSION` na raiz, propagada por `scripts/sync_version.py`
+// para os 8 manifestos (pyproject, package.json x2, Cargo.toml x2,
+// tauri.conf.json, version.ts) e espelhada em `Docs/version.json`.
 //
-// Antes dizia "1.20", que e diferente de 1.2.0 e de 1.2.4 — tres respostas
-// diferentes para "qual versao". `sync_version.py --check` nao pegava porque o
-// `.mq5` nao esta na lista de manifestos dele.
-#property version "1.2.9"
+// Dois formatos convivem aqui, por exigencia do compilador:
+//   * texto semantico "1.2.9" -> `EA_VERSION_STRING`, `EV_VERSION_STRING`
+//     e o log `[VERSION]`;
+//   * `#property version` aceita SO `xxx.yyy` (dois numeros). Com "1.2.9" o
+//     MetaEditor emite `warning 68: version '1.2.9' is incompatible with
+//     MQL5 Market, must be xxx.yyy`. Forma valida desde a v1.2.0: "1.290",
+//     que e 1.2.9 com minor+patch encaixados em duas casas (2.9 -> 290).
+// A versao legivel vai em `#property description`, tambem exibida pelo MT5
+// na aba de propriedades, para nao haver duvida sobre qual versao e.
+#property version "1.290"
+#property description "XAU_AI_PRO v1.2.9"
 
 #include <Trade/Trade.mqh>
 

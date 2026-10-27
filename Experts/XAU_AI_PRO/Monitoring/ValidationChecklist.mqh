@@ -6,7 +6,7 @@
 //| READY    = operacional                                          |
 //+------------------------------------------------------------------+
 #property copyright "XAU_AI_PRO"
-#property version   "1.2.9"
+#property version   "1.290"   // 1.2.9 no formato xxx.yyy exigido pelo compilador
 
 #ifndef VALIDATIONCHECKLIST_MQH
 #define VALIDATIONCHECKLIST_MQH
