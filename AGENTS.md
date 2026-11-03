@@ -108,3 +108,29 @@ Ao alterar um procedimento compartilhado, edite a definição correspondente em
 2. Faça a alteração cirúrgica, respeitando os módulos.
 3. Valide (compilação ou script estático).
 4. Documente mudanças relevantes no README/versionamento quando aplicável.
+
+## Toolkit do agente (Tools/agent-toolkit.ps1)
+
+Script versionado que executa o ciclo completo de trabalho sem depender de
+Python ou de ferramentas externas:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 status
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 check
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 compile
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 commit -Message "tipo(escopo): descricao"
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 push -Remote github -Branch main
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 deploy
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 full -Message "tipo(escopo): descricao"
+```
+
+- `status` — resumo do working tree, upstream e ahead/behind.
+- `check` — UTF-8 estrito, balanceamento de chaves e resolução de `#include`
+  em todos os `.mq5`/`.mqh` de `Experts/XAU_AI_PRO` (sem Python).
+- `compile` — compila `XAU_AI_PRO.mq5` com `metaeditor64.exe` e exige
+  0 errors para prosseguir.
+- `commit` / `push` — `git add --all` respeitando `.gitignore`, commit e push.
+- `deploy` — `check` + `compile`: publica o `.ex5` atualizado na pasta do EA.
+- `full` — `check → compile → commit → push`, parando na primeira falha.
+
+O script nunca executa `reset`, `checkout` destrutivo, `rebase` ou force-push.
