@@ -9,6 +9,7 @@
 #include "../Core/Config.mqh"
 #include "../Core/RiskHub.mqh"
 #include "../Core/TradeGate.mqh"
+#include "../Core/SymbolValidator.mqh"   // ValidateSymbol() usado em ValidateTrade()
 #include "../Core/StateMachine.mqh"
 #include "../AI/AIConnector.mqh"
 #include "../Monitoring/HealthMonitor.mqh"
@@ -145,11 +146,11 @@ MCPResponse CMCPServer::GetAccountInfo()
 
    resp.data = StringFormat(
       "{\"login\":%lld,\"balance\":%.2f,\"equity\":%.2f,\"margin\":%.2f,\"free_margin\":%.2f,\"margin_level\":%.2f,\"profit\":%.2f,\"currency\":\"%s\"}",
-      (longlong)AccountInfoInteger(ACCOUNT_LOGIN),
+      (long)AccountInfoInteger(ACCOUNT_LOGIN),
       AccountInfoDouble(ACCOUNT_BALANCE),
       AccountInfoDouble(ACCOUNT_EQUITY),
       AccountInfoDouble(ACCOUNT_MARGIN),
-      AccountInfoDouble(ACCOUNT_FREEMARGIN),
+      AccountInfoDouble(ACCOUNT_MARGIN_FREE),
       AccountInfoDouble(ACCOUNT_MARGIN_LEVEL),
       AccountInfoDouble(ACCOUNT_PROFIT),
       AccountInfoString(ACCOUNT_CURRENCY)

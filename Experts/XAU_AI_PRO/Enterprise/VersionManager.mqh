@@ -175,6 +175,7 @@ void CVersionManager::RegisterModules()
    RegisterModule("ProductionChecklist","OK");
    RegisterModule("ValidationChecklist","OK");
    RegisterModule("NewsFilter",      "OK (calendario MT5)");
+   RegisterModule("MCPServer",       "OK (Model Context Protocol)");
 
    if(LogInicioDetalhe()) { Print("[VERSION] Modulos registrados: ", m_module_count); }
 }

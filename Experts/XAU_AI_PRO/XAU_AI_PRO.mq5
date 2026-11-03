@@ -31,6 +31,8 @@ CTrade trade;
 //==================================================
 
 #include "Core/Config.mqh"
+#include "Core/MCPServer.mqh"      // ETAPA MCP: servidor MCP (Model Context Protocol)
+// v1.2.115: expoe funcionalidades do EA para IA externa (risco, sinais, saude, contas, posicoes)
 #include "Monitoring/AccountLogGate.mqh"   // v1.2.91 P1.78: um facto por CONTA
 // P1.61 (v1.2.75): fonte unica de verdade das permissoes de negociacao.
 // Incluido logo apos Config, antes de qualquer modulo que possa negociar.
@@ -568,6 +570,21 @@ bool InitializeModules()
    CVersionManager::LogStatus();
 
 //------------------------------------------------
+// ETAPA MCP - SERVIDOR MCP (Model Context Protocol)
+//------------------------------------------------
+   if(EnableMCPServer)
+     {
+      MCPServer.Init(MCPServerToken);
+      if(MCPServer.IsEnabled())
+        {
+         if(AccountLogGatePodeImprimir("mcp", 3600))
+            Print("[MCP] servidor inicializado | token=", (MCPServerToken != "") ? "definido" : "VAZIO");
+        }
+      else
+        Print("[MCP] servidor nao inicializado (token nao configurado)");
+     }
+
+//------------------------------------------------
 // ETAPA 10 - PRODUCTION + VALIDATION CHECKLISTS
 //------------------------------------------------
 
@@ -624,6 +641,9 @@ void ShutdownModules()
    CloseTradeLogger();
 
    CDatabaseManager::Disconnect();
+
+   if(EnableMCPServer)
+      MCPServer.LogRequest("SHUTDOWN", true);
 
    ShutdownSystem();
   }

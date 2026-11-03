@@ -65,6 +65,19 @@ input bool   EnableExternalBridge = false;
 input string ExternalBridgeToken  = "";
 
 //==================================================
+// MCP (Model Context Protocol) - MT5 Build 6060+
+//==================================================
+// Expõe funcionalidades do EA para agentes de IA externos (Claude Code, Codex, etc.)
+// via MCP. Operações de leitura (risco, IA, saúde, conta, posições) são permitidas
+// quando o token é válido. Operações de execução requerem confirmação explícita.
+// Todas as ações via MCP são gravadas no AuditLog para rastreabilidade.
+//
+// Requer: Ferramentas > Opções > Expert Advisors > "Allow WebRequest for listed URL"
+//         (apenas se o servidor MCP usar HTTP para receber comandos externos)
+input bool   EnableMCPServer      = false;  // Ligar/desligar servidor MCP
+input string MCPServerToken       = "";     // Token de autenticação (8+ caracteres)
+
+//==================================================
 // RISCO
 //==================================================
 // LOTE FIXO REMOVIDO (29/10/2026). Nao existem mais `UseRiskManagement` nem
