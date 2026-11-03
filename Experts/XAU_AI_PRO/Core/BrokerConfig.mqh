@@ -42,8 +42,13 @@ void LoadBrokerSymbols()
    else if(SymbolExists("USDJPY.")) TradeUSDJPY="USDJPY.";
    else if(SymbolExists("USDJPYc")) TradeUSDJPY="USDJPYc";
 
-   if(LogInicioDetalhe()) Print("[BROKERCFG] GOLD=",TradeGold," BTC=",TradeBTC," EURUSD=",TradeEURUSD,
-         " GBPUSD=",TradeGBPUSD," USDJPY=",TradeUSDJPY);
+   Print("========== BROKER CONFIG ==========");
+   Print("GOLD    : ",TradeGold);
+   Print("BTC     : ",TradeBTC);
+   Print("EURUSD  : ",TradeEURUSD);
+   Print("GBPUSD  : ",TradeGBPUSD);
+   Print("USDJPY  : ",TradeUSDJPY);
+   Print("==================================");
 }
 
 #endif

@@ -1,0 +1,10 @@
+; XAU_AI_PRO - ENDURANCE MIN (Opcao A) - somente inputs necessarios p/ watchdog
+; Carregar via F7 -> Inputs -> Load... no chart XAUUSD M5 (instancia unica F1).
+; Arquitetura F1: 1 unico EA no XAUUSD varrendo os 11 simbolos via Symbols.
+AutoTrade=false
+MagicNumber=2026001
+EnableHealthMonitor=true
+EnableDataset=true
+HealthPipelineProgressTimeout=0
+EnableMultiSymbol=true
+Symbols=XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH

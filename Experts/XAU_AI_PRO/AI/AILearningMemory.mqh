@@ -29,10 +29,6 @@ struct AILearningState
 
 static AILearningState g_AIMemory[];
 
-// Silencia o log por evento durante importacao em lote
-// (o resumo e impresso uma vez em LearningPrintSummary).
-static bool g_AILearnQuiet = false;
-
 //==================================================
 
 int FindLearningIndex(string symbol)
@@ -139,7 +135,7 @@ void StoreExperience(
    g_AIMemory[id].learningWeight=
       0.70+(winrate*0.60);
 
-   if(!g_AILearnQuiet) Print(
+   Print(
       "[AI MEMORY] ",
       symbol,
       " WR=",

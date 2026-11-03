@@ -1,0 +1,106 @@
+{
+  "symbol": "MULTI_METALS",
+  "class": "METALS",
+  "model_type": "multi",
+  "feature_version": "25F-est-v1",
+  "feature_hash": "d3dff4e31e42a675",
+  "feature_count": 22,
+  "features": [
+    "Open_ATR",
+    "High_ATR",
+    "Low_ATR",
+    "Close_ATR",
+    "Volume_Rel",
+    "Spread_ATR",
+    "ATR_Pct",
+    "ADX",
+    "RSI",
+    "KCI_VD_Inv",
+    "KDI_Diff",
+    "KCI_MAIN_Change",
+    "Body_ATR",
+    "Range_ATR",
+    "UpperShadow_ATR",
+    "LowerShadow_ATR",
+    "RSI_Diff",
+    "Close_Diff_Pct",
+    "Volume_MA_Rel",
+    "ADX_Change",
+    "Timeframe_Cod",
+    "Classe_Cod"
+  ],
+  "timeframes": [
+    "M5",
+    "M15",
+    "H1",
+    "H4"
+  ],
+  "algorithm": "RandomForestClassifier",
+  "train_date": "2026-10-03T03:11:59.908501+00:00",
+  "live_execution": false,
+  "withdrawals_enabled": false,
+  "transfers_enabled": false,
+  "metrics": {
+    "accuracy": 0.583069830668755,
+    "f1_score": 0.5847200393827113,
+    "baseline": 0.3333333333333333,
+    "edge": 0.24973649733542164,
+    "edge_media_folds": 0.0642067417354646,
+    "train_samples": 67678,
+    "train_samples_bruto": 67678,
+    "amostra_estratificada": false,
+    "estratos": 12,
+    "classes": 3,
+    "symbols": [
+      "XAGUSD",
+      "XAUUSD"
+    ],
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.39077037588388536,
+        "baseline": 0.3333333333333333,
+        "edge": 0.05743704255055204,
+        "train": 500,
+        "test": 13435
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.40096762188314106,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06763428854980774,
+        "train": 13935,
+        "test": 13435
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.4005954596203945,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06726212628706119,
+        "train": 27370,
+        "test": 13435
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.4018608113137328,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06852747798039949,
+        "train": 40805,
+        "test": 13435
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.39350610664283586,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06017277330950255,
+        "train": 54240,
+        "test": 13428
+      }
+    ],
+    "edge_estavel": true
+  },
+  "min_edge": 0.05,
+  "publicable": true,
+  "publish_reason": ""
+}

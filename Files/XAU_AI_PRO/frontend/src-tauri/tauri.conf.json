@@ -1,0 +1,56 @@
+{
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:3000"
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "msi",
+      "nsis"
+    ],
+    "android": {
+      "minSdkVersion": 24
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "Python/models/**/*",
+      "core/xau-ai-pro-core.exe",
+      "bridge/**/*"
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "./windows/hooks.nsh"
+      }
+    }
+  },
+  "productName": "XAU AI PRO",
+  "mainBinaryName": "XAU AI PRO",
+  "version": "1.2.9",
+  "identifier": "com.xau-ai-pro.desktop",
+  "plugins": {},
+  "app": {
+    "security": {
+        "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:9001 http://localhost:9001 ws://127.0.0.1:9002 ws://localhost:9002 http://127.0.0.1:* http://localhost:* ws://127.0.0.1:* ws://localhost:* http://10.0.2.2:9001 ws://10.0.2.2:9002 https: wss:; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+    },
+    "windows": [
+      {
+        "title": "XAU AI PRO - Trading Desk",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1120,
+        "minHeight": 720,
+        "resizable": true,
+        "fullscreen": false,
+        "useHttpsScheme": true
+      }
+    ]
+  }
+}

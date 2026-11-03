@@ -28,9 +28,14 @@ input bool MTFUseClosedCandle = true;
 
 bool InitMTF()
 {
-   // v1.2.88 (02/11/2026) - P1.75: tag [MTF], a mesma informacao numa linha.
-   if(LogInicioDetalhe()) Print("[MTF] INIT | TF=", EnumToString(ConfirmTF1),
-         " | FAST=", MTF_FastEMA, " | SLOW=", MTF_SlowEMA);
+   Print(
+      "MTF INIT | TF=",
+      EnumToString(ConfirmTF1),
+      " | FAST=",
+      MTF_FastEMA,
+      " | SLOW=",
+      MTF_SlowEMA
+   );
 
    return true;
 }

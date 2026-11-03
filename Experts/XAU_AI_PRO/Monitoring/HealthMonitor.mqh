@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.49
+// XAU_AI_PRO v1.2.9
 #ifndef HEALTHMONITOR_MQH
 #define HEALTHMONITOR_MQH
 
@@ -7,11 +7,11 @@
 #include "Logger.mqh"
 
 //==================================================
-// XAU_AI_PRO ï¿½ HEALTH MONITOR (ETAPA 6)
-// Sistema central de monitoramento de saï¿½de.
+// XAU_AI_PRO — HEALTH MONITOR (ETAPA 6)
+// Sistema central de monitoramento de saúde.
 //
 // Absorveu o antigo WatchDog.mqh: heartbeat dos
-// mï¿½dulos ATR / ADX / RSI / AI / PYTHON / CSV / JSON
+// módulos ATR / ADX / RSI / AI / PYTHON / CSV / JSON
 // com timeout e contagem de falhas.
 //==================================================
 
@@ -39,7 +39,7 @@ int g_ticksPerSecond         = 0;
 int g_ticksThisSecond        = 0;
 
 //==================================================
-// UPTIME / Mï¿½TRICAS (ETAPA 6)
+// UPTIME / MÉTRICAS (ETAPA 6)
 //==================================================
 
 datetime g_healthUptimeStart = 0;
@@ -49,7 +49,7 @@ bool     g_healthLastCheckOK = true;
 int      g_healthConsecutiveFails = 0;   // F4/P1-1: falhas consecutivas p/ backoff exponencial
 
 //==================================================
-// WATCHDOG ï¿½ HEARTBEAT DOS Mï¿½DULOS (ETAPA 6)
+// WATCHDOG — HEARTBEAT DOS MÓDULOS (ETAPA 6)
 // Absorvido do antigo WatchDog.mqh
 //==================================================
 
@@ -77,7 +77,7 @@ bool g_healthInitialized = false;
 bool g_healthStatus      = true;
 
 //==================================================
-// ï¿½NDICE DO Mï¿½DULO
+// ÍNDICE DO MÓDULO
 //==================================================
 
 int HealthModuleIndex(string module)
@@ -99,14 +99,9 @@ bool HealthMonitorInit()
 {
    datetime now = TimeCurrent();
 
-   // v1.2.49 (P1.24): o watchdog carimba no relogio que avanca sempre.
-   // TimeCurrent() e a hora do ULTIMO tick: sem cotacao fica parada e os
-   // intervalos medidos com ela nunca vencem (ver HealthClockNow).
-   datetime wdNow = HealthClockNow();
-
-   g_lastTickTime      = wdNow;
+   g_lastTickTime      = now;
    g_lastSecond        = now;
-   g_lastHealthCheck   = wdNow;
+   g_lastHealthCheck   = now;
    g_healthUptimeStart = now;
 
    g_ticksPerSecond  = 0;
@@ -146,9 +141,7 @@ void HealthMonitorUpdateTicks()
 
    datetime now = TimeCurrent();
 
-   // v1.2.49: a idade do ultimo tick passa a ser medida no relogio real - o do
-   // servidor e exactamente aquilo que congela quando nao ha ticks.
-   g_lastTickTime = HealthClockNow();
+   g_lastTickTime = now;
    g_healthTotalTicks++;
 
    MqlDateTime currentTime;
@@ -177,7 +170,7 @@ bool HealthMonitorCheckTickTimeout(int maxSeconds = 10)
    if(!g_healthInitialized)
       return false;
 
-   datetime now = HealthClockNow();
+   datetime now = TimeCurrent();
 
    int secondsSinceLastTick = (int)(now - g_lastTickTime);
 
@@ -217,14 +210,14 @@ void HealthMonitorLogError(string module)
    else
    {
       LogWarning(
-         "HealthMonitor: mï¿½dulo desconhecido",
+         "HealthMonitor: módulo desconhecido",
          "Module=" + module
       );
    }
 }
 
 //==================================================
-// HEARTBEAT (ETAPA 6 ï¿½ absorve WatchDogHeartbeat)
+// HEARTBEAT (ETAPA 6 — absorve WatchDogHeartbeat)
 //==================================================
 
 void HealthMonitorHeartbeat(string module)
@@ -307,7 +300,7 @@ int HealthGetPipelineProgressTimeoutSec()
    return autoSec;
 }
 
-// RESET HEARTBEAT (ETAPA 6 ï¿½ absorve WatchDogResetFailures)
+// RESET HEARTBEAT (ETAPA 6 — absorve WatchDogResetFailures)
 //==================================================
 
 void HealthMonitorResetHeartbeat(string module)
@@ -322,7 +315,7 @@ void HealthMonitorResetHeartbeat(string module)
 }
 
 //==================================================
-// CHECK HEARTBEAT DE UM Mï¿½DULO (ETAPA 6)
+// CHECK HEARTBEAT DE UM MÓDULO (ETAPA 6)
 //==================================================
 
 bool HealthMonitorCheckHeartbeatModule(int idx)
@@ -333,14 +326,14 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
    if(!g_wdActive[idx])
       return true;
 
-   // LIVENESS vs PROGRESS (F4/1.2): para mï¿½dulos de pipeline usamos o canal
-   // de progresso (avanza sï¿½ con UpdateDataset real). Para indicadores e AI
+   // LIVENESS vs PROGRESS (F4/1.2): para módulos de pipeline usamos o canal
+   // de progresso (avanza só con UpdateDataset real). Para indicadores e AI
    // usamos o heartbeat de liveness (avanza cada tick do OnTick).
    bool isPipeline = HealthIsPipeline(idx);
 
    if(!isPipeline)
    {
-      // Mï¿½dulo nunca enviou heartbeat -> nï¿½o ï¿½ falha
+      // Módulo nunca enviou heartbeat -> não é falha
       if(g_wdLastTime[idx] == 0)
          return true;
 
@@ -354,7 +347,7 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
          if(g_wdFailures[idx] >= HEALTH_WD_MAX_FAILURES)
          {
             LogWarning(
-               "HealthMonitor: mï¿½dulo sem heartbeat",
+               "HealthMonitor: módulo sem heartbeat",
                g_wdModuleNames[idx],
                "Segundos=" + IntegerToString((int)((now - g_wdLastTime[idx]) / 1000))
             );
@@ -371,8 +364,8 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
    }
    else
    {
-      // Pipeline nunca avanzou progress -> non ï¿½ falha (permite bloqueo
-      // lexï¿½timo do trading; sï¿½ falla se xa avanzou e despois parou).
+      // Pipeline nunca avanzou progress -> non é falha (permite bloqueo
+      // lexítimo do trading; só falla se xa avanzou e despois parou).
       if(g_wdLastProgress[idx] == 0)
          return true;
 
@@ -386,7 +379,7 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
          if(g_wdProgressFails[idx] >= HEALTH_WD_MAX_FAILURES)
          {
             LogWarning(
-               "HealthMonitor: mï¿½dulo de pipeline parado",
+               "HealthMonitor: módulo de pipeline parado",
                g_wdModuleNames[idx],
                "Segundos=" + IntegerToString((int)((now - g_wdLastProgress[idx]) / 1000))
             );
@@ -404,7 +397,7 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
 }
 
 //==================================================
-// CHECK HEARTBEATS (ETAPA 6 ï¿½ absorve WatchDogRunCheck)
+// CHECK HEARTBEATS (ETAPA 6 — absorve WatchDogRunCheck)
 //==================================================
 
 bool HealthMonitorCheckHeartbeats()
@@ -452,108 +445,14 @@ int HealthGetBackoffInterval(int baseIntervalSec)
 // HEALTH CHECK
 //==================================================
 
-// v1.2.31 (30/10/2026) - P1.3/P0.4 rodada 3: este EA roda em 16 graficos
-// multi-ativo. A maioria dos simbolos fica legitimamente sem tick (mercado
-// fechado ou pouca liquidez) e HealthMonitorCheckTickTimeout(15) marcava
-// FAILURE por isso. MEDIDO na v1.2.30 as 17:15: USDCOP com "Segundos sem
-// tick: 661", "Total ticks: 0" e "Status: FAILURE" permanente, imprimindo o
-// bloco completo a cada 300 s. Um alerta que nunca desliga nao alerta nada:
-// vira o maior emissor do journal, esconde a falha real e ainda pode disparar
-// Recovery/Notification sem causa.
-// Agora o timeout de tick so reprova a saude quando HA sessao de cotacao
-// aberta para o simbolo neste instante. Sessao desconhecida = comportamento
-// antigo (reprova), para nao silenciar falha real de simbolo sem metadados.
-//==================================================
-// RELOGIO DO WATCHDOG (v1.2.49 - P1.24)
-//==================================================
-//
-// MEDIDO em 31/10/2026 (sabado, mercado fechado desde sexta 23:59):
-//   get_time_information -> trade_server_last_known_time = 2026-10-30T23:59:59
-//   Logs\20261031.log    -> 726 linhas, ZERO blocos de HEALTH
-//
-// TimeCurrent() nao e "agora": e a hora do ULTIMO tick recebido. Com o mercado
-// fechado fica parada, logo (now - g_lastHealthCheck) = 0 para sempre e o health
-// check - o unico watchdog que pode notar um terminal morto ou desligado -
-// simplesmente nao volta a correr. Num EA que tem de viver 24/7 isso significa
-// que uma falha que comeca na sexta so pode ser notada na segunda, com 60 horas
-// de atraso.
-//
-// TimeLocal() e o relogio do computador: nao depende de cotacao e avanca sempre.
-// E o correcto para medir DURACOES (intervalo entre checks, idade do ultimo tick).
-// A hora do servidor continua a ser a de referencia para tudo o que e de mercado
-// (sessoes, horas de evasao, reset diario) - essas continuam em TimeCurrent().
-datetime HealthClockNow()
-{
-   return (datetime)TimeLocal();
-}
-
-// Hora de referencia para decidir se HA sessao de mercado aberta. Tem de
-// avancar quando o servidor nao manda ticks, senao o dia da semana nunca muda
-// ao fim de semana. TimeTradeServer() e uma estimativa feita no cliente com
-// base no relogio local e na ultima hora conhecida do servidor; devolve 0
-// quando nao a consegue calcular, e nesse caso fica o criterio antigo.
-datetime HealthSessionNow()
-{
-   datetime srv = TimeTradeServer();
-
-   if(srv > 0)
-      return srv;
-
-   return TimeCurrent();
-}
-
-bool HealthSymbolSessionOpen()
-{
-   MqlDateTime dt;
-
-   // v1.2.49 (P1.24): TimeCurrent() e a hora do ultimo tick; ao fim de semana
-   // fica em sexta 23:59:59, o que fazia a sessao de sexta parecer ABERTA e
-   // reprovava a saude por "sem tick" precisamente nos dias sem cotacao.
-   // TimeTradeServer() e a hora do servidor estimada no cliente e avanca mesmo
-   // sem ticks. Se nao estiver disponivel (0), mantem-se o criterio antigo.
-   TimeToStruct(HealthSessionNow(), dt);
-
-   long agora = (long)dt.hour * 3600 + (long)dt.min * 60 + (long)dt.sec;
-
-   for(int i = 0; i < 8; i++)
-     {
-      datetime ini = 0, fim = 0;
-
-      if(!SymbolInfoSessionQuote(_Symbol, (ENUM_DAY_OF_WEEK)dt.day_of_week, i, ini, fim))
-        {
-         // Sem metadados de sessao: nao presume folga, mantem o criterio antigo.
-         if(i == 0)
-            return true;
-         break;
-        }
-
-      long abre  = (long)ini % 86400;
-      long fecha = (long)fim % 86400;
-
-      if(fecha < abre)          // sessao que cruza a meia-noite
-        {
-         if(agora >= abre || agora <= fecha)
-            return true;
-        }
-      else
-        {
-         if(agora >= abre && agora <= fecha)
-            return true;
-        }
-     }
-
-   return false;
-}
-
 bool HealthMonitorCheck()
 {
    if(!g_healthInitialized)
       return false;
 
-   // v1.2.49 (P1.24): relogio do watchdog, nao a hora do ultimo tick.
-   datetime now = HealthClockNow();
+   datetime now = TimeCurrent();
 
-   // Nï¿½o executa anï¿½lise completa em todos os ticks.
+   // Não executa análise completa em todos os ticks.
    // F4/P1-1: intervalo efetivo cresce com backoff quando ha
    // falhas consecutivas, espacando retentativas.
    int effectiveInterval = HealthGetBackoffInterval(HealthCheckInterval);
@@ -570,42 +469,18 @@ bool HealthMonitorCheck()
    // TICK
    //================================================
 
-   // v1.2.31: sem sessao aberta, "sem tick" e o estado normal do simbolo.
-   //
-   // v1.2.80 (P1.67): o resultado fica guardado para ser usado UMA vez so. O
-   // MESMO "sem tick" era avaliado duas vezes com regras opostas - aqui
-   // perdoado quando a sessao esta fechada, e na chamada a
-   // HealthMonitorCheckHeartbeats() sem guarda nenhuma. MEDIDO em 02/11/2026
-   // no USDBRL/M5: "Total ticks: 0 | Segundos sem tick: 14641" com
-   // "Status: HEALTHY" numa passagem e "Status: FAILURE | Backoff: nivel=11
-   // intervalo_efetivo=1920s" noutra, para o mesmo dado.
-   bool tickEmFalta = !HealthMonitorCheckTickTimeout(15);
-   if(tickEmFalta)
+   if(!HealthMonitorCheckTickTimeout(15))
    {
-      if(HealthSymbolSessionOpen())
-      {
-         LogWarning("HealthMonitor: tick timeout");
-         healthy = false;
-      }
+      LogWarning("HealthMonitor: tick timeout");
+      healthy = false;
    }
 
    //================================================
-   // HEARTBEATS (WatchDog integrado ï¿½ ETAPA 6)
+   // HEARTBEATS (WatchDog integrado — ETAPA 6)
    //================================================
 
-   // v1.2.80 (P1.67): sem tick NENHUM modulo avanca - ATR, ADX, RSI e AI so
-   // progridem dentro de OnTick, e sem tick nao ha OnTick. Contar isso como
-   // falha independente repetia o mesmo dado que o teste de tick ja avaliou e,
-   // pior, escalava o backoff: medido no USDBRL/M5 "Backoff: nivel=11
-   // intervalo_efetivo=1920s", ou seja o watchdog passava a olhar aquele
-   // grafico de 32 em 32 minutos. Sem tick a falha dos modulos e CONSEQUENCIA;
-   // com tick continua a valer como antes, e o contador de falhas interno de
-   // HealthMonitorCheckHeartbeats() segue intacto.
    if(!HealthMonitorCheckHeartbeats())
-   {
-      if(!tickEmFalta)
-         healthy = false;
-   }
+      healthy = false;
 
    //================================================
    // BROKER
@@ -690,7 +565,7 @@ bool HealthMonitorCheck()
    else
       g_healthConsecutiveFails = 0;
 
-   // ETAPA 15.6.5: ponte com telemetria real ï¿½
+   // ETAPA 15.6.5: ponte com telemetria real —
    // falha de health alimenta o contador global de erros.
    if(!healthy)
       CTelemetry::RecordError();
@@ -756,11 +631,11 @@ int HealthGetSecondsSinceTick()
    if(!g_healthInitialized)
       return -1;
 
-   return (int)(HealthClockNow() - g_lastTickTime);
+   return (int)(TimeCurrent() - g_lastTickTime);
 }
 
 //==================================================
-// UPTIME / Mï¿½TRICAS (ETAPA 6)
+// UPTIME / MÉTRICAS (ETAPA 6)
 //==================================================
 
 ulong HealthGetTotalTicks()
@@ -839,19 +714,8 @@ ENUM_TELEMETRY_STATE HealthGetState()
    if(totalErr > 0)
       return TM_WARNING;
 
-   // v1.2.82 (02/11/2026) - P1.69: o P1.67 curou a atribuicao de `healthy`,
-   // mas os contadores dos watchdogs continuavam a subir SEM tick (ATR, ADX,
-   // RSI e IA so avancam dentro de OnTick), logo HealthGetStateString()
-   // respondia WARNING para o MESMO dado que o resumo chamava HEALTHY - o
-   // defeito "um dado, dois veredictos" vivido uma camada acima. MEDIDO no
-   // journal de 02/11 as 15:54: "[HEALTH] WARNING | ... | Status: HEALTHY |
-   // ... | ATR: 1 falhas" nos quatro graficos sem tick (USDBRL/M5, USDCOP/H1,
-   // USDCLP/H1, USDRUB/H1). Sem tick nao ha evidencia de falha de modulo:
-   // enquanto HealthGetSecondsSinceTick() > 15 as falhas dos watchdogs nao
-   // contam para o veredicto. O contador continua a ser somado e continua a
-   // sair impresso - muda apenas o veredicto.
-   bool houveTick = (HealthGetSecondsSinceTick() <= 15);
-   for(int i = 0; i < HEALTH_WD_MODULES && houveTick; i++)
+   // WARNING: watchdog com falhas parciais (1..2 de 3)
+   for(int i = 0; i < HEALTH_WD_MODULES; i++)
    {
       if(g_wdFailures[i] > 0 && g_wdFailures[i] < HEALTH_WD_MAX_FAILURES)
          return TM_WARNING;
@@ -882,11 +746,7 @@ string HealthMonitorSummary()
 {
    string summary = "=== HEALTH MONITOR ===\n";
 
-   // v1.2.82 (02/11/2026) - P1.69: a linha Status lia g_healthStatus e o tag
-   // lia HealthGetStateString(), por isso a MESMA linha podia dizer
-   // "[HEALTH] WARNING | ... | Status: HEALTHY". Passa a ler a mesma fonte.
-   summary += "Status: " + HealthGetStateString() +
-              " (check " + (g_healthStatus ? "OK" : "FALHOU") + ")\n";
+   summary += "Status: " + (g_healthStatus ? "HEALTHY" : "FAILURE") + "\n";
    summary += "Uptime (s): " + IntegerToString(HealthGetUptimeSeconds()) + "\n";
    summary += "Ticks/seg: " + IntegerToString(g_ticksPerSecond) + "\n";
    summary += "Total ticks: " + IntegerToString((long)g_healthTotalTicks) + "\n";

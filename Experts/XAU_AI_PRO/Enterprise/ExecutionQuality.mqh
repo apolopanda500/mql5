@@ -44,7 +44,7 @@ int CExecutionQuality::m_samples = 0;
 
 void CExecutionQuality::Init()
 {
-   if(LogInicioDetalhe()) { Print("[QUALITY] ExecutionQuality initialized"); }
+   Print("[QUALITY] ExecutionQuality initialized");
 }
 
 QualityScore CExecutionQuality::CalculateScore(double expected_price, double executed_price, int delay_ms)

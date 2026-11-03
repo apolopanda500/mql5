@@ -20,11 +20,6 @@
 *.mq5     text eol=lf
 *.mqh     text eol=lf
 *.mqproj  text eol=lf
+*.set     text eol=lf
 *.json    text eol=lf
 *.md      text eol=lf
-
-# MetaEditor grava .set em UTF-16 (BOM) - tratar como binario evita ruido no diff
-*.set     binary
-
-# Scripts PowerShell rodam no Windows - manter CRLF
-*.ps1     text eol=crlf

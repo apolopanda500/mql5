@@ -10,44 +10,6 @@
 #include "../Core/Config.mqh"
 
 //==================================================
-// ESCOPO DA ANOMALIA DE MERCADO
-//==================================================
-// MEDIDO em 29/10/2026: ATR do USDBRL em 3.64x a media disparou
-// ForceSafeMode("Abnormal market: USDBRL"). O SAFE_MODE e persistido em
-// GlobalVariable, entao UM simbolo exotico parava os 13 graficos do EA e
-// nenhum ativo abria operacao.
-// Default: a anomalia fica restrita ao simbolo (CanTrade(symbol)); o estado
-// global NAO e tocado. `true` restaura o comportamento antigo (para tudo).
-input bool   CircuitAbnormalMarketBlocksAll = false;
-input double CircuitAbnormalATRRatio        = 3.0;   // ATR atual / ATR medio
-//==================================================
-// HISTERESE DO GATILHO DE BROKER (v1.2.24)
-//==================================================
-// MEDIDO em 29/10/2026 as 22:29:27 no grafico USDJPY:
-//   [CIRCUIT] SAFE MODE activated: Broker connection or trading disabled | Trigger #1
-// e, imediatamente depois, no MESMO journal:
-//   Status: HEALTHY | Uptime (s): 195 | Checks: 3 | Broker errors: 0
-//
-// A CAUSA: CheckBrokerError lia TERMINAL_CONNECTED e ACCOUNT_TRADE_ALLOWED
-// UMA vez e devolvia falha no primeiro instante em que o terminal ainda nao
-// estava conectado (recarga do .ex5 / reconexao do servidor). Sem histerese,
-// UM tique ruim virava SAFE_MODE GLOBAL, que e persistido em GlobalVariable
-// por 300 s e sobrevive a reinicios - o EA inteiro ficava sem operar.
-//
-// A CORRECAO: a falha so e aceita como real quando persiste por N leituras
-// E por S segundos. Um piscar de conexao nao para o robo.
-// CircuitBrokerFailMinCheck=0 && CircuitBrokerFailMinSeconds=0 restaura o
-// comportamento antigo (gatilho imediato).
-input int    CircuitBrokerFailMinCheck   = 3;    // leituras seguidas com falha
-input int    CircuitBrokerFailMinSeconds = 15;   // persistencia minima (s)
-input int    CircuitWarmupSeconds        = 30;   // carencia apos OnInit (s)
-
-// Estado da histerese (escopo de arquivo: uma instancia por grafico)
-int      g_cbBrokerFails     = 0;
-datetime g_cbBrokerFirstFail = 0;
-datetime g_cbInitTime        = 0;
-
-//==================================================
 // CIRCUIT STATE
 //==================================================
 
@@ -158,8 +120,8 @@ public:
 // THROTTLE DE DIAGNOSTICO
 //
 // MEDIDO em 07/10/2026 na conta 391773676 (XMGlobal-MT5 14).
-// Ver AGENTS.md Â§7: alterar .mqh exige recompilar no
-// MetaEditor e REANEXAR ao grafico â€” compilar nao reanexa.
+// Ver AGENTS.md §7: alterar .mqh exige recompilar no
+// MetaEditor e REANEXAR ao grafico — compilar nao reanexa.
 //
 // O QUE ESTAVA ACONTECENDO
 // -----------------------
@@ -178,11 +140,11 @@ public:
 // -----------------------------
 // `CheckSpreadExplosion` continua devolvendo `true` nos
 // mesmos tiques, com o mesmo limite. O filtro barra spread
-// exatamente como antes. O que mudou e a FREQUENCIA do log â€”
+// exatamente como antes. O que mudou e a FREQUENCIA do log —
 // e o proprio comentario do `RunSymbol` ja dizia que essa
 // linha "serve apenas de diagnostico".
 //
-// Por que o limite de 500 nao Ã© o mesmo para todos: "500
+// Por que o limite de 500 nao é o mesmo para todos: "500
 // pontos" vale $5,00 no BTCUSD (point 0,01) e $0,005 no
 // EURUSD (point 0,00001). Sao 1000x de diferenca, porque
 // `digits` vai de 2 a 5 entre os graficos. E o mapa de
@@ -196,7 +158,7 @@ public:
 // ESTE DEFECTO FOI CORRIGIDO EM 08/10/2026 (ver Core/Config.mqh)
 // --------------------------------------------------
 // MEDIDO na conta 391773676 com o EA operando BTCUSD H4: 4 de 12 simbolos
-// bloqueados com spread NORMAL â€” BTCUSD, ETHUSD, USDSEK e o OURO, este por
+// bloqueados com spread NORMAL — BTCUSD, ETHUSD, USDSEK e o OURO, este por
 // 57 pontos contra o limite de 50.
 //
 // A CORRECAO: o limite virou PORCENTAGEM do preco (`MaxSpreadPct`, 0,6%), e o
@@ -205,7 +167,7 @@ public:
 // saiu do mapa, porque `_Symbol` nunca teve sufixo.
 //
 // A `emergencySpread = GetMaxSpread(symbol)*10.0` abaixo continua sendo a
-// explosao EXTREMA â€” e agora esse 10x e sobre um numero ja convertido, que e o
+// explosao EXTREMA — e agora esse 10x e sobre um numero ja convertido, que e o
 // que se pretendia.
 //==================================================
 
@@ -308,9 +270,6 @@ CCircuitBreaker::m_cooldown_seconds=
 
 void CCircuitBreaker::Init()
 {
-   if(g_cbInitTime <= 0)
-      g_cbInitTime = TimeCurrent();
-
    if(m_initialized)
       return;
 
@@ -343,22 +302,7 @@ void CCircuitBreaker::Init()
    {
       datetime until=(datetime)GlobalVariableGet(gvCB);
 
-      bool deBroker = false;
-      if(GlobalVariableCheck("XAI_PRO_CB_SAFE_BROKER"))
-         deBroker = (GlobalVariableGet("XAI_PRO_CB_SAFE_BROKER") > 0.5);
-
-      bool brokerOkAgora = (TerminalInfoInteger(TERMINAL_CONNECTED) != 0
-                            && AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) != 0);
-
-      if(TimeCurrent() < until && deBroker && brokerOkAgora)
-      {
-         // v1.2.24: o motivo do bloqueio desapareceu - manter 300 s de cegueira
-         // apos um restart nao protege nada.
-         GlobalVariableDel(gvCB);
-         GlobalVariableDel("XAI_PRO_CB_SAFE_BROKER");
-         Print("[CIRCUIT] SAFE_MODE de broker descartado no start (broker conectado e liberado)");
-      }
-      else if(TimeCurrent() < until)
+      if(TimeCurrent() < until)
       {
          m_state=CIRCUIT_SAFE_MODE;
 
@@ -372,12 +316,12 @@ void CCircuitBreaker::Init()
       else
       {
          if(MQLInfoInteger(MQL_TESTER)==0)
-            { GlobalVariableDel(gvCB); if(GlobalVariableCheck("XAI_PRO_CB_SAFE_BROKER")) GlobalVariableDel("XAI_PRO_CB_SAFE_BROKER"); }
+            GlobalVariableDel(gvCB);
       }
    }
 
 
-   if(LogInicioDetalhe()) Print(
+   Print(
       "[CIRCUIT] CircuitBreaker initialized"
    );
 }
@@ -461,19 +405,19 @@ bool CCircuitBreaker::CheckSpreadExplosion(
    // Circuit Breaker atua somente em
    // spread extremamente anormal.
    //
-   // O filtro normal jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ usa MaxSpread.
+   // O filtro normal jÃƒÆ’Ã‚Â¡ usa MaxSpread.
    //
    // IMPORTANTE (v1.2.0 - diagnostico):
-   // Em backtest, sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­mbolos crypto (BTCUSD#, ETHUSD#)
-   // tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªm spread natural de ~345 pontos, enquanto
+   // Em backtest, sÃƒÆ’Ã‚Â­mbolos crypto (BTCUSD#, ETHUSD#)
+   // tÃƒÆ’Ã‚Âªm spread natural de ~345 pontos, enquanto
    // MaxSpread default = 30. Com fator 3x (=90),
    // o CircuitBreaker dispara ForceSafeMode a cada
-   // tick, travando toda a operaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o.
+   // tick, travando toda a operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o.
    //
-   // SoluÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o defensiva:
-   //   - O filtro normal (ValidateTrade) jÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ barra
-   //     spread > MaxSpread por sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­mbolo.
-   //   - O CircuitBreaker sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³ deve agir em explosÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o
+   // SoluÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Â£o defensiva:
+   //   - O filtro normal (ValidateTrade) jÃƒÆ’Ã‚Â¡ barra
+   //     spread > MaxSpread por sÃƒÆ’Ã‚Â­mbolo.
+   //   - O CircuitBreaker sÃƒÆ’Ã‚Â³ deve agir em explosÃƒÆ’Ã‚Â£o
    //     EXTREMA (fator 10x), evitando falso-positivo
    //     em spread normal de crypto/volatilidade alta.
 
@@ -580,75 +524,32 @@ bool CCircuitBreaker::CheckHighDrawdown()
 
 bool CCircuitBreaker::CheckBrokerError()
 {
-   // v1.2.24: LEITURA PURA do estado do broker
-   bool connected    = (TerminalInfoInteger(TERMINAL_CONNECTED) != 0);
-   bool tradeAllowed = (AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) != 0);
+   bool connected=
+      (
+         TerminalInfoInteger(
+            TERMINAL_CONNECTED
+         )!=0
+      );
 
-   if(connected && tradeAllowed)
+
+   bool tradeAllowed=
+      (
+         AccountInfoInteger(
+            ACCOUNT_TRADE_ALLOWED
+         )!=0
+      );
+
+
+   if(
+      !connected ||
+      !tradeAllowed
+   )
    {
-      // Reconectou antes do gatilho: o episodio nao bloqueia nada.
-      if(g_cbBrokerFails > 0)
-      {
-         // v1.2.85 (02/11/2026) - P1.72: MEDIDO na janela 17:40-18:44 do
-         // Logs de 02/11 (872 linhas): 32 linhas [CIRCUIT] BROKER INSTAVEL e
-         // 32 [CIRCUIT] BROKER OK - um PAR por leitura transitoria, 64
-         // linhas/hora para dizer que nada aconteceu. A linha OK so informa
-         // quando houve mesmo uma rajada (3+ leituras ou 60+ s); uma leitura
-         // isolada continua a ser contada e continua a nao bloquear nada.
-         bool rajadaRelevante = (g_cbBrokerFails >= 3
-                                 || (g_cbBrokerFirstFail > 0
-                                     && (TimeCurrent() - g_cbBrokerFirstFail) >= 60));
-
-         if(rajadaRelevante && CircuitLogPodeImprimir("broker_transitorio", CIRCUIT_LOG_INTERVALO_SEG))
-            PrintFormat("[CIRCUIT] BROKER OK | falha transitoria descartada: %d leituras / %ds",
-                        g_cbBrokerFails,
-                        (int)(TimeCurrent() - g_cbBrokerFirstFail));
-      }
-
-      g_cbBrokerFails     = 0;
-      g_cbBrokerFirstFail = 0;
-
-      return(false);
+      return true;
    }
 
-   // Gatilho imediato restaurado a pedido do dono
-   if(CircuitBrokerFailMinCheck <= 0 && CircuitBrokerFailMinSeconds <= 0)
-      return(true);
 
-   datetime agora = TimeCurrent();
-
-   if(g_cbBrokerFails == 0)
-      g_cbBrokerFirstFail = agora;
-
-   g_cbBrokerFails++;
-
-   int duracao = (g_cbBrokerFirstFail > 0) ? (int)(agora - g_cbBrokerFirstFail) : 0;
-
-   bool carencia = (g_cbInitTime > 0 && (agora - g_cbInitTime) < CircuitWarmupSeconds);
-
-   bool confirmado = (!carencia
-                      && g_cbBrokerFails >= CircuitBrokerFailMinCheck
-                      && duracao >= CircuitBrokerFailMinSeconds);
-
-   if(!confirmado)
-   {
-      // Diagnostico throttle por `CircuitLogPodeImprimir`: nao pode inundar o journal.
-      if(CircuitLogPodeImprimir("broker_instavel", CIRCUIT_LOG_INTERVALO_SEG))
-         PrintFormat("[CIRCUIT] BROKER INSTAVEL | leituras=%d | %ds | %s | aguardando confirmacao (nao bloqueia)",
-                     g_cbBrokerFails,
-                     duracao,
-                     (carencia ? "carencia de start" : "histerese"));
-
-      return(false);
-   }
-
-   PrintFormat("[CIRCUIT] BROKER CONFIRMADO INDISPONIVEL | leituras=%d | %ds | conectado=%d | trade_allowed=%d",
-               g_cbBrokerFails,
-               duracao,
-               (int)connected,
-               (int)tradeAllowed);
-
-   return(true);
+   return false;
 }
 
 
@@ -932,10 +833,10 @@ bool CCircuitBreaker::CheckAbnormalMarket(
 
 
    // Volatilidade extrema:
-   // ATR atual > 3x mÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©dia recente
+   // ATR atual > 3x mÃƒÆ’Ã‚Â©dia recente
 
    if(
-      ratio>=CircuitAbnormalATRRatio
+      ratio>=3.0
    )
    {
       Print(
@@ -1056,7 +957,7 @@ void CCircuitBreaker::Run()
           string gvCB="XAI_PRO_CB_SAFE_UNTIL";
 
           if(MQLInfoInteger(MQL_TESTER)==0 && GlobalVariableCheck(gvCB))
-            { GlobalVariableDel(gvCB); if(GlobalVariableCheck("XAI_PRO_CB_SAFE_BROKER")) GlobalVariableDel("XAI_PRO_CB_SAFE_BROKER"); }
+            GlobalVariableDel(gvCB);
       }
    }
 }
@@ -1087,19 +988,19 @@ void CCircuitBreaker::RunSymbol(
       //================================================
       // SPREAD
       //
-      // NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o bloquear o sistema inteiro por causa do
-      // spread de um ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âºnico sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­mbolo.
+      // NÃƒÆ’Ã‚Â£o bloquear o sistema inteiro por causa do
+      // spread de um ÃƒÆ’Ã‚Âºnico sÃƒÆ’Ã‚Â­mbolo.
       //
-      // O filtro por sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­mbolo (ValidateTrade | SPREAD)
-      // ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â© o responsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡vel por barrar spread > MaxSpread,
-      // sem travar as demais operaÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â§ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âµes.
+      // O filtro por sÃƒÆ’Ã‚Â­mbolo (ValidateTrade | SPREAD)
+      // ÃƒÆ’Ã‚Â© o responsÃƒÆ’Ã‚Â¡vel por barrar spread > MaxSpread,
+      // sem travar as demais operaÃƒÆ’Ã‚Â§ÃƒÆ’Ã‚Âµes.
       //
-      // Em backtest, sÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­mbolos crypto (BTCUSD#, ETHUSD#)
-      // tÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âªm spread natural muito alto (ex: 2250 pontos),
+      // Em backtest, sÃƒÆ’Ã‚Â­mbolos crypto (BTCUSD#, ETHUSD#)
+      // tÃƒÆ’Ã‚Âªm spread natural muito alto (ex: 2250 pontos),
       // o que fazia o CircuitBreaker travar TUDO a cada
       // tick (Trigger #99k).
       //
-      // Este log serve apenas de diagnÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³stico.
+      // Este log serve apenas de diagnÃƒÆ’Ã‚Â³stico.
       //================================================
 
       if(
@@ -1127,13 +1028,13 @@ void CCircuitBreaker::RunSymbol(
       //================================================
       // AI
       //
-      // NÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o bloquear o sistema inteiro apenas porque
-      // prediction_<symbol>.json nÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o estÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ disponÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â­vel.
+      // NÃƒÆ’Ã‚Â£o bloquear o sistema inteiro apenas porque
+      // prediction_<symbol>.json nÃƒÆ’Ã‚Â£o estÃƒÆ’Ã‚Â¡ disponÃƒÆ’Ã‚Â­vel.
       //
       // O AIEngine possui fallback local.
       //
-      // O AITradeAllowed() serÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡ responsÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡vel pela
-      // decisÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â£o final da IA.
+      // O AITradeAllowed() serÃƒÆ’Ã‚Â¡ responsÃƒÆ’Ã‚Â¡vel pela
+      // decisÃƒÆ’Ã‚Â£o final da IA.
       //================================================
 
       Print(
@@ -1150,32 +1051,13 @@ void CCircuitBreaker::RunSymbol(
       )
    )
    {
-      // Default (CircuitAbnormalMarketBlocksAll=false): a anomalia fica
-      // restrita ao simbolo, avaliada em CanTrade(symbol). O SAFE_MODE
-      // global NAO e tocado - um ativo exotico nao para os demais.
-      if(CircuitAbnormalMarketBlocksAll)
-      {
-         ForceSafeMode(
-            "Abnormal market: "
-            +
-            symbol
-         );
+      ForceSafeMode(
+         "Abnormal market: "
+         +
+         symbol
+      );
 
-         return;
-      }
-
-      static datetime lastAbnormalLog = 0;
-      datetime abnormalNow = TimeCurrent();
-
-      if(abnormalNow - lastAbnormalLog >= 300)
-      {
-         lastAbnormalLog = abnormalNow;
-         Print(
-            "[CIRCUIT] ABNORMAL MARKET restrito ao simbolo | ",
-            symbol,
-            " | demais ativos seguem liberados"
-         );
-      }
+      return;
    }
 }
 
@@ -1315,9 +1197,6 @@ bool CCircuitBreaker::CanTrade(
 
 void CCircuitBreaker::Reset()
 {
-   g_cbBrokerFails     = 0;
-   g_cbBrokerFirstFail = 0;
-
    m_state=
       CIRCUIT_NORMAL;
 
@@ -1368,27 +1247,7 @@ void CCircuitBreaker::ForceSafeMode(
       m_trigger_count++;
    // v1.3.0 (Etapa 3): persiste SAFE_MODE pelo cooldown (sobrevive a reinits)
    if(MQLInfoInteger(MQL_TESTER)==0)
-   {
       GlobalVariableSet("XAI_PRO_CB_SAFE_UNTIL", TimeCurrent() + m_cooldown_seconds);
-
-      // v1.2.24: o SAFE_MODE de BROKER nao deve sobreviver a um restart em que
-      // o broker ja voltou. A marca permite descartar so esse caso.
-      string motivo = reason;
-      StringToLower(motivo);
-
-      bool deBroker = (StringFind(motivo, "broker") >= 0);
-
-      if(deBroker)
-      {
-         if(!GlobalVariableCheck("XAI_PRO_CB_SAFE_BROKER"))
-            GlobalVariableSet("XAI_PRO_CB_SAFE_BROKER", 1.0);
-      }
-      else
-      {
-         if(GlobalVariableCheck("XAI_PRO_CB_SAFE_BROKER"))
-            GlobalVariableDel("XAI_PRO_CB_SAFE_BROKER");
-      }
-   }
 
    PrintFormat(
       "[CIRCUIT] SAFE MODE activated: %s | Trigger #%d",

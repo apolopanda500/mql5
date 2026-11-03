@@ -45,7 +45,7 @@
 #include "../Enterprise/VersionManager.mqh"   // EA_VERSION_STRING (fonte unica)                // self-contained: AIClientConnected/LastAIConfidence
 
 input bool EnableForwardLog      = true;   // ETAPA 13: coletor de sesion live
-input int    ForwardHeartbeatSec = 300;    // intervalo minimo do heartbeat (seg) - v1.2.26: 1s x 17 graficos afogava o journal
+input int    ForwardHeartbeatSec = 1;      // intervalo minimo do heartbeat (seg)
 
 string const FORWARD_FILE       = "Data\\forward_test_session.csv";
 string const FORWARD_FILE_TRADE = "Data\\forward_test_trades.csv";
@@ -142,10 +142,9 @@ void ForwardHeartbeat()
    string connState = ConnectionGuardSummary();
    string fmState   = GetFailureStateString();
    string newsState = "CLEAR";
-   // v1.2.11 (29/10/2026): registra o estado de noticia sempre que o modulo
-   // estiver ativo (filtro OU modo operar), nao so com EnableNewsFilter.
-   if(NewsModuleActive())
-      newsState = EnumToString(GetNewsState());   bool aiReady = AIClientConnected();
+   if(EnableNewsFilter)
+      newsState = EnumToString(GetNewsState());
+   bool aiReady = AIClientConnected();
    double aiConf = LastAIConfidence();
    string version = EA_VERSION_STRING;
    FileWrite(g_fwdHFile,

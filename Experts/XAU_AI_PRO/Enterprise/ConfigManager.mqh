@@ -118,8 +118,7 @@ void CConfigManager::Init()
    FillDefault(PROFILE_PROP,        "Prop Firm",    0.01, 80, 160, 40, 500, 5.0, 10, 0.5, 0.6, 75, true,  true,  false);
    FillDefault(PROFILE_REAL,        "Real Account", 0.02, 100, 200, 50, 500, 5.0, 10, 1.0, 0.6, 70, true,  true,  true);
 
-   if(AccountLogGatePodeImprimir("config_init", 3600))
-      Print("[CONFIG] ConfigManager v2.0 inicializado | perfis=", 7);
+   Print("[CONFIG] ConfigManager v2.0 inicializado | perfis=", 7);
 }
 
 //--------------------------------------------------
@@ -153,8 +152,7 @@ bool CConfigManager::SetProfile(ConfigProfile profile)
       return false;
    }
    m_current_profile = profile;
-   if(AccountLogGatePodeImprimir("config_ativo_" + GetCurrentProfileName(), 3600))
-      Print("[CONFIG] Perfil ativo: ", GetCurrentProfileName());
+   Print("[CONFIG] Perfil ativo: ", GetCurrentProfileName());
    return true;
 }
 
@@ -344,11 +342,6 @@ string CConfigManager::GetStatus()
       m_profiles[idx].take_profit, m_profiles[idx].max_daily_dd, m_profiles[idx].max_trades_per_day);
 }
 
-void CConfigManager::LogStatus()
-{
-   // v1.2.91 (02/11/2026) - P1.78: retrato igual nas 16 instancias.
-   if(AccountLogGatePodeImprimir("config", 3600))
-      Print("[CONFIG] ", GetStatus());
-}
+void CConfigManager::LogStatus() { Print("[CONFIG] ", GetStatus()); }
 
 #endif // CONFIG_MANAGER_MQH

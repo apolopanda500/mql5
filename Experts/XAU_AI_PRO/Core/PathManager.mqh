@@ -39,9 +39,14 @@ bool InitPathManager()
       FilesPath +
       "Data\\model.pkl";
 
-   if(LogInicioDetalhe()) { Print("[PATH] data=",DataPath); }
-   if(LogInicioDetalhe()) Print("[PATH] files=",FilesPath," | dataset=",DatasetPath,
-         " | prediction=",PredictionPath," | model=",ModelPath);
+   Print("==============================");
+   Print("PATH MANAGER");
+   Print("DATA PATH      : ",DataPath);
+   Print("FILES PATH     : ",FilesPath);
+   Print("DATASET PATH   : ",DatasetPath);
+   Print("PREDICTION PATH: ",PredictionPath);
+   Print("MODEL PATH     : ",ModelPath);
+   Print("==============================");
 
    return true;
 }

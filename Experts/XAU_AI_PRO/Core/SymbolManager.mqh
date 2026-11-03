@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.9
+﻿// XAU_AI_PRO v1.2.9
 #ifndef SYMBOLMANAGER_MQH
 #define SYMBOLMANAGER_MQH
 
@@ -158,12 +158,7 @@ string ResolveBrokerSymbol(string symbol)
 
       if(IsSymbolTradeable(candidates[i]))
       {
-         // v1.2.81 (02/11/2026) - P1.68: medido 7 955 linhas hoje, quase todas
-         // a dizer o obvio (XAUUSD -> XAUUSD). So interessa quando ha
-         // REMAPEAMENTO real entre o nome pedido e o nome do broker.
-         if(StringCompare(candidates[i], symbol, false) != 0)
-            if(AccountLogGatePodeImprimir("symres_" + symbol, 3600))
-               Print("SYMBOL MANAGER | Resolved: ", symbol, " -> ", candidates[i]);
+         Print("SYMBOL MANAGER | Resolved: ", symbol, " -> ", candidates[i]);
          return candidates[i];
       }
    }
@@ -179,8 +174,7 @@ string ResolveBrokerSymbol(string symbol)
       {
          if(IsSymbolTradeable(broker))
          {
-            if(AccountLogGatePodeImprimir("symexact_" + symbol, 3600))
-               Print("SYMBOL MANAGER | Exact match: ", symbol, " -> ", broker);
+            Print("SYMBOL MANAGER | Exact match: ", symbol, " -> ", broker);
             return broker;
          }
       }
@@ -202,8 +196,7 @@ string ResolveBrokerSymbol(string symbol)
       {
          if(IsSymbolTradeable(broker))
          {
-            if(AccountLogGatePodeImprimir("sympart_" + symbol, 3600))
-               Print("SYMBOL MANAGER | Partial match: ", symbol, " -> ", broker);
+            Print("SYMBOL MANAGER | Partial match: ", symbol, " -> ", broker);
             return broker;
          }
       }
@@ -278,11 +271,19 @@ bool InitSymbolManager()
       return true;
    }
 
-   // v1.2.87 (02/11/2026) - P1.74: MEDIDO 9 863 linhas/dia so neste modulo e
-   // 57 delas num unico arranque de 16 graficos. Nada disto era evento: era o
-   // mesmo retrato da configuracao repetido por instancia. Passa a UMA linha.
-   int    totalMW    = SymbolsTotal(true);
-   string duplicados = "";
+   Print("=== SYMBOL MANAGER INITIALIZING ===");
+   Print("SYMBOL MANAGER | Configured symbols: ", count);
+
+   if(EnableVerboseDebug)
+   {
+      Print("SYMBOL MANAGER | Market Watch list:");
+      int total = SymbolsTotal(true);
+      for(int i = 0; i < total; i++)
+      {
+         string brokerSymbol = SymbolName(i, true);
+         Print("  [", i, "] ", brokerSymbol);
+      }
+   }
 
    for(int i = 0; i < count; i++)
    {
@@ -293,46 +294,24 @@ bool InitSymbolManager()
 
       if(SymbolAlreadyActive(symbol))
       {
-         if(duplicados != "")
-            duplicados += ",";
-         duplicados += symbol;
+         Print("SYMBOL MANAGER | Duplicate ignored: ", symbol);
          continue;
       }
 
       int size = ArraySize(ActiveSymbols);
       ArrayResize(ActiveSymbols, size + 1);
       ActiveSymbols[size] = symbol;
+
+      Print("SYMBOL MANAGER | Active symbol registered: ", symbol);
    }
 
+   Print("=== SYMBOL MANAGER INITIALIZED ===");
+   Print("SYMBOL MANAGER | Total active symbols: ", ArraySize(ActiveSymbols));
 
-   // P1.19: ActiveSymbols[] nao e consumido em mais nenhum modulo do EA; quem decide o que
-   // este programa negoceia e sempre _Symbol do grafico. Este aviso torna visivel no journal a
-   // incoerencia entre o simbolo do grafico e a lista Symbols configurada, que de outro modo
-   // ficaria silenciosa (o grafico opera na mesma, so que sem aparecer em Symbols).
-   string selfResolved = ResolveBrokerSymbol(_Symbol);
-   if(selfResolved == "")
-      selfResolved = _Symbol;
-
-   if(!SymbolAlreadyActive(selfResolved))
-   {
-      // P2.00: e configuracao estatica, nao um evento - 1x/dia por CONTA.
-      if(AccountLogGatePodeImprimir("syms_aviso", 86400))
-         Print("[SYMS] AVISO P1.19: o simbolo do grafico '", selfResolved,
-            "' nao consta em Symbols [", Symbols, "]. A lista Symbols nao limita o que este grafico negoceia.");
-   }
-
-   string listaAtivos = "";
    for(int i = 0; i < ArraySize(ActiveSymbols); i++)
    {
-      if(i > 0)
-         listaAtivos += ",";
-      listaAtivos += ActiveSymbols[i];
+      Print("  [", i, "] ", ActiveSymbols[i]);
    }
-
-   if(LogInicioDetalhe()) Print("[SYMS] configurados=", count, " | ativos=", ArraySize(ActiveSymbols),
-         " | marketwatch=", totalMW, " | grafico=", _Symbol,
-         (duplicados != "" ? (" | duplicados=" + duplicados) : ""),
-         " | ", listaAtivos);
 
    if(ArraySize(ActiveSymbols) == 0)
    {

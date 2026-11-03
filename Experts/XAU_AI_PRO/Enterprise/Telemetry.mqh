@@ -143,7 +143,7 @@ void CTelemetry::Init()
    m_peakDrawdown   = 0.0;
    m_peakEquity     = AccountInfoDouble(ACCOUNT_EQUITY);
 
-   if(LogInicioDetalhe()) { Print("[TELEMETRY] Real telemetry initialized (15.6)"); }
+   Print("[TELEMETRY] Real telemetry initialized (15.6)");
 }
 
 //==================================================
@@ -436,7 +436,7 @@ string CTelemetry::GetSummary()
 
 void CTelemetry::LogSummary()
 {
-   if(AccountLogGatePodeImprimir("telemetry", 3600)) { Print("[TELEMETRY] ", GetSummary()); }
+   Print("[TELEMETRY] ", GetSummary());
 }
 
 #endif // TELEMETRY_MQH

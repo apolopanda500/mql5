@@ -73,7 +73,7 @@ void FailureClassify(const bool isCritical, const string reason)
    if(!isCritical)
    {
       // Degradacion suave: NO activa SAFE, solo log.
-      if(LogInicioDetalhe()) Print("[FAILMODE] Non-critical issue: ", reason);
+      Print("[FAILMODE] Non-critical issue: ", reason);
       return;
    }
 

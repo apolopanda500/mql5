@@ -5,7 +5,6 @@
 #include "../Core/Config.mqh"
 #include "../Core/SignalCore.mqh"
 #include "../Core/ValidationEngine.mqh"
-#include "../Filters/GlobalScenario.mqh"   // v1.2.22: correlacao de moeda + sessao GMT
 
 #include "../Indicators/RSI.mqh"
 #include "../Indicators/ADX.mqh"
@@ -15,62 +14,12 @@
 
 #include "../AI/AIEngine.mqh"
 
-// v1.2.10: memoria de aprendizado persistente (historico real)
-#include "../AI/LearningHistory.mqh"
-
 //==================================================
 // DECISION ENGINE
 // MULTI SYMBOL
 //==================================================
 
 double MarketScore=0.0;
-
-//==================================================
-// v1.2.97 (03/11/2026) - P1.86: PORTA DE THROTTLE LOCAL
-//
-// Motivo medido (journal de 02/11, 23:20-23:24, v1.2.93): as linhas
-// "[WARMUP]" e "SCORE CALCULATED" saiam 1x/min por simbolo e "SCORE
-// CALCULATED" saia SEM TAG. Com o ADX em "sem leitura" o aviso de warm-up
-// nunca parava, porque nunca ficava pronto. Esta porta abafa por
-// (simbolo + tag) sem mexer em decisao, score, filtro ou ordem.
-//
-// Implementacao local de proposito: DecisionEngine.mqh e incluido antes do
-// Monitoring/DiagGate.mqh no MarketScanner, por isso nao depende da ordem
-// dos #include.
-//==================================================
-
-#define DECLOG_MAX 64
-
-string   g_decLogKey[DECLOG_MAX];
-datetime g_decLogAt[DECLOG_MAX];
-int      g_decLogCount = 0;
-
-bool DecisionLogDue(const string symbol, const string tag, const int seconds)
-{
-   const string key = symbol + "|" + tag;
-   datetime     now = (datetime)TimeLocal();
-
-   for(int i = 0; i < g_decLogCount; i++)
-   {
-      if(g_decLogKey[i] != key)
-         continue;
-
-      if(seconds > 0 && (now - g_decLogAt[i]) < seconds)
-         return false;
-
-      g_decLogAt[i] = now;
-      return true;
-   }
-
-   if(g_decLogCount >= DECLOG_MAX)
-      return true;
-
-   g_decLogKey[g_decLogCount] = key;
-   g_decLogAt[g_decLogCount]  = now;
-   g_decLogCount++;
-
-   return true;
-}
 
 //==================================================
 // NOTA POR SIMBOLO
@@ -119,48 +68,6 @@ double GetMarketScoreFor(string symbol)
 // MARKET SCORE
 //==================================================
 
-//==================================================
-// v1.2.28 (30/10/2026) - P1.5: WARM-UP DOS INDICADORES
-//
-// O que a medicao mostrou: `GetRSI()` devolve 0.0 e `GetADX()` devolve
-// -1.0 enquanto a serie esta a aquecer (Indicators/RSI.mqh e
-// Indicators/ADX.mqh). Esses valores NAO sao medidas: sao ausencia de
-// medida.
-//
-// Nenhum deles dava bonus por engano: em `CalculateMarketScore` as
-// condicoes `rsi>30` e `adx>=MinimumADX` sao falsas com 0.0 e -1.0, e no
-// `GetAIConfidence` (AI/AIEngine.mqh) acontece o mesmo. Ou seja: o score
-// ja era fail-closed. O que faltava era o CONTRARIO de um numero novo -
-// faltava o journal dizer que aqueles 0,00 eram "sem leitura" e nao
-// "leitura fraca". Sem isso, um score de 85 com RSI e ADX a zero
-// confundia-se com um mercado neutro medido.
-//
-// Esta funcao responde a pergunta que faltava e serve de base para o
-// gate de warm-up que as proximas versoes podem querer impor.
-//==================================================
-
-bool IndicatorsReady(string symbol="")
-{
-   if(symbol=="")
-      symbol=_Symbol;
-
-   // Folga do maior periodo em uso no score (EMA lenta 200, ADX 14 x3,
-   // RSI 14 x3). Abaixo disto o ADX ainda entrega 0.0 e o RSI 0.0.
-   int minimo = (int)MathMax(SlowEMA, (double)(ADXPeriod * 3));
-   minimo = (int)MathMax((double)minimo, (double)(RSIPeriod * 3));
-
-   if(Bars(symbol, PERIOD_CURRENT) < minimo)
-      return false;
-
-   if(GetRSI(symbol) <= 0.0)
-      return false;
-
-   if(GetADX(symbol) <= 0.0)
-      return false;
-
-   return true;
-}
-
 double CalculateMarketScore(
    int signal,
    string symbol=""
@@ -178,18 +85,6 @@ double CalculateMarketScore(
    static datetime lastLogTime = 0;
    datetime logNow = TimeCurrent();
    bool logOnce = (logNow - lastLogTime >= 60);
-
-   // v1.2.28 (30/10/2026) - P1.5: marca se as leituras existem. Nao altera
-   // nenhuma parcela do score (as condicoes de RSI/ADX ja falhavam com 0.0
-   // e -1.0); serve para o journal distinguir "sem leitura" de "leitura
-   // fraca" e para a proxima versao poder impor um gate de warm-up.
-   bool indicadoresProntos = IndicatorsReady(symbol);
-
-   if(logOnce && !indicadoresProntos && DecisionLogDue(symbol, "WARMUP", 3600))
-     {
-      PrintFormat("[WARMUP] %s | RSI=%.2f | ADX=%.2f | barras=%d | score SEM bonus de RSI/ADX",
-                  symbol, GetRSI(symbol), GetADX(symbol), Bars(symbol, PERIOD_CURRENT));
-     }
    if(logOnce)
       lastLogTime = logNow;
 
@@ -475,47 +370,14 @@ double CalculateMarketScore(
 
    SetMarketScore(symbol, MarketScore);
 
-   //================================================
-   // v1.2.10 - APRENDIZADO PELO HISTORICO REAL
-   // O score passa a considerar o desempenho real do
-   // simbolo (operacoes manuais + operacoes do EA),
-   // restaurado de Data\XAU_AI_PRO_learning.csv.
-   // Por padrao o aprendizado so incentiva (boost>=1).
-   //================================================
-
-   double learnedScore=LearningAdjustedScore(symbol,signal,MarketScore);
-
-   if(learnedScore!=MarketScore)
-   {
-      if(logOnce)
-         Print(
-            "[LEARN] score ajustado | Symbol=",
-            symbol,
-            " | Score=",
-            DoubleToString(MarketScore,2),
-            " -> ",
-            DoubleToString(learnedScore,2),
-            " | ",
-            LearningSymbolSummary(symbol),
-            " | HORA_FACTOR=",
-            DoubleToString(LearningHourScoreFactor(symbol),2)   // v1.2.35 P1.6: efeito da hora no score
-         );
-
-      MarketScore=NormalizeDouble(learnedScore,2);
-
-      SetMarketScore(symbol, MarketScore);
-   }
-
 
    //================================================
    // LOG (1x por minuto)
    //================================================
 
-   // v1.2.97 (P1.86): 1x/15 min por simbolo e com tag [SCORE] - antes saia
-   // 1x/min SEM TAG (linha orfa no journal, dificil de filtrar).
-   if(logOnce && DecisionLogDue(symbol, "SCORE", 900))
+   if(logOnce)
       Print(
-         "[SCORE] CALCULATED | Symbol=",
+         "SCORE CALCULATED | Symbol=",
          symbol,
          " | Signal=",
          signal,
@@ -539,8 +401,6 @@ double CalculateMarketScore(
             aiConfidence*0.50,
             2
          ),
-         " | WARMUP=",
-         (indicadoresProntos ? "NAO" : "SIM"),
          " | TOTAL=",
          DoubleToString(
             MarketScore,
@@ -555,29 +415,15 @@ double CalculateMarketScore(
 
 //==================================================
 // ALLOW TRADE
-//
-// v1.2.20 (29/10/2026): AllowTrade ganhou uma versao COM MOTIVO
-// (AllowTradeEx). Antes o scanner escrevia apenas
-// "[SCANNER] BLOCK | AllowTrade (Validation/Score/IA)" e o dono nao sabia
-// QUAL dos quatro gates barrou. Agora o journal diz o motivo exato, com o
-// score medido quando ele for o culpado.
 //==================================================
 
-string g_allowBlockReason = "";   // ultimo motivo de veto neste grafico
-
-bool AllowTradeEx(
+bool AllowTrade(
    int signal,
-   string symbol,
-   string &reason
+   string symbol=""
 )
 {
-   reason="";
-
    if(signal==0)
-   {
-      reason="SIGNAL 0";
       return false;
-   }
 
 
    if(symbol=="")
@@ -593,18 +439,12 @@ bool AllowTradeEx(
 
 
    //================================================
-   // 1) VALIDACAO TECNICA
+   // CORREÃƒÆ’Ã¢â‚¬Â¡ÃƒÆ’Ã†â€™O PRINCIPAL
    //
    // ValidateTrade espera:
-   // 1o = string symbol
-   // 2o = int signal
-   //
-   // ValidateTrade registra o motivo real do veto em
-   // g_validationLastBlock (ValidationEngine.mqh), por isso zeramos antes
-   // para nao reportar um motivo antigo de outra chamada.
+   // 1Ãƒâ€šÃ‚Âº = string symbol
+   // 2Ãƒâ€šÃ‚Âº = int signal
    //================================================
-
-   g_validationLastBlock="";
 
    if(
       !ValidateTrade(
@@ -613,37 +453,20 @@ bool AllowTradeEx(
       )
    )
    {
-      reason=
-         "VALIDATION: "+
-         ((g_validationLastBlock=="")?"sem detalhe":g_validationLastBlock);
-
       return false;
    }
 
 
    //------------------------------------------------
-   // 2) ETAPA 11 - NEWS FILTER: integracao explicita
-   // Reforco a capa de noticias no DecisionEngine,
-   // nao so via ValidateTrade. Nao bloqueia a gestao
-   // de posicoes abertas (so novas entradas).
+   // ETAPA 11 - NEWS FILTER: integraÃ§Ã£o explÃ­cita
+   // ReforÃ§o a capa de noticias no DecisionEngine,
+   // NON sÃ³ via ValidateTrade. NÃ£o bloquea a gestÃ£o de
+   // posiciones abertas (solo novas entradas).
    //------------------------------------------------
 
-   // v1.2.9 (29/10/2026): gate por simbolo. IsNewsBlocked() sem simbolo
-   // consultava sempre o grafico mestre, e EnableNewsFilter=false desligava
-   // o reforco mesmo com o modo "operar noticia" ativo.
-   double newsLotF  = 1.0;
-   double newsRiskF = 1.0;
-   double newsTPF   = 1.0;
-   string newsWhy   = "";
-
-   if(NewsModuleActive() &&
-      !NewsTradeAllow(symbol, newsLotF, newsRiskF, newsTPF, newsWhy))
+   if(EnableNewsFilter && IsNewsBlocked())
    {
       g_newsBlockReason = GetNewsBlockDetail(symbol);
-
-      reason=
-         "NEWS: "+
-         ((g_newsBlockReason=="")?newsWhy:g_newsBlockReason);
 
       if(allowLogOnce)
          Print(
@@ -652,42 +475,12 @@ bool AllowTradeEx(
             " | Signal=",
             signal,
             " | Reason=",
-            reason
+            g_newsBlockReason
          );
 
       NewsLogBlock();
       return false;
    }
-
-
-   //------------------------------------------------
-   // 2b) v1.2.22 - GUARDA DE CORRELACAO DE MOEDA
-   //
-   // Vem ANTES do score porque e um gate de CARTEIRA, nao de sinal: nao
-   // adianta a entrada ter nota alta se ela seria a quinta aposta no mesmo
-   // lado do dolar. O gate mais estrutural e avaliado primeiro.
-   //
-   // Sem isto, 16 graficos quase todos em USD permitiam comprar dolar cinco
-   // vezes ao mesmo tempo e chamar isso de diversificacao.
-   //------------------------------------------------
-
-   string correlWhy = "";
-
-   if(!CurrencyExposureGuard(symbol, signal, correlWhy))
-   {
-      reason = correlWhy;
-
-      if(allowLogOnce)
-         Print("DECISION BLOCKED | CORRELACAO | Symbol=", symbol,
-               " / Signal=", signal, " | Reason=", reason);
-
-      return false;
-   }
-
-
-   //------------------------------------------------
-   // 3) SCORE MINIMO
-   //------------------------------------------------
 
    double score=
       CalculateMarketScore(
@@ -697,15 +490,9 @@ bool AllowTradeEx(
 
 
    if(
-      score<MinMarketScore
+      score<60.0
    )
    {
-      reason=
-         "SCORE "+
-         DoubleToString(score,2)+
-         " < MinMarketScore "+
-         DoubleToString(MinMarketScore,2);
-
       if(allowLogOnce)
          Print(
             "DECISION BLOCKED | Symbol=",
@@ -713,11 +500,6 @@ bool AllowTradeEx(
             " | Score=",
             DoubleToString(
                score,
-               2
-            ),
-            " | Min=",
-            DoubleToString(
-               MinMarketScore,
                2
             )
          );
@@ -727,7 +509,7 @@ bool AllowTradeEx(
 
 
    //------------------------------------------------
-   // 4) v1.4.0 (Etapa 5): ADVANCED AI - veto final
+   // v1.4.0 (Etapa 5): ADVANCED AI - veto final
    // A IA NAO tem autoridade absoluta: pode BLOQUEAR,
    // mas nunca cria sinal. Score ponderado (trend,
    // strength, spread, market, execution).
@@ -735,10 +517,6 @@ bool AllowTradeEx(
 
    if(EnableAIFilter && !FinalAIAllow(signal, symbol))
    {
-      reason=
-         "ADV AI | Signal="+
-         IntegerToString(signal);
-
       if(allowLogOnce)
          Print(
             "DECISION BLOCKED | ADV AI | Symbol=",
@@ -751,23 +529,6 @@ bool AllowTradeEx(
    }
 
    return true;
-}
-
-
-// Compatibilidade: todo o projeto continua chamando AllowTrade().
-// O motivo fica guardado em g_allowBlockReason para quem quiser detalhar.
-bool AllowTrade(
-   int signal,
-   string symbol=""
-)
-{
-   string reason="";
-
-   bool ok=AllowTradeEx(signal,symbol,reason);
-
-   g_allowBlockReason = (ok?"":reason);
-
-   return ok;
 }
 
 

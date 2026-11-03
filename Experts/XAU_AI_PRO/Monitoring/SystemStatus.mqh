@@ -9,8 +9,6 @@
 #include "../AI/AIConnector.mqh"
 #include "HealthMonitor.mqh"   // ETAPA 15.6.5: estado multi-nivel do watchdog
 #include "../Filters/NewsFilter.mqh"   // self-contained: IsNewsBlocked
-#include "../AI/LearningHistory.mqh"   // v1.2.10: WR por simbolo/direcao/hora
-#include "../Core/TradeGate.mqh"        // P1.62: veredito unico de negociacao
 
 //==================================================
 // SYSTEM STATUS SNAPSHOT
@@ -54,19 +52,13 @@ string SSHealthSection()
    bool connected   =(TerminalInfoInteger(TERMINAL_CONNECTED)!=0);
    bool tradeAllowed=(TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)!=0);
    bool eaTradeOK   =(MQLInfoInteger(MQL_TRADE_ALLOWED)!=0);
-   // P1.62 (v1.2.76): o JSON levava dois bits crus e nenhum veredito; quem
-   // lesse "algo_trading_enabled": true concluia "pode negociar" com o EA
-   // bloqueado. O veredito passa a viajar junto, com o codigo do estado.
-   const ETradeGate gate = CTradeGate::Evaluate();
 
    // ETAPA 15.6.5: estado multi-nivel (nao apenas true/false)
    return "\"health\": {"
           "\"state\": " + SSQuote(HealthGetStateString()) + ", "
           "\"terminal_connected\": " + SSBool(connected) + ", "
           "\"algo_trading_enabled\": " + SSBool(tradeAllowed) + ", "
-          "\"ea_trade_allowed\": " + SSBool(eaTradeOK) + ", "
-          "\"trade_gate_ok\": " + SSBool(gate == TG_OK) + ", "
-          "\"trade_gate_code\": " + IntegerToString((int)gate) +
+          "\"ea_trade_allowed\": " + SSBool(eaTradeOK) +
           "}";
 }
 
@@ -135,24 +127,12 @@ string SSNewsSection(string symbol)
    bool blocked=false;
    string detail="";
 
-   // v1.2.11 (29/10/2026): o painel mostrava "blocked=false" sempre que
-   // EnableNewsFilter estava desligado, mesmo com o modo "operar noticia"
-   // ativo (EnableNewsTrading=true). O estado agora segue o modulo
-   // (NewsModuleActive) e e consultado POR SIMBOLO, igual aos gates de
-   // ValidateTrade/AllowTrade, em vez de sempre o grafico mestre.
-   if(NewsModuleActive())
+   if(EnableNewsFilter && IsNewsBlocked())
    {
-      double nLotF  = 1.0;
-      double nRiskF = 1.0;
-      double nTpF   = 1.0;
-      string nWhy   = "";
-
-      if(!NewsTradeAllow(symbol, nLotF, nRiskF, nTpF, nWhy))
-      {
-         blocked=true;
-         detail=GetNewsBlockDetail(symbol);
-      }
+      blocked=true;
+      detail=GetNewsBlockDetail(symbol);
    }
+
    return "\"news\": {"
           "\"filter_enabled\": " + SSBool(EnableNewsFilter) + ", "
           "\"blocked\": "        + SSBool(blocked) + ", "
@@ -200,53 +180,6 @@ string SSDatabaseSection()
 // UPDATE PRINCIPAL (throttled 15s)
 //--------------------------------------------------
 
-//--------------------------------------------------
-// APRENDIZADO (WR por simbolo, direcao e hora)
-//
-// O win rate existia apenas na memoria do EA. Aqui
-// ele vai para o painel: sem isso nao ha como saber
-// POR QUE o score do simbolo subiu ou caiu, nem quais
-// direcoes/horarios o historico reprova.
-// -1.0 = amostra insuficiente (nao e "0%").
-//--------------------------------------------------
-
-string SSLearningSection(string symbol)
-{
-   if(!EnableLearningFromHistory)
-      return "\"learning\": {\"enabled\": false}";
-
-   int id=FindLearningIndex(symbol);
-
-   int    total=(id>=0 ? g_AIMemory[id].totalTrades : 0);
-   int    wins =(id>=0 ? g_AIMemory[id].wins : 0);
-   double wr   =(total>0 ? (100.0*wins/total) : 0.0);
-
-   double boost=MemoryBoost(symbol);
-
-   if(boost<1.0 && !LearningPenaltyEnabled)
-      boost=1.0;
-
-   int hora=LearningServerHour(TimeCurrent());
-
-   return "\"learning\": {"
-          "\"enabled\": true, "
-          "\"symbol\": "            + SSQuote(symbol) + ", "
-          "\"trades\": "            + IntegerToString(total) + ", "
-          "\"wins\": "              + IntegerToString(wins) + ", "
-          "\"winrate\": "           + DoubleToString(wr,1) + ", "
-          "\"boost\": "             + DoubleToString(boost,2) + ", "
-          "\"dir_buy_wr\": "        + DoubleToString(DirRawWinRate(symbol,1),1) + ", "
-          "\"dir_buy_n\": "         + IntegerToString(DirTotal(symbol,1)) + ", "
-          "\"dir_sell_wr\": "       + DoubleToString(DirRawWinRate(symbol,-1),1) + ", "
-          "\"dir_sell_n\": "        + IntegerToString(DirTotal(symbol,-1)) + ", "
-          "\"hour\": "              + IntegerToString(hora) + ", "
-          "\"hour_wr\": "           + DoubleToString(HourWinRate(symbol,hora),1) + ", "
-          "\"hour_n\": "            + IntegerToString(HourTotal(symbol,hora)) + ", "
-          "\"dir_block_enabled\": " + SSBool(EnableDirectionBlacklist) + ", "
-          "\"summary\": "           + SSQuote(LearningSymbolSummary(symbol)) +
-          "}";
-}
-
 void SystemStatusUpdate()
 {
    static datetime lastAttempt=0;
@@ -266,7 +199,6 @@ void SystemStatusUpdate()
       + SSHealthSection() + ", "
       + SSTradingSection(symbol) + ", "
       + SSRiskSection(symbol) + ", "
-      + SSLearningSection(symbol) + ", "
       + SSAISection(symbol) + ", "
       + SSNewsSection(symbol) + ", "
       + SSPythonSection() + ", "
@@ -283,22 +215,7 @@ void SystemStatusUpdate()
 
    if(h==INVALID_HANDLE)
    {
-      // v1.2.85 (02/11/2026) - P1.72: MEDIDO 71 linhas hoje. A causa e o
-      // ficheiro de estado comum ser aberto por 17 instancias no mesmo
-      // instante (5004 = ERR_CANNOT_WRITE_FILE, ficheiro ocupado). O retrato
-      // e reescrito no ciclo seguinte, logo a falha e transitoria por
-      // construcao: passa a sair UMA linha por sessao, com o codigo, em vez
-      // de uma por ciclo. Nada muda no que e escrito quando a abertura passa.
-      static bool s_avisouStatusWrite = false;
-      int ssErr = GetLastError();
-
-      if(!s_avisouStatusWrite)
-        {
-         s_avisouStatusWrite = true;
-         Print("[STATUS] WRITE ERROR | Code=",ssErr,
-               " | aviso 1x/sessao | 5004 = ficheiro de estado ocupado por outra instancia;",
-               " o retrato e reescrito no ciclo seguinte");
-        }
+      Print("SYSTEM STATUS WRITE ERROR | Code=",GetLastError());
       return;
    }
 

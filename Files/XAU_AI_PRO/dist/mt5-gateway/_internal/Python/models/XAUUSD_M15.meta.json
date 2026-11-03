@@ -1,0 +1,64 @@
+{
+  "symbol": "XAUUSD",
+  "timeframe": "M15",
+  "feature_version": "25F-v2",
+  "feature_hash": "27727ee00bc30b7f",
+  "feature_count": 25,
+  "algorithm": "RandomForestClassifier",
+  "metrics": {
+    "accuracy": 0.4140386571719227,
+    "f1_score": 0.3759997992783232,
+    "baseline": 0.3333333333333333,
+    "edge": 0.08070532383858936,
+    "train_samples": 11822,
+    "test_samples": 2949,
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.34044786564030793,
+        "baseline": 0.3333333333333333,
+        "edge": 0.007114532306974619,
+        "train": 500,
+        "test": 2858
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.35864240727781665,
+        "baseline": 0.3333333333333333,
+        "edge": 0.02530907394448334,
+        "train": 3358,
+        "test": 2858
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.4058782365290413,
+        "baseline": 0.3333333333333333,
+        "edge": 0.072544903195708,
+        "train": 6216,
+        "test": 2858
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.38768369489153254,
+        "baseline": 0.3333333333333333,
+        "edge": 0.05435036155819922,
+        "train": 9074,
+        "test": 2858
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.4145314145314145,
+        "baseline": 0.3333333333333333,
+        "edge": 0.0811980811980812,
+        "train": 11932,
+        "test": 2849
+      }
+    ],
+    "edge_estavel": false
+  },
+  "publicable": false,
+  "publish_reason": "edge medio +0.0481 abaixo do minimo +0.0500: edge por fold: +0.007 +0.025 +0.073 +0.054 +0.081 (media +0.0481, desvio 0.0280, 5/5 positivos)",
+  "min_edge": 0.05,
+  "train_date": "2026-10-22T23:04:22.143015+00:00"
+}

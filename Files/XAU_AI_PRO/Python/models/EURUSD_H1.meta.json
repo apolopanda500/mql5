@@ -1,0 +1,64 @@
+{
+  "symbol": "EURUSD",
+  "timeframe": "H1",
+  "feature_version": "25F-v2",
+  "feature_hash": "27727ee00bc30b7f",
+  "feature_count": 25,
+  "algorithm": "RandomForestClassifier",
+  "metrics": {
+    "accuracy": 0.4922879177377892,
+    "f1_score": 0.46932797367778994,
+    "baseline": 0.3333333333333333,
+    "edge": 0.15895458440445587,
+    "train_samples": 3140,
+    "test_samples": 778,
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.4163027656477438,
+        "baseline": 0.3333333333333333,
+        "edge": 0.08296943231441051,
+        "train": 500,
+        "test": 687
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.43377001455604075,
+        "baseline": 0.3333333333333333,
+        "edge": 0.10043668122270744,
+        "train": 1187,
+        "test": 687
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.4410480349344978,
+        "baseline": 0.3333333333333333,
+        "edge": 0.10771470160116448,
+        "train": 1874,
+        "test": 687
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.43377001455604075,
+        "baseline": 0.3333333333333333,
+        "edge": 0.10043668122270744,
+        "train": 2561,
+        "test": 687
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.5,
+        "baseline": 0.3333333333333333,
+        "edge": 0.16666666666666669,
+        "train": 3248,
+        "test": 680
+      }
+    ],
+    "edge_estavel": true
+  },
+  "publicable": true,
+  "publish_reason": "",
+  "min_edge": 0.05,
+  "train_date": "2026-10-22T22:59:19.901073+00:00"
+}

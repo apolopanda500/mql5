@@ -45,7 +45,7 @@ int CAntiLoop::m_window_seconds = 60;          // Janela de 60 segundos
 void CAntiLoop::Init()
 {
    ZeroMemory(m_state);
-   if(LogInicioDetalhe()) { Print("[ANTILOOP] AntiLoop initialized"); }
+   Print("[ANTILOOP] AntiLoop initialized");
 }
 
 void CAntiLoop::RecordOpen()

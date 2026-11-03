@@ -4,7 +4,7 @@ Repositório de código MQL5 para MetaTrader 5 — [APOLOPANDA500 no MQL5 CodeBa
 
 ---
 
-## 🚀 XAU_AI_PRO v1.2.9
+## 🚀 XAU_AI_PRO v1.2.0
 
 **XAU_AI_PRO** é um Expert Advisor avançado de trading algorítmico para XAU/USD (ouro) e múltiplos símbolos, com integração de IA, gestão de risco, e arquitetura modular enterprise.
 
@@ -48,6 +48,72 @@ Experts/XAU_AI_PRO/
 ├── Enterprise/             # Recursos enterprise
 └── Data/                   # Arquivos de dados (ignorado pelo git)
 ```
+
+### Configuração
+
+Parametros principais configuráveis via MetaTrader:
+
+- **MagicNumber**: 2026001
+- **RiskPercent**: 1.0% do equity por operação
+- **MaxDailyLossPercent**: 5.0%
+- **MaxDrawdownPercent**: 15.0%
+- **MaxSpread**: 50 pontos (configurável por símbolo)
+- **Symbols**: XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, NZDUSD, USDCHF, XAGUSD, US30, US500, USTEC
+
+### Sincronização
+
+Este repositório possui dois remotes configurados:
+
+| Remote | URL | Descrição |
+|--------|-----|-----------|
+| `origin` | `https://forge.mql5.io/APOLOPANDA500/mql5.git` | MQL5 CodeBase (MetaQuotes) |
+| `github` | `https://github.com/apolopanda500/mql5.git` | Backup e desenvolvimento no GitHub |
+
+Para sincronizar ambos:
+```bash
+git push origin main
+git push github main
+```
+
+### Integração Contínua (CI) — GitHub Actions
+
+O repositório inclui um fluxo de CI em `.github/workflows/ci.yml` que é
+acionado a cada **push na branch `main`** e em **pull requests**. Como o
+compilador MQL5 (MetaEditor) é proprietário e não está disponível nos
+runners públicos do GitHub, o CI executa uma **validação estática** do
+código-fonte:
+
+- **Encoding** — garante que os arquivos `.mq5`/`.mqh` são UTF-8 válidos
+  (detecta caracteres de acento "quebrados");
+- **Balanceamento de chaves `{}`** — flag erros de bloco sem dependência
+  do compilador;
+- **Integridade de `#include`** — confere que os includes locais existem;
+- **Avisos** — sinaliza `TODO`/`FIXME` e fim-de-linha CRLF.
+
+O fluxo falha (❌) apenas quando existe um **problema real** de código,
+mantendo a qualidade sem depender de ambiente Windows.
+
+Um job opcional `build-windows` (desabilitado por padrão) serve de modelo
+para compilação real via `metaeditor64.exe` em runners **self-hosted**
+com MetaTrader 5 instalado. Para ativá-lo, altere `if: false` para
+`if: true` nesse job.
+
+### Skills & Configs de Agentes de Código
+
+Este repositório inclui configurações/skills para assistentes de programação
+(IA de código), mantendo contexto e boas práticas consistentes para quem for
+desenvolver ou revisar este projeto:
+
+| Ferramenta | Arquivo(s) | O que faz |
+|------------|-----------|-----------|
+| **Claude Code** | `CLAUDE.md`, `.claude/skills/*/SKILL.md` | Contexto global + skills reutilizáveis (`review-mql5-code`, `compile-validate-mql5`) |
+| **Cline** | `.clinerules`, `.claude/skills/*` | Regras principais + skills compartilhadas com Claude |
+| **Cursor** | `.cursor/rules/project.mdc` | Regras com `globs` focadas em `.mq5`/`.mqh` |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | Instruções globais para completar/editar código |
+| **Padrão multi-agente** | `AGENTS.md` | Guia de contexto reconhecido por vários agentes |
+
+> Ao adicionar/remover skills, mantenha a coerência com o `AGENTS.md` e o
+> `CLAUDE.md` para que todos os agentes compartilhem as mesmas regras de ouro.
 
 ### Licença
 

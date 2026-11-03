@@ -105,22 +105,13 @@ string NormalizeAISymbol(string symbol)
    StringToUpper(up);
 
    // Remove sufixos de classe: #, c, m, . , _i, .pro
-   //
-   // v1.2.95 (02/11/2026) - P1.83b: StringFind removia o sufixo em QUALQUER
-   // posicao. MEDIDO no journal desta sessao: USDCHF, USDCAD, USDCNH, USDCZK,
-   // USDCLP e USDCOP viravam "USD" porque o "C" do prefixo USD era o primeiro
-   // encontrado. O gateway pedia symbol=USD e o parser recusava o arquivo
-   // correto com "SIMBOLO DIFERENTE" - 6 dos 15 graficos ficavam sem IA mesmo
-   // com Data\prediction_<SIMBOLO>.json valido. Agora so remove quando o
-   // sufixo esta no FIM do nome.
    string suffixes[] = {"#", "C", "M", ".PRO", "_I", "."};
    for(int i=0; i<ArraySize(suffixes); i++)
    {
-      int lenSuf=StringLen(suffixes[i]);
-      int lenUp=StringLen(up);
-      if(lenUp>lenSuf && StringSubstr(up, lenUp-lenSuf)==suffixes[i])
+      int pos=StringFind(up, suffixes[i]);
+      if(pos>0)
       {
-         up=StringSubstr(up, 0, lenUp-lenSuf);
+         up=StringSubstr(up, 0, pos);
          break;
       }
    }
@@ -154,17 +145,10 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
    // EXTRACT VALUES
    //================================================
 
-   // v1.2.95 (02/11/2026) - P1.83: o parser lia a chave "esperado", que
-   // NAO existe em nenhum prediction_*.json. Resultado medido no journal de
-   // 02/11: 55 linhas "[AI] JSON INVALIDO | SYMBOL=..." para arquivos que
-   // existiam e eram validos, e a IA ficava offline mesmo com o arquivo
-   // presente. O contrato publicado pelo pipeline usa "symbol"; e essa a
-   // chave que este parser passa a ler. Nenhuma decisao muda: antes a
-   // funcao devolvia false SEMPRE que o arquivo era lido.
    string jsonSymbol=
       ExtractJSON(
          json,
-         "symbol"
+         "esperado"
       );
 
 
@@ -273,7 +257,7 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
    {
       if(logOnce)
          Print(
-            "[AI] JSON INVALIDO | SYMBOL=",
+            "AI INVALID JSON SYMBOL | ",
             esperado
          );
 
@@ -289,7 +273,7 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
    {
       if(logOnce)
          Print(
-            "[AI] JSON INVALIDO | SIGNAL=",
+            "AI INVALID JSON SIGNAL | ",
             esperado
          );
 
@@ -311,7 +295,7 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
    {
       if(logOnce)
          Print(
-            "[AI] SIMBOLO DIFERENTE | REQUEST=",
+            "AI SYMBOL MISMATCH | REQUEST=",
             esperado,
             " | JSON=",
             jsonSymbol
@@ -389,12 +373,6 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
          jsonInferenceMs
       );
 
-   // v1.2.95 (02/11/2026) - P1.83: o pipeline publica "timestamp" (ISO) e
-   // este parser procurava apenas "timestamp_utc". Sem o fallback, um JSON
-   // real ficava sem data e a verja de frescura nao tinha como reprovar.
-   if(jsonTimestampUTC=="")
-      jsonTimestampUTC=ExtractJSON(json,"timestamp");
-
    AI_TimestampUTC=
       jsonTimestampUTC;
 
@@ -443,17 +421,8 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
             {
                AI_IsStale=true;
 
-               // P2.00: 129 linhas no dia a repetir "VENCIDA" com idades
-               // diferentes; passa a 1x/h por CONTA e por simbolo.
-               // P2.03: a chave levava o simbolo, logo os 15 graficos emitiam
-               // ate 15 linhas por hora (15 simbolos x 1/h) para a MESMA
-               // causa - a IA sem preco, que e uma so para a conta inteira.
-               // A chave passa a ser da CONTA e a linha continua a nomear o
-               // simbolo: nenhuma informacao de decisao se perde, so deixa de
-               // ser repetida uma vez por simbolo.
-               if(AccountLogGatePodeImprimir("ai_stale", 3600))
                Print(
-                  "[AI] PREDICAO VENCIDA | ",
+                  "AI PREDICTION STALE | ",
                   esperado,
                   " | AGE=",
                   (string)age,
@@ -476,7 +445,7 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
 
    if(logOnce)
       Print(
-         "[AI] PYTHON | ",
+         "AI PYTHON | ",
          AI_Symbol,
          " | ",
          AI_Signal,
@@ -600,23 +569,6 @@ bool FetchPredictionFromGateway(
    if(StringLen(url) == 0)
       return false;
 
-   // v1.2.30 (30/10/2026) - P1.3/P-01: backoff de transporte. MEDIDO na
-   // v1.2.29, janela 17:05:00-17:08:30: 51 linhas "AI GATEWAY | WebRequest
-   // falhou | erro 4014" em 3,5 min (~900/hora nos 16 graficos), porque cada
-   // grafico chama o gateway 1x/min e o WebRequest esta DESABILITADO no
-   // terminal (P-01, decisao do dono). 4014/4060/5200/5202 sao erro de
-   // CONFIGURACAO: nao se curam sozinhos durante a sessao, e insistir so gasta
-   // requisicao e journal. Depois de 3 falhas duras seguidas o conector para de
-   // tentar por AI_GW_COOLDOWN_SEC (o temporizador VOLTA a tentar, para o EA
-   // retomar sozinho quando o dono habilitar o WebRequest). O arquivo local
-   // Data\prediction_<SIMBOLO>.json continua a ser a fonte de fallback.
-   static datetime s_gwCooldownUntil = 0;
-   static int      s_gwHardFails     = 0;
-   const int       AI_GW_COOLDOWN_SEC = 1800;
-
-   if(TimeCurrent() < s_gwCooldownUntil)
-      return false;
-
    // Simbolo e timeframe no endereco: o gateway le por query string
    // (`/api/ai/predict?symbol=&timeframe=`), e um simbolo vazio e recusa
    // com motivo la — o mesmo "nenhum simbolo pode ser presumido".
@@ -656,66 +608,11 @@ bool FetchPredictionFromGateway(
       // -401 e o caso que mais importa: URL nao autorizada em
       // Ferramentas > Opcoes > Expert Advisors. E erro de CONFIGURACAO do
       // operador, nao do codigo, entao a mensagem diz exatamente o que fazer.
-      // v1.2.18 (29/10/2026): a falha do WebRequest era MUDA quando o erro
-      // nao era 401/406 (ex.: 4014/4060 = WebRequest desabilitado nas opcoes
-      // do terminal). O journal so mostrava "AI LOAD" e "AI INVALID JSON",
-      // escondendo a causa real. Agora o codigo do erro aparece 1x por minuto.
-      static datetime lastWrErrLog = 0;
-
-      // v1.2.30: 4014/4060/5200/5202 = configuracao do terminal. Aviso 1x/30 min
-      // (era 1x/min) e contador de falhas duras que arma o cooldown do topo.
-      bool hardErr   = (err == 4014 || err == 4060 || err == 5200 || err == 5202);
-      int  errLogSec = (hardErr ? 14400 : 300);
-
-      if(hardErr)
-        {
-         s_gwHardFails++;
-         if(s_gwHardFails >= 3)
-            s_gwCooldownUntil = TimeCurrent() + AI_GW_COOLDOWN_SEC;
-        }
-
-      if(TimeCurrent() - lastWrErrLog >= errLogSec && AccountLogGatePodeImprimir("aigw_" + IntegerToString(err), 21600))   // P1.90: 1x/6h por CONTA e por codigo
-        {
-         lastWrErrLog = TimeCurrent();
-         // v1.2.88 (02/11/2026) - P1.75: tag [AI] e texto curto. 4014/4060
-         // continuam a ser WebRequest desabilitado em Opcoes > Expert Advisors;
-         // 5200/5202 = URL nao autorizada.
-         Print("[AI] GATEWAY falhou | erro=", err, " | ", url,
-               " | 4014/4060 = WebRequest desabilitado (Opcoes > Expert Advisors)");
-        }
-
       if(err == 401)
-         Print("[AI] GATEWAY | URL nao autorizada (-401) | ", url,
+         Print("AI GATEWAY | URL nao autorizada (-401) | ", url,
                " | Autorize em Ferramentas > Opcoes > Expert Advisors");
       else if(err == 406)
-         Print("[AI] GATEWAY | URL nao permitida (-406) | ", url);
-      return false;
-   }
-
-   // HTTP DE ERRO NAO E PREVISAO (29/10/2026)
-   // MEDIDO NESTA MAQUINA: sem `AIGatewayToken` o gateway responde 401 com
-   // corpo JSON de erro. Esse corpo tem mais de 10 bytes, entao passava no
-   // teste de tamanho abaixo, o parser falhava, o conector caia no arquivo
-   // antigo e o journal mostrava apenas "IA indisponivel" — nunca o 401. A
-   // causa real (token vazio) ficava invisivel para o operador.
-   if(status != 200)
-   {
-      // v1.2.30: o transporte respondeu (HTTP != 200), logo o WebRequest esta
-      // habilitado: zera o backoff de transporte para nao punir token/rota.
-      s_gwHardFails     = 0;
-      s_gwCooldownUntil = 0;
-
-      static datetime lastStatusLog = 0;
-      datetime statusNow = TimeCurrent();
-
-      if(statusNow - lastStatusLog >= 60)
-      {
-         lastStatusLog = statusNow;
-         Print("[AI] GATEWAY | HTTP ", status, " | ", url,
-               " | 401/403 = token ausente ou invalido (AIGatewayToken); ",
-               "404 = rota inexistente; 5xx = backend fora do ar");
-      }
-
+         Print("AI GATEWAY | URL nao permitida (-406) | ", url);
       return false;
    }
 
@@ -737,20 +634,10 @@ bool FetchPredictionFromGateway(
 
 bool LoadAIPrediction(string symbol="")
 {
-   // Log de diagnostico (evita spam a cada tick)
-   //
-   // v1.2.33 (30/10/2026) - P1.3 rodada 5: era 1x/minuto e, com o gateway
-   // inalcancavel (erro 4014) e sem os arquivos Data\prediction_*.json, as
-   // tres linhas de diagnostico ("AI LOAD", "AI FILE NOT FOUND",
-   // "AI INVALID JSON") somavam ~700 linhas/hora nos 16 graficos - medido em
-   // 17:42-17:46 da v1.2.32. O estado que elas descrevem nao muda de minuto
-   // para minuto: o arquivo continua ausente ou o JSON continua invalido.
-   // Agora 1x/30 min. `logOnce` aqui gateia SOMENTE impressao (as decisoes
-   // usam o retorno de ParsePredictionJSON), entao o comportamento de sinal
-   // nao muda: so a frequencia do aviso.
+   // Log de diagnostico 1x por minuto (evita spam a cada tick)
    static datetime lastLogTime = 0;
    datetime logNow = TimeCurrent();
-   bool logOnce = (logNow - lastLogTime >= 1800);
+   bool logOnce = (logNow - lastLogTime >= 60);
    if(logOnce)
       lastLogTime = logNow;
 
@@ -790,7 +677,7 @@ bool LoadAIPrediction(string symbol="")
             ultimaConsulta = TimeCurrent();
 
             if(logOnce)
-               Print("[AI] GATEWAY | ", normalized, " | ", PeriodLabel(),
+               Print("AI GATEWAY | ", normalized, " | ", PeriodLabel(),
                      " | ", StringLen(jsonGateway), " bytes");
 
             // O JSON do gateway entra pelo MESMO parser do arquivo. Um
@@ -833,16 +720,9 @@ bool LoadAIPrediction(string symbol="")
    }
 
 
-   // v1.2.111 (03/11/2026) - P1.99: MEDIDO no journal de 03/11 -
-   // 250 linhas [AI] LOAD (15 instancias x 2/hora) a repetir o MESMO
-   // caminho de ficheiro. A janela passa a ser por CONTA e por simbolo,
-   // como ja acontece no [SCANNER]: o texto identico sai 1x/hora no total.
-   // P2.00: o caminho do ficheiro nao muda entre leituras - 1x/dia por CONTA
-   // e por simbolo em vez de 1x/hora.
-   if(logOnce && AccountLogGatePodeImprimir("ai_load_" + symbol, 86400))
    if(logOnce)
       Print(
-         "[AI] LOAD | SYMBOL=",
+         "AI LOAD | SYMBOL=",
          symbol,
          " | FILE=",
          fileName
@@ -860,7 +740,7 @@ bool LoadAIPrediction(string symbol="")
    {
       if(logOnce)
          Print(
-            "[AI] FILE EM FALTA | ",
+            "AI FILE NOT FOUND | ",
             fileName
          );
 
@@ -885,7 +765,7 @@ bool LoadAIPrediction(string symbol="")
    {
       if(logOnce)
          Print(
-            "[AI] FILE ERRO | ",
+            "AI FILE ERROR | ",
             symbol,
             " | ERROR=",
             GetLastError()
@@ -922,7 +802,7 @@ bool LoadAIPrediction(string symbol="")
    {
       if(logOnce)
          Print(
-            "[AI] JSON VAZIO | ",
+            "AI JSON EMPTY | ",
             symbol
          );
 
@@ -1149,7 +1029,7 @@ bool AIBuyAllowed(
    )
    {
       Print(
-         "[AI] BLOCK | Estado nao executa vel: ",
+         "AI BLOCK | Estado nao executa vel: ",
          AI_Signal,
          " | ",
          symbol
@@ -1199,7 +1079,7 @@ bool AISellAllowed(
    )
    {
       Print(
-         "[AI] BLOCK | Estado nao executa vel: ",
+         "AI BLOCK | Estado nao executa vel: ",
          AI_Signal,
          " | ",
          symbol

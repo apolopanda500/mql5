@@ -190,7 +190,7 @@ void COrderRetry::Init()
 
    m_initialized=true;
 
-   if(LogInicioDetalhe()) Print(
+   Print(
       "[RETRY] OrderRetry initialized"
    );
 }

@@ -94,7 +94,9 @@ double PA_NetProfit()
 
 void PrintPerformance()
 {
+   Print("==============================");
    Print("PERFORMANCE");
+   Print("==============================");
    Print("Trades : ",PA_TotalTrades);
    Print("Wins   : ",PA_Wins);
    Print("Losses : ",PA_Losses);
@@ -103,6 +105,7 @@ void PrintPerformance()
    Print("Loss   : ",PA_TotalLoss);
    Print("Factor : ",PA_ProfitFactor());
    Print("Net    : ",PA_NetProfit());
+   Print("==============================");
 }
 
 //==================================================

@@ -1,0 +1,200 @@
+# -*- coding: utf-8 -*-
+"""ETAPA 18.3 - Model Registry (fonte unica de verdade dos modelos).
+
+Convencao unica: Python/models/{SYMBOL}_{TIMEFRAME}.pkl
+Responde: exists, is_ready, version, age, feature_version, path, status.
+
+Estados (18.1): READY / STALE / UNAVAILABLE / ERROR / TRAINING
+Nenhum modelo inexistente pode ser interpretado como valido.
+"""
+from __future__ import annotations
+
+import os
+import json
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+
+def _resolve_models_dir() -> Path:
+    """Resolve o diretorio de modelos.
+
+    Ordem de prioridade (para suporte a download sob demanda):
+      1. Variavel de ambiente XAU_AI_PRO_MODELS (maquina de destino / instalador);
+      2. Subpasta 'models' junto a este modulo (Python/models);
+      3. Fallback: <raiz>/Python/models.
+
+    No bundle congelado o `__file__` fica dentro de `<instalacao>/bridge/_internal`,
+    entao o `mkdir` abaixo criava um diretorio VAZIO dentro de Program Files.
+    Esse dir vazio passava a vencer a resolucao de modelos do gateway e
+    `/api/ai/trained` devolvia `models: []`. No app instalado apenas LEMOS:
+    nada aqui escreve dentro do pacote.
+    """
+    env = os.getenv("XAU_AI_PRO_MODELS", "").strip()
+    if env:
+        p = Path(env).expanduser()
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+    default = Path(__file__).resolve().parent.parent / "Python" / "models"
+    if not getattr(sys, "frozen", False):
+        default.mkdir(parents=True, exist_ok=True)
+    return default
+
+
+MODELS_DIR = _resolve_models_dir()
+FEATURE_VERSION = "25F"          # contrato 25 features (ETAPA 15.2.2)
+MODEL_VERSION = "1.2.0"
+# idade maxima aceita como READY (segundos) - 5 dias
+MAX_AGE_READY_SEC = 5 * 24 * 3600
+
+# estados validos
+READY = "READY"
+STALE = "STALE"
+UNAVAILABLE = "UNAVAILABLE"
+ERROR = "ERROR"
+TRAINING = "TRAINING"
+
+
+def model_path(symbol: str, timeframe: str) -> Path:
+    return MODELS_DIR / f"{symbol}_{timeframe.upper()}.pkl"
+
+
+def _mtime_age_sec(p: Path) -> float:
+    if not p.exists():
+        return float("inf")
+    return max(0.0, datetime.now().timestamp() - p.stat().st_mtime)
+
+
+def model_status(symbol: str, timeframe: str) -> dict[str, Any]:
+    """Avalia o modelo e retorna metadados + estado."""
+    p = model_path(symbol, timeframe)
+    if not p.exists():
+        return {
+            "symbol": symbol, "timeframe": timeframe.upper(),
+            "model": f"{symbol}_{timeframe.upper()}", "path": str(p),
+            "exists": False, "status": UNAVAILABLE, "reason": "model_not_found",
+        }
+    try:
+        age_sec = _mtime_age_sec(p)
+        size = p.stat().st_size
+        status = READY if age_sec <= MAX_AGE_READY_SEC else STALE
+        return {
+            "symbol": symbol, "timeframe": timeframe.upper(),
+            "model": f"{symbol}_{timeframe.upper()}", "path": str(p),
+            "exists": True, "status": status, "reason": "ok" if status == READY else "model_stale",
+            "age_sec": int(age_sec), "age_hours": round(age_sec / 3600, 1),
+            "size_bytes": size, "model_version": MODEL_VERSION,
+            "feature_version": FEATURE_VERSION,
+            "type": "pickle",
+        }
+    except Exception as e:  # noqa: BLE001
+        return {
+            "symbol": symbol, "timeframe": timeframe.upper(),
+            "model": f"{symbol}_{timeframe.upper()}", "path": str(p),
+            "exists": True, "status": ERROR, "reason": f"load_error: {e}",
+        }
+
+
+def ModelExists(symbol: str, timeframe: str) -> bool:
+    return model_path(symbol, timeframe).exists()
+
+
+def ModelIsReady(symbol: str, timeframe: str) -> bool:
+    return model_status(symbol, timeframe)["status"] == READY
+
+
+def ModelVersion(symbol: str, timeframe: str) -> str:
+    return model_status(symbol, timeframe).get("model_version", "")
+
+
+def ModelAge(symbol: str, timeframe: str) -> int:
+    return int(model_status(symbol, timeframe).get("age_sec", -1))
+
+
+def ModelFeatureVersion(symbol: str, timeframe: str) -> str:
+    return model_status(symbol, timeframe).get("feature_version", "")
+
+
+def ModelPath(symbol: str, timeframe: str) -> str:
+    return str(model_path(symbol, timeframe))
+
+
+def list_models() -> list[dict[str, Any]]:
+    """Enumera todos os modelos validos em Python/models."""
+    out = []
+    if not MODELS_DIR.exists():
+        return out
+    for p in sorted(MODELS_DIR.glob("*.pkl")):
+        stem = p.stem  # ex: XAUUSD_M5
+        parts = stem.rsplit("_", 1)
+        if len(parts) != 2:
+            continue
+        sym, tf = parts
+        out.append(model_status(sym, tf))
+    return out
+
+
+def model_catalog() -> list[dict[str, Any]]:
+    """Inventário somente leitura; não desserializa modelos nem presume treino pelo nome."""
+    catalog = []
+    for item in list_models():
+        path = Path(item["path"])
+        meta_path = path.with_suffix(".meta.json")
+        entry: dict[str, Any] = {
+            "artifact": path.name,
+            "status": item["status"],
+            "training_verified": False,
+            "training_metadata_status": "missing",
+            "trained_symbol": None,
+            "trained_timeframe": None,
+            "train_date": None,
+            "algorithm": None,
+            "model_version": None,
+            "dataset_version": None,
+            "feature_count": None,
+        }
+        if meta_path.is_file():
+            try:
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                if not isinstance(meta, dict):
+                    raise ValueError("metadados não são um objeto")
+                symbol = meta.get("symbol")
+                timeframe = meta.get("timeframe")
+                if symbol != item["symbol"] or timeframe != item["timeframe"]:
+                    entry["training_metadata_status"] = "mismatch"
+                else:
+                    entry.update({
+                        "trained_symbol": symbol,
+                        "trained_timeframe": timeframe,
+                        "train_date": meta.get("train_date"),
+                        "algorithm": meta.get("algorithm"),
+                        "model_version": meta.get("model_version"),
+                        "dataset_version": meta.get("dataset_version"),
+                        "feature_count": meta.get("feature_count"),
+                    })
+                    entry["training_metadata_status"] = "present"
+            except (OSError, ValueError, UnicodeError):
+                entry["training_metadata_status"] = "invalid"
+        catalog.append(entry)
+    return catalog
+
+
+# conveniencia para CLI
+def registry_summary() -> str:
+    models = list_models()
+    if not models:
+        return "REGISTRY | nenhum modelo encontrado em " + str(MODELS_DIR)
+    lines = [f"REGISTRY | {len(models)} modelos | feature_version={FEATURE_VERSION}"]
+    for m in models:
+        lines.append(
+            f"  {m['model']:14} {m['status']:12} age={m.get('age_hours','?')}h "
+            f"size={round(m.get('size_bytes',0)/1e6,1)}MB"
+        )
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    print(registry_summary())
+    print("\nXAUUSD M5:", model_status("XAUUSD", "M5"))
+    print("\nXAUUSD M15 (inexistente):", model_status("XAUUSD", "M15"))

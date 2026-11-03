@@ -85,16 +85,4 @@ Files/XAU_AI_PRO/
   
 # --- Artefatos locais / screenshots ---  
 Files/*.png  
-Files/ChatGPT Image *.png
-
-# --- Backups e artefatos de edicao automatica (nao versionar) ---
-*.pre_p*
-*.bak_before_p*
-*.bom
-*.orig
-*.rej
-Experts/Temp/
-Profiles/Tester/*.opt
-Profiles/Tester/*.htm
-Profiles/Tester/*.xml
-experts.dat  
+Files/ChatGPT Image *.png  

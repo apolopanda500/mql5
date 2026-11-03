@@ -1,0 +1,109 @@
+{
+  "symbol": "MULTI_CRYPTO",
+  "class": "CRYPTO",
+  "model_type": "multi",
+  "feature_version": "25F-est-v1",
+  "feature_hash": "d3dff4e31e42a675",
+  "feature_count": 22,
+  "features": [
+    "Open_ATR",
+    "High_ATR",
+    "Low_ATR",
+    "Close_ATR",
+    "Volume_Rel",
+    "Spread_ATR",
+    "ATR_Pct",
+    "ADX",
+    "RSI",
+    "KCI_VD_Inv",
+    "KDI_Diff",
+    "KCI_MAIN_Change",
+    "Body_ATR",
+    "Range_ATR",
+    "UpperShadow_ATR",
+    "LowerShadow_ATR",
+    "RSI_Diff",
+    "Close_Diff_Pct",
+    "Volume_MA_Rel",
+    "ADX_Change",
+    "Timeframe_Cod",
+    "Classe_Cod"
+  ],
+  "timeframes": [
+    "M5",
+    "M15",
+    "H1",
+    "H4"
+  ],
+  "algorithm": "RandomForestClassifier",
+  "train_date": "2026-10-03T03:05:25.580721+00:00",
+  "live_execution": false,
+  "withdrawals_enabled": false,
+  "transfers_enabled": false,
+  "metrics": {
+    "accuracy": 0.5149607139522164,
+    "f1_score": 0.5073693552810495,
+    "baseline": 0.3333333333333333,
+    "edge": 0.18162738061888312,
+    "edge_media_folds": 0.05892073010209718,
+    "train_samples": 149926,
+    "train_samples_bruto": 466465,
+    "amostra_estratificada": true,
+    "estratos": 12,
+    "classes": 3,
+    "symbols": [
+      "BTCUSD",
+      "DOGEUSD",
+      "ETHUSD",
+      "SOLUSD",
+      "XRPUSD"
+    ],
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.3757737995649992,
+        "baseline": 0.3333333333333333,
+        "edge": 0.04244046623166586,
+        "train": 500,
+        "test": 29885
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.39658691651330097,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06325358317996765,
+        "train": 30385,
+        "test": 29885
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.39866153588756903,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06532820255423571,
+        "train": 60270,
+        "test": 29885
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.3943115275221683,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06097819418883499,
+        "train": 90155,
+        "test": 29885
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.395936537689115,
+        "baseline": 0.3333333333333333,
+        "edge": 0.0626032043557817,
+        "train": 120040,
+        "test": 29876
+      }
+    ],
+    "edge_estavel": true
+  },
+  "min_edge": 0.05,
+  "publicable": true,
+  "publish_reason": ""
+}

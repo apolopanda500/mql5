@@ -294,10 +294,7 @@ void CMarginChecker::Init()
    m_free_margin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
    m_margin_level = AccountInfoDouble(ACCOUNT_MARGIN_LEVEL);
    m_initialized = true;
-   // P1.95 (v1.2.105): o retrato de margem e da CONTA, nao do grafico. MEDIDO no reload de
-   // 03/11 as 00:50: 14 linhas "[MARGIN] Free: ... | Level: ...%" com o mesmo valor.
-   if(LogSessaoPodeImprimir("margin_init"))
-      PrintFormat("[MARGIN] Free: %.2f | Level: %.2f%%", m_free_margin, m_margin_level);
+   PrintFormat("[MARGIN] Free: %.2f | Level: %.2f%%", m_free_margin, m_margin_level);
 }
 
 bool CMarginChecker::CheckMargin(string symbol, double volume, double price)
@@ -412,9 +409,7 @@ void CMarginChecker::LogMarginStatus()
 {
    double free = GetFreeMargin();
    double level = GetMarginLevel();
-   // P1.95 (v1.2.105): retrato periodico da CONTA passa a 1x/hora por conta (era 1x por grafico).
-   if(AccountLogGatePodeImprimir("margin_status", 3600))
-      PrintFormat("[MARGIN] Free: %.2f | Level: %.2f%% | Required: %.2f", free, level, m_required_margin);
+   PrintFormat("[MARGIN] Free: %.2f | Level: %.2f%% | Required: %.2f", free, level, m_required_margin);
 }
 
 #endif // MARGIN_CHECKER_MQH

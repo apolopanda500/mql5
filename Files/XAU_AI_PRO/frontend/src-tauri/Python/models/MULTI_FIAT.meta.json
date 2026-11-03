@@ -1,0 +1,114 @@
+{
+  "symbol": "MULTI_FIAT",
+  "class": "FIAT",
+  "model_type": "multi",
+  "feature_version": "25F-est-v1",
+  "feature_hash": "d3dff4e31e42a675",
+  "feature_count": 22,
+  "features": [
+    "Open_ATR",
+    "High_ATR",
+    "Low_ATR",
+    "Close_ATR",
+    "Volume_Rel",
+    "Spread_ATR",
+    "ATR_Pct",
+    "ADX",
+    "RSI",
+    "KCI_VD_Inv",
+    "KDI_Diff",
+    "KCI_MAIN_Change",
+    "Body_ATR",
+    "Range_ATR",
+    "UpperShadow_ATR",
+    "LowerShadow_ATR",
+    "RSI_Diff",
+    "Close_Diff_Pct",
+    "Volume_MA_Rel",
+    "ADX_Change",
+    "Timeframe_Cod",
+    "Classe_Cod"
+  ],
+  "timeframes": [
+    "M5",
+    "M15",
+    "H1",
+    "H4"
+  ],
+  "algorithm": "RandomForestClassifier",
+  "train_date": "2026-10-03T03:08:41.377819+00:00",
+  "live_execution": false,
+  "withdrawals_enabled": false,
+  "transfers_enabled": false,
+  "metrics": {
+    "accuracy": 0.5186257311891788,
+    "f1_score": 0.511202306513842,
+    "baseline": 0.3333333333333333,
+    "edge": 0.18529239785584545,
+    "edge_media_folds": 0.05703777949578774,
+    "train_samples": 149927,
+    "train_samples_bruto": 430266,
+    "amostra_estratificada": true,
+    "estratos": 12,
+    "classes": 3,
+    "symbols": [
+      "AUDUSD",
+      "EURUSD",
+      "GBPUSD",
+      "NZDUSD",
+      "USDBRL",
+      "USDCAD",
+      "USDCHF",
+      "USDCNH",
+      "USDJPY",
+      "USDSEK"
+    ],
+    "purged": 10,
+    "folds": [
+      {
+        "fold": 1,
+        "accuracy": 0.3634933913334449,
+        "baseline": 0.3333333333333333,
+        "edge": 0.030160058000111567,
+        "train": 500,
+        "test": 29885
+      },
+      {
+        "fold": 2,
+        "accuracy": 0.3918019073113602,
+        "baseline": 0.3333333333333333,
+        "edge": 0.058468573978026905,
+        "train": 30385,
+        "test": 29885
+      },
+      {
+        "fold": 3,
+        "accuracy": 0.4005353856449724,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06720205231163906,
+        "train": 60270,
+        "test": 29885
+      },
+      {
+        "fold": 4,
+        "accuracy": 0.3955830684289777,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06224973509564441,
+        "train": 90155,
+        "test": 29885
+      },
+      {
+        "fold": 5,
+        "accuracy": 0.4004418114268501,
+        "baseline": 0.3333333333333333,
+        "edge": 0.06710847809351678,
+        "train": 120040,
+        "test": 29877
+      }
+    ],
+    "edge_estavel": true
+  },
+  "min_edge": 0.05,
+  "publicable": true,
+  "publish_reason": ""
+}
