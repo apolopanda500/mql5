@@ -291,9 +291,15 @@ void ScenarioLog(string symbol, string contexto="")
                        DoubleToString(tgt, 2);
 
    bool mudou = (ultimaAssinatura[slot] != assinatura);
-   bool heartbeat = (ultimoTs[slot] > 0 && (agora - ultimoTs[slot]) >= 900);
+   // P2.02: o heartbeat era de 15 min por INSTANCIA, logo 15 graficos davam
+   // 15 linhas iguais por hora. Passa a 1x/hora por CONTA e por simbolo. O que
+   // MUDOU (classe, regime, factor de lote e factor de alvo) sai na hora.
+   bool heartbeat = (ultimoTs[slot] > 0 && (agora - ultimoTs[slot]) >= 3600);
 
    if(!mudou && !heartbeat)
+      return;
+
+   if(!mudou && !AccountLogGatePodeImprimir("cenario_hb_" + symbol, 3600))
       return;
 
    ultimaAssinatura[slot] = assinatura;

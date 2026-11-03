@@ -204,19 +204,68 @@ int GetSignal(string symbol)
 
    // Logica de sinal v1.21 - vela FECHADA (indice 1) + pullback com reversao
    // BUY: tendencia de alta M15 (EMA50>EMA200) + RSI fechou <45 (pullback) + RSI virando p/ cima
-   if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2])
-   {
-      if(logOnce)
-         Print("[SIGNAL] BUY | ",symbol," | RSI[1]=",DoubleToString(rsi[1],2));
-      return 1;
-   }
-
    // SELL: tendencia de baixa M15 (EMA50<EMA200) + RSI fechou >55 (rally) + RSI virando p/ baixo
-   if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<rsi[2])
+   // P2.01 (03/11/2026): a MESMA linha era escrita a cada minuto enquanto o
+   // sinal persistia - o USDCNH escreveu "[SIGNAL] SELL | RSI[1]=74.26" as
+   // 07:03, 07:04, 07:05 e 07:06. O sinal nao mudou, o RSI nao mudou. A
+   // classificacao fica identica (o return e o mesmo 1/-1); muda apenas
+   // QUANDO a linha vai para o journal: na mudanca de direcao e, no maximo,
+   // 1x/hora por CONTA e por simbolo.
+   int sinalLocal = 0;
+
+   if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2])
+      sinalLocal = 1;
+   else if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<rsi[2])
+      sinalLocal = -1;
+
+   if(sinalLocal != 0)
    {
-      if(logOnce)
-         Print("[SIGNAL] SELL | ",symbol," | RSI[1]=",DoubleToString(rsi[1],2));
-      return -1;
+      static string   dirSim[64];
+      static int      dirVal[64];
+      static datetime dirTs[64];
+      static int      dirN = 0;
+
+      int idxDir = -1;
+
+      for(int di = 0; di < dirN; di++)
+         if(dirSim[di] == symbol)
+           {
+            idxDir = di;
+            break;
+           }
+
+      if(idxDir < 0 && dirN < 64)
+        {
+         idxDir = dirN;
+         dirSim[idxDir] = symbol;
+         dirVal[idxDir] = 0;
+         dirN++;
+        }
+
+      bool imprimirSinal = false;
+
+      if(idxDir >= 0)
+        {
+         datetime agoraSinal = TimeCurrent();
+
+         if(dirVal[idxDir] != sinalLocal)
+            imprimirSinal = true;
+         else if((agoraSinal - dirTs[idxDir]) >= 3600 &&
+                 AccountLogGatePodeImprimir("sig_dir_" + symbol, 3600))
+            imprimirSinal = true;
+
+         if(imprimirSinal)
+           {
+            dirVal[idxDir] = sinalLocal;
+            dirTs[idxDir]  = agoraSinal;
+           }
+        }
+
+      if(logOnce && imprimirSinal)
+         Print(sinalLocal > 0 ? "[SIGNAL] BUY | " : "[SIGNAL] SELL | ",
+               symbol, " | RSI[1]=", DoubleToString(rsi[1], 2));
+
+      return sinalLocal;
    }
 
    //--------------------------------------------------
@@ -247,8 +296,14 @@ int GetSignal(string symbol)
       neuHora[nIdx] = 0;
      }
 
-   if(neuHora[nIdx] == 0 || (logNow - neuHora[nIdx]) >= 900)
+   // P2.02: o NEUTRO saia 1x/15 min em CADA grafico, com tendencia, EMA50,
+   // EMA200 e RSI iguais nos 15 graficos. Passa a 1x/hora por simbolo e por
+   // CONTA (sig_neu_): e estado, nao evento, e o mesmo mercado para todos.
+   if(neuHora[nIdx] == 0 || (logNow - neuHora[nIdx]) >= 3600)
      {
+      if(!AccountLogGatePodeImprimir("sig_neu_" + symbol, 3600))
+         return 0;
+
       neuHora[nIdx] = logNow;
 
       int dg = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);

@@ -188,7 +188,12 @@ bool ValidateTrade(
          (ask-bid)/
          point;
 
-      if(ValidationLogAllowed(symbol, "SPREAD INFO"))
+      // P2.01 (03/11/2026): a linha de CONTEXTO do spread (spread lido vs
+      // maximo permitido) saia 1x/5 min por INSTANCIA, ou seja 15 linhas por
+      // 5 minutos a dizer a mesma leitura. Passa a 1x/hora por CONTA e por
+      // simbolo. O veto real ("[VALIDATION] BLOCK | SPREAD") nao e tocado.
+      if(ValidationLogAllowed(symbol, "SPREAD INFO") &&
+         AccountLogGatePodeImprimir("val_spread_" + symbol, 3600))
       Print(
          "[VALIDATION] ",
          symbol,

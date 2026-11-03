@@ -554,7 +554,7 @@ void GlobalScenarioLog(string symbol, string contexto="")
       if(ultimoSim[i] != symbol)
          continue;
 
-      if((agora - ultimoTs[i]) < 300)
+      if((agora - ultimoTs[i]) < 3600)
          return;
 
       slot = i;
@@ -572,6 +572,13 @@ void GlobalScenarioLog(string symbol, string contexto="")
    }
 
    ultimoTs[slot] = agora;
+
+   // P2.01 (03/11/2026): a linha [GLOBAL] saia uma vez por simbolo a cada
+   // 5 minutos, ou seja 11 linhas por ciclo e ~3 000 por dia com 15 graficos
+   // a percorrer a mesma lista. Classe, sessao, fator de lote e exposicao
+   // mudam devagar; passa a 1x/hora por CONTA e por simbolo.
+   if(!AccountLogGatePodeImprimir("global_" + symbol, 3600))
+      return;
 
    string base  = "";
    string quote = "";

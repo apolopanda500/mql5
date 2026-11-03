@@ -257,12 +257,14 @@ void ScanFlush(datetime now)
    string prova = " | ADX(sem/ok)=" + IntegerToString(adxU - g_scanAdxUPub) + "/" + IntegerToString(adxV - g_scanAdxVPub) +
                   " | SIG(sem/neutro)=" + IntegerToString(sigN - g_scanSigNoReadPub) + "/" + IntegerToString(sigR - g_scanSigNeutroPub);
 
-   g_scanAdxUPub      = adxU;
-   g_scanAdxVPub      = adxV;
-   g_scanSigNoReadPub = sigN;
-   g_scanSigNeutroPub = sigR;
+   // P2.01 (03/11/2026): com sinal ou trade o RESUMO saia a CADA ciclo - o
+   // USDCNH escreveu 4 linhas em 4 minutos (~60/hora) e o retrato era o do
+   // ciclo anterior. Passa a exigir tambem a janela por CONTA de
+   // SCAN_SILENT_SEC, logo no maximo 1 linha/15 min por conta em vez de uma
+   // por instancia e por ciclo. O caminho silencioso mantem-se igual.
+   bool falarAgora = (!silencioso || g_scanSilencio == 0 || (now - g_scanSilencio) >= SCAN_SILENT_SEC);
 
-   if(!silencioso || g_scanSilencio == 0 || (now - g_scanSilencio) >= SCAN_SILENT_SEC)
+   if(falarAgora && AccountLogGatePodeImprimir("scan_resumo", SCAN_SILENT_SEC))
      {
       Print("[SCANNER] RESUMO | visitas=", g_scanSimbolos,
             " | sinais=", g_scanSinais,
@@ -272,6 +274,14 @@ void ScanFlush(datetime now)
             prova);
 
       g_scanSilencio = now;
+
+      // P2.01: os contadores publicados so avancam quando a linha sai, para o
+      // delta (ADX sem/ok, SIG sem/neutro) continuar a ser o do intervalo que
+      // foi realmente impresso e nao o de um ciclo suprimido.
+      g_scanAdxUPub      = adxU;
+      g_scanAdxVPub      = adxV;
+      g_scanSigNoReadPub = sigN;
+      g_scanSigNeutroPub = sigR;
      }
 
    for(int i = 0; i < SCAN_BUCKETS; i++)

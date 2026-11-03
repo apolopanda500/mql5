@@ -445,7 +445,13 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
 
                // P2.00: 129 linhas no dia a repetir "VENCIDA" com idades
                // diferentes; passa a 1x/h por CONTA e por simbolo.
-               if(AccountLogGatePodeImprimir("ai_stale_" + esperado, 3600))
+               // P2.03: a chave levava o simbolo, logo os 15 graficos emitiam
+               // ate 15 linhas por hora (15 simbolos x 1/h) para a MESMA
+               // causa - a IA sem preco, que e uma so para a conta inteira.
+               // A chave passa a ser da CONTA e a linha continua a nomear o
+               // simbolo: nenhuma informacao de decisao se perde, so deixa de
+               // ser repetida uma vez por simbolo.
+               if(AccountLogGatePodeImprimir("ai_stale", 3600))
                Print(
                   "[AI] PREDICAO VENCIDA | ",
                   esperado,
