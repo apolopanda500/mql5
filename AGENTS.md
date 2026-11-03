@@ -134,3 +134,38 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 full
 - `full` — `check → compile → commit → push`, parando na primeira falha.
 
 O script nunca executa `reset`, `checkout` destrutivo, `rebase` ou force-push.
+
+## Operacao por outro agente IA
+
+Para que um agente novo assuma o terminal sem depender do historico de
+conversa, existem tres pontos de entrada:
+
+| Arquivo | Papel |
+|---|---|
+| `Tools/AGENT_COMMANDS.md` | manual operacional: catalogo de ferramentas MCP (metaeditor5 e metatrader5), toolkit, git/GitHub, diagnostico de WebRequest e da API, limites e proibicoes |
+| `.claude/commands/*.md` | comandos reutilizaveis: `check`, `build`, `sync`, `diagnose`, `webrequest`, `handoff` |
+| `Tools/HANDOFF.md` | estado medido do terminal (conta, graficos, bloqueios, repo) |
+
+Ferramentas de diagnostico versionadas:
+
+```powershell
+# sonda o gateway de IA: porta, raiz, rota de predicao com e sem token
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\api-probe.ps1
+
+# verifica a allowlist de WebRequest do terminal (compilar + chart_add_script)
+#   metaeditor5__compile_file  Scripts\XAI_WebRequestCheck.mq5
+#   metatrader5__chart_add_script  Scripts\XAI_WebRequestCheck.ex5
+#   metatrader5__get_expert_journal  filter=WEBREQ
+```
+
+Lacunas conhecidas do MCP, que todo agente precisa saber:
+
+- `search_text`/`search_regex` retornam 0 resultados para termos existentes —
+  usar `Select-String` via shell;
+- nao existe ferramenta para executar `.mq5`; compilar e usar `chart_add_script`;
+- as opcoes do terminal (allowlist de WebRequest) ficam fora das raizes lidas
+  e escritas — so o operador altera na GUI.
+
+Automacao completa e permitida. Remocao de guardas de risco, ocultacao de
+atividade, falsificacao de historico e ordem real sem autorizacao explicita
+nao sao, em nenhuma hipotese.
