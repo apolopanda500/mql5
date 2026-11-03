@@ -232,7 +232,7 @@ MCPResponse CMCPServer::GetRiskStatus()
    double peak   = GetDailyPeakEquity();
    double dd     = GetDrawdownPercent();
    int    trades = GetEffectiveDailyTradesCount();
-   double equity = AccountInfoDouble(ACCOUNT_EQUITY);1
+   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
    double balance= AccountInfoDouble(ACCOUNT_BALANCE);
 
    resp.success = true;
