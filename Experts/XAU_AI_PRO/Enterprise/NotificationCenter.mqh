@@ -141,7 +141,7 @@ void CNotificationCenter::Init()
       m_last_message[i] = "";
    }
 
-   Print("[NOTIFY] NotificationCenter inicializado");
+   if(LogInicioDetalhe()) Print("[NOTIFY] NotificationCenter inicializado");
 }
 
 //--------------------------------------------------
@@ -243,12 +243,36 @@ bool CNotificationCenter::SendTelegram(string message)
 
 bool CNotificationCenter::SendPush(string message)
 {
+   // v1.2.84 (02/11/2026) - P1.71: com o push DESLIGADO no terminal, SendNotification
+   // falha SEMPRE com o erro 4517 e o journal levou 1 626 dessas linhas no dia 02/11
+   // (80 delas na janela de 3 min de um reload). O estado do push e um dado do
+   // terminal e nao muda a meio de uma sessao, por isso passa a ser lido ANTES da
+   // chamada: desligado, sai UMA linha explicativa por sessao e a funcao devolve false
+   // sem round-trip ao servidor. O valor de retorno e o mesmo de antes, logo nenhum
+   // chamador muda de comportamento; falhas reais com o push ligado continuam a sair.
+   if(TerminalInfoInteger(TERMINAL_NOTIFICATIONS_ENABLED) == 0)
+   {
+      static bool s_avisouPushDesligado = false;
+
+      if(!s_avisouPushDesligado && AccountLogGatePodeImprimir("notifypush", 86400))   // P1.90: 1x/dia por CONTA
+      {
+         s_avisouPushDesligado = true;
+         Print("[NOTIFY] push desligado no terminal | TerminalInfo(TERMINAL_NOTIFICATIONS_ENABLED)=0 | ",
+               "nenhuma notificacao sai nesta sessao; ligue em Ferramentas > Opcoes > Notificacoes");
+      }
+      return false;
+   }
+
    ResetLastError();
    bool ok = SendNotification(message);
    if(!ok)
    {
-      Print("[NOTIFY] SendNotification falhou | Erro=", GetLastError(),
-         " | Configure Push em Ferramentas > Opcoes > Notificacoes");
+      // P2.00: o push desligado falhava em todas as 14 instancias; o codigo e
+      // lido UMA vez e a linha passa a 1x/6h por CONTA e por codigo.
+      int nerr = GetLastError();
+      if(AccountLogGatePodeImprimir("notify_falhou_" + IntegerToString(nerr), 21600))
+         Print("[NOTIFY] SendNotification falhou | Erro=", nerr,
+            " | Configure Push em Ferramentas > Opcoes > Notificacoes");
    }
    return ok;
 }
@@ -436,7 +460,10 @@ string CNotificationCenter::GetStatus()
 
 void CNotificationCenter::LogStatus()
 {
-   Print("[NOTIFY] " + GetStatus());
+   // v1.2.91 (02/11/2026) - P1.78: a mesma tag do [NOTIFY] do OnInit, logo
+   // a linha sai uma vez por CONTA em vez de duas por instancia.
+   if(AccountLogGatePodeImprimir("notify", 3600))
+      Print("[NOTIFY] " + GetStatus());
 }
 
 #endif // NOTIFICATION_CENTER_MQH

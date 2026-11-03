@@ -176,7 +176,7 @@ void AIClientInit()
 {
    g_AIConnected=true;
 
-   Print("[AI] Client initialized");
+   if(LogInicioDetalhe()) { Print("[AI] Client initialized"); }
 }
 
 //==================================================
@@ -185,7 +185,7 @@ void AIClientShutdown()
 {
    g_AIConnected=false;
 
-   Print("[AI] Client shutdown");
+   if(AccountLogGatePodeImprimir("aishutdown", 3600)) Print("[AI] Client shutdown");   // P1.90: 1x/h por CONTA (era 1x por grafico)
 }
 
 #endif

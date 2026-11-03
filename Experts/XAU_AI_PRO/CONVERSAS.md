@@ -1,0 +1,374 @@
+# CONVERSAS — registro das sessoes com o dono
+
+> Este arquivo salva o que foi **pedido** (nas palavras do dono), o que foi
+> **medido** e o que foi **decidido** em cada sessao de trabalho no
+> `XAU_AI_PRO`. E append-only: sessoes novas entram no fim.
+>
+> Divisao de responsabilidade:
+> - **`CONVERSAS.md`** (este) = o pedido e a conversa, em ordem cronologica;
+> - **`PROGRESS.md`** = o detalhe tecnico (o que mudou, com que numero, por que);
+> - **`README.md`** = indice geral e estado atual.
+>
+> Toda conversa registrada aqui e seguida de um bloco **"Medido"** com o que o
+> journal/conta provaram. Pedido sem medicao e intencao, nao prova.
+
+---
+
+## Indice de sessoes
+
+| # | Quando | Pedido do dono (resumo) | Resultado |
+|---|---|---|---|
+| 1 | 2026-10-29 (manha/tarde) | "quero EA fazendo tudo automatico e entendendo o que faz"; "desbloquear totalmente o EA para operar sozinho (nao abria nenhuma operacao)" | EA desbloqueado. Causa medida: `AIUnavailableConfidenceCap=40` vs `MinAIConfidence=50` e `ForceSafeMode` persistido por anomalia de ATR. Ver `PROGRESS.md` "Ciclo 2026-10-29". |
+| 2 | 2026-10-29 (tarde) | "fazer o EA aprender com o historico de operacoes MANUAIS do dono"; "melhorar a precisao como traders fazem" | `AI/LearningHistory.mqh` criado: diario append-only + ingestao por `HistorySelect` (EA **e** manual), persistido em `Data/XAU_AI_PRO_learning.csv`, sobrevive a recarga. |
+| 3 | 2026-10-29 (tarde) | "stop automatico em dolares: armar stop apos o preco andar; mover para entrada quando lucro passa 10 USD; depois travar em 5 USD; alvo 20 USD fecha TP total = meta diaria" | Escada em dolares (`Management/MoneyLadder.mqh`): arma 10, trava 5 depois de 15, alvo 20. Dono unico de SL/TP quando ligada. |
+| 4 | 2026-10-29 (tarde) | "implementar TODAS as melhorias aprovadas" ("todos") | Ciclo v1.2.10: risco efetivo observavel, RR minimo, trava por tempo por simbolo, estado de sessao persistente, entre outros. |
+| 5 | 2026-10-29 (noite) | "melhorar alvos curtos (short TP)"; "tem mais melhorias?" | Sonda `MQL5\Scripts\XAI_TargetProbe.mq5` provou que o TP **nao** era curto: o break even em 10 pontos fechava tudo em ~0,1 R. Corrigido para break even em **R** (0,60 gatilho / 0,30 trava). |
+| 6 | 2026-10-29 (noite) | "proximo pesquisar na web, estudar modulos, codigos para operar no mercado de hoje, ver outros EA com bons resultados ou repositorios e copiar codigos" | Pesquisa pelo indice publico MQL5. Decisao: **nao copiar arquivo alheio** (licenca + estilo); reescrever a ideia no padrao do projeto. |
+| 7 | 2026-10-29 (noite) | "proximo melhorar o maximo sem limites para melhoria, adaptar EA para todos tipos de cenarios globais" | v1.2.21 (cenario de mercado: tendencia/lateral/volatil), v1.2.22 (classe de ativo, sessao GMT, correlacao de moeda), v1.2.23 (horas proibidas em GMT). |
+| 8 | 2026-10-29 (22:57) | "sim estudar bastante, aprender e melhorar nosso EA, salvar conversas, documentar tudo, atualizar tudo, executar, deixar rodar EA" | v1.2.24 (SAFE MODE com histerese), v1.2.25 (trava de custo). Criado `README.md`. Corrigida a versao que o journal mentia. Ver sessao A abaixo. |
+| 9 | 2026-10-30 (05:20) | "salvar tudo conversas" | Este arquivo. Ver sessao B abaixo. |
+| 10 | 2026-10-30 (05:25) | "salvar tudo conversas" (continuacao) | Secao 4 do `README.md` corrigida (mojibake + `[COST]` real as 03:47); `PROGRESS.md` recebeu o ciclo 10 com os numeros da madrugada. Ver sessao C abaixo. |
+| 11 | 2026-10-30 (05:35) | "anotar todas pendencias que faltam para facilitar os trabalhos no futuro" | Criado `PENDENCIAS.md` (fonte unica, 23 itens com dono e criterio de fechamento) + tabela de monitoramento e checklist de retomada. Ver sessao D abaixo. |
+| 12 | 2026-10-30 (20:00 -> 23:35) | "p1 p2 melhorar tudo"; "pesquisar estudar melhorar EA AUTONOMO REAL"; "proximo" (seis vezes) | v1.2.37 -> v1.2.40: guarda de conta real, backup desacoplado, corte de spam do journal, rotacao do `audit_log.csv`. P0.5 respondida por codigo e analise de 99 560 trades do historico. Ver sessao E abaixo. |
+| 13 | 2026-10-31 (06:04) | "salvar conversas anotar" | Esta gravacao: indice de sessoes actualizado, sessao E/F escritas e `PROGRESS.md` com o ciclo 18. Nenhum `.mq5`/`.mqh` tocado. Ver sessao F abaixo. |
+
+---
+
+## Sessao A — 2026-10-29 22:57
+
+**Pedido, nas palavras do dono:** "sim estudar bastante aprender e melhorar
+nosso EA salvar conversas documentar tudo atualizar tudo, executar deixar
+rodar EA".
+
+### O que foi feito
+
+1. **`Enterprise/CircuitBreaker.mqh` (v1.2.24)** — histerese no SAFE MODE por
+   broker. Antes **uma** leitura ruim de `TERMINAL_CONNECTED` parava o EA
+   inteiro por 300 s, e esse bloqueio sobrevivia a reinicios: os 16 graficos
+   dispararam no mesmo segundo (22:29:26→22:29:30), o que so pode ser estado
+   do **terminal**, nao do simbolo. Agora exige 3 leituras **e** 15 s de
+   persistencia, com carencia de 30 s no start.
+2. **`Filters/CostGate.mqh` (v1.2.25, novo)** — trava de custo: spread +
+   comissao convertidos em **dolares** e comparados com o alvo e com o risco
+   da entrada. Burado medido: `MaxSpreadPct=0.6` limitava spread como % do
+   preco e **nada** comparava custo com alvo; comissao nunca entrava na
+   decisao de entrada.
+3. **`README.md` (novo)** — o indice que faltava, com mapa dos 113 arquivos,
+   ordem real dos portoes e estado ao vivo.
+4. **`PROGRESS.md`** — cabecalho atualizado (estava em `2026-09-07 (v1.2.0)`)
+   e ciclo 9 registrado.
+5. **`Enterprise/VersionManager.mqh`** — `EA_VERSION_STRING` estava em
+   `"1.2.23"` enquanto o codigo ja era v1.2.25, e o binario em memoria
+   reportava `1.2.15` as 21:31 e `1.2.21` as 23:01. Corrigido para `"1.2.25"`.
+
+### Medido
+
+| Momento | Versao que o binario reportava |
+|---|---|
+| 21:31 | `[VERSION] v1.2.15` |
+| 23:01:26 | `[VERSION] v1.2.21` (ultimo log do binario antigo) |
+| 23:01:27 | `[VERSION] v1.2.25` nos 16 graficos |
+
+- Compilacao: **0 erros, 0 avisos** (build 6292 x64). `.ex5` 856.472 B.
+- Posicoes abertas as 22:57: **0**. Resultado do dia: **+16,38 USD**. Trades: 3/100.
+- `[COST]`: **0 linhas** ate 22:57 — o EA ainda nao tinha tentado entrada.
+
+**Regra que ficou:** conferir `[VERSION]` antes de acreditar em qualquer numero
+do journal. Se nao bater com o fonte, o binario nao e o codigo que se esta lendo.
+
+---
+
+## Sessao B — 2026-10-30 05:20
+
+**Pedido, nas palavras do dono:** "salvar tudo conversas".
+
+### O que foi feito
+
+- Criado este `CONVERSAS.md`, registrando as 9 sessoes (o pedido, o que foi
+  entregue e onde o detalhe tecnico esta).
+- Apurado o que aconteceu **durante a madrugada** com o EA deixado rodando
+  (o dono pediu "deixar rodar EA" na sessao A).
+
+### Medido — madrugada de 29 para 30/10
+
+Conta 113568614 (MetaQuotes-Demo, hedging), magic `2026001`.
+
+**O `[COST]` foi confirmado em producao** — primeira linha real do gate novo:
+
+```
+2026.10.30 03:47:09.741  XAU_AI_PRO (USDJPY,H1)
+[COST] OK | EURUSD | custo=0.06 US$ = 0.6% do alvo | spread=2.0 pts | comissao=0.00 US$ | alvo=312 pts
+```
+
+Leitura: custo de 6 centavos contra um alvo de 312 pontos. O gate **aprovou** e
+a ordem foi enviada. Isso fecha a pendencia "o CostGate nunca foi visto em
+producao" da sessao A.
+
+**Entrada nova (a unica da madrugada):**
+
+| Campo | Valor |
+|---|---|
+| Posicao | `11171034182` |
+| Simbolo / lado | EURUSD `sell` |
+| Volume | 0,03 |
+| Abertura | 2026-10-30 08:47:10 (servidor) = 03:47 local |
+| Preco de abertura | 1,11794 |
+| Take profit | 1,11127 |
+| Comentario | `XAU_AI_PRO` |
+
+**Estado da conta as 05:21 (local):**
+
+| Item | Valor medido |
+|---|---|
+| Balance | 12.348,57 USD |
+| Equity | 12.342,99 USD |
+| Lucro flutuante | **-5,58 USD** |
+| Margem usada / livre | 33,54 / 12.309,45 USD |
+| Posicoes abertas | 1 (EURUSD sell 0,03) |
+| `[CIRCUIT] SAFE MODE` na madrugada | **0 ocorrencias** |
+| Conexao | `synchronized`, ping 214 ms |
+| Servidor | GMT+2 (servidor 10:21 = local 05:21 = UTC 08:21) |
+
+**Fechamentos (anteriores a esta sessao, ficam registrados para o historico):**
+
+| Ticket | Simbolo | Lado | Volume | Lucro |
+|---|---|---|---|---|
+| `11166638047` | USDCNH | sell | 1,36 | **+10,42** |
+| `11166734584` | NZDUSD | sell | 0,20 | **+4,20** |
+| `11167109885` | AUDUSD | buy | 0,16 | **+1,76** |
+| | | | | **+16,38** |
+
+Leitura honesta: 3 de 3 fecharam no positivo, somando os +16,38 USD que o
+`[RESUMO]` e o `SYSTEM STATUS` mostram. **Amostra de tres operacoes nao e
+estatistica** e nao autoriza concluir nada sobre lucratividade.
+
+### Nota sobre o lote do USDCNH
+
+O lote 1,36 em USDCNH (posicao `11166638047`) estava marcado como pendencia de
+revisao. Ele **fechou com +10,42 USD** — ou seja, o resultado foi bom, mas o
+tamanho da posicao frente ao `RiskPerTradePercent=0,5` continua merecendo
+revisao: ganhar com risco desproporcional nao valida o risco.
+
+### Pendente (nada foi alterado nesta sessao)
+
+1. **WebRequest + `AIGatewayToken`** — os 16 graficos estao com token vazio e o
+   gateway responde 401. Depende do dono habilitar `Ferramentas > Opcoes >
+   Expert Advisors > Permitir WebRequest para URLs listadas` com
+   `http://127.0.0.1:9001`.
+2. **Meta efetiva do dia** — `EnableDailyTargetBalancePct=true` com
+   `DailyProfitTargetBalancePct=10` e `DailyProfitTargetMaxUsd=100` faz a meta
+   ser **100 USD**, nao os 20 do `LadderTpUsd`. Decisao do dono.
+3. **Backtest 20-29/10** (`Profiles/Tester/xai_v1300_c5.ini` + `.set`) para
+   comparar com o baseline 303 trades / PF 0,8961 / -30,95 / DD 1,68%.
+4. **`StoplessEmergencyPoints` = 0** (sem colchao de emergencia).
+5. **Sonda `XAI_TargetProbe`** repetir com a escada ativa e comparar
+   `realizado_R` x `mfe_R`.
+6. Candidatos v1.2.26: alimentar o `CostGate` com **slippage realizado**
+   (`Enterprise/ExecutionQuality.mqh` ja registra) e reancorar
+   `CostMinViableTargetPoints` por backtest.
+
+---
+
+## Aviso permanente
+
+Este EA envia ordens reais quando anexado a conta real. Nada registrado aqui e
+promessa de lucro: 3 fechamentos positivos, um backtest ou uma sessao de journal
+nao provam resultado futuro. O padrao do projeto e **medir, registrar e so
+entao mudar** — e toda mudanca em risco, lote, stop ou alvo precisa do numero
+antes e depois.
+
+---
+
+## Sessao C — 2026-10-30 05:25
+
+**Pedido, nas palavras do dono:** "salvar tudo conversas" (continuacao da
+sessao B).
+
+### O que foi feito
+
+- `README.md` secao 4 fechada. A linha do `[COST]` ainda dizia "0 linhas - o EA
+  ainda **nao tentou** entrada desde a recarga" quando o journal ja tinha um
+  `[COST] OK` real as 03:47. Corrigida.
+- Duas travessoes corrompidas (mojibake) no mesmo arquivo trocadas por hifen.
+  O defeito nasceu do patch PowerShell anterior: UTF-8 lido como CP1252 e
+  regravado. Nao afetava codigo, afetava leitura.
+- `PROGRESS.md` recebeu "Ciclo 2026-10-30 (10)" com a madrugada medida:
+  `[COST]` em producao, os 3 fechamentos (+16,38 USD), zero `SAFE MODE` e o
+  estado da conta as 05:25.
+- Scripts e fragmentos temporarios criados em `MQL5\Files\Temp` durante o
+  trabalho foram apagados no fim.
+
+### Medido (05:25 local / 10:25 no servidor)
+
+| Item | Valor |
+|---|---|
+| Balance / Equity | 12.348,57 / 12.342,60 USD |
+| Flutuante | -5,97 USD |
+| Posicoes | 1 — EURUSD `sell` 0,03 @ 1,11794, ticket `11171034182`, TP 1,11127 |
+| Conexao | `synchronized`, ping 214 ms, ultima perda 2026-10-30T01:29:14Z |
+| Versao nos 16 graficos | `[VERSION] v1.2.25` |
+
+### Decidido
+
+- Nenhum `.mq5`/`.mqh` tocado neste ciclo: codigo sem pedido e risco sem
+  medicao. O binario em producao continua o de 29/10 23:01 (856.472 bytes,
+  `v1.2.25`).
+- Regra de escrita que fica: `.md` com acento ou travessao se edita por script
+  ASCII-only (escape `\uXXXX`) ou por `replace_text_in_file`. Travessao
+  digitado direto em `.ps1` corrompe o arquivo, porque o PowerShell 5.1 le
+  script sem BOM como ANSI.
+- Nenhuma promessa de lucro. +16,38 USD em 3 trades nao e estatistica.
+
+---
+
+## Sessao D — 2026-10-30 05:35
+
+**Pedido, nas palavras do dono:** "anotar todas pendencias que faltam para
+facilitar os trabalhos no futuro".
+
+### O que foi feito
+
+- Criado `PENDENCIAS.md` na raiz do EA como **fonte unica** das pendencias:
+  23 itens com ID, dono explicitado (`DONO` / `AGENTE` / `AMBOS`), impacto e
+  criterio de fechamento, em 5 grupos:
+
+| Grupo | IDs | O que cobre |
+|---|---|---|
+| Bloqueios do dono | `P-01`..`P-05` | WebRequest + token, Testador ocupado, meta diaria (100 x 20), `StoplessEmergencyPoints=0`, notificacoes mudas |
+| Medicoes | `AT-01`..`AT-04` | backtest 20-29/10 com `.set` correto, isolar `CostGate`, isolar gate adaptativo/`MaxCorrelatedTrades`, sonda `XAI_TargetProbe` |
+| Codigo v1.2.26 | `CD-01`..`CD-04` | `CostGate` com slippage realizado, reancorar `CostMinViableTargetPoints`, fatiamento, risco em US$ no journal |
+| Higiene | `HG-01`..`HG-05` | versao em tres lugares, `VERSION` morto no comentario, scripts velhos em `Files\Temp`, secao 4 do `README`, backup automatico |
+| Inconsistencias | `IN-01`..`IN-05` | lote 1,36 do USDCNH, 16 graficos x `Symbols` de 11, `DailyProfit` flutuante, `LearningPenaltyEnabled`, volume de log |
+
+- Incluidas duas secoes de operacao: tabela de **monitoramento continuo** (o
+  que cada linha do journal diz e o que fazer quando aparece) e **checklist de
+  retomada** (10 primeiros minutos de qualquer sessao futura).
+- `README.md` secao 1 ganhou a linha de `PENDENCIAS.md` no indice de documentos.
+
+### Medido antes de escrever (05:35)
+
+| Item | Valor |
+|---|---|
+| Graficos com o EA | 16 (`chart01`-`chart16`), todos `AutoTrade=true`, `MagicNumber=2026001` |
+| Versao | `v1.2.25` (`EA_VERSION_STRING`); `.mq5` ainda com cabecalho `v1.2.9` e `#property version "1.290"` |
+| Conta | balance 12.348,57 / equity 12.342,60 / flutuante -5,97 |
+| Posicoes | 1 - EURUSD `sell` 0,03 @ 1,11794, ticket `11171034182` |
+| Cesta x graficos | `Symbols` tem 11 nomes; 5 com grafico estao fora (USDCLP, USDCOP, USDCZK, USDRUB, USDSGD) e XAUUSD ocupa 2 graficos |
+| **Pesos revisados** | `PENDENCIAS.md`: 13.454 bytes, 256 linhas, CRLF puro, UTF-8 sem BOM |
+
+### Decidido
+
+- Separacao de dono explicita em cada item: nada de item "do projeto". O que
+  depende de clique no terminal nao pode ficar esperando codigo.
+- Ordem de valor registrada no fim do arquivo (se so houver tempo para tres
+  coisas): `P-01` (WebRequest + token), `P-02`+`AT-01` (Testador livre e
+  backtest com `.set` correto), `IN-01`/`CD-04` (risco real em US$ por trade).
+- `IN-04` fica fechado por documentacao: `LearningPenaltyEnabled=false` e
+  escolha registrada em `AI/LearningHistory.mqh` (a memoria negativa ajusta
+  lote, nao score). Fica anotado para nao ser reaberto como "defeito".
+- Nenhum `.mq5`/`.mqh` tocado nesta sessao. O binario em producao continua o de
+  29/10 23:01 (856.472 bytes, `v1.2.25`).
+
+## Sessao E - 2026-10-30 20:00 -> 23:35
+
+**Pedido, nas palavras do dono:** "p1 p2 melhorar tudo"; depois
+"pesquisar estudar melhorar EA AUTONOMO REAL"; e depois "proximo", seis vezes
+seguidas, sempre a pedir o item de maior valor que estivesse pendente.
+
+### O que foi feito, por ordem
+
+| Versao | Item | O que mudou |
+|---|---|---|
+| v1.2.37 | P1.10 | `Core/RealAccountGuard.mqh`: guarda que so aperta em `ACCOUNT_TRADE_MODE_REAL` (inerte no testador e em demo). Lote minimo acima do tecto bloqueia, vigia do stopless nunca fica em 0R, maximo de 1 posicao sem stop por simbolo, banner `[REAL GUARD]` no arranque. |
+| v1.2.38 | P1.11 | Backup deixou de copiar o ficheiro de auditoria inteiro em cada snapshot e passou a detectar corrida entre instancias. |
+| v1.2.39 | P1.12 + P1.3 | Journal: bloco `HEALTH MONITOR` de 25 linhas passou a sair 1x/hora; falha de copia do backup 1x/hora com contador de abafadas; scanner passou a emitir UM resumo por minuto em vez de uma linha por simbolo (P1.3, escrita pelo processo paralelo). |
+| v1.2.40 | P1.13 | Rotacao por tamanho do `audit_log.csv` (`AuditLogMaxSizeMb = 8`, limite efectivo 16 MB, nada e apagado). |
+
+### Medido
+
+- **Journal (v1.2.32, referencia):** 6 270 linhas/hora. Dentro disso, o bloco
+  `========== HEALTH MONITOR ==========` apareceu **2 064 vezes** entre 16:02 e
+  21:44 e a falha de copia do backup **2 574 vezes** - os dois com o mercado
+  fechado. Alvo declarado: **< 200 linhas/hora** em operacao normal (medicao de
+  confirmacao fica para a reabertura de domingo).
+- **Backups:** 10 snapshots x 109 ficheiros = 1 100 ficheiros, **787,2 MB** no
+  total, **78,7-78,8 MB por snapshot**. A limpeza (`BackupMaxKeep = 10`) estava
+  correcta - o problema era o conteudo.
+- **`audit_log.csv`:** 69 979 KB (**68 MB**) as 22:28, ainda a crescer, copiado
+  inteiro em cada snapshot. E o que encheu o disco ate 0,37 GB livres e abortou
+  um backtest.
+- **Compilacao v1.2.40:** 0 erros, 0 avisos, 23 150 ms, `X64 Regular`, build
+  6294, `XAU_AI_PRO.ex5` 639 638 B as 22:31:15.
+- **P0.5 (porque entram operacoes sem IA):** respondida por leitura de codigo.
+  `AIGateRequired()` devolve `false` com `EnableAutonomousMode=true`
+  (`Core/Config.mqh:998`, valor por defeito), logo `AITradeAllowed()` e
+  `FinalAIAllow()` nao bloqueiam; o unico veto que resta e `BlockZeroAIScore`
+  (`Core/Config.mqh:1017`). **Nao havia contradicao**: a IA e consultiva por
+  desenho.
+- **Efeito colateral achado:** o "score de IA" que decide o lote, sem IA, e
+  100% tecnico (50 base + 15 tendencia + 10 RSI + 10 ADX = 85) e o
+  `MemoryBoost` aprendido pode empurra-lo a 100 -> nota ELITE -> **4x lote sem
+  nenhum modelo ter respondido**.
+- **Analise do historico (`Common\Files\trade_history.csv`):** 99 560 registos
+  validos, 371 linhas **partidas** (escrita concorrente de 16 instancias),
+  `AI > 0` em 17 de 99 649. XAUUSD por ADX: `>= 35` **+36 152** (WR 82,6%,
+  PF 1,295) contra `25-35` **-31 033** (PF 0,592) e `20-25` -17 952 (PF 0,526).
+  Piores horas: servidor 16 / UTC 11 **-11 123**, servidor 19 / UTC 14
+  **-7 576**, servidor 14 / UTC 9 **-6 443** (soma **-25 141**).
+- **Backtest:** lado A (v1.2.35, ticks reais) fechou em -34,68 / PF 0,81 / 296
+  trades / MaxDD 83,30. Lado B (`StoplessEmergencyRMult`) correu toda a noite
+  (`run_id 7702617382101217572`) e ainda nao fechou.
+
+### Decidido
+
+- **Nao recompilar com backtest a correr:** cada compilacao recarrega o binario
+  do agente e falseia a estimativa (ja aconteceu: 00:02/24:35 -> 00:59/11:46 ->
+  01:22/10:32).
+- **Nada de risco alterado sem o dono:** as tres propostas desta sessao ficam
+  registadas em `PENDENCIAS_20261030.md` para decisao (P1.14 `DynADXClear`
+  25 -> 35; P1.15 `AvoidHoursGMT` com UTC 9, 11 e 14; P1.16 serializar o
+  `TradeLogger`).
+- **Re-anexar os 16 graficos exige autorizacao explicita:** e mudanca de
+  configuracao de trading a quente (aplica v1.2.40 + `AvoidHoursGMT="18,20,22"`
+  + `EnableVerboseDebug=false` + `BlockWhenMinLotExceedsRiskCap=true` +
+  `DailyProfitTargetMaxUsd=40`).
+- **Duas edicoes ao mesmo ficheiro nunca no mesmo bloco:** a segunda le antes de
+  a primeira gravar e perde-se uma das duas (aconteceu com `#property version`).
+
+### Aberto
+
+1. Validar P1.13 em producao (linha `[AUDIT] rotacao ...` e `audit_log.csv` a
+   recomecar perto de zero).
+2. Confirmar a queda dos snapshots de 78,8 MB para ~11 MB.
+3. Medir de novo o journal na reabertura do mercado contra as 6 270 linhas/hora.
+4. Fechar o lado B do backtest e comparar com o lado A.
+5. Decidir P1.14 / P1.15 / P1.16.
+6. `LoggerInit()` nunca e chamado (`LOGGER OFFLINE` em fallback): falta decidir
+   se o log passa a ser um ficheiro FILE_COMMON partilhado por 16 graficos.
+
+---
+
+## Sessao F - 2026-10-31 06:04
+
+**Pedido, nas palavras do dono:** "salvar conversas anotar".
+
+### O que foi feito
+
+- `CONVERSAS.md`: indice actualizado (sessoes 12 e 13) e escritas as sessoes E
+  (o trabalho de 30/10, v1.2.37 -> v1.2.40 + P0.5 + analise do historico) e F
+  (esta).
+- `PROGRESS.md`: ciclo 18 acrescentado com a mesma materia, no formato dos
+  ciclos anteriores.
+- Nada de codigo tocado: nenhum `.mq5`/`.mqh` alterado nesta sessao.
+
+### Medido
+
+- Ficheiros antes da gravacao: `CONVERSAS.md` 14 368 B / 269 linhas (indice
+  parado na sessao 11); `PROGRESS.md` 87 128 B / ~1 650 linhas, com o ciclo 17
+  escrito pelo processo paralelo.
+- Nenhuma compilacao: o backtest nao foi interrompido.
+
+### Aberto
+
+- Os mesmos seis pontos da sessao E. A gravacao nao fecha pendencias tecnicas;
+  garante que a proxima sessao saiba exactamente onde parou e por que.

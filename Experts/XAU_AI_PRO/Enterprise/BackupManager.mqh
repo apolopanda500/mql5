@@ -346,14 +346,34 @@ bool CBackupManager::BackupFile(
 
    if(!copied)
    {
-      Print(
-         "[BACKUP] Falha na copia: ",
-         src,
-         " -> ",
-         dst,
-         " | Erro=",
-         GetLastError()
-      );
+      // v1.2.39 (30/10/2026) - P1.12. Esta linha saia a CADA snapshot, por
+      // ficheiro. Medido no journal de 30/10: 2 574 linhas em 5,7 h de mercado
+      // fechado ("Data\prediction_BTCUSD...json"), o 2.o maior emissor de todo o
+      // journal. O resumo por snapshot ([BACKUP] OK/FAIL + copiados/falhas,
+      // impresso pelo EA) continua a sair igual; aqui a linha passa a 1x/hora com
+      // o contador de ocorrencias abafadas.
+      static datetime s_lastCopyFailLog = 0;
+      static long     s_copyFailSuppressed = 0;
+
+      if(s_lastCopyFailLog == 0 || (TimeCurrent() - s_lastCopyFailLog) >= 3600)
+        {
+         Print(
+            "[BACKUP] Falha na copia: ",
+            src,
+            " -> ",
+            dst,
+            " | Erro=",
+            GetLastError(),
+            " | abafadas=",
+            IntegerToString(s_copyFailSuppressed),
+            " | aviso 1x/hora"
+         );
+
+         s_lastCopyFailLog   = TimeCurrent();
+         s_copyFailSuppressed = 0;
+        }
+      else
+         s_copyFailSuppressed++;
 
       return false;
    }
@@ -764,7 +784,7 @@ void CBackupManager::Init()
    AddItem("Stats",       "xau_ai_pro_summary.csv");
    AddItem("TradeHistory","trade_history.csv");
 
-   Print(
+   if(LogInicioDetalhe()) Print(
       "[BACKUP] BackupManager inicializado | Items=",
       m_item_count,
       " | MaxKeep=",

@@ -64,13 +64,82 @@ int         g_auditRecordCount = 0;
 // HELPERS F4 — escrita atomica por gravacao
 //==================================================
 
+//==================================================
+// v1.2.40 (30/10/2026) - P1.13: ROTACAO POR TAMANHO DO DECISION LOG
+//
+// MEDIDO em 30/10: Common\Files\audit_log.csv com 68 MB (69 979 KB as 22:28),
+// a crescer ~1 linha por decisao, por simbolo e por ciclo, com 16 instancias a
+// escrever no mesmo ficheiro. O BackupManager copia o ficheiro INTEIRO em cada
+// snapshot: 10 snapshots x 78,8 MB = 787 MB em Common\Files\XAU_AI_PRO\Backups.
+// O disco desta maquina ja abortou um backtest com 0,37 GB livres - este log
+// sem limite e a maior fonte de crescimento nao controlada que resta.
+//
+// REGRA: antes de abrir para escrita, se o ficheiro passou de AuditLogMaxSizeMb,
+// passa a audit_log_prev.csv (substituindo a geracao anterior) e o novo comeca
+// vazio com header. Nada do que ja foi gravado e apagado; o limite efectivo e
+// 2 x AuditLogMaxSizeMb. AuditLogMaxSizeMb=0 desliga a rotacao.
+//==================================================
+
+#define AUDIT_DECISION_FILE "audit_log.csv"
+#define AUDIT_DECISION_PREV "audit_log_prev.csv"
+
+void AuditRotateDecisionLogIfNeeded()
+{
+   if(AuditLogMaxSizeMb <= 0)
+      return;
+
+   ResetLastError();
+
+   int hs = FileOpen(
+      AUDIT_DECISION_FILE,
+      FILE_COMMON | FILE_READ | FILE_BIN | FILE_SHARE_READ | FILE_SHARE_WRITE
+   );
+
+   if(hs == INVALID_HANDLE)
+      return;
+
+   ulong sizeBytes = (ulong)FileSize(hs);
+   FileClose(hs);
+
+   ulong capBytes = (ulong)AuditLogMaxSizeMb * 1048576;
+
+   if(sizeBytes < capBytes)
+      return;
+
+   // A gravacao corre sob EventLock; se a rotacao falhar, o aviso sai no maximo
+   // 1x/hora para nao substituir o spam que esta correccao veio cortar.
+   static datetime s_lastRotateLog = 0;
+
+   FileDelete(AUDIT_DECISION_PREV, FILE_COMMON);
+
+   bool moved = FileMove(
+      AUDIT_DECISION_FILE,
+      FILE_COMMON,
+      AUDIT_DECISION_PREV,
+      FILE_COMMON | FILE_REWRITE
+   );
+
+   if(s_lastRotateLog == 0 || (TimeCurrent() - s_lastRotateLog) >= 3600)
+     {
+      PrintFormat("[AUDIT] rotacao do decision log | MB=%.1f | limite=%d MB | %s | erro=%d",
+                  (double)sizeBytes / 1048576.0,
+                  AuditLogMaxSizeMb,
+                  (moved ? "OK: geracao anterior em audit_log_prev.csv" : "FALHOU ao mover"),
+                  GetLastError());
+      s_lastRotateLog = TimeCurrent();
+     }
+}
+
 // Abre audit_log.csv (FILE_COMMON) com handle novo. Retorna handle ou INVALID_HANDLE.
 int AuditOpenDecisionLog()
 {
    ResetLastError();
 
+   // v1.2.40 (30/10/2026) - P1.13: rotacao por tamanho antes de abrir.
+   AuditRotateDecisionLogIfNeeded();
+
    int h = FileOpen(
-      "audit_log.csv",
+      AUDIT_DECISION_FILE,
       FILE_COMMON |
       FILE_READ |
       FILE_WRITE |

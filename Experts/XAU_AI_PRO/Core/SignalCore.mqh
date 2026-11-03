@@ -24,6 +24,31 @@ void ReleaseSignalHandles()
 {
 }
 
+//==================================================
+// v1.2.94 (02/11/2026) - P1.82: DESFECHO DO SINAL
+//
+// Ate aqui todos os caminhos de GetSignal devolviam o MESMO 0: handle
+// invalido, copia falhada, historico vazio e "a regra nao pediu entrada".
+// Medido no journal de 02/11: 13 293 varreduras NoSignal no dia, sem uma
+// unica pista de qual dos quatro motivos era. Passa a haver dois
+// contadores, publicados no [SCANNER] RESUMO:
+//   g_sigNoRead  -> nao foi possivel LER (handle/copia/historico)
+//   g_sigNeutral -> leu tudo e a REGRA nao pediu entrada
+// Sem leitura e mercado sem setup sao doencas diferentes.
+//==================================================
+int g_sigNoRead  = 0;
+int g_sigNeutral = 0;
+
+int SignalNoReadCount()
+{
+   return g_sigNoRead;
+}
+
+int SignalNeutralCount()
+{
+   return g_sigNeutral;
+}
+
 int GetSignal()
 {
    return GetSignal(_Symbol);
@@ -35,12 +60,43 @@ int GetSignal()
 
 int GetSignal(string symbol)
 {
-   // Log de diagnostico 1x por minuto (evita spam a cada tick)
-   static datetime lastLogTime = 0;
+   // v1.2.93 (02/11/2026) - P1.80: MEDIDO no journal de 02/11 as 20:23 - as
+   // duas unicas linhas SEM TAG que restavam eram as do sinal ('USDBRL SIGNAL
+   // BUY | RSI[1]=37.31'), e o throttle era um static UNICO partilhado por
+   // todos os simbolos: o primeiro simbolo que passava gastava a vez do
+   // minuto e os outros ficavam invisiveis no journal. Passa a throttle POR
+   // SIMBOLO e a tag [SIGNAL], para o journal fechar em 0 linhas anonimas e
+   // cada simbolo poder dizer se gerou sinal. Diagnostico apenas: nenhum
+   // return, limite, lote, alvo ou regra de entrada muda.
+   static string   sigLogSymbols[];
+   static datetime sigLogTimes[];
    datetime logNow = TimeCurrent();
-   bool logOnce = (logNow - lastLogTime >= 60);
-   if(logOnce)
-      lastLogTime = logNow;
+   bool logOnce = false;
+   int sigIdx = -1;
+
+   for(int si = 0; si < ArraySize(sigLogSymbols); si++)
+     {
+      if(sigLogSymbols[si] == symbol)
+        {
+         sigIdx = si;
+         break;
+        }
+     }
+
+   if(sigIdx < 0)
+     {
+      sigIdx = ArraySize(sigLogSymbols);
+      ArrayResize(sigLogSymbols, sigIdx + 1);
+      ArrayResize(sigLogTimes, sigIdx + 1);
+      sigLogSymbols[sigIdx] = symbol;
+      sigLogTimes[sigIdx] = 0;
+     }
+
+   if(logNow - sigLogTimes[sigIdx] >= 60)
+     {
+      sigLogTimes[sigIdx] = logNow;
+      logOnce = true;
+     }
 
    if(symbol=="")
       return 0;
@@ -74,23 +130,26 @@ int GetSignal(string symbol)
    // Valida handles
    if(emaFastHandle==INVALID_HANDLE)
    {
+      g_sigNoRead++;
       if(logOnce)
-         Print("SIGNAL ERROR: EMA Fast invalido para ", symbol);
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | handle EMA Fast invalido");
       return 0;
    }
 
    if(emaSlowHandle==INVALID_HANDLE)
    {
+      g_sigNoRead++;
       if(logOnce)
-         Print("SIGNAL ERROR: EMA Slow invalido para ", symbol);
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | handle EMA Slow invalido");
       IndicatorRelease(emaFastHandle);
       return 0;
    }
 
    if(signalRSIHandle==INVALID_HANDLE)
    {
+      g_sigNoRead++;
       if(logOnce)
-         Print("SIGNAL ERROR: RSI invalido para ", symbol);
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | handle RSI invalido");
       IndicatorRelease(emaFastHandle);
       IndicatorRelease(emaSlowHandle);
       return 0;
@@ -114,21 +173,21 @@ int GetSignal(string symbol)
    if(CopyBuffer(emaFastHandle,0,0,3,fast)<=0)
    {
       if(logOnce)
-         Print("SIGNAL ERROR: Falha ao copiar EMA Fast para ", symbol);
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | falha ao copiar EMA Fast | Error=", GetLastError());
       copyOK=false;
    }
 
    if(CopyBuffer(emaSlowHandle,0,0,3,slow)<=0)
    {
       if(logOnce)
-         Print("SIGNAL ERROR: Falha ao copiar EMA Slow para ", symbol);
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | falha ao copiar EMA Slow | Error=", GetLastError());
       copyOK=false;
    }
 
    if(CopyBuffer(signalRSIHandle,0,0,3,rsi)<=0)
    {
       if(logOnce)
-         Print("SIGNAL ERROR: Falha ao copiar RSI para ", symbol);
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | falha ao copiar RSI | Error=", GetLastError());
       copyOK=false;
    }
 
@@ -138,14 +197,17 @@ int GetSignal(string symbol)
    IndicatorRelease(signalRSIHandle);
 
    if(!copyOK)
+   {
+      g_sigNoRead++;
       return 0;
+   }
 
    // Logica de sinal v1.21 - vela FECHADA (indice 1) + pullback com reversao
    // BUY: tendencia de alta M15 (EMA50>EMA200) + RSI fechou <45 (pullback) + RSI virando p/ cima
    if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2])
    {
       if(logOnce)
-         Print(symbol," SIGNAL BUY | RSI[1]=",DoubleToString(rsi[1],2));
+         Print("[SIGNAL] BUY | ",symbol," | RSI[1]=",DoubleToString(rsi[1],2));
       return 1;
    }
 
@@ -153,9 +215,56 @@ int GetSignal(string symbol)
    if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<rsi[2])
    {
       if(logOnce)
-         Print(symbol," SIGNAL SELL | RSI[1]=",DoubleToString(rsi[1],2));
+         Print("[SIGNAL] SELL | ",symbol," | RSI[1]=",DoubleToString(rsi[1],2));
       return -1;
    }
+
+   //--------------------------------------------------
+   // v1.2.94 (02/11/2026) - P1.82: chegou aqui, o simbolo FOI lido e a
+   // regra e que nao pediu entrada. 1 linha/15 min por simbolo (11
+   // simbolos = 44/hora) para provar leitura viva sem encher o journal.
+   //--------------------------------------------------
+   g_sigNeutral++;
+
+   static string   neuSim[];
+   static datetime neuHora[];
+
+   int nIdx = -1;
+
+   for(int ni = 0; ni < ArraySize(neuSim); ni++)
+      if(neuSim[ni] == symbol)
+        {
+         nIdx = ni;
+         break;
+        }
+
+   if(nIdx < 0)
+     {
+      nIdx = ArraySize(neuSim);
+      ArrayResize(neuSim, nIdx + 1);
+      ArrayResize(neuHora, nIdx + 1);
+      neuSim[nIdx]  = symbol;
+      neuHora[nIdx] = 0;
+     }
+
+   if(neuHora[nIdx] == 0 || (logNow - neuHora[nIdx]) >= 900)
+     {
+      neuHora[nIdx] = logNow;
+
+      int dg = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+
+      if(dg <= 0)
+         dg = 5;
+
+      Print("[SIGNAL] NEUTRO | ", symbol,
+            " | tendencia=", (fast[1] > slow[1] ? "ALTA" : "BAIXA"),
+            " | EMA50=", DoubleToString(fast[1], dg),
+            " EMA200=", DoubleToString(slow[1], dg),
+            " | RSI[1]=", DoubleToString(rsi[1], 2),
+            " RSI[2]=", DoubleToString(rsi[2], 2),
+            " | pede: BUY RSI<", DoubleToString(RSIPullbackBuy, 1), " e a subir",
+            " | SELL RSI>", DoubleToString(RSIPullbackSell, 1), " e a descer");
+     }
 
    return 0;
 }

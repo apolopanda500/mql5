@@ -70,7 +70,7 @@ int DL_GetOrCreateSymbolIndex(string symbol)
    if(ArrayResize(dlSymbols,newSize)!=newSize)
      {
       Print(
-         "DATA LOGGER | Erro redimensionando sÃ­mbolos"
+         "[DATA] ERRO | redimensionar simbolos"
       );
 
       return -1;
@@ -80,7 +80,7 @@ int DL_GetOrCreateSymbolIndex(string symbol)
    if(ArrayResize(dlLastClosedBars,newSize)!=newSize)
      {
       Print(
-         "DATA LOGGER | Erro redimensionando candles"
+         "[DATA] | Erro redimensionando candles"
       );
 
       return -1;
@@ -191,7 +191,7 @@ bool DataLoggerInit()
    if(dataFile==INVALID_HANDLE)
      {
       Print(
-         "DATA LOGGER INIT ERROR | CÃ³digo=",
+         "[DATA] INIT ERROR | codigo=",
          GetLastError()
       );
 
@@ -232,10 +232,8 @@ bool DataLoggerInit()
      }
 
 
-   Print(
-      "DATA LOGGER MULTI-SYMBOL ONLINE | ",
-      "Data\\dataset.csv"
-   );
+   // v1.2.88 (02/11/2026) - P1.75: linha sem tag; passa a [DATA], com o ficheiro.
+   if(LogInicioDetalhe()) Print("[DATA] logger multi-simbolo online | ficheiro=Data\\dataset.csv");
 
 
    return true;
@@ -266,7 +264,7 @@ void SaveMarketData(string symbol="")
    if(dataFile==INVALID_HANDLE)
      {
       Print(
-         "DATA LOGGER | Arquivo nÃ£o inicializado"
+         "[DATA] ERRO | arquivo nao inicializado"
       );
 
       return;
@@ -276,7 +274,7 @@ void SaveMarketData(string symbol="")
    if(!SymbolSelect(symbol,true))
      {
       Print(
-         "DATA LOGGER | SÃ­mbolo indisponÃ­vel | ",
+         "[DATA] ERRO | simbolo indisponivel | ",
          symbol
       );
 
@@ -387,7 +385,7 @@ void SaveMarketData(string symbol="")
    )
      {
       Print(
-         "DATA LOGGER | OHLC invÃ¡lido | ",
+         "[DATA] ERRO | OHLC invalido | ",
          symbol
       );
 
@@ -404,7 +402,7 @@ void SaveMarketData(string symbol="")
    )
      {
       Print(
-         "DATA LOGGER | Estrutura OHLC invÃ¡lida | ",
+         "[DATA] ERRO | estrutura OHLC invalida | ",
          symbol
       );
 
@@ -455,8 +453,15 @@ void SaveMarketData(string symbol="")
       rsi>100.0
    )
      {
+      // v1.2.111 (03/11/2026) - P1.99: MEDIDO no journal de 03/11 - 176 linhas
+      // com o texto identico (11 simbolos x varias instancias), porque o ADX
+      // chega aqui a -1.00 enquanto os indicadores aquecem e o estado repete-se
+      // a cada ciclo. A recusa de gravar o candle continua igual: muda so a
+      // frequencia da linha (1x/1h por CONTA e por simbolo).
+      if(!AccountLogGatePodeImprimir("data_sem_leitura_" + symbol, 3600))
+         return;
       Print(
-         "DATA LOGGER | Indicadores invÃ¡lidos | ",
+         "[DATA] SEM LEITURA | ",
          symbol,
          " | ATR=",
          DoubleToString(atr,6),
@@ -517,7 +522,7 @@ void SaveMarketData(string symbol="")
       Print(
          "DATA LOGGER WRITE ERROR | ",
          symbol,
-         " | CÃ³digo=",
+         " | codigo=",
          GetLastError()
       );
 
@@ -533,16 +538,39 @@ void SaveMarketData(string symbol="")
       closedBarTime;
 
 
-   Print(
-      "DATA LOGGER SAVED | ",
-      symbol,
-      " | TIME=",
-      TimeToString(
-         closedBarTime,
-         TIME_DATE |
-         TIME_SECONDS
-      )
-   );
+   // v1.2.26: silenciado por padrao. Com 17 graficos abertos, cada simbolo
+   // gravava esta linha a cada vela fechada e o journal recebia centenas de
+   // registos por hora, empurrando avisos e erros para fora da janela visivel.
+   // A gravacao continua igual - so o eco no journal passou a ser opt-in.
+   // v1.2.27 (30/10/2026) - P1.3: com 11 simbolos e velas fechadas este eco
+   // saia 11 vezes por vela. A gravacao no CSV continua igual; o eco no
+   // journal passa a 1x/dia por simbolo (mesmo com EnableVerboseDebug=true).
+   static datetime dlLastEchoDay[64];
+
+   if(symbolIndex >= 0 && symbolIndex < 64)
+   {
+      datetime diaAtual = (datetime)((long)closedBarTime - (long)(closedBarTime % 86400));
+
+      // v1.2.92 (02/11/2026) - P1.79: era 1 linha por simbolo por INSTANCIA
+      // (11 simbolos x 15 graficos = 165 linhas por dia a dizer o mesmo).
+      // Passa a 1 linha por simbolo por CONTA por dia.
+      if(EnableVerboseDebug && !MQLInfoInteger(MQL_TESTER) && dlLastEchoDay[symbolIndex] != diaAtual
+         && AccountLogGatePodeImprimir("datasaved_" + symbol, 86400))
+      {
+         dlLastEchoDay[symbolIndex] = diaAtual;
+
+         Print(
+            "[DATA] SAVED | ",
+            symbol,
+            " | TIME=",
+            TimeToString(
+               closedBarTime,
+               TIME_DATE |
+               TIME_SECONDS
+            )
+         );
+      }
+   }
   }
 
 
@@ -555,6 +583,12 @@ void SaveMarketData(string symbol="")
 //+------------------------------------------------------------------+
 void DataLoggerClose()
   {
+   // v1.2.84 (02/11/2026) - P1.71: a linha DATA LOGGER OFFLINE saia em TODO o OnDeinit,
+   // mesmo quando o logger nunca abriu ficheiro nenhum, e deu 316 linhas no dia 02/11
+   // so com os reloads das 16 instancias. Passa a sair apenas quando havia um ficheiro
+   // aberto, que e o caso em que a informacao significa alguma coisa.
+   bool dlTinhaFicheiro = (dataFile!=INVALID_HANDLE);
+
    if(dataFile!=INVALID_HANDLE)
      {
       FileFlush(dataFile);
@@ -568,9 +602,8 @@ void DataLoggerClose()
    ArrayFree(dlLastClosedBars);
 
 
-   Print(
-      "DATA LOGGER OFFLINE"
-   );
+   if(dlTinhaFicheiro)
+      if(LogInicioDetalhe()) Print("[DATA] logger offline");
   }
 
 

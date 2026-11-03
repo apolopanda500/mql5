@@ -39,7 +39,8 @@ param(
    [string]$MetaEditor = ''
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
+$PSNativeCommandUseErrorActionPreference = $false
 $script:Failures = 0
 
 # ---------------------------------------------------------------------
