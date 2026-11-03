@@ -25,6 +25,7 @@ Passagem de contexto para o proximo agente. Todos os itens abaixo foram
 - `AIGatewayUrl = http://127.0.0.1:9001/api/ai/predict`
 - `AIGatewayToken`: **vazio**
 - `NotifyTelegramToken` / `NotifyTelegramChatID`: **vazios** (caminho Telegram inativo)
+- `EnableMCPServer = false` / `MCPServerToken` vazio (servidor MCP embutido no EA, desligado)
 
 ## Bloqueios conhecidos
 
@@ -34,15 +35,16 @@ Passagem de contexto para o proximo agente. Todos os itens abaixo foram
 | 2 | probe da API retorna **HTTP 401** em `/`, `/openapi.json` e `/api/ai/predict` | gateway exige `Authorization: Bearer <API_TOKEN>`; o EA **nao envia** o header porque `AIGatewayToken` esta vazio (`if(StringLen(AIGatewayToken) > 0)`) | **operador** (preencher input) |
 | 3 | `[SCANNER] trades=0` com ~100 visitas e ~95 bloqueios | filtros vetando; motivo dominante `ADX indisponivel` em USDCNH | agente pode investigar |
 
-O serviço do gateway **esta de pe**: porta TCP 9001 aceita conexao e responde
+O servico do gateway **esta de pe**: porta TCP 9001 aceita conexao e responde
 HTTP. O problema nao e o backend estar fora — e autenticacao + WebRequest.
 
 ## Repositorio
 
-- HEAD: `80406201` (`feat(tools): adiciona script de verificacao da allowlist WebRequest do terminal`)
+- HEAD: `b65a8fdb` (`chore(repo): marca .set como binario e .ps1 como CRLF; atualiza preset do tester`)
 - branch `main`, upstream `github/main`
 - ahead/behind vs upstream: **0 0**
 - working tree: limpo no momento da medicao
+- ultimos commits: `2ade45a4` (MCP no EA), `c0bf4f13` (manual/sonda/comandos), `b65a8fdb` (.gitattributes + preset)
 
 ## Feito nesta sessao
 
@@ -54,6 +56,10 @@ HTTP. O problema nao e o backend estar fora — e autenticacao + WebRequest.
 - `Scripts/XAI_WebRequestCheck.mq5` — classificador de allowlist (compilado, 0 errors)
 - `Tools/AGENT_COMMANDS.md`, `Tools/api-probe.ps1`, `.claude/commands/*.md`
 - secao "Operacao por outro agente IA" no `AGENTS.md`
+- `Core/MCPServer.mqh` integrado ao EA (servidor MCP embutido); compilacao
+  corrigida para **0 errors, 0 warnings**
+- `.gitattributes` ajustado: `*.set` como binario (MetaEditor grava UTF-16) e
+  `*.ps1` como CRLF
 
 ## Proximo passo recomendado
 
@@ -63,4 +69,4 @@ HTTP. O problema nao e o backend estar fora — e autenticacao + WebRequest.
    nos 15 graficos (ou desligar a exigencia de token no gateway).
 3. Agente: reexecutar `/webrequest` e `/diagnose` para confirmar
    `PERMITIDA | HTTP=200` e o retorno do `[AI] GATEWAY`.
-4. Agente: investigar por que `ADX indisponivel` vetа USDCNH em todos os ciclos.
+4. Agente: investigar por que `ADX indisponivel` veta USDCNH em todos os ciclos.
