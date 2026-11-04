@@ -5,7 +5,7 @@
 > risco de carteira. Este arquivo e o PONTO DE ENTRADA da documentacao: diz
 > onde cada assunto esta e qual e o estado atual medido.
 >
-> Versao do codigo: **v1.2.126** (`Enterprise/VersionManager.mqh` ->
+> Versao do codigo: **v1.2.131** (`Enterprise/VersionManager.mqh` ->
 > `EA_VERSION_STRING`). `#property version "1.326"` acompanha desde a v1.2.123:
 > MQL5 aceita somente dois numeros na propriedade, entao ela e minor*100+patch.
 >
@@ -33,7 +33,7 @@
 > cache a gravar por cima de outra instancia e sem lock nao ha interleave. Trade nao
 > gravado e um DROP contado e impresso, nunca uma linha partida.
 >
-> Ultima atualizacao: 2026-10-30.
+> Ultima atualizacao: 2026-11-04.
 
 ---
 
