@@ -72,7 +72,11 @@ bool ValidationReasonIsBlock(string reason)
    return true;
 }
 
-bool ValidationLogAllowed(string symbol, string reason)
+// P2.15 (03/11/2026): o corpo abaixo passou a ser a janela por INSTANCIA e o
+// portao por CONTA embrulha-o em ValidationLogAllowed(). Renomeado, sem
+// alteracao de logica; o g_validationLastBlock continua a ser escrito aqui,
+// antes de qualquer filtro, como sempre foi.
+bool ValidationLogAllowedLocal(string symbol, string reason)
 {
    if(ValidationReasonIsBlock(reason))
       g_validationLastBlock = reason;
@@ -110,6 +114,52 @@ bool ValidationLogAllowed(string symbol, string reason)
    g_valLogUsed++;
 
    return true;
+}
+
+//+------------------------------------------------------------------+
+//| P2.15 (03/11/2026) - um facto por CONTA, nao por grafico.         |
+//| A janela acima e por INSTANCIA (o comentario de v1.2.16 di-lo:    |
+//| "a janela vale por grafico"). Com 15 graficos, o MESMO veto saia  |
+//| uma vez em cada um a cada 5 min. MEDIDO no journal do expert:     |
+//| "[VALIDATION] BLOCK | TREND SELL | <sym> | contramao vetada |     |
+//| ADX indisponivel" 23 vezes na sessao, sempre o mesmo texto e      |
+//| sempre o mesmo par simbolo+motivo. Aqui a mesma chave passa       |
+//| tambem pelo portao por conta (Monitoring\AccountLogGate.mqh), com |
+//| a mesma janela de 5 min: a primeira instancia escreve, as outras  |
+//| calam-se. No tester nao ha portao (FILE_COMMON e partilhado entre |
+//| passes): cada passe continua a registar o proprio veto. Decide    |
+//| apenas se a linha volta a sair; nenhuma validacao muda.          |
+//+------------------------------------------------------------------+
+string ValidationGateTag(string symbol, string reason)
+{
+   string tag = symbol + "_" + reason;
+
+   // O portao usa a tag como NOME DE FICHEIRO: nada de "|", "=", "%", ">".
+   StringReplace(tag, " ", "_");
+   StringReplace(tag, "|", "_");
+   StringReplace(tag, "=", "_");
+   StringReplace(tag, "-", "_");
+   StringReplace(tag, ".", "p");
+   StringReplace(tag, "%", "pc");
+   StringReplace(tag, ">", "g");
+   StringReplace(tag, "<", "l");
+   StringReplace(tag, ",", "_");
+
+   if(StringLen(tag) > 48)
+      tag = StringSubstr(tag, 0, 48);
+
+   return("val_" + tag);
+}
+
+bool ValidationLogAllowed(string symbol, string reason)
+{
+   if(!ValidationLogAllowedLocal(symbol, reason))
+      return(false);
+
+   if(MQLInfoInteger(MQL_TESTER))
+      return(true);
+
+   return(AccountLogGatePodeImprimir(ValidationGateTag(symbol, reason), VALIDATION_LOG_WINDOW));
 }
 
 
