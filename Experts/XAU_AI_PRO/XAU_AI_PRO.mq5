@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.122
+// XAU_AI_PRO v1.2.124
 //==================================================
 
 #property strict
@@ -19,7 +19,7 @@
 // A versao legivel ("1.2.27") vai na descricao do projeto (XAU_AI_PRO.mqproj),
 // tambem exibida na aba de propriedades. O build do projeto ja injeta essa
 // propriedade; repetir com `#property description` gera `warning 90`.
-#property version   "1.322"
+#property version   "1.324"
 
 #include <Trade/Trade.mqh>
 
@@ -901,7 +901,30 @@ void SessionStateRestore()
 // Salva as estatisticas de performance em arquivo
 void PerformanceSave()
   {
-   int handle = FileOpen("XAU_AI_PRO_stats.csv", FILE_WRITE | FILE_CSV | FILE_ANSI, ',');
+   // v1.2.124 (03/11/2026) - P2.16: MEDIDO por leitura de codigo no varrimento
+   // de FileOpen com FILE_WRITE: este era o ULTIMO ponto do EA sem partilha.
+   // O ficheiro XAU_AI_PRO_stats.csv esta em Files (pasta comum a todas as
+   // instancias do terminal) e e reescrito por cada grafico, logo a abertura
+   // em corrida devolvia 5004 e a funcao saia em silencio sem gravar. Passa a
+   // pedir FILE_SHARE_READ | FILE_SHARE_WRITE e a repetir 3x com Sleep(10),
+   // que e o mesmo padrao ja usado no AuditLog, no SystemStatus e no
+   // BackupManager. Nenhum contador, limite, regra de entrada ou de saida,
+   // lote, spread, alvo, precificacao ou parametro de risco muda: muda apenas
+   // se a gravacao deste retrato de estatisticas consegue abrir o ficheiro.
+   int handle = INVALID_HANDLE;
+
+   for(int tentativaStats = 0; tentativaStats < 3; tentativaStats++)
+     {
+      handle = FileOpen("XAU_AI_PRO_stats.csv",
+                        FILE_WRITE | FILE_CSV | FILE_ANSI |
+                        FILE_SHARE_READ | FILE_SHARE_WRITE, ',');
+
+      if(handle != INVALID_HANDLE)
+         break;
+
+      Sleep(10);
+     }
+
    if(handle == INVALID_HANDLE)
       return;
 
@@ -2545,9 +2568,40 @@ void OnDeinit(
 //================================================
 
    // v1.2.88 (02/11/2026) - P1.75: uma linha por instancia em vez de cinco.
-   Print("[STOP] ", _Symbol, " | motivo=", reason,
-         " | equity=", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2),
-         " | estado, resumo e relatorios gravados");
+   // P2.13 (03/11/2026): MEDIDO no journal do expert - cada reload deixa uma
+   // rajada de linhas [STOP], todas no mesmo segundo, com o mesmo motivo e a
+   // mesma equity, uma por grafico (21:15:11 e 21:19:10 de 03/11, 15 linhas
+   // cada). O motivo NOVO continua a sair na hora; a rajada do reload, que
+   // repete o mesmo motivo, passa a 1 linha por conta. No tester nao ha portao
+   // e a linha sai sempre, como antes.
+   // P2.14 (03/11/2026): o portao por conta sozinho ainda deixava passar a
+   // rajada na PRIMEIRA utilizacao - o ficheiro do portao nao existia, as 15
+   // instancias leram "nunca impresso" ao mesmo tempo e escreveram todas.
+   // MEDIDO no journal do expert: o reload de 21:29:47 (o primeiro com o
+   // P2.13) deixou 15 linhas "[STOP] <SYM> | motivo=2 | equity=12592.02"; o
+   // reload seguinte, as 21:32:13, ja deixou 1. O reload de recompilacao
+   // (REASON_RECOMPILE) acorda TODAS as instancias no mesmo segundo, portanto
+   // essa linha passa a sair so da dona do pipeline - eleicao que ja existe,
+   // e uma so por conta. Qualquer outro motivo (fecho de um grafico, mudanca
+   // de periodo, parametros) nao e simultaneo e continua a passar pelo portao
+   // por conta, 1x/120 s. Sem dona publicada (init falhado ou guarda
+   // desligada) o portao volta a decidir, como antes.
+   bool stopLogPermitido = true;
+
+   if(!MQLInfoInteger(MQL_TESTER))
+     {
+      // PipelineMasterFresh (nao PipelineMasterChart): id publicado com
+      // batimento fresco. Dono morto ou batimento velho -> portao por conta.
+      if(reason == REASON_RECOMPILE && PipelineMasterFresh())
+         stopLogPermitido = (ChartID() == PipelineMasterChart());
+      else
+         stopLogPermitido = AccountLogGatePodeImprimir("stop_" + IntegerToString(reason), 120);
+     }
+
+   if(stopLogPermitido)
+      Print("[STOP] ", _Symbol, " | motivo=", reason,
+            " | equity=", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2),
+            " | estado, resumo e relatorios gravados");
 
    // v1.2.95 (02/11/2026) - P1.83: flush + close do logger de ficheiro que
    // o OnInit passou a abrir. Sem isto, o handle morria com a instancia e as

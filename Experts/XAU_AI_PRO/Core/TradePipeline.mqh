@@ -100,6 +100,32 @@ ulong PipelineMasterChart()
    return((ulong)GlobalVariableGet(key));
 }
 
+//+------------------------------------------------------------------+
+//| P2.14 (03/11/2026)                                               |
+//| A dona publicada pode ja estar MORTA: o id fica na GlobalVariable |
+//| quando o grafico dono e fechado a mao, e o batimento (_T) envelhece|
+//| em 180 s. O [STOP] do OnDeinit cala-se por "so a dona imprime",    |
+//| portanto precisa de saber se a dona ainda respira - com a dona     |
+//| morta ninguem imprimiria. true = ha dona E batimento fresco;       |
+//| false = o chamador volta ao portao por conta, como antes.          |
+//+------------------------------------------------------------------+
+bool PipelineMasterFresh()
+{
+   if(!EnablePipelineMasterGuard)
+      return(false);
+
+   string key     = "XAI_PRO_PIPE_MASTER_" + IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN));
+   string keyBeat = key + "_T";
+
+   if(!GlobalVariableCheck(key) || !GlobalVariableCheck(keyBeat))
+      return(false);
+
+   datetime ultimo = (datetime)GlobalVariableGet(keyBeat);
+   datetime agora  = TimeLocal();
+
+   return((agora - ultimo) < PIPELINE_MASTER_TTL_SEC);
+}
+
 void RunTradePipeline()
 {
    // Log de diagnostico 1x por minuto (evita spam a cada tick)
@@ -119,16 +145,23 @@ void RunTradePipeline()
       // P2.00 (03/11/2026): o static sozinho e por INSTANCIA, portanto 13
       // graficos davam 13 linhas/hora a dizer o mesmo (150 no dia 03/11).
       // Passa a exigir tambem a janela por CONTA (AccountLogGate.mqh).
-      if(now - lastStandbyLog >= 3600 && AccountLogGatePodeImprimir("pipe_standby", 3600))
+      if(now - lastStandbyLog >= 3600)
       {
+         // P2.13 (03/11/2026): o carimbo avancava SO quando a linha era
+         // impressa. Enquanto o portao por conta dizia "outra instancia ja
+         // escreveu", a condicao ficava verdadeira para sempre e o FileOpen do
+         // portao corria a cada tick - 14 instancias a abrir o mesmo ficheiro
+         // comum sem necessidade. O carimbo passa a avancar em TODA tentativa;
+         // quem imprime continua a ser decidido pelo portao por conta.
          lastStandbyLog = now;
 
-         Print(
-            "[PIPELINE] STANDBY | esta instancia nao e a dona do pipeline | esta=",
-            ChartID(),
-            " | dono=",
-            PipelineMasterChart()
-         );
+         if(AccountLogGatePodeImprimir("pipe_standby", 3600))
+            Print(
+               "[PIPELINE] STANDBY | esta instancia nao e a dona do pipeline | esta=",
+               ChartID(),
+               " | dono=",
+               PipelineMasterChart()
+            );
       }
 
       return;
