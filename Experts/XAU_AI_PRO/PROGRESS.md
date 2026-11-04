@@ -4153,3 +4153,56 @@ um acto humano no grafico: F7 > aba Geral > marcar "Permitir Algo Trading" > OK.
   embutido e preciso definir um token privado (8+ caracteres) no input
   `MCPServerToken` dos graficos e `EnableMCPServer=true`. Continuam tambem o
   `WebRequest` desligado (erro 4014) e o `AIGatewayToken` vazio (HTTP 401).
+
+## Ciclo 83 - v1.2.126 / reattach do dono: 15 graficos -> 13 (03/11/2026 22:56)
+
+Ciclo sem alteracao de codigo. Verificacao de estado depois de o dono reanexar o
+EA nos graficos. Toda a evidencia vem do journal (`get_expert_journal`) e de
+`list_open_charts`, nao de leitura de codigo.
+
+- **Reattach medido**: `[STOP] XAUUSD | motivo=1` as 22:53:50.739, `[MCP]
+  SHUTDOWN | ok=true | pedidos=1 | recusados=0` as 22:53:50.736 e depois
+  `[START] XAU_AI_PRO v1.2.126` escalonado de 22:53:51.376 a 22:54:49.286, cerca
+  de 3 s entre graficos (XAUUSD, USDCLP, USDCOP, USDSEK duas vezes, USDJPY,
+  USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD, USDBRL, USDRUB,
+  USDSGD). Antes houve um reload as 22:38:28-30 com 15 `[START]`.
+- **13 graficos abertos, nao 15**: XAUUSD H1, USDSEK, USDJPY, USDCHF, USDCZK,
+  USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD, USDBRL M5, USDRUB, USDSGD. USDCLP e
+  USDCOP deixaram de estar abertos: USDCOP registou `[STOP] USDCOP | motivo=4`
+  (chart close) as 22:54:04.725 e o fecho do USDCLP caiu na mesma janela de
+  120 s, portanto foi deduplicado pelo portao do P2.13 (1 linha por conta,
+  motivo e janela) - comportamento pedido, nao perda de informacao.
+- **P2.16 confirmado em producao**: zero linhas `[MCP] servidor ativo` em todo o
+  intervalo, apenas 2 `[MCP] SHUTDOWN | ok=true`. O servidor embutido nao volta
+  a arrancar com o token literal publico, mesmo com os graficos reanexados.
+- **P2.15 confirmado em producao**: 3 linhas `[VALIDATION] 1 BLOCKED
+  (diagnostico de init...)` em 22:35:00.697, 22:38:30.139 e 22:54:43.398,
+  todas com source USDRUB - exatamente uma por reload, de um unico simbolo, em
+  vez das 15 por reload de antes.
+- **Pipeline master correto apos o reattach**: `[PIPELINE] STANDBY | esta
+  instancia nao e a dona do pipeline | esta=35819098702235 |
+  dono=22884787070177` as 22:54:03.030. O dono e o chart01 XAUUSD (22884787070177),
+  portanto a guarda `EnablePipelineMasterGuard` esta a funcionar com os ids
+  novos do perfil aplicado.
+- **Saude**: `[HEALTH] HEALTHY | uptime=30s | checks=0 | sem tick=0s` as
+  22:54:21.998; `[BACKUP] Backup concluido com sucesso | arquivos=99` as
+  22:54:22.468.
+- **Conta**: 113568614, saldo/equity 12 592,02 USD, 0 posicoes, 0 ordens,
+  dia +22,94 de 40,00 USD (57%), `IA=SEM PRECO`. `[RESUMO] master=SIM |
+  posicoes: 0 EA (+0.00 USD) + 0 manual`.
+- **Inputs de risco inalterados pelo reattach**: `EnableMCPServer=false`,
+  `MCPServerToken=` e `AIGatewayToken=` vazios nos 13 graficos,
+  `AvoidHoursGMT=9,11,14,18,20,22`, `MinimumADX=18.0`,
+  `RSIPullbackBuy=45.0`, `RSIPullbackSell=55.0`,
+  `ScenarioCounterTrendMaxADX=22.0`, `DailyProfitTargetMaxUsd=40.0`,
+  `EnablePipelineMasterGuard=true`.
+- **Funil continua o gargalo** (nao o ADX): `[SCANNER] RESUMO | visitas=165 |
+  sinais=0 | trades=0 | bloqueios=165 | Stale=10 NoSignal=155 |
+  ADX(sem/ok)=1/484 | SIG(sem/neutro)=0/509` as 22:55:53.294.
+- **Pendencia operacional nova (nao e codigo)**: os 13 graficos nao coincidem
+  com a lista `Symbols` de 11 entradas
+  (`XAUUSD,EURUSD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH`).
+  USDCZK, USDRUB e USDSGD tem grafico mas nao estao em `Symbols`; EURUSD esta em
+  `Symbols` mas nao tem grafico. Nada disto trava a operacao (o pipeline do
+  master percorre `Symbols` e as instancias extra ficam em STANDBY), mas a
+  contabilidade de janelas e de stress por simbolo fica inconsistente.

@@ -182,3 +182,29 @@ Pendente (por ordem de valor):
   **12 592,02**, dia **+22,94 de 40,00 USD (57%)**, `IA=SEM PRECO`.
   Compilacao/deploy 0 errors / 0 warnings. Commit `8d23ef84` (P2.16);
   anteriormente `ef02e1c8` (P2.15) e `2aa63fca` (docs Ciclo 81).
+
+## Atualizacao 22:56 (mesma sessao) - reattach do dono, 13 graficos
+
+O dono reanexou o EA nos graficos. Verificado por journal e por
+`list_open_charts`, sem alteracao de codigo:
+
+| Item | Medido |
+| --- | --- |
+| Reattach | `[STOP] XAUUSD motivo=1` 22:53:50.739, `[MCP] SHUTDOWN ok=true` 22:53:50.736, `[START] v1.2.126` de 22:53:51 a 22:54:49 (~3 s por grafico) |
+| Graficos abertos | **13**: XAUUSD H1, USDSEK, USDJPY, USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD, USDBRL M5, USDRUB, USDSGD |
+| Fechados | USDCLP e USDCOP. `[STOP] USDCOP motivo=4` 22:54:04.725; o do USDCLP caiu na mesma janela de 120 s e foi deduplicado pelo portao do P2.13 |
+| MCP embutido | 0 linhas `[MCP] servidor ativo`, 2 `[MCP] SHUTDOWN`. P2.16 confirmado com os graficos reanexados |
+| `[VALIDATION]` | 3 linhas em 3 reloads, todas USDRUB. P2.15 confirmado |
+| Pipeline master | `[PIPELINE] STANDBY` 22:54:03.030, dono=22884787070177 (chart01 XAUUSD) |
+| Conta | 113568614, 12 592,02 USD, **0 posicoes**, dia +22,94 de 40,00 USD (57%), `IA=SEM PRECO` |
+| Funil | `[SCANNER] RESUMO` 22:55:53: visitas=165, sinais=0, NoSignal=155, Stale=10 |
+
+- Inconsistencia de configuracao a decidir pelo dono: 13 graficos contra
+  `Symbols` de 11 entradas. USDCZK, USDRUB e USDSGD tem grafico mas nao estao em
+  `Symbols`; EURUSD esta em `Symbols` e nao tem grafico. Nao trava nada (as
+  instancias sem dono ficam em STANDBY), mas separa a realidade do que esta
+  declarado.
+- Continuam por decidir: `AvoidHoursGMT=9,11,14,18,20,22` e o par RSI 45/55 em
+  H1 (**NoSignal=155 de 165 visitas** e o bloqueio dominante); `WebRequest`
+  desligado (erro 4014) e `AIGatewayToken` vazio (HTTP 401, journal diz
+  `IA=SEM PRECO` e `[AI] PREDICAO VENCIDA`).
