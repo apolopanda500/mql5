@@ -321,3 +321,19 @@
    nenhuma mudanca de regra tem prova.
 3. **IN-01 / CD-04** (risco real em US$ por trade) — e o que separa "ganhou" de
    "ganhou com risco errado".
+
+---
+
+## 9. Ciclo 93b (2026-11-04 19:35) - medicao bloqueada de novo, preparo concluido
+
+- Testador ocupado: metatester64 8772/12896/4476 e MetaTester64 11832/4212 vivos.
+  tester_run_backtest devolveu tester still started e tester_list_result_windows
+  devolveu lista vazia. NADA foi medido neste ciclo - nao ha numero novo de PF.
+- Pronto para uso assim que o slot libertar: Profiles/Tester/XAI_V12135_PRODGEOM_RT_M15.ini
+  (XAUUSD, M15, ticks reais, 2026.09.01..2026.11.01, deposito 10000, SEM .set, para
+  correr a geometria de PRODUCAO - RewardRatio 0.65 / MinRewardRatio 0.55 - e nao a
+  geometria do .set antigo de teste).
+- IA confirmada viva no journal de 19:22 a 19:31: XAUUSD responde com sinal; os outros
+  12 simbolos devolvem 357 bytes = available=false com motivo preenchido (gate a trabalhar).
+- Conta real continua recusada: PF 0.6206, 41.4 pct de acerto, 10-11 perdas seguidas,
+  contra a regra PF > 1.20 e streak <= 8.
