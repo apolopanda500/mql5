@@ -245,3 +245,19 @@ Pendencias do dono neste ciclo:
 
 1. Adicionar em Ferramentas > Opcoes > Expert Advisors > Allow WebRequest for listed URL: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com` (uma por vez). A allowlist fica fora das raizes de escrita do agente.
 2. O `401` em `9001/api/ai/predict` e o bloqueio real da IA: o gateway nao serve o EA e o `AIGatewayToken=12345678` nao coincide com `XAU_GATEWAY_TOKEN` (64 chars) do `.env`.
+
+
+## Ciclo 86 - 03/11/2026 23:52 - v1.2.129 (P2.20 + backtest REPROVADO)
+
+| Item | Estado |
+|---|---|
+| P2.20 `AIConnector.mqh` | `401` separa `token AUSENTE` de `token RECUSADO (N chars)`; `404`/`422`/`5xx` com motivo proprio; linha declara `WebRequest=LIGADO` + `corpo=NB`; `4014` deixa de ser so "desabilitado" |
+| Compilacao | `0 errors, 0 warnings`, `21386 ms`, x64 |
+| Backtest 7704134350896417964 | lucro **-213.74 USD**, PF **0.6206**, DD 2.48%, 152 trades, 41.4% de acerto, 10-11 perdas seguidas - **REPROVADO para conta real** |
+
+Pendencias do dono que continuam abertas:
+1. Adicionar em Ferramentas > Opcoes > Expert Advisors > Allow WebRequest for listed URL: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com`
+2. Decidir a porta: opcao A (limpar `XAU_GATEWAY_PORT`, volta a 9001) ou opcao B (manter 9011 e mudar `AIGatewayUrl` nos 13 graficos)
+3. Colar em `AIGatewayToken` o valor de `XAU_GATEWAY_TOKEN` (64 chars, em `MQL5\Files\XAU_AI_PRO\.env`)
+4. Nada serve `/api/ai/predict`: arrancar o gateway Python
+5. Nao ir a conta real: o backtest do periodo 01/09-01/11/2026 deu PF 0.62

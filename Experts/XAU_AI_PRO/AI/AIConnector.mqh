@@ -680,8 +680,21 @@ bool FetchPredictionFromGateway(
          // v1.2.88 (02/11/2026) - P1.75: tag [AI] e texto curto. 4014/4060
          // continuam a ser WebRequest desabilitado em Opcoes > Expert Advisors;
          // 5200/5202 = URL nao autorizada.
-         Print("[AI] GATEWAY falhou | erro=", err, " | ", url,
-               " | 4014/4060 = WebRequest desabilitado (Opcoes > Expert Advisors)");
+         // v1.2.129 (03/11/2026) - P2.20: 4014 tem DUAS causas (URL fora da
+         // lista OU checkbox "Allow WebRequest" desligado) e publicar so a
+         // primeira mandava o operador ao lugar errado. E a mesma doenca que o
+         // P2.19 corrigiu no script de diagnostico. 4060 e dominio ausente;
+         // 5200/5202 sao rede/URL. O codigo continua a ser impresso.
+         string motivoWr = "erro nao classificado";
+         if(err == 4014)
+            motivoWr = "NAO PERMITIDO (URL fora da lista, ou checkbox 'Allow WebRequest' desligado)";
+         else if(err == 4060)
+            motivoWr = "URL nao adicionada a lista (dominio ausente)";
+         else if(err == 5200)
+            motivoWr = "URL invalida para o WebRequest";
+         else if(err == 5202)
+            motivoWr = "URL nao permitida pela lista";
+         Print("[AI] GATEWAY falhou | erro=", err, " | ", url, " | ", motivoWr);
         }
 
       if(err == 401)
@@ -711,9 +724,34 @@ bool FetchPredictionFromGateway(
       if(statusNow - lastStatusLog >= 60)
       {
          lastStatusLog = statusNow;
-         Print("[AI] GATEWAY | HTTP ", status, " | ", url,
-               " | 401/403 = token ausente ou invalido (AIGatewayToken); ",
-               "404 = rota inexistente; 5xx = backend fora do ar");
+         // v1.2.129 (03/11/2026) - P2.20: o transporte respondeu, logo o
+         // WebRequest esta LIGADO e a URL esta na lista. Culpar sempre o token
+         // (texto fixo "401/403 = token ausente ou invalido") escondia duas
+         // causas distintas: token VAZIO e token RECUSADO. Agora a mensagem
+         // separa por EVIDENCIA - comprimento do token enviado, codigo HTTP e
+         // tamanho do corpo. O VALOR do token nunca e impresso.
+         int    nTok   = StringLen(AIGatewayToken);
+         string corpoR = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
+         int    nCorpo = StringLen(corpoR);
+         string motivo = "erro nao classificado";
+         if(status == 401 || status == 403)
+           {
+            if(nTok == 0)
+               motivo = "token AUSENTE (input AIGatewayToken vazio)";
+            else
+               motivo = "token RECUSADO (" + IntegerToString(nTok) +
+                        " caracteres enviados; o gateway espera o XAU_GATEWAY_TOKEN do .env)";
+           }
+         else if(status == 404)
+            motivo = "rota inexistente nesse servidor - confira AIGatewayUrl e se algo serve /api/ai/predict nessa porta";
+         else if(status == 422)
+            motivo = "requisicao recusada pelo servidor (parametros de symbol/timeframe)";
+         else if(status >= 500)
+            motivo = "backend fora do ar";
+         Print("[AI] GATEWAY | HTTP ", status, " | ", url, " | ", motivo,
+               " | WebRequest=LIGADO (a chamada SAIU) | corpo=", nCorpo, "B");
+         if(nCorpo > 0)
+            Print("[AI] GATEWAY | resposta: ", StringSubstr(corpoR, 0, 200));
       }
 
       return false;

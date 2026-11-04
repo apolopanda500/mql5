@@ -4260,3 +4260,50 @@ EA nos graficos. Toda a evidencia vem do journal (`get_expert_journal`) e de
 | Compilacao script | `0 errors, 0 warnings`, `919 ms` |
 | Versao | `1.2.128` (era `1.2.127`) |
 | Risco | nenhuma regra de entrada, saida, lote, alvo, stop, spread, preco ou parametro de risco foi alterada |
+
+## Ciclo 86 - 03/11/2026 23:52 - P2.20 (gateway: 401 separado por evidencia) + backtest REPROVADO (v1.2.129)
+
+### P2.20 - `AI/AIConnector.mqh` (mesma raiz do P2.19, agora dentro do EA)
+
+Defeito medido no journal as 23:38:11: a linha do gateway era texto FIXO.
+
+```
+[AI] GATEWAY | HTTP 401 | http://127.0.0.1:9001/api/ai/predict?symbol=GBPUSD&timeframe=H1 | 401/403 = token ausente ou invalido (AIGatewayToken); 404 = rota inexistente; 5xx = backend fora do ar
+```
+
+O `401` que estava a acontecer era `token RECUSADO` (8 caracteres enviados contra os 64 esperados), mas a linha imprimia as tres hipoteses ao mesmo tempo e o operador nao tinha como saber qual era. Agora:
+
+| Situacao | Mensagem |
+|---|---|
+| `401/403` e `AIGatewayToken` vazio | `token AUSENTE (input AIGatewayToken vazio)` |
+| `401/403` e `AIGatewayToken` preenchido | `token RECUSADO (N caracteres enviados; o gateway espera o XAU_GATEWAY_TOKEN do .env)` - o valor NUNCA e impresso |
+| `404` | `rota inexistente nesse servidor - confira AIGatewayUrl e se algo serve /api/ai/predict nessa porta` |
+| `422` | `requisicao recusada pelo servidor (parametros de symbol/timeframe)` |
+| `5xx` | `backend fora do ar` |
+
+Toda a linha passou tambem a declarar `WebRequest=LIGADO (a chamada SAIU)` e `corpo=NB`, que sao a prova de que o defeito nao esta na allowlist. Quando ha corpo, imprime os primeiros 200 caracteres da resposta (antes o corpo de erro era descartado em silencio).
+
+Na falha de transporte (`status == -1`) o `4014` deixou de ser publicado como `WebRequest desabilitado (Opcoes > Expert Advisors)` - tem DUAS causas - e passou a `NAO PERMITIDO (URL fora da lista, ou checkbox 'Allow WebRequest' desligado)`; `4060`, `5200` e `5202` ficaram com motivo proprio.
+
+### Backtest XAUUSD H1 - 01/09/2026 a 01/11/2026 (run_id 7704134350896417964) - REPROVADO
+
+Config: `Profiles\Tester\XAI_V127.ini`, modelo `m1 ohlc`, deposito 10000 USD, leverage 100, sem otimizacao. 972 barras, 233111 ticks gerados.
+
+| Metrica | Valor |
+|---|---|
+| Lucro liquido | **-213.74 USD (-2.14%)** |
+| Lucro bruto / perda bruta | 349.65 / 563.39 |
+| Profit factor | **0.6206** |
+| Drawdown maximo (balance) | 248.56 USD (2.48%) |
+| Drawdown maximo (equity) | 261.09 USD (2.61%) |
+| Trades | 152 (304 deals) |
+| Acertos | 63 vitorias / 89 derrotas = **41.4%** |
+| Curtos / longos | 107 curtos (45 ok) / 45 longos (18 ok) |
+| Sequencia de perdas | 10 a 11 seguidas |
+| Expected payoff | -1.41 |
+| Sharpe | -5.00 |
+| Recovery factor | -0.8186 |
+
+Leitura honesta: o EA perde dinheiro neste periodo e neste modelo. O drawdown e BAIXO (2.6%), portanto o risco por trade esta controlado - o que falha e a taxa de acerto (41.4%) contra um payoff medio que nao compensa. Uma sequencia de 10-11 perdas seguidas num mes significa que o capital psicologico e o drawdown real de uma sequencia pior podem coincidir com a ida a conta real.
+
+**VEREDITO: NAO aprovado para conta real.** Um backtest em `m1 ohlc` tambem subestima escorregamento e spread em XAUUSD. Antes de qualquer conta real: (1) explicar a taxa de acerto com o filtro `RSI 45/55` em H1, que ja e o maior bloqueio no scanner (NoSignal=291 de 319); (2) repetir em `real ticks`; (3) so aceitar com PF > 1.2 e sequencia maxima de perdas conhecida.
