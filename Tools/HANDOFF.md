@@ -314,3 +314,21 @@ Pendencias do dono (inalteradas):
 4. Arrancar o gateway Python (`/api/ai/predict` nao tem quem o sirva)
 5. **Nao ir a conta real** - PF 0.62 no periodo 01/09-01/11/2026
 
+
+## Ciclo 90 - 04/11/2026 06:01 - documentacao do ciclo 88 fechada (v1.2.131)
+
+| Item | Estado |
+|---|---|
+| `README.md` | `Versao do codigo: **v1.2.131**` + `Ultima atualizacao: 2026-11-04.` - commit `e616262e` |
+| `PENDENCIAS.md` | revisao `2026-11-04 05:58 (conta 113568614, v1.2.131)` |
+| `PENDENCIAS.md` P-01 | `WebRequest` LIGADO, `401` = credencial recusada, **17** caracteres enviados contra **64** no `.env` |
+| `HANDOFF.md` | 316 linhas, Ciclos 84 a 89 ja presentes - commit `395d101f` |
+| Codigo conferido | `VersionManager.mqh:14` `1.2.131`; `AIConnector.mqh:630/748/749/753/802`; `DatabaseManager.mqh:85`; `ValidationChecklist.mqh:329` |
+| Codigo alterado | nenhum - ciclo so de documentacao, `.ex5` de `05:57:14` mantem-se |
+
+Pendencias do dono (inalteradas):
+1. Allowlist em Ferramentas > Opcoes > Expert Advisors: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com`
+2. Porta: opcao A (limpar `XAU_GATEWAY_PORT`, volta a 9001) ou opcao B (manter 9011 e mudar `AIGatewayUrl` nos graficos)
+3. `AIGatewayToken`: o grafico envia **17** caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem **64**
+4. Arrancar o gateway Python (`/api/ai/predict` nao tem quem o sirva)
+5. **Nao ir a conta real** - PF 0.62 no periodo 01/09-01/11/2026

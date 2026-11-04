@@ -4385,3 +4385,25 @@ Ficheiros publicados neste ciclo:
 4. Arrancar o processo que serve `/api/ai/predict`.
 5. Conta real: nao ir com esta configuracao (PF 0.6206).
 
+## Ciclo 90 - 04/11/2026 06:01 - P2.23 (foto do README e revisao da lista de pendencias) (v1.2.131)
+
+| Item | Estado |
+|---|---|
+| `README.md` linha 8 | `Versao do codigo: **v1.2.131**` (era `v1.2.126`) - commit `e616262e` |
+| `README.md` linha 36 | `Ultima atualizacao: 2026-11-04.` (era `2026-10-30`) - mesmo commit |
+| `PENDENCIAS.md` linha 12 | revisao `2026-11-04 05:58 (conta 113568614, v1.2.131)` (era `2026-10-30 05:35`, v1.2.25) |
+| `PENDENCIAS.md` P-01 | bullet novo `Medido (04/11 05:55, evidencia no journal)`: `WebRequest` LIGADO, o `401` e recusa de credencial, 17 caracteres enviados contra 64 no `.env` |
+| `HANDOFF.md` | verificado no disco (316 linhas): ja traz as tabelas dos Ciclos 84 a 89 - commit `395d101f` |
+| Codigo conferido no disco | `VersionManager.mqh:14` = `1.2.131`; `AIConnector.mqh:630/748/749/753/802` = contador de recusas e cooldown; `DatabaseManager.mqh:85` = `TERMINAL_DATA_PATH`; `ValidationChecklist.mqh:329` = gate por sessao |
+| Ficheiros `.mq5`/`.mqh` alterados | nenhum - ciclo exclusivamente de documentacao |
+| Versao | `1.2.131` inalterada, nenhum binario novo, `.ex5` de `05:57:14` continua a ser o publicado |
+| Metodo | substituicao cirurgica UTF-8 sem BOM (`Files\Temp\patch_pendencias.ps1`), com checagem de ancora e falha explicita se o texto nao existisse |
+
+O que este ciclo prova: o que a documentacao afirma sobre o codigo foi conferido linha a linha no disco depois do commit, e a lista de pendencias deixou de repetir a hipotese de `4014` (WebRequest desligado) para registar o motivo medido (credencial recusada). Nenhuma regra de entrada, saida, lote, alvo, stop, spread, preco ou parametro de risco foi tocada.
+
+Pendencias do dono (inalteradas):
+1. Allowlist em Ferramentas > Opcoes > Expert Advisors: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com`
+2. Porta do gateway: opcao A (limpar `XAU_GATEWAY_PORT`, volta a 9001) ou opcao B (manter 9011 e mudar `AIGatewayUrl` nos graficos)
+3. `AIGatewayToken`: o grafico envia **17** caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem **64**
+4. Arrancar o processo que serve `/api/ai/predict`
+5. **Nao ir a conta real** - PF 0.62 no periodo 01/09-01/11/2026

@@ -9,7 +9,7 @@
 > - Dono: `DONO` = so o dono do terminal resolve (clicar, autorizar, decidir);
 >   `AGENTE` = trabalho de codigo/medicao aqui; `AMBOS` = quem estiver na vez.
 > - Nada aqui e promessa de lucro. Backtest nao prova lucro futuro.
-> - Ultima revisao desta lista: 2026-10-30 05:35 (conta 113568614, v1.2.25).
+> - Ultima revisao desta lista: 2026-11-04 05:58 (conta 113568614, v1.2.131).
 
 ---
 
@@ -27,6 +27,10 @@
   depois preencher `AIGatewayToken` nos 16 graficos (mesmo valor em todos).
 - **Criterio:** journal sem `4014` e sem falha de IA, e uma predicao valida
   consumida (`[AI] ... score=...`). Fechar registrando a data no `PROGRESS.md`.
+- **Medido (04/11 05:55, evidencia no journal):** o `WebRequest` esta
+  **LIGADO** (a chamada sai) e o `401` e recusa de credencial: os graficos
+  enviam **17 caracteres** e o `XAU_GATEWAY_TOKEN` do `.env` tem **64**.
+  Ate o dono colar o valor exato, o `401` continua - agora com o motivo certo.
 
 ### P-02 — Testador de Estrategia ocupado (bloqueia toda medicao) `DONO`
 - **Medido:** um job de teste segue rodando desde o ciclo anterior, ocupando o
