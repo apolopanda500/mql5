@@ -5,7 +5,7 @@
 //|  Como ler o resultado no journal (Especialistas):                |
 //|    PERMITIDA   -> a URL passou na lista (o erro, se houver, e de |
 //|                   rede/HTTP e nao de permissao).                 |
-//|    BLOQUEADA   -> 4014 = WebRequest desabilitado nas opcoes;     |
+//|    BLOQUEADA   -> 4014 = nao permitido (lista OU checkbox); o veredito do fim diz qual     |
 //|                   4060 = URL/dominio fora da lista permitida.    |
 //|                                                                  |
 //|  Nenhum dado de conta, ordem ou credencial e enviado: o pedido e |
@@ -26,7 +26,10 @@ string DescribeError(const int err)
 {
    switch(err)
    {
-      case 4014: return "WebRequest DESABILITADO em Opcoes > Expert Advisors";
+      // P2.19: 4014 tem DUAS causas. Dizer so "desabilitado" manda o
+      // operador ao lugar errado quando o checkbox esta ligado e o defeito
+      // e a lista. O veredito do fim resolve qual das duas e.
+      case 4014: return "NAO PERMITIDO (URL fora da lista, ou checkbox desligado)";
       case 4060: return "URL FORA DA LISTA (Allow WebRequest for listed URL)";
       case 5200: return "URL invalida (conferir http:// ou https:// e o dominio)";
       case 5201: return "conexao falhou (lista OK, host inacessivel)";
@@ -53,6 +56,8 @@ void OnStart()
    int permitidas = 0;
    int bloqueadas = 0;
    int outras     = 0;
+   int naoListadas = 0;        // P2.19: 4014/4060 - candidatas a lista
+   string pendentes = "";      // P2.19: URLs que faltam autorizar
 
    for(int i = 0; i < total; i++)
    {
@@ -81,6 +86,10 @@ void OnStart()
       if(err == 4014 || err == 4060)
       {
          bloqueadas++;
+         naoListadas++;
+         if(StringLen(pendentes) > 0)
+            pendentes += ";";
+         pendentes += url;
          Print("[WEBREQ] BLOQUEADA | ", url, " | ", DescribeError(err));
       }
       else if(err == 5200)
@@ -102,5 +111,28 @@ void OnStart()
 
    Print("[WEBREQ] fim | permitidas=", permitidas,
          " | bloqueadas=", bloqueadas, " | indefinidas=", outras);
+
+   // P2.19 (03/11/2026): separar as duas causas do 4014 por EVIDENCIA, nao por
+   // suposicao. Medido as 23:18:44 neste terminal: 9001/api/ai/predict passou
+   // (HTTP=401, logo entrou na lista) e as outras 5 deram 4014. Isso PROVA
+   // checkbox ligado e lista incompleta - o oposto do que a mensagem antiga
+   // afirmava ("desabilitado nas opcoes"), que mandava o operador conferir um
+   // controle que ja estava certo.
+   if(permitidas > 0 && naoListadas > 0)
+     {
+      Print("[WEBREQ] VEREDITO | WebRequest esta LIGADO (", permitidas,
+            " URL(s) passaram a lista) | o defeito e a LISTA, nao o checkbox");
+      Print("[WEBREQ] ACAO | Ferramentas > Opcoes > Expert Advisors > ",
+            "Allow WebRequest for listed URL > Add, uma por vez: ", pendentes);
+     }
+   else if(permitidas == 0 && naoListadas > 0)
+     {
+      Print("[WEBREQ] VEREDITO | nenhuma URL passou | o checkbox pode estar ",
+            "DESLIGADO, ou a lista VAZIA | confira o checkbox e adicione: ", pendentes);
+     }
+   else if(permitidas > 0 && naoListadas == 0)
+     {
+      Print("[WEBREQ] VEREDITO | todas as URLs testadas estao na lista | WebRequest OK");
+     }
 }
 //+------------------------------------------------------------------+

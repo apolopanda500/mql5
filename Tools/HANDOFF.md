@@ -227,3 +227,21 @@ O dono reanexou o EA nos graficos. Verificado por journal e por
 - Continua por decidir pelo dono: `AvoidHoursGMT=9,11,14,18,20,22`, o par RSI
   45/55 em H1, os 13 graficos contra `Symbols` de 11 entradas, `WebRequest`
   desligado (erro 4014) e `AIGatewayToken` vazio (`IA=SEM PRECO`).
+
+## Ciclo 85 - 03/11/2026 23:38 - v1.2.128 (P2.19 + Dependabot)
+
+| Item | Estado |
+|---|---|
+| Versao publicada | `1.2.128` (era `1.2.127`) |
+| Compilacao EA | `0 errors, 0 warnings`, `27810 ms`, x64 |
+| Compilacao `Scripts\XAI_WebRequestCheck.mq5` | `0 errors, 0 warnings`, `919 ms` |
+| P2.19 | `4014` deixa de ser publicado como "DESABILITADO"; passa a `NAO PERMITIDO` e o fim imprime `VEREDITO` + `ACAO` |
+| Prova P2.19 | `VEREDITO | WebRequest esta LIGADO (1 URL(s) passaram a lista) | o defeito e a LISTA, nao o checkbox` as `23:36:13.798` |
+| Dependabot frontend | `1 high` (`follow-redirects`) -> `0` |
+| Dependabot backend | `7 moderate`, todos de desenvolvimento, sem correcao sem major |
+| WebRequest medido | `1` permitida (`9001`), `5` bloqueadas por lista (`4014`), `0` indefinidas |
+
+Pendencias do dono neste ciclo:
+
+1. Adicionar em Ferramentas > Opcoes > Expert Advisors > Allow WebRequest for listed URL: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com` (uma por vez). A allowlist fica fora das raizes de escrita do agente.
+2. O `401` em `9001/api/ai/predict` e o bloqueio real da IA: o gateway nao serve o EA e o `AIGatewayToken=12345678` nao coincide com `XAU_GATEWAY_TOKEN` (64 chars) do `.env`.

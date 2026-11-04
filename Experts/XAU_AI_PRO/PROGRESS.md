@@ -4243,3 +4243,20 @@ EA nos graficos. Toda a evidencia vem do journal (`get_expert_journal`) e de
   `.ex5` gerado as 23:12:41 com 820350 bytes; validacao estatica
   `108 fontes OK` (UTF-8, chaves, `#include`); YAML do Dependabot com 0 problemas
   e os 3 diretorios existentes no disco.
+
+## Ciclo 85 - 03/11/2026 23:38 - P2.19 (diagnostico WebRequest) + Dependabot fechado (v1.2.128)
+
+| Item | Medido |
+|---|---|
+| P2.19 - defeito | o `4014` era traduzido como "WebRequest DESABILITADO em Opcoes > Expert Advisors" |
+| P2.19 - evidencia | as 23:18:44 e 23:36:13: `http://127.0.0.1:9001/api/ai/predict` PASSOU a lista com `HTTP=401` (a chamada saiu) e as other 5 URLs deram `4014`. As duas leituras nao podem ser verdadeiras ao mesmo tempo: se uma passou, o checkbox esta LIGADO |
+| P2.19 - correcao | `4014` -> `NAO PERMITIDO (URL fora da lista, ou checkbox desligado)`; o script acumula as URLs bloqueadas e imprime um `VEREDITO` que separa as duas causas por EVIDENCIA, mais uma linha `ACAO` com a lista a adicionar |
+| P2.19 - prova runtime | `[WEBREQ] VEREDITO | WebRequest esta LIGADO (1 URL(s) passaram a lista) | o defeito e a LISTA, nao o checkbox` as `23:36:13.798` |
+| P2.19 - ACAO gerada | `https://api.telegram.org;https://api.openai.com;https://generativelanguage.googleapis.com;https://api.anthropic.com;https://www.mql5.com` |
+| Dependabot frontend | `follow-redirects` `1.16.0` -> `1.16.2`; `1 high` -> `0 vulnerabilities` |
+| Dependabot backend | `5` -> `7 moderate`, todos de desenvolvimento (`eslint`, `minimatch`, `qs`, `express`, `body-parser`); sem `fixAvailable` sem major |
+| Dependabot raiz | `0` vulnerabilidades em `37` pacotes |
+| Compilacao EA | `0 errors, 0 warnings`, `27810 ms`, x64 |
+| Compilacao script | `0 errors, 0 warnings`, `919 ms` |
+| Versao | `1.2.128` (era `1.2.127`) |
+| Risco | nenhuma regra de entrada, saida, lote, alvo, stop, spread, preco ou parametro de risco foi alterada |
