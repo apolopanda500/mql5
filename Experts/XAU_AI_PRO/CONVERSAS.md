@@ -32,6 +32,7 @@
 | 12 | 2026-10-30 (20:00 -> 23:35) | "p1 p2 melhorar tudo"; "pesquisar estudar melhorar EA AUTONOMO REAL"; "proximo" (seis vezes) | v1.2.37 -> v1.2.40: guarda de conta real, backup desacoplado, corte de spam do journal, rotacao do `audit_log.csv`. P0.5 respondida por codigo e analise de 99 560 trades do historico. Ver sessao E abaixo. |
 | 13 | 2026-10-31 (06:04) | "salvar conversas anotar" | Esta gravacao: indice de sessoes actualizado, sessao E/F escritas e `PROGRESS.md` com o ciclo 18. Nenhum `.mq5`/`.mqh` tocado. Ver sessao F abaixo. |
 | 14 | 2026-11-04 (19:20) | "garantir EA par auso real daqui pra frente"; "corrigir todas falhas, erros, avisos, etc.. deixar limpo"; "so com PF > 1.20 e perdas seguidas <= 8 se discute conta real" | 13 graficos revinculados na v1.2.135 (journal prova `[START]`/`[VERSION]`); `Docs/version.json` 1.2.9 provado NAO ser drift (e a versao do APP, nao do EA); documento do ciclo 92 gravado. Ver sessao G abaixo. |
+| 15 | 2026-11-04 (22:30) | "sim pode fazer commits push deploy anotar e salvar documentos novos e atualizados e garantir EA par auso real daqui pra frente" | IA provada VIVA nos 13 graficos (journal 19:07:52: XAUUSD 1123 B, 12 simbolos 357 B = available=false com motivo "edge abaixo do minimo"); `Data\prediction_XAUUSD.json` refrescado do gateway com `timestamp_utc` (era 03/11 03:44, ficou 04/11 22:28); documento do ciclo 93 gravado. Tester continua bloqueado. Ver sessao H abaixo. |
 
 ---
 
@@ -439,3 +440,49 @@ EnableRealAccountGuard=true e risco baixo".
   `MagicNumber=2026001`: decisao do dono.
 - Conta real continua recusada: PF 0,6206, 41,4% de acerto, 10-11 perdas
   consecutivas, contra PF > 1,20 e streak <= 8.
+
+
+## Sessao H - 2026-11-04 22:30
+
+**Pedido do dono:** "sim pode fazer commits push deploy anotar e salvar documentos
+novos e atualizados e garantir EA par auso real daqui pra frente" (repetido apos
+o ciclo 92, com autorizacao explicita para commit/push/deploy/documentar).
+
+**Medido:**
+
+- `get_workspace_info` (MetaEditor e MetaTrader): MQL5 build 6296, X64,
+  `can_compile_file`/`can_run_backtest`/`can_read_journal` = true.
+- Gateway vivo: `python.exe` pid 11044 a escutar em 127.0.0.1:9011, e
+  `terminal64` pid 12016 com ligacao ESTABLISHED a 9011 â€” o EA nos graficos
+  fala com ele.
+- `GET /api/ai/predict?symbol=XAUUSD&timeframe=H1` as 22:28:22 UTC respondeu
+  `available=true`, `signal=SELL`, `confidence=63.6`, `price=4063.84`,
+  `atr=17.4394`, `feature_hash=5305081778310`, `inference_ms=49.28` â€” 1122 B.
+- `GET ...symbol=USDJPY...` respondeu 357 B com `available=false` e
+  `reason="edge +0.0248 abaixo do minimo +0.0500"`. Os 357 B que o journal
+  mostra para 12 dos 13 graficos sao ESTA recusa com motivo, nao falha.
+- Journal `GATEWAY` em 18:00-20:00 de 04/11: as 13 instancias receberam
+  `[AI] GATEWAY` as 19:07:52-19:07:54. XAUUSD com 1123 B.
+- Journal 18:12:03: uma instancia antiga ainda apontava para a porta **9001**
+  com token de **17 caracteres** â†’ HTTP 401. Depois do reattach do ciclo 92,
+  todas apontam para 9011 com o token do `.env`.
+- `Data\prediction_XAUUSD.json` estava com `timestamp_utc` de 03/11 03:44
+  (~39 h). Regenerado do gateway: SELL 63.6, preco 4063.84, data 04/11 22:28.
+  `.gitignore:80` = `Files/Data/*.json`, provado com `git check-ignore -v
+  --no-index`, logo o ficheiro nao entra no repositorio.
+- Tester: `tasklist` mostra `metatester64.exe` 8772 e 12896 (Services),
+  `MetaTester64.exe` 11832 e 4212 (Services), `metatester64.exe` 4476
+  (Console). `tester_list_result_windows` devolve `{"windows":[]}`. Fontes
+  discordam; nao se lancou run.
+
+**O que ficou aberto:**
+
+- Re-medir no Strategy Tester com o binario v1.2.135 â€” slot ocupado.
+- Anomalia `HTTP 1001` em USDCZK as 18:37:54: `1001` nao e codigo HTTP,
+  intermitente, nao bloqueia. Registada no documento do ciclo 93.
+- Push para `origin` (forge.mql5.io) continua a falhar com credenciais
+  expiradas. O `github` recebe.
+- Conta real continua recusada: PF 0,6206, 41,4% de acerto, 10-11 perdas
+  consecutivas, contra PF > 1,20 e perdas seguidas <= 8.
+
+**Documento do ciclo:** `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_AI_VIVA_E_FALLBACK.md`
