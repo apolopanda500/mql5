@@ -199,7 +199,7 @@ double GetADX()
    // depender de adivinhar o codigo de erro.
    int calculadas = BarsCalculated(adxHandle);
 
-   if(calculadas < ADXPeriod * 2)
+   if(calculadas > 0 && calculadas < ADXPeriod * 2)   // v1.2.136 P1.91: -1 NAO e warm-up, e impasse -> tentar CopyBuffer
    {
       g_adxUnavailable++;
       ADXLogNoRead(_Symbol, "BarsCalculated=" + IntegerToString(calculadas));
@@ -226,7 +226,7 @@ double GetADX()
       // Antes caia em 0.0 sem imprimir nada e o ADX_OK tratava esse 0.0
       // como valor real -> veto silencioso (medido no grafico USDCHF).
       g_adxUnavailable++;
-      ADXLogNoRead(_Symbol, "CopyBuffer failed | Error=" + IntegerToString(err));
+      ADXLogNoRead(_Symbol, "CopyBuffer failed | Error=" + IntegerToString(err) + " | BarsCalculated=" + IntegerToString(calculadas));
 
       return -1.0;
    }
@@ -288,7 +288,7 @@ double GetADX(string symbol)
    // nao ha leitura, e sem leitura nao ha veto.
    int calculadas = BarsCalculated(handle);
 
-   if(calculadas < ADXPeriod * 2)
+   if(calculadas > 0 && calculadas < ADXPeriod * 2)   // v1.2.136 P1.91: -1 NAO e warm-up, e impasse -> tentar CopyBuffer
    {
       g_adxUnavailable++;
       ADXLogNoRead(symbol, "BarsCalculated=" + IntegerToString(calculadas));
@@ -336,7 +336,7 @@ double GetADX(string symbol)
       int err = GetLastError();
 
       g_adxUnavailable++;
-      ADXLogNoRead(symbol, "CopyBuffer failed | Error=" + IntegerToString(err));
+      ADXLogNoRead(symbol, "CopyBuffer failed | Error=" + IntegerToString(err) + " | BarsCalculated=" + IntegerToString(calculadas));
 
       result = -1.0;
    }

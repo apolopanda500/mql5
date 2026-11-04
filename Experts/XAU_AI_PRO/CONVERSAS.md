@@ -486,3 +486,55 @@ o ciclo 92, com autorizacao explicita para commit/push/deploy/documentar).
   consecutivas, contra PF > 1,20 e perdas seguidas <= 8.
 
 **Documento do ciclo:** `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_AI_VIVA_E_FALLBACK.md`
+---
+
+## Sessao I - 04/11/2026 19:46-20:05 - o ADX nunca era lido no tester (P1.91)
+
+**O que o dono pediu:** "proximo", depois de tres ciclos com o testador bloqueado.
+
+**O que se mediu primeiro (e mudou a historia):** o slot do Strategy Tester NAO
+estava travado por processos fantasma. `Get-CimInstance` mostrou que
+`metatester64.exe` 4476 tem pai `terminal64.exe` (12016), arrancou as 18:08:28 e
+corre com `/local /address:127.0.0.1:3000`. O journal do tester confirma:
+`XAI_BASE_v131.ini`, XAUUSD H1, 2026.09.01..2026.11.01, Model=1. As 19:49 estava
+em 2026.09.11 16:00 - 11 de 61 dias - com CPU a subir de 1653 para 1655 s em 8 s e
+o log em 114 MB. O "tester still started" era VERDADE. Nada foi lancado por cima.
+
+**O defeito que o run expos (maior do que o slot):**
+
+```
+18:08:33  [ADX] INIT OK | Symbol=XAUUSD | Period=14
+18:08:33  [ADX] SEM LEITURA | XAUUSD | BarsCalculated=-1 | tratado como neutro
+2026.09.11 [SCANNER] RESUMO | ... | ADX(sem/ok)=2093/0
+```
+
+`GetADX()` devolvia `-1.0` quando `BarsCalculated < ADXPeriod*2`. No tester
+`BarsCalculated` devolve `-1` ate o indicador ser calculado, e quem manda calcular
+e o `CopyBuffer` - que o guarda impedia. Impasse: o guarda bloqueava o unico acto
+que o desbloqueava. Resultado: 2093 leituras sem uma boa, em dez dias de simulacao.
+
+Prova diferencial no mesmo run: `GetATR()` (`VolatilityFilter.mqh:61`) chama
+`CopyBuffer` sem guarda e le `ATR%=0.39`. Logo nao e o tester, e o guarda.
+
+**Correcao (v1.2.136, uma linha em cada sitio de `Indicators/ADX.mqh`):**
+`if(calculadas > 0 && calculadas < ADXPeriod * 2)`, e a mensagem de falha do
+`CopyBuffer` passa a publicar `BarsCalculated`. Validado:
+`Result: 0 errors, 0 warnings` (28316 ms, X64 Regular), ex5 834.986 B as 19:53.
+
+**Consequencia que interessa ao dono:** todos os PF medidos ate hoje - incluindo o
+0,6206 - sao de um EA SEM ADX: cenario por omissao, gate de ADX em fail-open,
+`DecisionEngine` e `ValidationEngine` no ramo "sem leitura". Nao descrevem o EA que
+corre nos 13 graficos. Re-medir e obrigatorio, e a regra nao muda: PF > 1,20 e
+perdas seguidas <= 8 antes de se falar de conta real.
+
+**O que ficou aberto:**
+
+- Re-medir com v1.2.136 quando o run das 18:08 terminar (ETA ~8-9 h).
+- `[AI] FILE EM FALTA | Data\prediction_XAUUSD.json` no tester: a sandbox e
+  `Tester\Agent-127.0.0.1-3000\MQL5\Files` e `Tester\` e apenas raiz de leitura.
+  Solucao a estudar: o EA ler a previsao em `FILE_COMMON`.
+- `CONVERSAS.md` tem caracteres corrompidos de sessoes antigas (mojibake).
+  Registado, nao tocado.
+- Push para `origin` (forge.mql5.io) continua com credenciais expiradas.
+
+**Documento do ciclo:** `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_ADX_IMPASSE_TESTER.md`

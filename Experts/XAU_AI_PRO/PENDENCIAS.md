@@ -362,3 +362,59 @@ funciona so para alinhar duas etiquetas.
 
 TESTADOR: 2a tentativa as 19:47 devolveu de novo `tester still started`.
 Continua bloqueado; nenhum run lancado, nenhum numero novo.
+
+## 11. Ciclo 94 (2026-11-04 19:53) - P1.91: o ADX nunca era lido no Strategy Tester
+
+DEFEITO NOVO, medido, corrigido e deployado neste ciclo (nao e o P-02):
+
+`GetADX()` devolvia `-1.0` quando `BarsCalculated(handle) < ADXPeriod*2`. No tester
+o `BarsCalculated` devolve `-1` enquanto o MT5 nao calculou o indicador, e e o
+`CopyBuffer` que manda calcular. O guarda impedia o `CopyBuffer`, o handle nunca
+aquecia e o guarda nunca deixava de disparar: impasse auto-sustentado, e invisivel
+porque saia como "fail-open" em vez de erro.
+
+PROVA (`Tester\logs\20261104.log`, run das 18:08, `XAI_BASE_v131.ini`, XAUUSD H1,
+2026.09.01..2026.11.01, Model=1):
+
+```
+18:08:33  [ADX] INIT OK | Symbol=XAUUSD | Period=14
+18:08:33  [ADX] SEM LEITURA | XAUUSD | BarsCalculated=-1 | tratado como neutro (fail-open)
+2026.09.11 [SCANNER] RESUMO | ... | ADX(sem/ok)=2093/0
+```
+
+Zero leituras boas em 2093 tentativas, dez dias de simulacao depois do init. Prova
+diferencial no MESMO run: `GetATR()` (`Indicators/VolatilityFilter.mqh:61`) chama
+`CopyBuffer` directo, sem essa guarda, e devolve `ATR%=0.39` normalmente - portanto
+nao e limitacao do tester, e o guarda.
+
+CORRECAO (v1.2.136, uma linha em cada um dos dois sitios de `Indicators/ADX.mqh`):
+
+- `if(calculadas > 0 && calculadas < ADXPeriod * 2)` - o `-1` (sem dado calculado)
+  passa a tentar o `CopyBuffer`; o valor positivo pequeno (aquecimento real)
+  continua a devolver `-1.0` como antes.
+- a mensagem de falha do `CopyBuffer` passa a publicar `BarsCalculated`.
+
+IMPACTO - o ponto que conta para uso real: **todo backtest feito ate hoje mediu um
+EA SEM ADX**. Cenario por omissao (`SEM_LEITURA`), gate dinamico de ADX em
+fail-open, `DecisionEngine:158` e `ValidationEngine` no ramo "sem leitura". O
+**PF 0,6206 nao descreve o EA que corre nos 13 graficos** e tem de ser re-medido
+com o build v1.2.136.
+
+CORRECAO DA ANOTACAO ANTERIOR (§9 e §10): dizia-se que o slot estava ocupado por
+"runs fantasma" e que `tasklist` e `tester_list_result_windows` discordavam.
+MEDIDO agora, as 19:49: o slot esta ocupado por um backtest **REAL** lancado as
+18:08:28 com `XAI_BASE_v131.ini`, em 2026.09.11 16:00 (11 de 61 dias, ~18%), CPU
+1653->1655 s em 8 s, log a crescer (114 MB). ETA ~8-9 h. O `tester still started`
+era VERDADE. Nao ha processos fantasma a matar e nada foi lancado por cima.
+
+VALIDACAO: `Result: 0 errors, 0 warnings` (28316 ms, X64 Regular). ex5 em
+04/11/2026 19:53, 834.986 bytes. Em producao nao muda nada: com o mercado aberto o
+`BarsCalculated` e > 0 no caminho normal, logo o ramo alterado e o mesmo de antes.
+
+NOVO ITEM ABERTO (medido no mesmo run): `[AI] FILE EM FALTA |
+Data\prediction_XAUUSD.json`. O ficheiro existe em `MQL5\Files\Data\` mas o tester
+le a sandbox `Tester\Agent-127.0.0.1-3000\MQL5\Files\`, onde ele nao esta - e
+`Tester\` e raiz de LEITURA, nao de escrita, portanto a copia nao pode ser feita
+por ferramenta. Copiar resolve para UM run e congela a previsao; a solucao real e
+o EA procurar a previsao em `FILE_COMMON` (pasta Common `MQL5\Files\Data`) para o
+backtest ler o mesmo ficheiro que a producao le.
