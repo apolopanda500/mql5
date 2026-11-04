@@ -337,3 +337,28 @@
   12 simbolos devolvem 357 bytes = available=false com motivo preenchido (gate a trabalhar).
 - Conta real continua recusada: PF 0.6206, 41.4 pct de acerto, 10-11 perdas seguidas,
   contra a regra PF > 1.20 e streak <= 8.
+
+---
+
+## 10. Ciclo 93c (2026-11-04 19:47) - drift de feature_version fechado por medicao
+
+MEDIDO (nao alterei codigo nenhum - nao era preciso):
+
+- `Python/ai/feature_contract.py:26` diz `FEATURE_VERSION = 25F-v1`. O modulo NAO e
+  importado por ninguem: `findstr /S feature_contract` em backend, Python e Python/ai
+  devolve zero linhas. Logo o 25F-v1 e sobra, nao contrato vivo.
+- `Python/model_registry.py:52` diz `FEATURE_VERSION = 25F-v2`, mas so serve de
+  fallback na linha 108 (`meta.get(feature_version) or FEATURE_VERSION`).
+- Prova de que o fallback nunca dispara: 165 ficheiros `*.meta.json` no repo,
+  165 trazem `feature_version`, 0 sem. META_TOTAL=165 / COM=165 / SEM=0.
+- O runtime nao decide pelo constante: `backend/ai_inference.py:845` le a versao do
+  ARTEFATO (`meta.get(feature_version)`) e despacha em 846 para o construtor 30F ou
+  para o 25F. E por isso que o XAUUSD H1 serve XAU-30F-v4 com
+  feature_hash 5305081777808310 sem partir os outros 80 modelos.
+
+CONCLUSAO: nao ha drift funcional. Os dois constantes sao cosmeticos e o caminho
+quente esta correto e provado. Fechar como resolvido; nao vale tocar em Python que
+funciona so para alinhar duas etiquetas.
+
+TESTADOR: 2a tentativa as 19:47 devolveu de novo `tester still started`.
+Continua bloqueado; nenhum run lancado, nenhum numero novo.
