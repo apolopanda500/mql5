@@ -8,6 +8,7 @@
 
 #include "../Filters/TrendFilter.mqh"
 #include "../Filters/SpreadFilter.mqh"
+#include "../Filters/MarketIntelligence.mqh" // v1.3: inteligencia de mercado para ajuste da IA
 
 #include "../Indicators/ATR.mqh"
 #include "../Indicators/ADX.mqh"
@@ -192,16 +193,37 @@ double GetAIVetoThreshold(string symbol="")
 
    double atrPoints=atr/point;
 
+   double baseThreshold;
+
    if(atrPoints>200)
-      return 70;
+      baseThreshold = 70;
+   else if(atrPoints>100)
+      baseThreshold = 65;
+   else if(atrPoints>50)
+      baseThreshold = 60;
+   else
+      baseThreshold = 55;
 
-   if(atrPoints>100)
-      return 65;
+   //------------------------------------------------
+   // v1.3: AJUSTE POR INTELIGÊNCIA DE MERCADO
+   // Quando o mercado tem baixa inteligencia (fora de
+   // sessao principal, proximo de fechamento, evento
+   // de alto impacto), a IA fica MAIS conservadora:
+   // abaixa o threshold de veto (mais facil barrar).
+   //------------------------------------------------
+   double intelScore = GetMarketIntelligenceScore(symbol);
 
-   if(atrPoints>50)
-      return 60;
+   double intelPenalty = 0.0;
+   if(intelScore < 40)      intelPenalty = 15.0; // inteligencia muito baixa
+   else if(intelScore < 60) intelPenalty = 8.0;  // inteligencia baixa
+   else if(intelScore < 70) intelPenalty = 3.0;  // inteligencia media-baixa
 
-   return 55;
+   double finalThreshold = baseThreshold + intelPenalty;
+
+   // Cap em 85 para nunca tornar impossível
+   if(finalThreshold > 85) finalThreshold = 85;
+
+   return finalThreshold;
 }
 
 //==================================================

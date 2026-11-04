@@ -19,6 +19,7 @@
 #include "../Filters/MarketScenario.mqh"   // v1.2.21: cenario global
 #include "../Filters/GlobalScenario.mqh"    // v1.2.22: classe de ativo + sessao GMT + correlacao
 #include "../Filters/CostGate.mqh"          // v1.2.25: custo (spread+comissao) vs alvo em US$
+#include "../Filters/MarketIntelligence.mqh" // v1.3: ajuste de lote por inteligencia de mercado
 #include "../Indicators/MarketPulse.mqh"     // VOLUME + VELOCIDADE (29/10/2026)
 #include "../Enterprise/Telemetry.mqh"   // ETAPA 15.6.3: contadores reais
 #include "../Monitoring/EventEmitter.mqh" // ETAPA 15.6.1/15.6.2: event stream (canonico)
@@ -113,6 +114,22 @@ double CalculateDynamicLot(
       factor *= slowFactor;
 
    double lot = baseLot * factor;
+
+   //--------------------------------------------------
+   // v1.3: AJUSTE DE LOTE POR INTELIGÊNCIA DE MERCADO
+   // Reduz o lote quando o mercado tem baixa inteligencia
+   // (fora de sessao, proximo de fechamento, evento proximo).
+   //--------------------------------------------------
+   double intelLotFactor = GetIntelligenceLotFactor();
+   if(intelLotFactor < 1.0)
+   {
+      lot = lot * intelLotFactor;
+      Print(
+         "[INTEL LOT] ", symbol,
+         " | fator=", DoubleToString(intelLotFactor, 2),
+         " | lote=", DoubleToString(lot, 3)
+      );
+   }
 
    // Teto de risco POR OPERACAO: a faixa de conviccao pode pedir 2x/3x/4x o
    // lote de referencia. Este teto impede que "muita confianca" vire, sozinha,

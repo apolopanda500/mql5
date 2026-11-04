@@ -4436,3 +4436,73 @@ Pendencias do dono (medidas):
 4. `pytest` no `.venv` (instalar `requirements-dev.txt` exige rede).
 5. `RewardRatio` e `0,65` no preset de producao e `1,30` no `.set` do testador - decidir e medir o A/B de `MinRewardRatio` (0,55 -> 1,5/2,0).
 6. **Nao ir a conta real**: PF 0,6206, acerto 41,4%, 10-11 perdas seguidas, contra o criterio de PF > 1,20 e perdas seguidas <= 8.
+## Ciclo 95 - 04/11/2026 20:10 - o backtest media um EA SEM IA e a versao mentia no `#property` (v1.2.137)
+
+Item escolhido: **P1.92** (o Strategy Tester nao lia a previsao da IA). Escolhido
+porque **P-02 continua bloqueado** - medido as 20:08, nao por suposicao.
+
+| Arquivo | Medida antes -> depois |
+|---|---|
+| `Tester\logs\20261104.log` | 155.572.518 bytes, mtime `20:08:13`, **a crescer durante a medicao** (era 130.885.948 as 19:00). Run real das 18:08:28 com `XAI_BASE_v131.ini`. `tester_list_result_windows` = `[]`. P-02 **continua aberto**: nenhum backtest foi lancado |
+| `AI\AIConnector.mqh` | `LoadAIPrediction` resolve o ficheiro na raiz **LOCAL** e, se ausente, cai para **FILE_COMMON**; a raiz escolhida vai nas flags do `FileOpen` e a linha `[AI] LOAD` publica `ROOT=LOCAL|COMMON`. Producao inalterada: onde o ficheiro local existe (13 graficos ao vivo) nada muda |
+| Porque nao copiar o ficheiro | `Tester\` e raiz de **leitura**, nao de escrita - a copia nao pode ser feita por ferramenta; e copiar resolveria **um** run e congelaria a previsao. `FILE_COMMON` ja estava provado no tester desde a v1.2.45 |
+| `Common\Files\Data\prediction_XAUUSD.json` | 521 bytes de `25/08/2026 17:16:47` (70 dias) -> **1082 bytes** do snapshot atual: `SELL`, `confidence 63,6`, `XAU-30F-v4`, `feature_hash 5305081777808310`, `edge +0,0363`, `AUC 0,5630`, 4/5 folds. Seguro porque `age = TimeGMT() - predUtc` satura em 0 |
+| HG-01 | `#property version "1.326"` = v1.2.**126**, oito versoes atras de `EA_VERSION_STRING "1.2.136"`. Agora `"1.337"`, `EA_VERSION_STRING "1.2.137"` e cabecalho `// XAU_AI_PRO v1.2.137` dizem a mesma coisa |
+| Compilacao | `Result: 0 errors, 0 warnings, 27 713 ms elapsed, cpu='X64 Regular'` |
+| `.ex5` | 834.986 B (19:53) -> **836.938 B**, `04/11/2026 20:05:18` |
+| Documento do ciclo | `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_P192_PREVISAO_FILE_COMMON.md` (6.982 B) |
+
+O que este ciclo prova: o ciclo 94 tinha corrigido o ADX que o tester nunca leu;
+este corrige o **segundo** defeito da mesma familia - o tester tambem nunca leu a
+previsao da IA. `[AI] FILE EM FALTA` aparecia em todas as barras do run e mesmo
+assim o resultado parecia valido. **Todos** os PF medidos ate hoje sao de um EA
+sem ADX **e** sem IA, e nao descrevem o EA que corre nos 13 graficos.
+
+Incidente registado (transparencia): ao procurar a ferramenta de compilacao,
+`chart_add_script` executou `DiagGateSelfTest.ex5` no grafico `22884787070177`
+(XAUUSD H1). O script so le e escreve o proprio ficheiro de resultado - nenhuma
+ordem foi tocada.
+
+Pendencias do dono (medidas):
+1. **P-02**: aguardar ou parar o run das 18:08 (ETA ~8-9 h) e re-medir com
+   `v1.2.137`; config ja preparada `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini`
+   (XAUUSD M15, ticks reais, 2026.09.01..2026.11.01, deposito 10 000, sem `.set`
+   -> geometria de producao `RewardRatio 0,65` / `MinRewardRatio 0,55`).
+2. Reanexar o EA nos 13 graficos `XAI_P216_LIVE` para o `.ex5` de `20:05:18`
+   valer - compilar nao reanexa.
+3. `pytest` ausente do `.venv` (instalar exige rede).
+4. Mojibake antigo em `CONVERSAS.md` - registado, ainda nao tocado.
+5. Push para `origin` (forge.mql5.io) continua com credenciais expiradas;
+   `github` funciona.
+6. **Nao ir a conta real**: PF 0,6206, acerto 41,4%, 10-11 perdas seguidas -
+   contra o criterio PF > 1,20 e perdas seguidas <= 8. E esse numero e de um build
+   sem ADX e sem IA: recusa por prudencia, nao por precisao.
+
+## Ciclo 96 - 04/11/2026 20:25 - o modulo de inteligencia nunca compilou e o binario desapareceu (v1.2.138)
+
+| `git status` entrada | 12 modificados + 2 novos |
+| Compilacao do estado herdado | `Result: 8 errors, 7 warnings` |
+| `.ex5` apos a falha | AUSENTE do disco |
+| Compilacao final | `Result: 0 errors, 0 warnings, 19288 ms elapsed, cpu='X64 Regular'` |
+| `.ex5` | 836.938 B (20:05:18) -> 853.832 B (20:16:58) -> **857.638 B (20:23:44)** |
+| Versao | `EA_VERSION_STRING "1.2.138"` + `#property version "1.338"` (HG-01 alinhado) |
+| Reattach | `profile_apply Default` -> `XAI_P216_LIVE`; 13x `[START] XAU_AI_PRO v1.2.138` as 20:19:21 |
+| Journal `[MARKET INTELLIGENCE]` | bloco de 13 linhas as 20:24:18, `Sessao: Sydney` (P1.94) |
+| Journal IA | `[AI] GATEWAY | XAUUSD | H1 | 1122 bytes` + `[AI] PYTHON | XAUUSD | SELL | CONF=70.00%` |
+| Gateway 9011 | H1 `available=True conf=70.0`; M15/M5/M30 recusados pelo gate; sem token HTTP 401 |
+| Token | 64 caracteres, igual nos dois `.env` (comparado sem publicar) |
+| Testador | OCUPADO: log 163.503.296 -> 163.733.688 bytes em 6 s |
+## Ciclo 97 - 04/11/2026 20:31 - P1.96 e P1.97: o evento economico volta a existir (v1.2.140)
+
+| `[MARKET INTELLIGENCE]` antes | `Proximo evento:  (impacto=0)` + `Min para evento: -1` |
+| Calendario do terminal | 30 releases na janela 04/11 20:00 -> 12/11 00:00 (truncado) |
+| Causa 1 (P1.96) | `MqlCalendarCountry cn` declarado e nunca preenchido - `CalendarCountryById` perdido na reescrita do P1.95 |
+| Causa 2 (P1.97) | `NewsSplitCsv("USDCAD")` devolve `["USDCAD"]`, que nunca iguala `"USD"`/`"CAD"` |
+| Correcao | pais reposto antes do filtro + `IntelSymbolCurrencies` a delegar em `SymbolNewsCurrencies` |
+| Prova | 20:31:13.217 GBPUSD H1: `Proximo evento: Licenciamento de Veiculos (Mensal) (impacto=1)` / `Min para evento: 568` |
+| Versao | `EA_VERSION_STRING "1.2.140"` + `#property version "1.340"` |
+| Compilacao | `Result: 0 errors, 0 warnings, 25971 ms elapsed, cpu='X64 Regular'` |
+| `.ex5` | 858.546 B, 04/11/2026 20:30:50 |
+| Reattach | `profile_apply Default` -> `XAI_P216_LIVE`, 13x `[START] XAU_AI_PRO v1.2.140` |
+| Conta | 113568614 DEMO, 12.592,02, 0 posicoes, 0 ordens |
+| Testador | OCUPADO - P-02 aberto |

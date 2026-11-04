@@ -356,3 +356,86 @@ Pendencias do dono (medidas):
 4. `pytest` no `.venv`.
 5. `RewardRatio` 0,65 (producao) vs 1,30 (testador) + A/B de `MinRewardRatio`.
 6. **Nao ir a conta real**: PF 0,6206, 41,4% de acerto, 10-11 perdas seguidas.
+---
+
+# Handoff - Ciclo 95 (04/11/2026 20:10) - v1.2.137
+
+Estado medido, nao presumido. Quem assumir o terminal le isto antes de mexer.
+
+| Item | Estado |
+|---|---|
+| Versao | `v1.2.137` | `EA_VERSION_STRING "1.2.137"` | `#property version "1.337"` - os tres iguais (HG-01 fechado) |
+| `.ex5` | **836.938 bytes**, `04/11/2026 20:05:18` (antes 834.986 B as 19:53) |
+| Compilacao | `Result: 0 errors, 0 warnings, 27 713 ms elapsed, cpu='X64 Regular'` |
+| Terminais | `terminal64` pid **12016** (desde 16:11:32), `MetaEditor64` pid **12548** (desde 16:22:05) |
+| Strategy Tester | **OCUPADO.** `Tester\logs\20261104.log` com **155.572.518 bytes** e mtime `20:08:13`, a crescer. Run das 18:08:28 com `XAI_BASE_v131.ini`. `tester_list_result_windows` = `[]` |
+| `AI\AIConnector.mqh` | `LoadAIPrediction`: raiz **LOCAL** primeiro, `FILE_COMMON` como fallback; raiz vai nas flags do `FileOpen`; `[AI] LOAD` publica `ROOT=LOCAL|COMMON` |
+| `Common\Files\Data\prediction_XAUUSD.json` | **1082 bytes** do snapshot atual (`SELL`, `confidence 63,6`, `XAU-30F-v4`, `feature_hash 5305081777808310`). Estava em 521 B de 25/08/2026 |
+| Graficos ao vivo | 13 graficos `XAI_P216_LIVE`, todos com `Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` e o mesmo bloco de inputs. **Ainda com o binario anterior a `20:05:18`** - compilar nao reanexa |
+| Gateway Python | 9011, fail-closed (401 sem token). Ver `Tools\api-probe.ps1` |
+| Documento do ciclo | `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_P192_PREVISAO_FILE_COMMON.md` (6.982 B) |
+
+## O que mudou neste ciclo
+
+1. **P1.92 fechado** - o Strategy Tester lia um EA **sem IA**. A sandbox do tester
+   e `Tester\Agent-<ip>-<porta>\MQL5\Files\` e o pipeline Python nunca escreve la.
+   Agora ha fallback para `FILE_COMMON`, que resolve para a pasta Common verdadeira
+   dentro do tester (provado na v1.2.45).
+2. **HG-01 fechado** - `#property version "1.326"` (v1.2.126) estava oito versoes
+   atras do codigo. Agora `"1.337"`.
+3. **Copia em Common refrescada** - de 521 B/70 dias para 1082 B do snapshot atual.
+
+## Pendencias do dono (medidas)
+
+1. **P-02**: parar ou aguardar o run das 18:08 (ETA ~8-9 h). Depois re-medir com
+   `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini` (XAUUSD M15, ticks reais,
+   2026.09.01..2026.11.01, deposito 10 000, sem `.set` -> geometria de producao).
+   Criterio de fecho: `tester_get_status` sem job ativo.
+2. **Reanexar** o EA nos 13 graficos para o `.ex5` de `20:05:18` valer.
+3. **P-03** meta diaria: 20 USD (`DailyProfitTargetUsd`) vs teto 40 USD
+   (`DailyProfitTargetMaxUsd`) - decidir.
+4. **P-04** `StoplessEmergencyPoints = 0` (sem colchao de emergencia) - decidir.
+5. **P-05** notificacoes bloqueadas: `send request failed (connect to
+   194.164.179.242 failed, 10060 wsa error)`.
+6. `pytest` ausente do `.venv`.
+7. **Nao ir a conta real**: PF 0,6206, acerto 41,4%, 10-11 perdas seguidas. E esse
+   numero e de um build **sem ADX e sem IA** - recusa por prudencia, nao por
+   precisao. Criterio: PF > 1,20 **e** perdas seguidas <= 8, com
+   `EnableRealAccountGuard=true` e risco baixo.
+
+## Regra que continua valendo
+
+Nenhum PF medido ate hoje descreve o EA atual. Antes de qualquer conversa sobre
+conta real, re-medir com `v1.2.137` e confirmar no journal do tester as duas
+linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
+`BarsCalculated` negativo em serie).
+
+# Handoff - Ciclo 96 (04/11/2026 20:25) - v1.2.138
+
+| Item | Valor | Prova |
+|---|---|---|
+| Versao | `v1.2.138` | `EA_VERSION_STRING "1.2.138"` + `#property version "1.338"` + cabecalho |
+| `.ex5` | 857.638 bytes, `20:23:44` | recompilado apos as correcoes |
+| Compilacao | `Result: 0 errors, 0 warnings` | `MQL5\Files\Temp\compile_c96c.log` |
+| Graficos | 13 x `[START] XAU_AI_PRO v1.2.138` | journal do expert, 20:19:21 |
+| Inteligencia | bloco `[MARKET INTELLIGENCE]` publicado, `Sessao: Sydney` | journal, 20:24:18 |
+| IA | `[AI] PYTHON | XAUUSD | SELL | CONF=70.00%` | journal, 20:19:15 |
+| Gateway | 9011 a escuta, fail-closed (401 sem token) | sonda com e sem `Authorization` |
+| Token | 64 caracteres, igual nos dois `.env` | comparacao sem publicar o valor |
+| Conta | DEMO 113568614, saldo 12592.02, 0 posicoes, 0 ordens | `get_trading_account_info` |
+| Testador | **OCUPADO** | log a crescer, `tester_list_result_windows` = [] |
+
+**Regra que continua a valer:** nenhum PF medido ate hoje descreve este EA. Antes de qualquer conversa sobre conta real, re-medir com `v1.2.138` e confirmar no journal do tester `[AI] LOAD ... ROOT=COMMON` e leitura de ADX.
+
+**Pendente de GUI (so o dono):** a allowlist de WebRequest do terminal nao e alteravel por ferramenta. Esta funcional: o EA recebeu 1122 bytes do gateway.
+## Ciclo 97 - 04/11/2026 20:31 - v1.2.140 (P1.96 + P1.97 fechados)
+
+- **Versao em uso:** `1.2.140` (`#property version "1.340"`). `.ex5` 858.546 B, 04/11 20:30:50.
+- **Compilacao:** `Result: 0 errors, 0 warnings, 25971 ms elapsed, cpu='X64 Regular'`.
+- **Reattach:** `profile_apply Default` -> `profile_apply XAI_P216_LIVE`; 13x `[START] XAU_AI_PRO v1.2.140`.
+- **Conta:** 113568614 (MetaQuotes-Demo), saldo 12.592,02, 0 posicoes, 0 ordens.
+- **Gateway:** 127.0.0.1:9011 a escutar; H1 `available=True SELL conf=70.0`; sem `Bearer` devolve 401.
+- **`[MARKET INTELLIGENCE]`:** publicado uma vez por hora por CONTA (gate `market_intel`, 3600 s). Para forcar, apagar `Common\Files\XAU_AI_PRO\loggate_market_intel.bin` e esperar ~50 s.
+- **`Proximo evento`:** deixou de sair vazio as 20:31:13 - `Licenciamento de Veiculos (Mensal) (impacto=1)` / `Min para evento: 568`.
+- **Testador:** OCUPADO (P-02). Nao lancar backtest por cima.
+- **Conta real:** proibida. PF historico 0,6206 e de um build sem ADX e sem IA.

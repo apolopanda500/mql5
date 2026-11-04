@@ -538,3 +538,120 @@ perdas seguidas <= 8 antes de se falar de conta real.
 - Push para `origin` (forge.mql5.io) continua com credenciais expiradas.
 
 **Documento do ciclo:** `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_ADX_IMPASSE_TESTER.md`
+
+---
+
+## Ciclo 95 - 04/11/2026 20:10 - o tester media um EA sem IA (v1.2.137)
+
+**Contexto:** P-02 continua bloqueado. Medido as 20:08, nao presumido:
+`Tester\logs\20261104.log` com **155.572.518 bytes**, mtime `20:08:13`, a crescer
+durante a medicao (eram 130.885.948 as 19:00). O run real das 18:08:28 com
+`XAI_BASE_v131.ini` continua vivo; `tester_list_result_windows` = `[]`. Nada foi
+lancado por cima. Entao o trabalho do ciclo foi outro item de valor.
+
+**O defeito (P1.92):** no journal do tester, `[AI] FILE EM FALTA |
+Data\prediction_XAUUSD.json` aparecia em todas as barras, embora o ficheiro
+existisse em `MQL5\Files\Data\` com 1082 bytes. A causa nao e o ficheiro: e que
+dentro do Strategy Tester a sandbox de ficheiros e
+`Tester\Agent-<ip>-<porta>\MQL5\Files\`, e o pipeline Python nunca escreve la. O
+EA procurava so na raiz LOCAL, que no tester e essa sandbox. **O backtest media
+um EA sem IA** - o segundo defeito da familia do ciclo 94, que provou que o
+tester tambem nunca leu o ADX.
+
+**Correcao:** `AI\AIConnector.mqh::LoadAIPrediction` resolve o ficheiro tentando
+primeiro a raiz LOCAL e, se ausente, `FILE_COMMON`; a raiz escolhida vai nas
+flags do `FileOpen` e a linha `[AI] LOAD` passa a publicar `ROOT=LOCAL|COMMON`.
+`FILE_COMMON` resolve para a pasta Common verdadeira mesmo dentro do tester -
+provado na v1.2.45 com o isolamento do `trade_history`. Em producao nada muda:
+onde o ficheiro local existe (os 13 graficos ao vivo), o primeiro teste acerta.
+
+**Porque nao copiar o ficheiro para a sandbox:** `Tester\` e raiz de **leitura**,
+nao de escrita - a copia nao pode ser feita por ferramenta. E copiar resolveria
+**um** run e congelaria a previsao.
+
+**Copia em Common refrescada:** estava em 521 bytes de `25/08/2026 17:16:47`
+(70 dias). Passou a 1082 bytes com o snapshot atual: `SELL`, `confidence 63,6`,
+`XAU-30F-v4`, `feature_hash 5305081777808310`, `edge +0,0363`, `AUC 0,5630`,
+4/5 folds positivos. Aceitavel porque `age = TimeGMT() - predUtc` satura em 0 num
+backtest que arranca antes do `timestamp_utc`: o sinal fica congelado no instante
+do run, nao evolui barra a barra - limitacao registada, nao escondida.
+
+**HG-01 fechado:** `#property version "1.326"` = v1.2.**126**, oito versoes atras
+de `EA_VERSION_STRING "1.2.136"`. O binario declarava uma versao que nao era a
+dele. Agora `"1.337"`, `EA_VERSION_STRING "1.2.137"` e o cabecalho
+`// XAU_AI_PRO v1.2.137` dizem a mesma coisa, e o changelog do
+`Enterprise\VersionManager.mqh` registra P1.92 e a propria correcao do HG-01.
+
+**Incidente registado:** ao procurar a ferramenta de compilacao, `chart_add_script`
+executou `DiagGateSelfTest.ex5` no grafico `22884787070177` (XAUUSD H1). O script
+so le e escreve o proprio ficheiro de resultado - nenhuma ordem foi tocada, nenhum
+input alterado.
+
+**Validacao:** `Result: 0 errors, 0 warnings, 27 713 ms elapsed, cpu='X64 Regular'`.
+`.ex5` 834.986 B (19:53) -> **836.938 B** as `20:05:18`.
+
+**Consequencia que interessa ao dono:** todos os PF medidos ate hoje sao de um EA
+sem ADX **e** sem IA. Nao descrevem o EA que corre nos 13 graficos. Servem para
+recusar conta real por prudencia, nao para decidir geometria. A regra nao muda:
+PF > 1,20 e perdas seguidas <= 8 antes de se falar de conta real.
+
+**O que ficou aberto:**
+
+- **P-02**: aguardar ou parar o run das 18:08 e re-medir com `v1.2.137`
+  (`Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini`: XAUUSD M15, ticks reais,
+  2026.09.01..2026.11.01, deposito 10 000, sem `.set`). Ler `ROOT=COMMON` no
+  journal para confirmar que a IA chegou ao backtest.
+- Reanexar o EA nos 13 graficos `XAI_P216_LIVE` - compilar nao reanexa.
+- `pytest` ausente do `.venv`.
+- Mojibake antigo em `CONVERSAS.md` (sessoes antigas) - registado, nao tocado.
+- Push para `origin` (forge.mql5.io) com credenciais expiradas; `github` funciona.
+
+**Documento do ciclo:** `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_P192_PREVISAO_FILE_COMMON.md`
+
+## Ciclo 96 - 04/11/2026 20:25 - o modulo de inteligencia de mercado nunca compilou (v1.2.138)
+
+**O que estava partido:** 5 fontes eram mais novas que o `.ex5` e a compilacao desse estado devolvia `8 errors, 7 warnings`; o MetaEditor apagou o binario, portanto o EA existia apenas em memoria nos 13 graficos. Tres causas: colisao de `SESSION_CLOSED` com `ENUM_SESSION_BUCKET` do `GlobalScenario.mqh` (`error 282`), leitura de campos inexistentes de `MqlCalendarValue` (`error 256` x6) e `tm.month` em vez de `tm.mon`.
+
+**O que ficou corrigido:** enumeradores do modulo com prefixo `MS_`, calendario nativo lido como o `NewsFilter.mqh` (`CalendarValueHistory` -> `CalendarEventById` -> `CalendarCountryById`), `tm.mon`, sessao calculada em GMT e nao na hora do servidor (P1.94, medido: `Sessao: Toquio` as 23:20 UTC) e filtro de moeda dentro do scan (P1.95, medido: `Proximo evento:` vazio com dezenas de releases no calendario).
+
+**Validacao:** `0 errors, 0 warnings`, `.ex5` 857.638 bytes as 20:23:44, versao tripla 1.2.138 / 1.2.138 / 1.338, 13x `[START] XAU_AI_PRO v1.2.138`, bloco `[MARKET INTELLIGENCE]` no journal com `Sessao: Sydney`, e IA real: `[AI] PYTHON | XAUUSD | SELL | CONF=70.00%`.
+
+**O que ficou aberto:** P1.96 (`BlockHighImpactNewsMin` inerte; o veto de noticia em vigor e o do `NewsFilter`), P-02 (Testador ocupado), P1.94/P1.95 registados, `[INTEL LOT]` nao apareceu porque o score estava 100/100.
+## Ciclo 97 - 04/11/2026 20:31 - P1.96 e P1.97: o "Proximo evento" saia sempre vazio (v1.2.140)
+
+**Pedido do dono:** copiar o token de 64 caracteres do `.env`, colar no
+`backend\.env`, correr `python backend/fastapi_gateway.py`, marcar a allowlist de
+WebRequest para `http://127.0.0.1:9011`, F7 e reanexar, e observar o journal para
+`[MARKET INTELLIGENCE]` e `[INTEL LOT]`.
+
+**Estado a entrada:** token de 64 caracteres igual nos dois `.env` (comparado por
+tamanho e igualdade, sem publicar o valor), porta 9011 a escutar, gateway a
+responder `available=True SELL conf=70.0` em H1 e 401 sem `Bearer`. O bloco
+`[MARKET INTELLIGENCE]` ja era publicado desde o ciclo 96, mas com
+`Proximo evento:  (impacto=0)` e `Min para evento: -1`.
+
+**O que se apurou:** o calendario do terminal tinha 30 releases na janela de 7
+dias. O EA deitava-os fora por dois defeitos encadeados em
+`Filters/MarketIntelligence.mqh`: (1) `MqlCalendarCountry cn` declarado e nunca
+preenchido, porque a chamada `CalendarCountryById` se perdeu na reescrita do
+P1.95 - com `cn.currency` vazio o filtro descartava todos os eventos; (2)
+`IntelSymbolCurrencies` usava `NewsSplitCsv`, que divide CSV por virgula, e
+aplicada a `"USDCAD"` devolvia `["USDCAD"]`, que nunca iguala `"USD"` nem
+`"CAD"`.
+
+**Correcao:** pais reposto antes do filtro (`CalendarValueHistory` ->
+`CalendarEventById` -> `CalendarCountryById`, o padrao do `NewsFilter.mqh`) e
+`IntelSymbolCurrencies` a delegar em `SymbolNewsCurrencies`, que ja existia no
+`NewsFilter.mqh` e faz a derivacao correcta.
+
+**Prova:** journal as 20:31:13.217, GBPUSD H1 -
+`Proximo evento: Licenciamento de Veiculos (Mensal) (impacto=1)` e
+`Min para evento: 568`. O evento e do Reino Unido, logo a moeda `GBP` foi
+resolvida e comparada com sucesso.
+
+**Build:** v1.2.140, `Result: 0 errors, 0 warnings, 25971 ms`, `.ex5` 858.546 B
+as 20:30:50, 13x `[START] XAU_AI_PRO v1.2.140` as 20:31:0x.
+
+**Continua aberto:** P-02 (Testador ocupado, sem re-mediacao de PF), P-03, P-04,
+P-05, `[DATA] SEM LEITURA | ATR=0.000000` em simbolos nao-XAU. Conta real
+continua proibida: o unico PF historico (0,6206) e de um build sem ADX e sem IA.

@@ -6,6 +6,7 @@
 #include "../Core/SignalCore.mqh"
 #include "../Core/ValidationEngine.mqh"
 #include "../Filters/GlobalScenario.mqh"   // v1.2.22: correlacao de moeda + sessao GMT
+#include "../Filters/MarketIntelligence.mqh" // v1.3: inteligencia de mercado (sessoes, calendario, fechamento, score)
 
 #include "../Indicators/RSI.mqh"
 #include "../Indicators/ADX.mqh"
@@ -659,6 +660,28 @@ bool AllowTradeEx(
       return false;
    }
 
+
+   //------------------------------------------------
+   // 2c) MARKET INTELLIGENCE: sessao, calendario, fechamento
+   //------------------------------------------------
+
+   string miReason = "";
+   if(!IsMarketOpenForTrading(miReason))
+   {
+      reason = "MARKET INTEL: " + miReason;
+
+      if(allowLogOnce)
+         Print(
+            "DECISION BLOCKED | MARKET INTEL | Symbol=",
+            symbol,
+            " | Signal=",
+            signal,
+            " | Reason=",
+            reason
+         );
+
+      return false;
+   }
 
    //------------------------------------------------
    // 2b) v1.2.22 - GUARDA DE CORRELACAO DE MOEDA

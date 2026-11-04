@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.136
+// XAU_AI_PRO v1.2.140
 //==================================================
 
 #property strict
@@ -19,7 +19,7 @@
 // A versao legivel ("1.2.27") vai na descricao do projeto (XAU_AI_PRO.mqproj),
 // tambem exibida na aba de propriedades. O build do projeto ja injeta essa
 // propriedade; repetir com `#property description` gera `warning 90`.
-#property version   "1.326"
+#property version   "1.340"
 
 #include <Trade/Trade.mqh>
 
@@ -79,6 +79,7 @@ CTrade trade;
 #include "Filters/TrendFilter.mqh"
 #include "Filters/MultiTimeframeFilter.mqh"
 #include "Filters/NewsFilter.mqh"
+#include "Filters/MarketIntelligence.mqh"
 
 
 //==================================================
@@ -1293,6 +1294,30 @@ void OnTick()
       UpdateAIStatus();
      }
 
+
+//------------------------------------------------
+// Market Intelligence (sessoes, calendario, fechamento, score)
+//------------------------------------------------
+
+   UpdateMarketContext();
+
+//------------------------------------------------
+// v1.2.138 P2.24: o retrato de MARKET INTELLIGENCE estava calculado e
+// nunca publicado. PrintMarketIntelligence() existia em
+// Filters/MarketIntelligence.mqh e nenhum ponto do pipeline a chamava,
+// logo sessao, dia, feriado, minutos para fechar, proximo evento,
+// score 0-100 e o veredicto de pode negociar ficavam so na memoria.
+// 1x/hora por CONTA (o mesmo portao dos outros retratos) e fora do
+// tester, para os 13 graficos nao repetirem a mesma foto.
+//------------------------------------------------
+
+   if(EnableMarketIntelligence && !MQLInfoInteger(MQL_TESTER) &&
+      AccountLogGatePodeImprimir("market_intel", 3600))
+     {
+      PrintMarketIntelligence();
+     }
+
+//------------------------------------------------
 //------------------------------------------------
 // Atualiza Dataset
 //------------------------------------------------

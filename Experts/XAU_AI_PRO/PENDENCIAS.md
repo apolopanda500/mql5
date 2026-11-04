@@ -418,3 +418,106 @@ le a sandbox `Tester\Agent-127.0.0.1-3000\MQL5\Files\`, onde ele nao esta - e
 por ferramenta. Copiar resolve para UM run e congela a previsao; a solucao real e
 o EA procurar a previsao em `FILE_COMMON` (pasta Common `MQL5\Files\Data`) para o
 backtest ler o mesmo ficheiro que a producao le.
+
+---
+
+## 12. Ciclo 95 - 04/11/2026 20:10 - P1.92 FECHADO (v1.2.137)
+
+### P1.92 - o Strategy Tester media um EA sem IA (fechado) `FEITO`
+
+**Sintoma medido:** `[AI] FILE EM FALTA | Data\prediction_XAUUSD.json` em todas
+as barras do run das 18:08 (`Tester\logs\20261104.log`), embora o ficheiro
+existisse em `MQL5\Files\Data\` (1082 B).
+
+**Causa:** dentro do Strategy Tester a sandbox de ficheiros e
+`Tester\Agent-<ip>-<porta>\MQL5\Files\`, e o pipeline Python nunca escreve la.
+O EA procurava so na raiz LOCAL, que no tester e essa sandbox.
+
+**Correcao:** `AI\AIConnector.mqh::LoadAIPrediction` resolve o ficheiro tentando
+primeiro a raiz LOCAL e, se ausente, `FILE_COMMON`; a raiz escolhida e passada
+nas flags do `FileOpen` e a linha `[AI] LOAD` publica `ROOT=LOCAL|COMMON`.
+`FILE_COMMON` resolve para a pasta Common verdadeira mesmo dentro do tester
+(provado na v1.2.45 com o isolamento do `trade_history`).
+
+**Producao:** inalterada. Onde o ficheiro local existe - os 13 graficos ao vivo -
+o primeiro teste da LOCAL acerta e o comportamento e o mesmo de antes.
+
+**Copia em Common refrescada:** `Common\Files\Data\prediction_XAUUSD.json` estava
+em 521 bytes de `25/08/2026 17:16:47` (70 dias). Passou a 1082 bytes com o
+snapshot atual (`SELL`, `confidence 63,6`, `XAU-30F-v4`, `feature_hash
+5305081777808310`, `edge +0,0363`, `AUC 0,5630`, 4/5 folds positivos). Aceitavel
+porque `age = TimeGMT() - predUtc` satura em 0 num backtest que arranca antes do
+`timestamp_utc` - o sinal fica congelado no instante do run, nao evolui por barra.
+
+**Validacao:** `Result: 0 errors, 0 warnings, 27 713 ms elapsed, cpu='X64 Regular'`.
+`.ex5` 834.986 B -> **836.938 B** as `20:05:18`.
+
+**Documento:** `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_P192_PREVISAO_FILE_COMMON.md`
+
+Consequencia: **nenhum PF medido ate hoje descreve o EA atual.** O ciclo 94 provou
+que o tester nunca leu o ADX; este prova que nunca leu a IA. Os numeros existentes
+servem para recusar conta real por prudencia, nao para decidir geometria.
+
+### HG-01 - `#property version` estava oito versoes atras (fechado) `FEITO`
+
+`#property version "1.326"` = minor*100 + patch = v1.2.**126**, contra
+`EA_VERSION_STRING "1.2.136"` em `Enterprise\VersionManager.mqh`. O binario
+declarava uma versao que nao era a dele. Agora:
+
+- `#property version "1.337"` (v1.2.137)
+- `#define EA_VERSION_STRING "1.2.137"`
+- cabecalho `// XAU_AI_PRO v1.2.137`
+
+O changelog do `VersionManager.mqh` registra P1.92 e a propria correcao do HG-01.
+
+### P-02 - Testador ocupado (continua) `DONO`
+
+**Re-medido as 20:08** (nao presumido): `Tester\logs\20261104.log` com
+**155.572.518 bytes** e mtime `20:08:13`, a crescer durante a medicao
+(era 130.885.948 as 19:00). `terminal64` pid 12016, `MetaEditor64` pid 12548,
+e nenhuma janela de resultado (`tester_list_result_windows` = `[]`).
+
+**Conclusao:** o run das 18:08:28 com `XAI_BASE_v131.ini` continua **vivo**. Nao
+ha processos fantasma a matar, e nada foi lancado por cima. Enquanto durar, AT-01
+a AT-03 e a re-medição do PF com `v1.2.137` nao rodam.
+
+**Como fechar:** clicar **Stop** no Testador, ou esperar (ETA ~8-9 h contadas do
+inicio do run). **Criterio:** `tester_get_status` sem job ativo.
+
+**Quando fechar, usar `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini`** (XAUUSD
+M15, ticks reais, 2026.09.01..2026.11.01, deposito 10 000, sem `.set`, logo
+geometria de producao) e ler o `[AI] LOAD` no journal para confirmar
+`ROOT=COMMON` no tester.
+
+## 13. Ciclo 96 - 04/11/2026 20:25 - P1.93/P1.94/P1.95 FECHADOS (v1.2.138)
+
+### P1.93 - Market Intelligence nunca compilou e levou o binario `FEITO`
+Causa: colisao de enumeradores (`error 282`), campos inexistentes de `MqlCalendarValue` (6x `error 256`) e `tm.month` (1x `error 256`). Efeito: `Result: 8 errors, 7 warnings` e `.ex5` apagado do disco. Correcao: prefixo `MS_`, calendario nativo via `CalendarValueHistory`/`CalendarEventById`/`CalendarCountryById`, `tm.mon`.
+
+### P1.94 - sessao calculada com a hora do SERVIDOR `FEITO`
+Medido as 23:20 UTC: `Sessao: Toquio`, quando a janela correcta era Sydney. Correcao: `TimeGMT()`. Confirmado no journal: `Sessao: Sydney`. Producao muda de valor: a sessao passa a estar certa.
+
+### P1.95 - filtro de moeda aplicado depois do truncamento `FEITO`
+Medido: `Proximo evento:  (impacto=0)` com dezenas de releases no calendario. Correcao: filtro dentro do scan (`IntelCurrencyRelevant`).
+
+### P1.96 - `BlockHighImpactNewsMin` continua inerte `DONO`
+`GetNextEventForSymbol` devolve evento vazio para XAUUSD/GBPUSD mesmo apos o P1.95. **Nao e buraco de protecao:** o veto de noticia em vigor e o do `NewsFilter` (`DecisionEngine.mqh:632-647`, `IsNewsBlocked(symbol)`). **Como fechar:** comparar, no mesmo instante, `CalendarValueHistory` dentro do EA e `economic_calendar_list_values` do terminal, e publicar `g_nextEventsCount` no journal.
+
+### P-02 - Testador ocupado `DONO`
+Ainda a correr (log 163,5 MB -> 163,7 MB em 6 s, 20:11). Criterio: `tester_get_status` sem job activo; depois re-medir com `XAI_V12135_PRODGEOM_RT_M15.ini` e confirmar `[AI] LOAD ... ROOT=COMMON` no journal do tester.
+## 14. Ciclo 97 - 04/11/2026 20:31 - P1.96 e P1.97 FECHADOS (v1.2.140)
+
+### P1.96 - o pais do evento nunca era resolvido `FEITO`
+`MqlCalendarCountry cn` era declarado e nunca preenchido: a chamada `CalendarCountryById(ev.country_id, cn)` desapareceu na reescrita que moveu o filtro de moeda para dentro do scan (P1.95). Com `cn.currency` vazio, `IntelCurrencyRelevant("")` devolvia `false` para todos os eventos. Correcao: pais reposto antes do filtro, no padrao do `NewsFilter.mqh`.
+
+### P1.97 - moedas do simbolo derivadas com a funcao errada `FEITO`
+`IntelSymbolCurrencies` usava `NewsSplitCsv`, que divide CSV por virgula: aplicada a `"USDCAD"` devolvia `["USDCAD"]`, que nunca iguala `"USD"` nem `"CAD"`. Correcao: delega em `SymbolNewsCurrencies` (ja existente no `NewsFilter.mqh`), e `GetNextEventForSymbol` usa a mesma funcao. Prova no journal as 20:31:13.217: `Proximo evento: Licenciamento de Veiculos (Mensal) (impacto=1)` / `Min para evento: 568`.
+
+### P-02 - Testador ocupado `DONO`
+Sem alteracao. Criterio: `tester_get_status` sem job activo; depois re-medir com `XAI_V12135_PRODGEOM_RT_M15.ini` e confirmar `[AI] LOAD ... ROOT=COMMON` no journal do tester.
+
+### P-03 / P-04 / P-05 - abertos `DONO`
+`DailyProfitTargetUsd 20` vs `DailyProfitTargetMaxUsd 40`; `StoplessEmergencyPoints=0`; notificacoes com `10060 wsa error`.
+
+### `[DATA] SEM LEITURA | ATR=0.000000` em simbolos nao-XAU `DONO`
+Medido as 20:19:24 nos graficos nao-XAU do perfil. O XAUUSD le normalmente. Suspeita: historico insuficiente nos simbolos exoticos apos o reload do perfil.

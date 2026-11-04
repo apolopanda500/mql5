@@ -626,8 +626,33 @@ input bool   AIHasSignalAuthority = false;
 input double AIAuthorityMinScore  = 75.0;
 
 //==================================================
-// IA - JSON (v1.2.0)
+// MARKET INTELLIGENCE - IQ do mercado (v1.3)
 //==================================================
+// `EnableMarketIntelligence` liga o sistema de inteligencia de mercado:
+//   * Sessoes globais (Sydney, Tokio, Londres, Nova York, Sobreposicao)
+//   * Calendario economico nativo do MT5 (CalendarValueLast)
+//   * Detecção de fechamento de mercado (fim de semana, feriado, meio dia)
+//   * Score de inteligencia 0-100 que ajusta o veto da IA
+//   * Bloqueio antes de evento de alto impacto e proximo do fechamento
+input bool   EnableMarketIntelligence  = true;
+
+// Score minimo de inteligencia de mercado para operar.
+// 0 = desligado (so usa o veto da IA normal).
+// 40 = bloqueia quando inteligencia muito baixa (fora de sessao, feriado).
+// 60 = bloqueia quando inteligencia baixa ou media-baixa.
+input double MinIntelligenceScore    = 0.0;
+
+// Bloquear entrada nos X minutos antes do fechamento da sessao atual.
+// 0 = desligado.
+input int    BlockPreCloseMinutes      = 15;
+
+// Bloquear entrada nos X minutos antes de evento de alto impacto.
+// 0 = desligado.
+input int    BlockHighImpactNewsMin    = 15;
+
+// Multiplicador de lote quando inteligencia de mercado e baixa mas nao bloqueia.
+// 1.0 = sem mudanca. 0.5 = reduz lote pela metade em inteligencia baixa.
+input double LowIntelLotFactor       = 0.5;
 // RequireAIJSON=false (padrao): o arquivo
 // prediction_<SYMBOL>.json e opcional. Quando ausente,
 // o AIEngine usa o fallback local (indicadores/score).

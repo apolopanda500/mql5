@@ -1060,12 +1060,48 @@ bool LoadAIPrediction(string symbol="")
    // como ja acontece no [SCANNER]: o texto identico sai 1x/hora no total.
    // P2.00: o caminho do ficheiro nao muda entre leituras - 1x/dia por CONTA
    // e por simbolo em vez de 1x/hora.
+   // v1.2.137 (04/11/2026) - P1.92: a previsao passa a ser procurada tambem
+   // em FILE_COMMON. MEDIDO no log do tester de 04/11 (run das 18:08, XAUUSD
+   // H1, XAI_BASE_v131.ini): "[AI] FILE EM FALTA |
+   // Data\prediction_XAUUSD.json" repetido durante a simulacao. Dentro do
+   // Strategy Tester o sandbox e Tester\Agent-<ip>-<porta>\MQL5\Files\ e o
+   // pipeline Python escreve em <terminal>\MQL5\Files\, logo o backtest nao
+   // via o ficheiro que a producao ve. O ficheiro existia (mtime 04/11
+   // 22:28) e era invisivel - o backtest media um EA SEM IA, exactamente o
+   // mesmo tipo de defeito do P1.91 (ADX nunca lido). FILE_COMMON resolve
+   // para a pasta comum verdadeira tambem dentro do tester (medido na
+   // v1.2.45), por isso a leitura tenta a raiz LOCAL primeiro e a COMMON
+   // depois: em producao, onde o local existe, nada muda.
+   int fileRoot=0;
+
+   if(!FileIsExist(fileName) && fileRoot==0)
+   {
+      if(FileIsExist(fileName, FILE_COMMON))
+      {
+         fileRoot=FILE_COMMON;
+      }
+      else if(normalized!=symbol)
+      {
+         string altCommon=
+            "Data\\prediction_" +
+            normalized +
+            ".json";
+
+         if(FileIsExist(altCommon, FILE_COMMON))
+         {
+            fileName=altCommon;
+            fileRoot=FILE_COMMON;
+         }
+      }
+   }
+
+
    if(logOnce && AccountLogGatePodeImprimir("ai_load_" + symbol, 86400))
    if(logOnce)
       Print(
          "[AI] LOAD | SYMBOL=",
          symbol,
-         " | FILE=",
+         " | ROOT=", fileRoot==FILE_COMMON ? "COMMON" : "LOCAL", " | FILE=",
          fileName
       );
 
@@ -1077,7 +1113,7 @@ bool LoadAIPrediction(string symbol="")
    // FILE EXISTS
    //================================================
 
-   if(!FileIsExist(fileName))
+   if(!FileIsExist(fileName) && fileRoot==0)
    {
       if(logOnce)
          Print(
@@ -1099,7 +1135,8 @@ bool LoadAIPrediction(string symbol="")
          FILE_READ |
          FILE_TXT |
          FILE_ANSI |
-         FILE_SHARE_READ | FILE_SHARE_WRITE
+         FILE_SHARE_READ | FILE_SHARE_WRITE |
+         fileRoot
       );
 
 
