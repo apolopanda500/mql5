@@ -5,7 +5,7 @@
 > risco de carteira. Este arquivo e o PONTO DE ENTRADA da documentacao: diz
 > onde cada assunto esta e qual e o estado atual medido.
 >
-> Versao do codigo: **v1.2.134** (`Enterprise/VersionManager.mqh` ->
+> Versao do codigo: **v1.2.135** (`Enterprise/VersionManager.mqh` ->
 > `EA_VERSION_STRING`). `#property version "1.326"` acompanha desde a v1.2.123:
 > MQL5 aceita somente dois numeros na propriedade, entao ela e minor*100+patch.
 >

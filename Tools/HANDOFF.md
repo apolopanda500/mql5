@@ -333,7 +333,7 @@ Pendencias do dono (inalteradas):
 4. Arrancar o gateway Python (`/api/ai/predict` nao tem quem o sirva)
 5. **Nao ir a conta real** - PF 0.62 no periodo 01/09-01/11/2026
 
-## Ciclo 91 - 04/11/2026 19:05 - fail-closed do token, IA 30F viva e raiz limpa (v1.2.134)
+## Ciclo 91 - 04/11/2026 19:05 - fail-closed do token, IA 30F viva e raiz limpa (v1.2.135)
 
 | Item | Estado |
 |---|---|

@@ -9,7 +9,7 @@
 > - Dono: `DONO` = so o dono do terminal resolve (clicar, autorizar, decidir);
 >   `AGENTE` = trabalho de codigo/medicao aqui; `AMBOS` = quem estiver na vez.
 > - Nada aqui e promessa de lucro. Backtest nao prova lucro futuro.
-> - Ultima revisao desta lista: 2026-11-04 19:05 (conta 113568614, v1.2.134).
+> - Ultima revisao desta lista: 2026-11-04 19:05 (conta 113568614, v1.2.135).
 
 ---
 
@@ -27,7 +27,7 @@
   Options funcionou: `common.ini` 5324 -> **6100 B**, blob 1087 -> **1475** hex,
   e a entrada vale para qualquer caminho daquele host:porta.
   Falta ainda: (a) `AIGatewayUrl=AIGatewayToken` nos 15 graficos; (b) P-01b.
-- **RESOLVIDO em 04/11 19:05 (v1.2.134):** o gateway roda o middleware
+- **RESOLVIDO em 04/11 19:05 (v1.2.135):** o gateway roda o middleware
   **fail-closed**. Antes era `if API_TOKEN:` em `backend/fastapi_gateway.py`:
   sem a variavel, qualquer chamada passava sem credencial. Agora, sem
   `XAU_GATEWAY_TOKEN`, tudo e recusado com `401 "sem token configurado"`

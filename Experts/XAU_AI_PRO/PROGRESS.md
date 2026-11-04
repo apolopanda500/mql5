@@ -4410,7 +4410,7 @@ Pendencias do dono (inalteradas):
 
 ---
 
-## Ciclo 91 - 04/11/2026 19:05 - fail-closed do token, IA 30F viva e raiz limpa (v1.2.134)
+## Ciclo 91 - 04/11/2026 19:05 - fail-closed do token, IA 30F viva e raiz limpa (v1.2.135)
 
 | Item | Estado medido |
 |---|---|
@@ -4431,7 +4431,7 @@ O que este ciclo prova: o gateway deixou de aceitar chamada sem credencial, a IA
 
 Pendencias do dono (medidas):
 1. Reanexar o EA nos graficos `XAU_P216_LIVE` para o `.ex5` de `19:05:25` valer - compilar nao reanexa.
-2. Testador ocupado (5 `metatester64.exe` ativos): nenhum backtest foi lancado. Re-medir com `v1.2.134` e ticks reais quando o slot liberar.
+2. Testador ocupado (5 `metatester64.exe` ativos): nenhum backtest foi lancado. Re-medir com `v1.2.135` e ticks reais quando o slot liberar.
 3. `Data\prediction_XAUUSD.json`: `WebRequest` nao funciona dentro do Strategy Tester, entao o EA no backtest continua a ler o arquivo.
 4. `pytest` no `.venv` (instalar `requirements-dev.txt` exige rede).
 5. `RewardRatio` e `0,65` no preset de producao e `1,30` no `.set` do testador - decidir e medir o A/B de `MinRewardRatio` (0,55 -> 1,5/2,0).
