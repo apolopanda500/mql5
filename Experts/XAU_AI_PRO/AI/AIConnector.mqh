@@ -799,6 +799,7 @@ bool FetchPredictionFromGateway(
    }
 
    string corpo = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
+   s_gwAuthFails = 0;   // P2.21: credencial aceite - o contador de recusas zera
 
    // Corpo vazio com HTTP 200 e o pior resultado possivel: o EA receberia uma
    // string sem sinal e acharia que a IA foi consultada. Recusa aqui.

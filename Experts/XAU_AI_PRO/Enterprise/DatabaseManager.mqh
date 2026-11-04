@@ -73,7 +73,16 @@ string CDatabaseManager::m_db_path = "";
 void CDatabaseManager::Init()
 {
    if(m_initialized) return;
-   m_db_path = TerminalInfoString(TERMINAL_PATH) + "\\MQL5\\Experts\\XAU_AI_PRO\\Enterprise\\Data\\xau_ai_pro.db";
+   // v1.2.130 (03/11/2026) - P2.22: a raiz do caminho era a pasta de
+   // INSTALACAO. MEDIDO no journal do expert as 23:37:07 de 03/11, com os 15
+   // graficos: [DATABASE] DB: C:\Program Files\MetaTrader 5\MQL5\Experts\
+   // XAU_AI_PRO\Enterprise\Data\xau_ai_pro.db | Connected: No. TERMINAL_PATH
+   // e C:\Program Files\MetaTrader 5 - um directorio de instalacao, onde o
+   // terminal nao escreve e onde um utilizador sem privilegios nao pode
+   // criar ficheiros; a base de dados nunca poderia nascer ali. A raiz certa
+   // e TERMINAL_DATA_PATH, a pasta de dados do terminal onde o proprio MT5
+   // le MQL5\Files, MQL5\Logs e o resto da sandbox.
+   m_db_path = TerminalInfoString(TERMINAL_DATA_PATH) + "\\MQL5\\Experts\\XAU_AI_PRO\\Enterprise\\Data\\xau_ai_pro.db";
    m_initialized = true;
    if(LogInicioDetalhe()) { Print("[DATABASE] DatabaseManager initialized"); }
 }
@@ -85,7 +94,14 @@ bool CDatabaseManager::Connect()
    if(MQLInfoInteger(MQL_TESTER)!=0)
       return false;
 #ifndef XAI_USE_SQLITE_DLL
-   Print("[DATABASE] sqlite3 indisponivel (compilado sem DLL): base de dados desativada");
+   // v1.2.130 - P2.22: a linha dizia "compilado sem DLL" como se fosse erro de
+   // runtime e saia em TODOS os graficos a cada arranque (15 linhas por reload,
+   // medido as 23:37:07 de 03/11). Nao e erro de runtime: e o build por omissao,
+   // decidido no P1.58 para o EA carregar em qualquer terminal sem permissao de
+   // DLL. Passa a 1 linha por sessao e por CONTA, a nomear a macro que liga a
+   // funcionalidade e a mostrar o caminho que seria usado.
+   if(LogSessaoPodeImprimir("db_nodll"))
+      Print("[DATABASE] DESATIVADA | build sem sqlite3 (macro XAI_USE_SQLITE_DLL nao definida) | nao e erro: EnableDatabase=false e o caminho previsto seria ", m_db_path);
    return false;
 #endif
    int result = sqlite3_open(m_db_path, m_db);

@@ -4321,3 +4321,24 @@ Prova em runtime do P2.20 (23:48:26.281, XAUUSD chart chamando USDJPY):
 ```
 
 Nota operacional: o grafico esta a enviar **17 caracteres** e o `XAU_GATEWAY_TOKEN` do `.env` tem **64**. Ate o dono colar o valor exato, o `401` continua - agora com o motivo certo.
+
+## Ciclo 88 - 04/11/2026 05:55 - P2.22 (base de dados, checklist e credencial) + documento do backtest (v1.2.131)
+
+Trabalho encontrado por commitar no worktree na manha de 04/11 e publicado neste ciclo, depois de validado. Tres defeitos da mesma familia dos anteriores - mensagem que mente sobre o proprio mecanismo e linha de diagnostico repetida por grafico:
+
+| Ficheiro | Defeito medido | Correcao |
+|---|---|---|
+| `Enterprise/DatabaseManager.mqh` | caminho `C:\Program Files\MetaTrader 5\MQL5\...\xau_ai_pro.db` com `Connected: No` - a raiz era `TERMINAL_PATH`, a pasta de **instalacao**, onde o terminal nao escreve | passa a `TERMINAL_DATA_PATH` (pasta de dados, onde o MT5 le `MQL5\Files`) |
+| `Enterprise/DatabaseManager.mqh` | `sqlite3 indisponivel (compilado sem DLL): base de dados desativada` em 15 graficos por reload, lido como erro de runtime | `DESATIVADA \| build sem sqlite3 (macro XAI_USE_SQLITE_DLL nao definida) \| nao e erro`, 1x por sessao e por CONTA |
+| `Monitoring/ValidationChecklist.mqh` | `[VALIDATION] N BLOCKED` uma vez por grafico em cada reload (15 linhas iguais as 23:49:43) | exige `LogSessaoPodeImprimir("val_blocked")` |
+| `AI/AIConnector.mqh` | credencial recusada era tentada outra vez em cada ciclo, sem memoria | 3 recusas 401/403 seguidas armam cooldown de 1800 s; HTTP 200 zera o contador (`s_gwAuthFails`) |
+
+**Versao:** o trabalho estava rotulado `v1.2.130`, que ja tinha sido publicada no commit `8d52d767` (P2.21). Dois binarios diferentes com o mesmo numero tornam o changelog inutil, por isso o P2.22 passou a **v1.2.131** (`EA_VERSION_STRING` e cabecalho do `.mq5`).
+
+### Documento novo
+
+`RELATORIO_BACKTEST_20260901_20261101.md` - relatorio completo da simulacao pedida para decidir a ida a conta real: lucro, profit factor, drawdown, trades e o que fazer antes de repetir. Veredito registado: **REPROVADO** (PF 0.6206, -213.74 USD, 41.4% de acerto, 10-11 perdas seguidas). Relatorio bruto em `Files\Backup\backtest_7704134350896417964.json`.
+
+### Estado
+
+Compilacao `0 errors, 0 warnings` (21235 ms, X64). EA `v1.2.131` recarregado nos graficos pelo terminal.

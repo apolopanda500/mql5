@@ -323,7 +323,10 @@ bool ValidationChecklistRun()
    if(g_validationPassed)
       { if(LogInicioDetalhe()) Print("[VALIDATION] SEM BLOCKED (diagnostico de init, nao e portao)"); }   // P1.99: chavetas devolvem o else ao if exterior
    else
-      Print("[VALIDATION] ", IntegerToString(blocked),
+      // v1.2.130 - P2.22: saia em TODOS os graficos a cada reload (15 linhas por
+      // reload, medido as 23:49:43). O resultado e de init e nao muda entre
+      // instancias; a contagem real continua a sair 1x por sessao e por CONTA.
+      if(LogSessaoPodeImprimir("val_blocked")) Print("[VALIDATION] ", IntegerToString(blocked),
             " BLOCKED (diagnostico de init, nao impede execucao - spread e filtrado por tick)");
 
    // P1.44: FILE_WRITE sozinho apaga o conteudo na abertura.

@@ -270,3 +270,23 @@ Pendencias do dono que continuam abertas:
 | P2.21 `AIConnector.mqh` | aviso de `HTTP != 200` passa a 1 linha por tag+status a cada 30 min POR CONTA (~780 linhas/hora -> ~2) |
 | P2.20 provado em runtime | `23:48:26.281 | token RECUSADO (17 caracteres enviados ...) | WebRequest=LIGADO (a chamada SAIU) | corpo=0B` |
 | Token em uso vs esperado | grafico envia **17** caracteres; `XAU_GATEWAY_TOKEN` no `.env` tem **64** |
+
+
+## Ciclo 88 - 04/11/2026 05:55 - v1.2.131 (P2.22 + documento do backtest)
+
+| Item | Estado |
+|---|---|
+| `DatabaseManager` path | `TERMINAL_PATH` (instalacao) -> `TERMINAL_DATA_PATH` (dados) |
+| `DatabaseManager` mensagem | `sqlite3 indisponivel` -> `DESATIVADA \| build sem sqlite3 \| nao e erro`, 1x/sessao por conta |
+| `ValidationChecklist` | `[VALIDATION] N BLOCKED` passa a 1x/sessao por conta (era 1x por grafico por reload) |
+| `AIConnector` cooldown | 3 recusas 401/403 seguidas -> 1800 s sem round-trip; HTTP 200 zera |
+| Versao | P2.22 estava rotulado 1.2.130 (ja publicado); corrigido para **v1.2.131** |
+| Documento | `RELATORIO_BACKTEST_20260901_20261101.md` + `Files\Backup\backtest_7704134350896417964.json` |
+| Compilacao | `0 errors, 0 warnings`, 21235 ms, x64 |
+
+Pendencias do dono (inalteradas):
+1. Allowlist em Ferramentas > Opcoes > Expert Advisors: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com`
+2. Porta: opcao A (limpar `XAU_GATEWAY_PORT`, volta a 9001) ou opcao B (manter 9011 e mudar `AIGatewayUrl` nos graficos)
+3. `AIGatewayToken`: o grafico envia **17** caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem **64**
+4. Arrancar o gateway Python (`/api/ai/predict` nao tem quem o sirva)
+5. **Nao ir a conta real** - ver `RELATORIO_BACKTEST_20260901_20261101.md` (PF 0.62)
