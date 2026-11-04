@@ -82,8 +82,14 @@ input string ExternalBridgeToken  = "";
 //
 // Requer: Ferramentas > Opções > Expert Advisors > "Allow WebRequest for listed URL"
 //         (apenas se o servidor MCP usar HTTP para receber comandos externos)
-input bool   EnableMCPServer      = true;  // Ligar/desligar servidor MCP
-input string MCPServerToken       = "xau-mcp-local-2026";     // Token de autenticação (8+ caracteres)
+// v1.2.126 - P2.16 (03/11/2026): o token do servidor MCP embutido estava escrito
+// aqui ("xau-mcp-local-2026"), portanto publico no GitHub, e o servidor arrancava
+// com ele nos 15 graficos - medido em [MCP] servidor ativo ... as 21:44:59.
+// Segredo nao se versiona: o default passa a vazio, o servidor passa a ser opt-in
+// e o token define-se no input do grafico. O valor antigo e recusado em runtime
+// por XAU_AI_PRO.mq5 (linha "token literal publico recusado").
+input bool   EnableMCPServer      = false; // Ligar/desligar servidor MCP (opt-in: exige token privado)
+input string MCPServerToken       = "";     // Token de autenticação (8+ caracteres)
 
 //==================================================
 // RISCO

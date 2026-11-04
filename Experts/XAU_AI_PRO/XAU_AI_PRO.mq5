@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.125
+// XAU_AI_PRO v1.2.126
 //==================================================
 
 #property strict
@@ -19,7 +19,7 @@
 // A versao legivel ("1.2.27") vai na descricao do projeto (XAU_AI_PRO.mqproj),
 // tambem exibida na aba de propriedades. O build do projeto ja injeta essa
 // propriedade; repetir com `#property description` gera `warning 90`.
-#property version   "1.325"
+#property version   "1.326"
 
 #include <Trade/Trade.mqh>
 
@@ -579,17 +579,31 @@ bool InitializeModules()
 //------------------------------------------------
    if(EnableMCPServer)
      {
-      MCPServer.Init(MCPServerToken);
-      if(MCPServer.IsEnabled())
+      // P2.16 (03/11/2026): o token literal esteve versionado em Core/Config.mqh
+      // (publico no GitHub) e o servidor MCP embutido arrancava com ele nos 15
+      // graficos - medido em "[MCP] servidor ativo | metodos=7/7 ..." as 21:44:59.
+      // O codigo deixa de ter segredo (input privado do grafico) e o valor antigo
+      // e recusado aqui, sem depender de reconfigurar os 15 graficos a mao.
+      if(MCPServerToken == "xau-mcp-local-2026")
         {
-         if(AccountLogGatePodeImprimir("mcp", 3600))
-            Print("[MCP] servidor ativo | metodos=", MCPServer.SelfTest());   // P2.08: prova de vida
+         if(AccountLogGatePodeImprimir("mcp_publico", 3600))
+            Print("[MCP] DESATIVADO | token literal publico recusado | ",
+                  "defina um token privado no input MCPServerToken");
         }
       else
         {
-         if(AccountLogGatePodeImprimir("mcp_fail", 3600))
-            Print("[MCP] nao arrancou | token com ", StringLen(MCPServerToken),
-                  " caracteres, minimo ", MCP_MIN_TOKEN_LEN, " (input MCPServerToken)");
+         MCPServer.Init(MCPServerToken);
+         if(MCPServer.IsEnabled())
+           {
+            if(AccountLogGatePodeImprimir("mcp", 3600))
+               Print("[MCP] servidor ativo | metodos=", MCPServer.SelfTest());   // P2.08: prova de vida
+           }
+         else
+           {
+            if(AccountLogGatePodeImprimir("mcp_fail", 3600))
+               Print("[MCP] nao arrancou | token com ", StringLen(MCPServerToken),
+                     " caracteres, minimo ", MCP_MIN_TOKEN_LEN, " (input MCPServerToken)");
+           }
         }
      }
 
