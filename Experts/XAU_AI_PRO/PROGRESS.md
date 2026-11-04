@@ -4048,3 +4048,75 @@ um acto humano no grafico: F7 > aba Geral > marcar "Permitir Algo Trading" > OK.
 - Bloqueios do operador continuam os mesmos: `WebRequest` desligado no terminal
   (erro 4014) e `AIGatewayToken` vazio (HTTP 401 no gateway), por isso o `[RESUMO]`
   continua a dizer `IA=SEM PRECO`.
+
+## Ciclo 81 - v1.2.125 / P2.13-P2.15: a mesma linha 15 vezes (03/11/2026 21:55)
+
+- Retomada por journal da API, nao pelo ficheiro: 15 graficos com XAU_AI_PRO,
+  build 2026.11.04, conta demo 113568614, saldo 12 592,02, 0 posicoes do EA.
+  O defeito medido nao era de calculo: era a MESMA informacao impressa uma vez
+  por grafico, porque cada instancia decide sozinha o que escreve.
+- Rajadas medidas antes do trabalho: `[STATE] USDCAD | -> MANAGING` 11 vezes no
+  mesmo segundo (21:15:14-21:15:15, no reload dos 15 graficos); `[STOP]` 15
+  vezes as 21:29:47; `[VALIDATION] BLOCK ... contramao vetada | ADX
+  indisponivel` 23 vezes no dia, uma por grafico a cada 5 minutos.
+- P2.13 (v1.2.123): o `[STOP]` do `OnDeinit` passou a passar pelo portao por
+  conta (1 linha por conta, por motivo, a cada 120 s); a PRIMEIRA observacao de
+  um simbolo em `StateSet` (`idx < 0`) passou a portao de 1 h por conta+simbolo;
+  a transicao REAL de estado manteve-se sem filtro e o STANDBY passou a avancar
+  o carimbo em cada tentativa (antes abria o ficheiro do portao em cada tick nas
+  14 instancias que nao sao donas do pipeline).
+- P2.13 sozinho NAO resolveu, e a causa foi medida:
+  `AccountLogGatePodeImprimir` le, compara e escreve sem bloqueio. Com o
+  ficheiro do portao AINDA INEXISTENTE, as 15 instancias leem "nunca imprimiu"
+  ao mesmo tempo e imprimem todas. Prova: reload das 21:29:47 = 15 `[STOP]`;
+  reload das 21:32:13 com o MESMO codigo = 1 `[STOP]` (o ficheiro ja existia).
+  O problema era o ficheiro novo, nao a condicao.
+- P2.14 (v1.2.124): o unico motivo realmente simultaneo (REASON_RECOMPILE, 15
+  graficos a reiniciar no mesmo instante) deixou de usar o portao e passou a ser
+  decidido pela eleicao de dono do pipeline. Os restantes motivos (fecho de um
+  grafico, mudanca de periodo ou de parametros) continuam no portao de 120 s por
+  conta, que e onde a informacao e util.
+- P2.14b (regressao apanhada em producao): no reload das 21:34:08 saiu ZERO
+  `[STOP]`. `PipelineMasterChart()` devolve um id PUBLICADO que pode ja estar
+  morto. `PipelineMasterFresh()` (id presente E batimento `_T` mais novo que
+  `PIPELINE_MASTER_TTL_SEC` = 180 s) e, sem dono fresco, o chamador volta ao
+  portao por conta. Garante pelo menos uma linha por reload, sem repor a rajada.
+- P2.15 (v1.2.125): `ValidationLogAllowed` era por INSTANCIA (`VALIDATION_LOG_
+  WINDOW` = 300 s, comentario de v1.2.16: "a janela vale por grafico"), logo o
+  mesmo veto saia 15 vezes por janela. O corpo original foi renomeado para
+  `ValidationLogAllowedLocal` (logica intacta: continua a gravar
+  `g_validationLastBlock` antes de qualquer filtro) e o novo
+  `ValidationLogAllowed` exige tambem `AccountLogGatePodeImprimir` com tag
+  saneada para nome de ficheiro (`val_<simbolo>_<motivo>`, espacos/|/=/-/./%/>/</,
+  trocados, 48 caracteres). No tester o portao e ignorado, para o backtest
+  continuar a registar todos os vetos.
+- Prova em producao: reload duplo forcado por troca de perfil (as duas copias de
+  `chart01.chr` tinham 0 linhas de diferenca, portanto configuracao igual).
+  21:53:59 e 21:54:06 com 15 `[START] XAU_AI_PRO v1.2.125` cada. Na janela
+  21:53:50-21:54:20: `[STOP]` = 1 (21:53:56, motivo=9, USDBRL) e 0 no segundo
+  reload (o portao de 120 s da conta ja estava tomado); `[VALIDATION]` = 2 (uma
+  por reload, so o dono publica o resumo do DiagGate); `[STATE]` = 0 pela
+  primeira vez num reload; STANDBY = 0; `[DATA] SEM LEITURA` = 1. Antes: 15
+  `[STOP]` por reload e 23 vetos por janela.
+- Leitura honesta do `[STOP]` = 0 no segundo reload: e o comportamento pedido
+  (1 por conta / 120 s / motivo), nao perda de informacao - o dono do pipeline
+  imprime e os outros 14 calam-se.
+- Versao alinhada nos tres sitios: `EA_VERSION_STRING` 1.2.125, cabecalho do EA
+  e `#property version` "1.325". Compilacoes: `agent-toolkit.ps1 compile` as
+  21:48:23 e `metaeditor64 /compile` as 21:51, ambas **0 errors / 0 warnings**
+  (X64 Regular); `agent-toolkit.ps1 check` em 108 fontes: UTF-8, chaves e
+  `#include` sem problemas.
+- Nada de risco alterado: nenhuma regra de entrada ou saida, lote, alvo, stop,
+  spread ou preco. O reload foi feito com 0 posicoes do EA abertas.
+- Commits `4499c33c` (P2.13/P2.14) e `ef02e1c8` (P2.15), empurrados para
+  `github/main`.
+- Defeito de PROCESSO descoberto: compilar com `metaeditor64.exe /compile` fora
+  da instancia MetaEditor aberta NAO recarrega os graficos - o binario ficou em
+  disco as 21:51 e o journal so mostrou v1.2.125 depois da troca de perfil as
+  21:53:59. Quem valida por journal tem de confirmar o reload, nao a compilacao.
+- Pendentes: o texto do motivo em `Filters/MarketScenario.mqh` repete a
+  explicacao do cenario em cada linha, e o dump por simbolo do arranque ainda
+  sai 15 vezes (uma por grafico) - nenhum dos dois foi tocado neste ciclo.
+  Continuam tambem os bloqueios do operador: `WebRequest` desligado no terminal
+  (erro 4014) e `AIGatewayToken` vazio (HTTP 401), por isso o `[RESUMO]` diz
+  `IA=SEM PRECO`.

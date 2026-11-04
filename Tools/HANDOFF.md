@@ -108,3 +108,61 @@ Pendente (por ordem de valor):
 3. **Dono**: decisao sobre `AvoidHoursGMT=9,11,14,18,20,22` e par RSI 45/55 em H1 —
    `NoSignal=113` de 137 visitas e o gargalo real, nao o ADX.
 4. **Commit/push** do working tree (71 ficheiros) — exige pedido explicito.
+
+## Atualizacao 21:55 (mesma sessao) - v1.2.125 no ar
+
+| Item | Medido |
+|---|---|
+| EA em operacao | **v1.2.125** nos 15 graficos (reload as 21:53:59 e 21:54:06) |
+| EA compilado | 0 errors / 0 warnings - `agent-toolkit.ps1 compile` 21:48:23 e `metaeditor64 /compile` 21:51 |
+| conta | demo 113568614, saldo **12 592,02** / equity **12 592,02** |
+| posicoes | **0** (nenhuma do EA, nenhuma manual) |
+| dia | **+22,94 de 40,00 USD (57%)** |
+| commits | `4499c33c` (P2.13/P2.14) e `ef02e1c8` (P2.15), empurrados para `github/main` |
+| repositorio | branch `main`, working tree com os ficheiros do outro agente (nao tocados) |
+
+O que mudou nesta sessao (so journal - nenhuma regra de entrada, saida, lote,
+alvo, stop, spread ou preco foi alterada):
+
+1. **P2.13** - `[STOP]` do `OnDeinit` atras de portao por conta (1 / motivo /
+   120 s); primeira observacao de simbolo em `StateSet` com portao de 1 h por
+   conta+simbolo; STANDBY avanca o carimbo em cada tentativa. Motivo medido:
+   `[STATE] USDCAD | -> MANAGING` 11 vezes no mesmo segundo e 15 `[STOP]` no
+   reload das 21:29:47.
+2. **P2.13 nao bastou** - `AccountLogGatePodeImprimir` le-compara-escreve sem
+   bloqueio: com o ficheiro do portao ainda inexistente, as 15 instancias leem
+   "nunca imprimiu" ao mesmo tempo. Medicao que prova: 21:29:47 = 15 `[STOP]`;
+   21:32:13 com o MESMO codigo = 1 `[STOP]`.
+3. **P2.14/P2.14b** - o unico motivo simultaneo (`REASON_RECOMPILE`) passou a ser
+   decidido pela eleicao de dono do pipeline, com `PipelineMasterFresh()` (id
+   publicado + batimento `_T` < 180 s); sem dono fresco volta ao portao de 120 s.
+   A v1.2.124 chegou a produzir ZERO `[STOP]` (dono publicado morto) - corrigido.
+4. **P2.15** - `ValidationLogAllowed` era por INSTANCIA: o mesmo veto saia 15
+   vezes por janela de 300 s (23 no dia). Passou a exigir tambem o portao por
+   conta com tag saneada (`val_<simbolo>_<motivo>`); o tester continua a registar
+   todos os vetos.
+5. **Prova em producao** (janela 21:53:50-21:54:20, dois reloads): `[STOP]` = 1 e
+   0; `[VALIDATION]` = 2 (uma por reload); `[STATE]` = 0; STANDBY = 0;
+   `[DATA] SEM LEITURA` = 1. Antes: 15 `[STOP]` por reload.
+6. **Defeito de processo**: `metaeditor64 /compile` fora da instancia MetaEditor
+   aberta **nao recarrega** os graficos. O binario ficou em disco as 21:51 e o
+   journal so mostrou v1.2.125 depois de forcar a troca de perfil as 21:53:59
+   (as duas copias de `chart01.chr` tinham 0 linhas de diferenca). Quem valida por
+   journal tem de confirmar o RELOAD, nao a compilacao.
+
+Correcao de facto do que esta escrito acima: `MCPServerToken` **nao esta vazio** -
+e o literal `xau-mcp-local-2026`, igual nos 15 graficos e versionado em
+`Core/Config.mqh:86` (portanto publico no GitHub). Isso e divida de seguranca, nao
+de configuracao.
+
+Pendente (por ordem de valor):
+
+1. Journal: reescrever o motivo em `Filters/MarketScenario.mqh` (repete a
+   explicacao do cenario em cada linha) e o dump por simbolo do arranque.
+2. Operador: marcar `Permitir WebRequest para URLs listadas` + `http://127.0.0.1:9001`
+   (erro 4014) e preencher `AIGatewayToken` (HTTP 401) - sem isso `IA=SEM PRECO`.
+3. Dono: decisao sobre `AvoidHoursGMT=9,11,14,18,20,22` e par RSI 45/55 em H1
+   (`NoSignal=113` de 137 visitas e o gargalo real).
+4. Seguranca: tirar `MCPServerToken` do codigo versionado (ler de ficheiro).
+5. Docs: `README.md` ainda anuncia v1.2.25 no cabecalho; `PROGRESS.md` ja tem o
+   Ciclo 81.
