@@ -576,3 +576,24 @@ nos simbolos exoticos apos o reload do perfil. `[ADX] SEM LEITURA ... Error=4022
 pytest ausente da `.venv`; mojibake em `CONVERSAS.md` antigo (visivel em
 comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo tracking de
 `Files/XAU_AI_PRO`.
+
+### Verificacao pos-deploy 20:44-20:55 (ciclo 101 parcial) `AGENTE`
+- **Journal do expert v1.2.142:** depois de 20:44, 14 linhas `[AI] GATEWAY`
+  (XAUUSD 1122 B + 13 simbolos 357 B); zero `[AI] INDISPONIVEL`; zero
+  `PRICE=0.00000` (a ultima e de 20:31:39); zero `backend fora do ar` depois
+  de 20:40:21. P1.98 confirmado em journal de producao.
+- **P1.100 ainda nao exercitado:** nao houve nova falha de transporte desde o
+  deploy, logo a faixa `status > 599` continua sem observacao em journal real.
+- **P-02 continua e o retry nao pode ser lancado:** o job em curso arrancou as
+  20:26:22 com `v1.2.138` (build anterior ao fix) e ocupa o slot. `tester_stop`
+  exige `run_id` e recusa qualquer valor; `tester_get_status` e
+  `tester_get_configuration` tambem exigem `run_id`; `tester_list_result_windows`
+  = []. `metatester64.exe` PID 152 activo (264 MB). O job em curso **nao mede**
+  P1.98/P1.100. Fechar com Stop manual do dono na aba Testador.
+- **Candidato novo 1:** no job em curso, `[SAFETY] Daily loss limit: 69.89/60.00`
+  imprime 2x por timestamp a cada ~10 s. Investigar spam/duplicacao por simbolo
+  antes de mudar regra.
+- **Candidato novo 2:** em producao o AI devolve previsao com `AGE` a crescer
+  (`[AI] PREDICAO VENCIDA | XAUUSD | AGE=5068s > LIMIT=900s`, `IA=UNAVAILABLE
+  0.0%`) apesar de `[AI] GATEWAY` responder 1122 B. Suspeita: cadencia do
+  backend/modelo, nao do EA. Medir `as_of` devolvido pelo gateway antes de mexer.
