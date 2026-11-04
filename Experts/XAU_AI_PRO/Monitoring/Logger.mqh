@@ -727,10 +727,44 @@ void LoggerRotate()
 
    if(!moved)
    {
-      Print(
-         "[LOGGER WARNING] Falha ao rotacionar log. Erro=",
-         GetLastError()
-      );
+      // P2.23 (04/11/2026): a rotacao falhava a cada minuto e o log crescia
+      // sem limite. MEDIDO no Strategy Tester (XAUUSD H1, 01/09 a 01/11/2026,
+      // v1.2.131): 36 MB de log e "[LOGGER WARNING] Falha ao rotacionar log.
+      // Erro=5004" 1x por minuto simulado. O rename do ficheiro comum nao se
+      // concretiza enquanto o agente escreve, e como o tamanho nunca voltava a
+      // zero a condicao de rotacao era verdadeira outra vez no minuto seguinte.
+      // Correcao: o aviso sai 1x por hora (e estado, nao evento) e o ficheiro
+      // atual e TRUNCADO, para o tamanho voltar a zero. O conteudo anterior
+      // perde-se porque o backup nao foi atualizado - e o mal menor face a um
+      // log de tamanho ilimitado, que em conta real enche o disco do terminal.
+      // Nenhuma regra de entrada, saida, lote, alvo, stop ou risco muda: muda
+      // o tamanho e a frequencia de uma linha de diagnostico.
+      int rotErr = GetLastError();
+
+      int truncHandle =
+         FileOpen(
+            (g_loggerFile == "" ? LOGGER_FILE_NAME : g_loggerFile),
+            FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON
+         );
+
+      bool truncated = (truncHandle != INVALID_HANDLE);
+
+      if(truncated)
+         FileClose(truncHandle);
+
+      static datetime rotWarnTs = 0;
+      datetime rotNow = TimeLocal();
+
+      if(rotWarnTs == 0 || (rotNow - rotWarnTs) >= 3600)
+      {
+         rotWarnTs = rotNow;
+
+         Print(
+            "[LOGGER WARNING] Falha ao rotacionar log. Erro=", rotErr,
+            " | fallback=", (truncated ? "log atual truncado" : "sem truncagem"),
+            " | 1 aviso por hora"
+         );
+      }
    }
 
 

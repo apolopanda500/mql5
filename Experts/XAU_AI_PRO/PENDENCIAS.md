@@ -9,28 +9,92 @@
 > - Dono: `DONO` = so o dono do terminal resolve (clicar, autorizar, decidir);
 >   `AGENTE` = trabalho de codigo/medicao aqui; `AMBOS` = quem estiver na vez.
 > - Nada aqui e promessa de lucro. Backtest nao prova lucro futuro.
-> - Ultima revisao desta lista: 2026-11-04 05:58 (conta 113568614, v1.2.131).
+> - Ultima revisao desta lista: 2026-11-04 19:05 (conta 113568614, v1.2.134).
 
 ---
 
 ## 1. Bloqueios que so o dono resolve (sem isso, o resto fica em modo degradado)
 
-### P-01 — WebRequest desligado e `AIGatewayToken` vazio `DONO`
-- **Medido:** erro `4014` (WebRequest nao permitido) e `AIGatewayToken=""` nos
-  16 graficos; o gateway em `http://127.0.0.1:9001/api/ai/predict` responde
-  `401`.
+### P-01 — gateway de IA inacessivel ao EA (porta, metodo e token) `DONO`
+- **RESOLVIDO em parte (04/11 18:06): a allowlist esta fechada.** `WebRequest`
+  para `http://127.0.0.1:9011` passou a ser **PERMITIDO**, medido no journal:
+  `9011/api/ai/predict`, `9011/` e `localhost:9011` devolvem `HTTP=401` com
+  `body=37B` (corpo do gateway), contra `body=0B` do `9001` (MCP do terminal).
+  A causa do "nao salva" era o **formato**: entrada com caminho ou barra final
+  (`.../api/ai/predict`, `.../`) e descartada em silencio pelo terminal — o
+  `common.ini` chegou a **encolher** (5916 -> 5324 B) nessas tentativas. Gravar
+  `http://127.0.0.1:9011` (sem barra, sem caminho) + OK na sub-janela + OK em
+  Options funcionou: `common.ini` 5324 -> **6100 B**, blob 1087 -> **1475** hex,
+  e a entrada vale para qualquer caminho daquele host:porta.
+  Falta ainda: (a) `AIGatewayUrl=AIGatewayToken` nos 15 graficos; (b) P-01b.
+- **RESOLVIDO em 04/11 19:05 (v1.2.134):** o gateway roda o middleware
+  **fail-closed**. Antes era `if API_TOKEN:` em `backend/fastapi_gateway.py`:
+  sem a variavel, qualquer chamada passava sem credencial. Agora, sem
+  `XAU_GATEWAY_TOKEN`, tudo e recusado com `401 "sem token configurado"`
+  (paridade com `mt5_gateway.py::_autorizado`). Medido em `127.0.0.1:9011`:
+  sem token **401**, token errado **401**, token correto **200**, e
+  `GET /api/ai/predict` **200** com `available=true signal=SELL
+  prob_sell=0,6365 price=4063,84 atr=17,44 hash=5305081777808310`.
+  O item (a) deixou de ser necessario: `AIGatewayTokenEfetivo` e
+  `AIGatewayUrlEfetiva` leem token e porta do `.env` a cada chamada, entao os
+  graficos nao precisam ser reconfigurados - precisam receber o `.ex5` novo.
+- **P-01b FECHADO (04/11 19:05):** `backend/ai_inference.py` passou a despachar
+  o construtor de features pela `feature_version` declarada no artefato e a
+  decodificar a probabilidade pelas `classes_` do modelo. O unico modelo
+  publicavel de XAUUSD e `XAU-30F-v4` (30 features, **binario**): o runtime
+  lia `probs[2]` como BUY, que num modelo binario e sempre `0,0`, e jogava
+  `probs[1]` (probabilidade de SUBIR) no campo NEUTRO. Os 80 artefatos
+  `25F-v2` mantem o caminho anterior sem alteracao. Provas em
+  `Docs/CONVERSA_20261104_FAIL_CLOSED_30F_E_LIMPEZA.md`.
+- **Medido (04/11 16:45):** gateway sobe em `9011` com o `.env` (token de 64
+  caracteres) e responde `GET /api/ai/predict` com **200**; `POST` devolve
+  **405** (a rota so existe como `GET`). O EA foi corrigido para `GET` na
+  v1.2.132 (compilado 0 errors / 0 warnings).
 - **Por que importa:** com `RequireAIJSON=false` e `AllowTradeWithoutAI=false`, o
   portao de IA roda em **fallback** (`Files\Data\prediction_<SIMBOLO>.json`,
   `MaxPredictionAgeSec=900`). O EA opera, mas nao com a IA de verdade.
-- **Como fechar:** no terminal, `Ferramentas > Opcoes > Expert Advisors > marcar
-  "Permitir WebRequest para URLs listadas"` e adicionar `http://127.0.0.1:9001`;
-  depois preencher `AIGatewayToken` nos 16 graficos (mesmo valor em todos).
-- **Criterio:** journal sem `4014` e sem falha de IA, e uma predicao valida
-  consumida (`[AI] ... score=...`). Fechar registrando a data no `PROGRESS.md`.
-- **Medido (04/11 05:55, evidencia no journal):** o `WebRequest` esta
-  **LIGADO** (a chamada sai) e o `401` e recusa de credencial: os graficos
-  enviam **17 caracteres** e o `XAU_GATEWAY_TOKEN` do `.env` tem **64**.
-  Ate o dono colar o valor exato, o `401` continua - agora com o motivo certo.
+- **Como fechar:** (1) subir o gateway em `9011` — `Tools\start-gateway.ps1`,
+  que forca os gates de trade a `0`; (2) **[feito 04/11 18:06]** no terminal,
+  `Ferramentas > Opcoes > Expert Advisors`, marcar "Permitir WebRequest para
+  URLs listadas" e adicionar `http://127.0.0.1:9011` **(sem barra final e sem
+  caminho - nesse formato o terminal descarta a entrada)**; (3) colar os 64
+  caracteres de `XAU_GATEWAY_TOKEN` em
+  `AIGatewayToken` nos 15 graficos (pela GUI; o preset e versionado).
+- **Criterio:** `Tools\verify-gateway.ps1` sem falhas e journal sem `4014`,
+  `4060`, `5200` ou `5202`, com uma predicao consumida (`[AI] ... score=...`).
+  Fechar registando a data no `PROGRESS.md`.
+- **CORRECAO (04/11 16:30, medicao nova):** a leitura anterior ("401 =
+  credencial recusada") estava **errada**. `127.0.0.1:9001` pertence ao **MCP
+  embutido do MT5** (`config\assistant.ini`: `[MCP.MetaTrader] Endpoint=
+  http://127.0.0.1:9001/mcp`, LISTEN no pid do `terminal64`), nao ao gateway.
+  O `401` veio do terminal. O gateway esta configurado para `9011`
+  (`XAU_GATEWAY_PORT`) e **nao esta no ar**. Alem disso o EA faz `POST` e
+  `backend\fastapi_gateway.py:258` so declara `@app.get`, e o exe instalado
+  (`%LOCALAPPDATA%\XAU AI PRO\bridge\mt5-gateway.exe`, 25/10) nem contem a
+  rota. Colar o token sozinho **nao** desbloqueia. Passo-a-passo e evidencias
+  em `Tools\WEBREQUEST_GATEWAY_UNBLOCK.md`; medicao em
+  `Tools\verify-gateway.ps1`.
+- **Medido (04/11 16:25):** os 15 graficos `Profiles\Charts\Default\*.chr`
+  estao com `AIGatewayUrl` = 9001 e `AIGatewayToken` **vazio**; o preset
+  versionado `Presets\XAU_AI_PRO.PRO.set` tem 17 caracteres, que sao um
+  **placeholder** (contem a palavra TOKEN). O `XAU_GATEWAY_TOKEN` do `.env`
+  tem **64**. O token real nunca deve ir para o preset (ficheiro versionado).
+
+### P-01b — modelo publicado declara 30 features e o runtime monta 25 `AGENTE`
+- **Medido (04/11 16:45):** `GET /api/ai/predict?symbol=XAUUSD&timeframe=H1`
+  devolve `200` com `available:false` e
+  `erro na inferencia: X has 25 features, but HistGradientBoostingClassifier
+  is expecting 30 features as input`.
+- **Evidencia:** `Python\models\XAUUSD_H1.pkl` — `feature_version=XAU-30F-v4`,
+  `feature_count=30`, status READY, publicable true (40 h); o consumidor
+  `backend\ai_inference.py` monta **25** (`FEATURE_VERSION=25F-v2`).
+- **Por que importa:** sem isto o EA recebe `available:false` mesmo com porta,
+  metodo e token corretos. Nao e rede nem WebRequest.
+- **Como fechar:** retreinar e republicar o modelo no contrato atual, ou alinhar
+  a lista de features do runtime ao artefato. Decisao de pipeline.
+- **Criterio:** o mesmo GET deixa de trazer `erro na inferencia` e devolve
+  `available:true` com `signal` diferente de `NEUTRAL` (ou a recusa passa a ser
+  so de edge/AUC, que e regra de produto).
 
 ### P-02 — Testador de Estrategia ocupado (bloqueia toda medicao) `DONO`
 - **Medido:** um job de teste segue rodando desde o ciclo anterior, ocupando o

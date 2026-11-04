@@ -589,6 +589,140 @@ string PeriodLabel()
 // chamado a cada tick e o gateway receberia centenas de requisicoes por
 // segundo, com a inferencia real (que carrega o `.pkl` e monta 25 features)
 // por baixo. A previsao antiga de 15 s e melhor do que perder o tick.
+//
+// v1.2.133 (04/11/2026) - P-01b: o token do gateway deixa de depender de colar
+// 64 caracteres em cada grafico.
+// MEDIDO em 04/11/2026: os graficos levavam 17 caracteres em AIGatewayToken
+// enquanto MQL5\Files\XAU_AI_PRO\.env tem XAU_GATEWAY_TOKEN com 64, e o
+// gateway respondia 401 - havia dois valores para o mesmo nome e nenhum sitio
+// no EA onde a divergencia aparecesse. Passa a existir UMA fonte: o input
+// quando tem tamanho plausivel (>= 32 caracteres), senao o .env da sandbox -
+// a mesma raiz que este modulo ja usa para a previsao, sem FILE_COMMON. O
+// valor lido nunca vai para o journal: quem o publica e a linha de erro, e so
+// o NUMERO de caracteres enviados.
+string AIGatewayTokenEfetivo()
+{
+   if(StringLen(AIGatewayToken) >= 32)
+      return(AIGatewayToken);
+
+   int h = FileOpen("XAU_AI_PRO\\.env",
+                    FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+   if(h == INVALID_HANDLE)
+      return(AIGatewayToken);
+
+   string achado = "";
+   while(!FileIsEnding(h))
+     {
+      string linha = FileReadString(h);
+      if(StringFind(linha, "XAU_GATEWAY_TOKEN") != 0)
+         continue;
+
+      int eq = StringFind(linha, "=");
+      if(eq < 0)
+         continue;
+
+      achado = StringSubstr(linha, eq + 1);
+      StringTrimLeft(achado);
+      StringTrimRight(achado);
+      StringReplace(achado, "\"", "");
+      // aspas simples nao aparecem no .env gerado; so as duplas sao removidas
+      break;
+     }
+   FileClose(h);
+
+   // .env ilegivel, chave ausente ou valor curto: mantem o input exactamente
+   // como antes, para que esta funcao nunca piore um caso que ja funcionava.
+   return(StringLen(achado) >= 32 ? achado : AIGatewayToken);
+}
+
+// v1.2.134 (04/11/2026) - P-01d: a porta do gateway tambem passa a vir do .env.
+// MEDIDO em 04/11/2026 com list_open_charts: as 13 janelas do perfil
+// XAI_P216_LIVE estao anexadas com AIGatewayUrl em 127.0.0.1:9001 - o servidor
+// MCP embutido do terminal, nao o gateway - e com AIGatewayToken contendo o
+// NOME da variavel (17 caracteres), que e a origem exacta da divergencia 17 vs
+// 64. O MT5 guarda as ENTRADAS com que o grafico foi anexado e elas ganham a
+// omissao do codigo, portanto mudar a omissao nao corrige grafico aberto. Em
+// vez de reescrever 13 graficos e arriscar todas as entradas, o .env passa a
+// ser a unica fonte do ENDERECO, como ja e do token: se XAU_GATEWAY_PORT
+// existir e for so digitos, a porta da entrada e substituida; sem a chave,
+// nada muda.
+string AIGatewayPortaEnv()
+{
+   static bool   lido  = false;
+   static string porta = "";
+
+   if(!lido)
+     {
+      lido = true;
+
+      int h = FileOpen("XAU_AI_PRO\\.env",
+                       FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+      if(h != INVALID_HANDLE)
+        {
+         while(!FileIsEnding(h))
+           {
+            string linha = FileReadString(h);
+            if(StringFind(linha, "XAU_GATEWAY_PORT") != 0)
+               continue;
+
+            int eq = StringFind(linha, "=");
+            if(eq < 0)
+               continue;
+
+            string v = StringSubstr(linha, eq + 1);
+            StringTrimLeft(v);
+            StringTrimRight(v);
+            StringReplace(v, "\"", "");
+
+            int n = StringLen(v);
+            bool soDigitos = (n > 0);
+            for(int i = 0; i < n && soDigitos; i++)
+              {
+               ushort c = StringGetCharacter(v, i);
+               if(c < '0' || c > '9')
+                  soDigitos = false;
+              }
+
+            if(soDigitos)
+               porta = v;
+
+            break;
+           }
+         FileClose(h);
+        }
+     }
+
+   return porta;
+}
+
+// Troca APENAS a porta da autoridade da URL: esquema, host, rota e placeholders
+// ficam intactos. URL sem "://" ou sem porta declarada nao e reescrita.
+string AIGatewayUrlEfetiva()
+{
+   string alvo = AIGatewayUrl;
+   if(StringLen(alvo) == 0)
+      return alvo;
+
+   string porta = AIGatewayPortaEnv();
+   if(StringLen(porta) == 0)
+      return alvo;
+
+   int esquema = StringFind(alvo, "://");
+   if(esquema < 0)
+      return alvo;
+
+   int inicio = esquema + 3;
+   int fim    = StringFind(alvo, "/", inicio);
+   if(fim < 0)
+      fim = StringLen(alvo);
+
+   string autoridade = StringSubstr(alvo, inicio, fim - inicio);
+   int doisPontos = StringFind(autoridade, ":");
+   if(doisPontos >= 0)
+      autoridade = StringSubstr(autoridade, 0, doisPontos);
+
+   return StringSubstr(alvo, 0, inicio) + autoridade + ":" + porta + StringSubstr(alvo, fim);
+}
 
 bool FetchPredictionFromGateway(
    string symbol,
@@ -596,7 +730,7 @@ bool FetchPredictionFromGateway(
    string &json
 )
 {
-   string url = AIGatewayUrl;
+   string url = AIGatewayUrlEfetiva();
    if(StringLen(url) == 0)
       return false;
 
@@ -648,6 +782,7 @@ bool FetchPredictionFromGateway(
       url = url + "?symbol=" + symbol + "&timeframe=" + timeframe;
 
    char post[], result[];
+   string result_headers = "";
 
    // O MIDDLEWARE DO GATEWAY LE SO `Authorization: Bearer` (medido em
    // `fastapi_gateway.py`, linha 103: `auth != f"Bearer {API_TOKEN}"`).
@@ -655,21 +790,27 @@ bool FetchPredictionFromGateway(
    // "token invalido" com HTTP 401 mesmo com o token CORRETO no input. E a
    // quarta vez que os dois lados falam cabecalhos diferentes pelo mesmo nome.
    string headers = "Content-Type: application/json\r\n";
-   if(StringLen(AIGatewayToken) > 0)
-      headers = headers + "Authorization: Bearer " + AIGatewayToken + "\r\n";
+   string tokenGW = AIGatewayTokenEfetivo();
+   if(StringLen(tokenGW) > 0)
+      headers = headers + "Authorization: Bearer " + tokenGW + "\r\n";
 
-   string payload = "{}";
-   StringToCharArray(payload, post, 0, StringLen(payload), CP_UTF8);
-
+   // v1.2.132 (04/11/2026) - P-01: o EA fazia POST numa rota que o gateway
+   // declara como GET (`backend\fastapi_gateway.py`, `@app.get("/api/ai/predict")`).
+   // MEDIDO em 04/11/2026: um POST nessa rota recebe 405 Method Not Allowed, e
+   // como o middleware de autenticacao corre ANTES do routing o sintoma visivel
+   // era 401 - o defeito de metodo ficava escondido atras de um falso problema
+   // de credencial. A rota e de leitura e o contrato e GET com corpo vazio; os
+   // parametros continuam na query string (?symbol=&timeframe=), que e onde o
+   // servidor os le.
    ResetLastError();
    int status = WebRequest(
-      "POST",
+      "GET",
       url,
       headers,
       AIRequestTimeoutMs,
       post,
       result,
-      headers
+      result_headers
    );
 
    if(status == -1)
@@ -771,7 +912,7 @@ bool FetchPredictionFromGateway(
          // causas distintas: token VAZIO e token RECUSADO. Agora a mensagem
          // separa por EVIDENCIA - comprimento do token enviado, codigo HTTP e
          // tamanho do corpo. O VALOR do token nunca e impresso.
-         int    nTok   = StringLen(AIGatewayToken);
+         int    nTok   = StringLen(AIGatewayTokenEfetivo());
          string corpoR = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
          int    nCorpo = StringLen(corpoR);
          string motivo = "erro nao classificado";

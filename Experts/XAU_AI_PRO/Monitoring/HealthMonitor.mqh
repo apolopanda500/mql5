@@ -11,7 +11,7 @@
 // Sistema central de monitoramento de sa�de.
 //
 // Absorveu o antigo WatchDog.mqh: heartbeat dos
-// m�dulos ATR / ADX / RSI / AI / PYTHON / CSV / JSON
+// modulos ATR / ADX / RSI / AI / PYTHON / CSV / JSON
 // com timeout e contagem de falhas.
 //==================================================
 
@@ -217,7 +217,7 @@ void HealthMonitorLogError(string module)
    else
    {
       LogWarning(
-         "HealthMonitor: m�dulo desconhecido",
+         "HealthMonitor: modulo desconhecido",
          "Module=" + module
       );
    }
@@ -333,7 +333,7 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
    if(!g_wdActive[idx])
       return true;
 
-   // LIVENESS vs PROGRESS (F4/1.2): para m�dulos de pipeline usamos o canal
+   // LIVENESS vs PROGRESS (F4/1.2): para modulos de pipeline usamos o canal
    // de progresso (avanza s� con UpdateDataset real). Para indicadores e AI
    // usamos o heartbeat de liveness (avanza cada tick do OnTick).
    bool isPipeline = HealthIsPipeline(idx);
@@ -354,7 +354,7 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
          if(g_wdFailures[idx] >= HEALTH_WD_MAX_FAILURES)
          {
             LogWarning(
-               "HealthMonitor: m�dulo sem heartbeat",
+               "HealthMonitor: modulo sem heartbeat",
                g_wdModuleNames[idx],
                "Segundos=" + IntegerToString((int)((now - g_wdLastTime[idx]) / 1000))
             );
@@ -376,6 +376,20 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
       if(g_wdLastProgress[idx] == 0)
          return true;
 
+      // 04/11/2026 - P2.20: mercado FECHADO nao e pipeline parado.
+      // MEDIDO 04/11 18:07 local (23:07 servidor): USDBRL M5 sem vela nova
+      // desde 22:50, dataset.csv parado as 18:00:01, e os tres modulos de
+      // pipeline (PYTHON/CSV/JSON) declarados "parado | Segundos=741" com o
+      // EA a receber ticks (Segundos sem tick: 0). UpdateDataset() devolve
+      // false enquanto iTime(...,0) nao muda, logo no fecho diario o
+      // progresso congela por desenho. Os modulos de liveness (ATR/ADX/RSI/
+      // AI) ja tinham esta guarda desde a v1.2.80; o ramo de pipeline nao.
+      if(!HealthSymbolSessionOpen())
+        {
+         g_wdProgressFails[idx] = 0;
+         return true;
+        }
+
       ulong now       = GetTickCount64();
       ulong timeoutMs = (ulong)HealthGetPipelineProgressTimeoutSec() * 1000;
 
@@ -386,7 +400,7 @@ bool HealthMonitorCheckHeartbeatModule(int idx)
          if(g_wdProgressFails[idx] >= HEALTH_WD_MAX_FAILURES)
          {
             LogWarning(
-               "HealthMonitor: m�dulo de pipeline parado",
+               "HealthMonitor: modulo de pipeline parado",
                g_wdModuleNames[idx],
                "Segundos=" + IntegerToString((int)((now - g_wdLastProgress[idx]) / 1000))
             );
@@ -899,7 +913,14 @@ string HealthMonitorSummary()
 
    for(int i = 0; i < HEALTH_WD_MODULES; i++)
    {
-      summary += g_wdModuleNames[i] + ": " + IntegerToString(g_wdFailures[i]) + " falhas\n";
+      // 04/11/2026 - P2.20: o resumo imprimia g_wdFailures (liveness) tambem
+      // para os modulos de pipeline, que acumulam em g_wdProgressFails. A
+      // mesma mensagem dizia "Status: ERROR (check FALHOU)" e
+      // "PYTHON: 0 falhas | CSV: 0 falhas | JSON: 0 falhas". Passa a ler o
+      // contador que o veredicto realmente usa.
+      int falhasModulo = HealthIsPipeline(i) ? g_wdProgressFails[i]
+                                             : g_wdFailures[i];
+      summary += g_wdModuleNames[i] + ": " + IntegerToString(falhasModulo) + " falhas\n";
    }
 
    summary += "\n--- Erros ---\n";

@@ -17,7 +17,11 @@
 
 // URLs separadas por ';'. Inclui as que o projeto realmente usa e
 // candidatas comuns, para o operador conferir o que ja cadastrou.
-input string UrlList   = "http://127.0.0.1:9001/api/ai/predict;https://api.telegram.org;https://api.openai.com;https://generativelanguage.googleapis.com;https://api.anthropic.com;https://www.mql5.com"; // URLs a testar (separadas por ;)
+// 04/11/2026: 9001 e o MCP embutido do MT5, nao o gateway. A lista abaixo
+// testa a porta real (9011) em tres formas + o controlo 9001, que ja se
+// provou permitido em 03/11 23:36. Se o 9011 der 401/200/404, esta na lista;
+// se der 4014/4060, nao esta.
+input string UrlList   = "http://127.0.0.1:9011/api/ai/predict;http://127.0.0.1:9011/;http://localhost:9011/api/ai/predict;http://127.0.0.1:9001/api/ai/predict"; // URLs a testar (separadas por ;)
 input string Method    = "GET";   // Verbo HTTP (GET ou POST)
 input int    TimeoutMs = 5000;    // Timeout por pedido (ms)
 

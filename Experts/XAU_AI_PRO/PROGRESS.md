@@ -4407,3 +4407,32 @@ Pendencias do dono (inalteradas):
 3. `AIGatewayToken`: o grafico envia **17** caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem **64**
 4. Arrancar o processo que serve `/api/ai/predict`
 5. **Nao ir a conta real** - PF 0.62 no periodo 01/09-01/11/2026
+
+---
+
+## Ciclo 91 - 04/11/2026 19:05 - fail-closed do token, IA 30F viva e raiz limpa (v1.2.134)
+
+| Item | Estado medido |
+|---|---|
+| `backend/fastapi_gateway.py` | middleware de auth passou de `if API_TOKEN:` (fail-open) para `if not API_TOKEN:` -> `401 "sem token configurado"`. Paridade com `mt5_gateway.py::_autorizado` |
+| Prova negativa do fail-closed | app ASGI em `127.0.0.1:9012` com `API_TOKEN=""`: health 401 sem token, 401 com token vazio, 401 com token inventado, e `/api/auth/ping` 200 (rota publica). Com token: 200; token errado: 401 |
+| Prova em producao (9011) | sem token **401**, token errado **401**, token correto **200**, `GET /api/ai/predict` **200** com `available=true signal=SELL prob_sell=0,6365 price=4063,84 atr=17,44 hash=5305081777808310` |
+| `backend/ai_inference.py` | 40 483 -> 47 184 bytes. Despacha o construtor de features pela `feature_version` do artefato e decodifica a probabilidade pelas `classes_` do modelo. O artefato publicavel `XAU-30F-v4` e **binario**: o codigo antigo lia `probs[2]` (sempre 0,0) como BUY |
+| `TOKEN_PARA_BACKEND.txt` | apagado: 132 bytes com a **mesma** string do `XAU_GATEWAY_TOKEN`. Medido: nenhum arquivo versionado contem essa string |
+| `start_gateway.bat` | armava `XAU_ENABLE_REAL_ORDERS=1` e `XAU_MCP_TRADING=1` so por ser executado. Agora as 6 portas ficam em `0` e `real` e argumento explicito, com aviso e 5 s para abortar |
+| Raiz do projeto | 34 arquivos de uso unico movidos para `Files/Backup/raiz_lixo_20261104` (25 `.py`, 3 `.bat` quebrados, 6 `.txt`); `check_all.py` e `check_main.py` eram versionados e o commit registra a remocao. Medido antes: nenhum deles e importado por `backend/`, `Python/`, `tests/`, `app/` ou `scripts/` |
+| `.env` com 2 chaves | **nao e regressao.** As 16 chaves do `.env.example` foram varridas contra todo o codigo: `TRADING_PAIR`, `BROKER_API_KEY`, `BROKER_API_SECRET`, `DATABASE_PATH`, `LOG_FILE`, `RETRAIN_INTERVAL`, `MAX_POSITION_SIZE`, `STOP_LOSS_PERCENT`, `TAKE_PROFIT_PERCENT` nao tem consumidor; `ASSET`, `TIMEFRAME`, `LOG_LEVEL`, `MODEL_PATH`, `ENVIRONMENT` eram falso positivo (nome de variavel/enum/constante). As duas chaves que restam sao as duas que o sistema usa: porta (10 modulos) e token (16 modulos) |
+| Validacao estatica | `Tools\agent-toolkit.ps1 check`: 108 fontes, UTF-8 OK, chaves OK, includes OK |
+| Compilacao | `0 errors, 0 warnings`, 29 318 ms, `X64 Regular`, `.ex5` de `2026-11-04 19:05:25` |
+| Nao rodou | suite `pytest`: o `.venv` nao tem `pytest` instalado (`requirements-dev.txt` pede `pytest>=9.0.3`). A validacao Python foi feita por scripts deterministicos que exercitam o caminho real |
+| Documento do ciclo | `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_FAIL_CLOSED_30F_E_LIMPEZA.md` |
+
+O que este ciclo prova: o gateway deixou de aceitar chamada sem credencial, a IA passou a responder com o modelo publicavel de XAUUSD e a raiz do projeto deixou de ter script de uso unico e copia de token em texto claro. Nenhuma regra de entrada, saida, lote, alvo, stop, spread, preco ou parametro de risco foi tocada.
+
+Pendencias do dono (medidas):
+1. Reanexar o EA nos graficos `XAU_P216_LIVE` para o `.ex5` de `19:05:25` valer - compilar nao reanexa.
+2. Testador ocupado (5 `metatester64.exe` ativos): nenhum backtest foi lancado. Re-medir com `v1.2.134` e ticks reais quando o slot liberar.
+3. `Data\prediction_XAUUSD.json`: `WebRequest` nao funciona dentro do Strategy Tester, entao o EA no backtest continua a ler o arquivo.
+4. `pytest` no `.venv` (instalar `requirements-dev.txt` exige rede).
+5. `RewardRatio` e `0,65` no preset de producao e `1,30` no `.set` do testador - decidir e medir o A/B de `MinRewardRatio` (0,55 -> 1,5/2,0).
+6. **Nao ir a conta real**: PF 0,6206, acerto 41,4%, 10-11 perdas seguidas, contra o criterio de PF > 1,20 e perdas seguidas <= 8.

@@ -35,7 +35,15 @@ input string TradeComment       = "XAU_AI_PRO";
 // Sem isso o MT5 devolve -401 e o EA registra "gateway recusou" uma vez por
 // minuto no log - e segue operando pela leitura de arquivo.
 input bool   AIUseGateway       = true;
-input string AIGatewayUrl       = "http://127.0.0.1:9001/api/ai/predict";
+// v1.2.133 (04/11/2026) - P-01c: a porta por omissao apontava para o servidor
+// ERRADO. MEDIDO em 04/11/2026 com o gateway no ar: 127.0.0.1:9001 responde
+// 401 a qualquer /api/ai/predict porque e o servidor MCP EMBUTIDO do MT5
+// (config\assistant.ini), nao o gateway; o gateway escuta em 9011
+// (XAU_GATEWAY_PORT) e responde 200 ao GET autenticado com o
+// XAU_GATEWAY_TOKEN do .env. O 401 que o journal repetia desde 03/11 era o
+// endereco errado lido como credencial recusada. A omissao passa a 9011, que e
+// a porta que o backend usa quando XAU_GATEWAY_PORT nao esta definido.
+input string AIGatewayUrl       = "http://127.0.0.1:9011/api/ai/predict";
 input string AIGatewayToken     = "";
 // Segundos entre uma consulta e outra. 15 s alinha com o ciclo do motor e com
 // a leitura de latencia: mais rapido e consumo sem ganho, mais lento e o EA
@@ -1062,7 +1070,7 @@ bool RiscoCabeNoOrcamento(double risco_usd, string &motivo)
 // NAO exige disponibilidade. Toda a cadeia de risco continua valendo
 // (spread, tendencia, ADX, volatilidade, SafetyManager, CircuitBreaker,
 // EquityProtection, drawdown e limite diario).
-input bool   EnableAutonomousMode = true;   // IA consultiva: nao veta e nao exige gateway
+input bool   EnableAutonomousMode = false;   // IA real: veta e exige gateway (era consultiva)
 
 // Piso do MarketScore aplicado em AllowTrade (DecisionEngine). Era 60.0 fixo
 // no codigo; agora e ajustavel sem recompilar.

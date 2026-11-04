@@ -332,3 +332,27 @@ Pendencias do dono (inalteradas):
 3. `AIGatewayToken`: o grafico envia **17** caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem **64**
 4. Arrancar o gateway Python (`/api/ai/predict` nao tem quem o sirva)
 5. **Nao ir a conta real** - PF 0.62 no periodo 01/09-01/11/2026
+
+## Ciclo 91 - 04/11/2026 19:05 - fail-closed do token, IA 30F viva e raiz limpa (v1.2.134)
+
+| Item | Estado |
+|---|---|
+| `backend/fastapi_gateway.py` | auth **fail-closed**: sem `XAU_GATEWAY_TOKEN`, `401 "sem token configurado"` (antes `if API_TOKEN:` deixava passar tudo) |
+| Prova negativa | app em `9012` com `API_TOKEN=""`: 401 sem token, 401 token vazio, 401 token inventado, `/api/auth/ping` 200. Com token: 200 / token errado: 401 |
+| Producao (9011) | 401 / 401 / 200 e `predict` 200 `available=true signal=SELL prob_sell=0,6365 price=4063,84 hash=5305081777808310` |
+| `backend/ai_inference.py` | 40 483 -> 47 184 bytes; features pela `feature_version` do artefato e probabilidade pelas `classes_` (o modelo `XAU-30F-v4` e binario, `probs[2]` era sempre 0,0) |
+| `TOKEN_PARA_BACKEND.txt` | apagado; nenhum arquivo versionado continha a string |
+| `start_gateway.bat` | portas de execucao em `0` por padrao; `real` e argumento explicito com 5 s para abortar |
+| Raiz | 34 arquivos movidos para `Files/Backup/raiz_lixo_20261104`; 2 versionados removidos (`check_all.py`, `check_main.py`) |
+| `.env` 2 chaves | nao e regressao: as 16 do `.env.example` nao tem consumidor real; as 2 presentes sao as 2 usadas |
+| Validacao | `check`: 108 fontes OK; `compile`: **0 errors, 0 warnings**, `.ex5` `19:05:25` |
+| Nao rodou | `pytest` - ausente do `.venv` |
+| Documento | `Files/XAU_AI_PRO/Docs/CONVERSA_20261104_FAIL_CLOSED_30F_E_LIMPEZA.md` |
+
+Pendencias do dono (medidas):
+1. Reanexar o EA nos graficos para o `.ex5` novo valer (compilar nao reanexa).
+2. Testador ocupado (5 `metatester64.exe`): nenhum backtest lancado.
+3. `prediction_XAUUSD.json` continua necessario no backtest (`WebRequest` nao existe no tester).
+4. `pytest` no `.venv`.
+5. `RewardRatio` 0,65 (producao) vs 1,30 (testador) + A/B de `MinRewardRatio`.
+6. **Nao ir a conta real**: PF 0,6206, 41,4% de acerto, 10-11 perdas seguidas.
