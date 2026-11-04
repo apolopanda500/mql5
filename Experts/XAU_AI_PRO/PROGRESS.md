@@ -4120,3 +4120,36 @@ um acto humano no grafico: F7 > aba Geral > marcar "Permitir Algo Trading" > OK.
   Continuam tambem os bloqueios do operador: `WebRequest` desligado no terminal
   (erro 4014) e `AIGatewayToken` vazio (HTTP 401), por isso o `[RESUMO]` diz
   `IA=SEM PRECO`.
+
+## Ciclo 82 - v1.2.126 / P2.16: o token do servidor MCP estava no codigo (03/11/2026 22:35)
+
+- Defeito medido no journal, nao por leitura de codigo: `[MCP] servidor ativo |
+  metodos=7/7 risk=ok ai=ok health=ok account=ok positions=ok checklist=ok
+  gate=ok` as 21:44:59. O servidor MCP embutido do EA estava a correr nos 15
+  graficos e a autenticar com o token literal `xau-mcp-local-2026`, escrito em
+  `Core/Config.mqh:86` e portanto publico no GitHub desde sempre.
+- Alcance: com o token publico, quem alcancasse o canal lia risco, conta,
+  posicoes, saude e checklist (metodos de leitura) sem descobrir nada.
+- P2.16 nao toca em trading: `EnableMCPServer` passa a **falso** por omissao (o
+  servidor e opt-in), `MCPServerToken` passa a **vazio** no codigo - o token
+  privado vai no input do grafico - e o valor antigo e **recusado em runtime**
+  por XAU_AI_PRO.mq5, para fechar o canal sem depender de reconfigurar os 15
+  graficos a mao.
+- Prova em producao (reload duplo forcado por troca de perfil, 22:34:53 e
+  22:35:00, 15 `[START] XAU_AI_PRO v1.2.126` cada): `[MCP] SHUTDOWN | ok=true |
+  pedidos=1 | recusados=0` as 22:34:49 e **uma so** linha `[MCP] DESATIVADO |
+  token literal publico recusado | defina um token privado no input
+  MCPServerToken` as 22:34:53. Nenhum `[MCP] servidor ativo` novo. `[STOP]` = 1
+  nas duas recargas (portao de 120 s da conta, P2.13). 0 posicoes abertas no
+  momento do reload.
+- Versao alinhada nos tres sitios: `EA_VERSION_STRING` 1.2.126, cabecalho do EA
+  e `#property version` "1.326". `agent-toolkit.ps1 deploy` as 22:34:35: check
+  em 108 fontes OK + **0 errors / 0 warnings** (21 659 ms, X64 Regular).
+- README: o cabecalho dizia v1.2.41 / "1.241" desde outubro; passa a v1.2.126 /
+  "1.326" e a explicar que a propriedade acompanha desde a v1.2.123
+  (minor*100+patch).
+- Commit `8d23ef84` empurrado para `github/main`.
+- Pendente de operador (nao e codigo): para voltar a usar o servidor MCP
+  embutido e preciso definir um token privado (8+ caracteres) no input
+  `MCPServerToken` dos graficos e `EnableMCPServer=true`. Continuam tambem o
+  `WebRequest` desligado (erro 4014) e o `AIGatewayToken` vazio (HTTP 401).

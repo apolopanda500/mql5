@@ -166,3 +166,19 @@ Pendente (por ordem de valor):
 4. Seguranca: tirar `MCPServerToken` do codigo versionado (ler de ficheiro).
 5. Docs: `README.md` ainda anuncia v1.2.25 no cabecalho; `PROGRESS.md` ja tem o
    Ciclo 81.
+
+## Atualizacao 22:35 (mesma sessao) - servidor MCP embutido desligado
+
+- `[MCP] servidor ativo | metodos=7/7 ...` as 21:44:59 provou que o servidor MCP
+  do EA corria nos 15 graficos autenticado com o token literal publico
+  (`Core/Config.mqh`, GitHub). **Corrigido na v1.2.126 / P2.16**: default
+  `EnableMCPServer=false`, `MCPServerToken=""` no codigo e o valor antigo
+  recusado em runtime. Journal de 22:34:53: `[MCP] DESATIVADO | token literal
+  publico recusado | defina um token privado no input MCPServerToken`.
+- Para voltar a usar o servidor embutido: token privado (8+ caracteres) no input
+  `MCPServerToken` dos graficos + `EnableMCPServer=true`. O token nao volta ao
+  codigo.
+- Estado as 22:34:53: v1.2.126 nos 15 graficos, **0 posicoes**, saldo/equity
+  **12 592,02**, dia **+22,94 de 40,00 USD (57%)**, `IA=SEM PRECO`.
+  Compilacao/deploy 0 errors / 0 warnings. Commit `8d23ef84` (P2.16);
+  anteriormente `ef02e1c8` (P2.15) e `2aa63fca` (docs Ciclo 81).
