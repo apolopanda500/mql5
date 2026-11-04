@@ -261,3 +261,12 @@ Pendencias do dono que continuam abertas:
 3. Colar em `AIGatewayToken` o valor de `XAU_GATEWAY_TOKEN` (64 chars, em `MQL5\Files\XAU_AI_PRO\.env`)
 4. Nada serve `/api/ai/predict`: arrancar o gateway Python
 5. Nao ir a conta real: o backtest do periodo 01/09-01/11/2026 deu PF 0.62
+
+
+## Ciclo 87 - 03/11/2026 23:57 - v1.2.130 (P2.21)
+
+| Item | Estado |
+|---|---|
+| P2.21 `AIConnector.mqh` | aviso de `HTTP != 200` passa a 1 linha por tag+status a cada 30 min POR CONTA (~780 linhas/hora -> ~2) |
+| P2.20 provado em runtime | `23:48:26.281 | token RECUSADO (17 caracteres enviados ...) | WebRequest=LIGADO (a chamada SAIU) | corpo=0B` |
+| Token em uso vs esperado | grafico envia **17** caracteres; `XAU_GATEWAY_TOKEN` no `.env` tem **64** |

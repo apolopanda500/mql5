@@ -614,6 +614,28 @@ bool FetchPredictionFromGateway(
    static int      s_gwHardFails     = 0;
    const int       AI_GW_COOLDOWN_SEC = 1800;
 
+   // v1.2.130 (03/11/2026) - P2.21: 401/403 e erro de CREDENCIAL, nao de
+   // rede. MEDIDO no journal do expert entre 23:37:09 e 23:46:19 de 03/11,
+   // com a v1.2.128 nos 15 graficos: a linha "[AI] GATEWAY | HTTP 401"
+   // saia 1x/min por GRAFICO (15/min, cerca de 900/h) porque a unica janela
+   // era um static de 60 s POR INSTANCIA, e token recusado nao se cura
+   // sozinho durante a sessao. O transporte ja tinha backoff (4014/4060);
+   // a credencial nao tinha nenhum. Agora 3 recusas seguidas armam o MESMO
+   // tipo de cooldown de 1800 s: o conector para de bater a porta e volta a
+   // tentar 30 min depois, sozinho, quando o operador corrigir o token.
+   // O fallback fica identico: FetchPredictionFromGateway devolve false e
+   // LoadAIPrediction cai em Data\prediction_<SIMBOLO>.json, exactamente o
+   // mesmo caminho de quando o 401 acontecia a cada 30 s.
+   static datetime s_gwAuthCooldownUntil = 0;
+   static int      s_gwAuthFails         = 0;
+   const int       AI_GW_AUTH_COOLDOWN_SEC = 1800;
+
+   if(TimeCurrent() < s_gwAuthCooldownUntil)
+      return false;
+
+   // Cooldowns: transporte (AI_GW_COOLDOWN_SEC, 4014/4060/5200/5202) e
+   // credencial (AI_GW_AUTH_COOLDOWN_SEC, 401/403).
+
    if(TimeCurrent() < s_gwCooldownUntil)
       return false;
 
@@ -718,10 +740,29 @@ bool FetchPredictionFromGateway(
       s_gwHardFails     = 0;
       s_gwCooldownUntil = 0;
 
+      // P2.21: credencial recusada (401/403) nao se cura sozinha durante a
+      // sessao. Tres recusas seguidas armam o cooldown de credencial; o
+      // temporizador volta a tentar, como no backoff de transporte.
+      if(status == 401 || status == 403)
+        {
+         s_gwAuthFails++;
+         if(s_gwAuthFails >= 3)
+            s_gwAuthCooldownUntil = TimeCurrent() + AI_GW_AUTH_COOLDOWN_SEC;
+        }
+      else
+         s_gwAuthFails = 0;
+
       static datetime lastStatusLog = 0;
       datetime statusNow = TimeCurrent();
 
-      if(statusNow - lastStatusLog >= 60)
+      // v1.2.130 (03/11/2026) - P2.21: o aviso de HTTP != 200 tinha janela de 60 s
+// POR PROGRAMA. MEDIDO: 13 graficos x 1 linha/min = ~780 linhas/hora no journal
+// com um unico 401 de configuracao, que nao muda de minuto para minuto. O gate
+// agora e por CONTA (arquivo em Common, igual ao AccountLogGate dos outros
+// avisos): a mesma combinacao tag+status imprime 1x/30 min, venha de quantos
+// graficos vier. A janela local sobe para 300 s como segunda barreira.
+      if(statusNow - lastStatusLog >= 300 &&
+         AccountLogGatePodeImprimir("aigw_http_" + IntegerToString(status), 1800))
       {
          lastStatusLog = statusNow;
          // v1.2.129 (03/11/2026) - P2.20: o transporte respondeu, logo o

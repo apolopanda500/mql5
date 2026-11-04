@@ -4307,3 +4307,17 @@ Config: `Profiles\Tester\XAI_V127.ini`, modelo `m1 ohlc`, deposito 10000 USD, le
 Leitura honesta: o EA perde dinheiro neste periodo e neste modelo. O drawdown e BAIXO (2.6%), portanto o risco por trade esta controlado - o que falha e a taxa de acerto (41.4%) contra um payoff medio que nao compensa. Uma sequencia de 10-11 perdas seguidas num mes significa que o capital psicologico e o drawdown real de uma sequencia pior podem coincidir com a ida a conta real.
 
 **VEREDITO: NAO aprovado para conta real.** Um backtest em `m1 ohlc` tambem subestima escorregamento e spread em XAUUSD. Antes de qualquer conta real: (1) explicar a taxa de acerto com o filtro `RSI 45/55` em H1, que ja e o maior bloqueio no scanner (NoSignal=291 de 319); (2) repetir em `real ticks`; (3) so aceitar com PF > 1.2 e sequencia maxima de perdas conhecida.
+
+## Ciclo 87 - 03/11/2026 23:57 - P2.21 (gate por conta no aviso de gateway) (v1.2.130)
+
+Defeito medido entre 23:41 e 23:42, com 13 graficos abertos: `[AI] GATEWAY | HTTP 401 | ...` uma vez por simbolo por minuto - cerca de 780 linhas/hora para descrever um unico erro de configuracao (token). A janela era de 60 s **por programa**, portanto cada grafico tinha a sua e o `AccountLogGate` nunca era usado nesse ponto.
+
+Correcao: o aviso de `HTTP != 200` passou a usar `AccountLogGatePodeImprimir("aigw_http_" + status, 1800)` - 1 linha por tag+status a cada 30 min, independentemente do numero de graficos - e a janela local subiu para 300 s como segunda barreira. Nao muda nenhuma decisao de sinal: apenas o volume de journal.
+
+Prova em runtime do P2.20 (23:48:26.281, XAUUSD chart chamando USDJPY):
+
+```
+[AI] GATEWAY | HTTP 401 | http://127.0.0.1:9001/api/ai/predict?symbol=USDJPY&timeframe=H1 | token RECUSADO (17 caracteres enviados; o gateway espera o XAU_GATEWAY_TOKEN do .env) | WebRequest=LIGADO (a chamada SAIU) | corpo=0B
+```
+
+Nota operacional: o grafico esta a enviar **17 caracteres** e o `XAU_GATEWAY_TOKEN` do `.env` tem **64**. Ate o dono colar o valor exato, o `401` continua - agora com o motivo certo.
