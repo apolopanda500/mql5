@@ -1,7 +1,7 @@
 # XAU_AI_PRO — Registro de Progresso
 
 > Plataforma XAUUSD: modular, auditável, testável e preparada para operação.
-> Última atualização: 2026-10-30 (v1.2.25) — índice geral em `README.md`
+> Última atualização: 2026-11-04 (v1.2.135) — índice geral em `README.md`
 > Lista viva de pendencias (com dono e criterio de fechamento): `PENDENCIAS.md`.
 
 ---

@@ -31,6 +31,7 @@
 | 11 | 2026-10-30 (05:35) | "anotar todas pendencias que faltam para facilitar os trabalhos no futuro" | Criado `PENDENCIAS.md` (fonte unica, 23 itens com dono e criterio de fechamento) + tabela de monitoramento e checklist de retomada. Ver sessao D abaixo. |
 | 12 | 2026-10-30 (20:00 -> 23:35) | "p1 p2 melhorar tudo"; "pesquisar estudar melhorar EA AUTONOMO REAL"; "proximo" (seis vezes) | v1.2.37 -> v1.2.40: guarda de conta real, backup desacoplado, corte de spam do journal, rotacao do `audit_log.csv`. P0.5 respondida por codigo e analise de 99 560 trades do historico. Ver sessao E abaixo. |
 | 13 | 2026-10-31 (06:04) | "salvar conversas anotar" | Esta gravacao: indice de sessoes actualizado, sessao E/F escritas e `PROGRESS.md` com o ciclo 18. Nenhum `.mq5`/`.mqh` tocado. Ver sessao F abaixo. |
+| 14 | 2026-11-04 (19:20) | "garantir EA par auso real daqui pra frente"; "corrigir todas falhas, erros, avisos, etc.. deixar limpo"; "so com PF > 1.20 e perdas seguidas <= 8 se discute conta real" | 13 graficos revinculados na v1.2.135 (journal prova `[START]`/`[VERSION]`); `Docs/version.json` 1.2.9 provado NAO ser drift (e a versao do APP, nao do EA); documento do ciclo 92 gravado. Ver sessao G abaixo. |
 
 ---
 
@@ -372,3 +373,69 @@ seguidas, sempre a pedir o item de maior valor que estivesse pendente.
 
 - Os mesmos seis pontos da sessao E. A gravacao nao fecha pendencias tecnicas;
   garante que a proxima sessao saiba exactamente onde parou e por que.
+
+---
+
+## Sessao G - 2026-11-04 19:20
+
+**Pedido, nas palavras do dono:** "sim pode fazer commits push deploy anotar e
+salvar documentos novos e atualizados e garantir EA par auso real daqui pra
+frente"; "corrigir todas falhas, erros, avisos, etc.. deixar limpo"; "so com
+PF > 1.20 e perdas seguidas <= 8 se discute conta real, e mesmo ai com
+EnableRealAccountGuard=true e risco baixo".
+
+### O que foi pedido e o que foi medido
+
+- **EA igual ao compilado.** Os 13 graficos foram revinculados no `.ex5` de
+  2026-11-04 19:15:59 e o journal prova
+  `[START] XAU_AI_PRO v1.2.135 | conta=113568614 | MetaQuotes Ltd./MetaQuotes-Demo`
+  nos 13 simbolos, com `[VERSION] v1.2.135 | Build=2026.11.04 | Stable=Yes |
+  AutoUpdate=OFF | Modulos=16` e os 16 modulos OK.
+- **O que estava no grafico antes.** `AIGatewayUrl` na porta **9001** e
+  `AIGatewayToken` = `XAU_GATEWAY_TOKEN` (o NOME da variavel de ambiente, 17
+  chars). O gateway real esta na **9011** (P-01d). O input velho nao quebrava
+  a IA porque `AIGatewayUrlEfetiva()`/`AIGatewayTokenEfetivo()`
+  (`AI/AIConnector.mqh:596-660`) leem o `.env` em runtime â€” ou seja, o EA
+  funcionava e o input mentia. Dois lados do mesmo dado com nomes diferentes.
+- **Reattach nao muda risco.** Defaults do codigo iguais aos inputs vivos:
+  `RewardRatio` 0.65 (`Core/Config.mqh:301`), `MinRewardRatio` 0.55
+  (`Core/ExecutionEngine.mqh:226`), `RiskPercent` 1.0 (`Config.mqh:111`),
+  `MaxDailyLossUsd` 60.0 (`Config.mqh:122`), `MaxDrawdownPercent` 15.0
+  (`Config.mqh:123`), `DailyProfitTargetMaxUsd` 40.0 (`Config.mqh:1478`),
+  `RiskPerTradeUsd` 2.0 (`Config.mqh:300`), `EnableRealAccountGuard` true
+  (`Core/RealAccountGuard.mqh:43`). Conta DEMO 113568614
+  (`MetaQuotes-Demo`), saldo 12592.02 USD, 0 posicoes, 0 ordens, build 6296.
+- **O "1.2.9" que parecia drift.** `Docs/version.json` diz 1.2.9 e o mesmo
+  valor esta em `backend/package.json`, `frontend/package.json`,
+  `frontend/src-tauri/tauri.conf.json` e
+  `frontend/src-tauri/bridge/_internal/Docs/version.json` â€” exatamente os
+  arquivos que `scripts/sync_version.py` propaga (linha 19 le o
+  `Docs/version.json`; linhas 174-177 patcham os outros). **E a versao do APP,
+  nao do EA.** Trocar para 1.2.135 seria o defeito, nao a correcao: mudaria a
+  versao que o instalador NSIS compara e reproduziria a bridge defasada.
+  Decisao: nao mexer, e agora esta escrito.
+- **Limpeza de drift.** Seis textos diziam 1.2.134 com o EA em 1.2.135:
+  `README.md:8`, `PENDENCIAS.md:12`, `PENDENCIAS.md:30`, `PROGRESS.md:4413`,
+  `PROGRESS.md:4434`, `Tools/HANDOFF.md:336`, mais a linha 253 do documento do
+  ciclo 91. Sobraram duas ocorrencias historicas intencionais:
+  `AI/AIConnector.mqh:638` (comentario P-01d) e o changelog em
+  `Enterprise/VersionManager.mqh:63`.
+- **Nenhum `.mqh`/`.mq5` tocado**, logo o `deploy` foi deliberadamente NAO
+  re-corrido. O binario publicado continua o de 2026-11-04 19:15:59:
+  108 ficheiros validados, `Result: 0 errors, 0 warnings`, 25739 ms,
+  `X64 Regular`.
+
+### Aberto
+
+- Strategy Tester **ocupado** (3 `metatester64.exe` e 2 `MetaTester64.exe`
+  vivos): nenhum run lancado de proposito. Sem run novo, P1.25-P1.36 e o
+  P-01b (IA 30F) nao tem prova em backtest.
+- Geometria incoerente entre producao e tester: `RewardRatio` 0,65 contra
+  1,30 no `.set`; `MinRewardRatio` 0,55 contra 1,00. Com TP a 65% do SL, um
+  acerto de 41,4% precisa de mais de 60% de acerto so para empatar. A/B por
+  correr.
+- `chart14` (XAUUSD H1, chart_id 91943700848411, 60349 barras) sem expert.
+  Ligar seria um 14. grafico identico ao chart01, com o mesmo
+  `MagicNumber=2026001`: decisao do dono.
+- Conta real continua recusada: PF 0,6206, 41,4% de acerto, 10-11 perdas
+  consecutivas, contra PF > 1,20 e streak <= 8.
