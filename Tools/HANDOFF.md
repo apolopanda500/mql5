@@ -290,3 +290,27 @@ Pendencias do dono (inalteradas):
 3. `AIGatewayToken`: o grafico envia **17** caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem **64**
 4. Arrancar o gateway Python (`/api/ai/predict` nao tem quem o sirva)
 5. **Nao ir a conta real** - ver `RELATORIO_BACKTEST_20260901_20261101.md` (PF 0.62)
+
+
+## Ciclo 89 - 04/11/2026 05:58 - ciclo 88 publicado (v1.2.131)
+
+| Item | Estado |
+|---|---|
+| Commit | `4e72a976` (9 ficheiros, 134 insercoes, 6 remocoes) |
+| Push | `8d52d767..4e72a976  main -> main` |
+| Compilacao | `0 errors, 0 warnings`, `21573 ms`, X64 |
+| `.ex5` | `05:57:14`, **823316** bytes |
+| Validacao estatica | 108 fontes OK |
+| Working tree | limpo |
+| Dependabot | 2 `moderate` (`minimatch`, `qs`), dev-chain, sem fix sem major |
+
+- Documentacao salva: `RELATORIO_BACKTEST_20260901_20261101.md` (veredito REPROVADO, PF 0.6206), `PROGRESS.md` Ciclos 86 a 89, este `HANDOFF.md`.
+- Nenhuma regra de entrada, saida, lote, alvo, stop, spread ou parametro de risco foi tocada nos Ciclos 86 a 89: tudo o que mudou foi texto de journal, caminho da base de dados, numero de versao e documentacao.
+
+Pendencias do dono (inalteradas):
+1. Allowlist em Ferramentas > Opcoes > Expert Advisors: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com`
+2. Porta: opcao A (limpar `XAU_GATEWAY_PORT`, volta a 9001) ou opcao B (manter 9011 e mudar `AIGatewayUrl` nos graficos)
+3. `AIGatewayToken`: o grafico envia **17** caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem **64**
+4. Arrancar o gateway Python (`/api/ai/predict` nao tem quem o sirva)
+5. **Nao ir a conta real** - PF 0.62 no periodo 01/09-01/11/2026
+

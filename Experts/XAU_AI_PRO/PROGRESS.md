@@ -4342,3 +4342,46 @@ Trabalho encontrado por commitar no worktree na manha de 04/11 e publicado neste
 ### Estado
 
 Compilacao `0 errors, 0 warnings` (21235 ms, X64). EA `v1.2.131` recarregado nos graficos pelo terminal.
+
+
+## Ciclo 89 - 04/11/2026 05:58 - publicacao do ciclo 88 (v1.2.131)
+
+| Item | Medicao |
+|---|---|
+| Commit | `4e72a976` - 9 ficheiros, 134 insercoes, 6 remocoes |
+| Push | `8d52d767..4e72a976  main -> main` (remote `github`) |
+| Validacao estatica | 108 fontes OK (UTF-8, chaves, `#include`) |
+| Compilacao | `0 errors, 0 warnings`, 21573 ms, X64 Regular |
+| `.ex5` publicado | `XAU_AI_PRO.ex5`, 2026-11-04 05:57:14, 823316 bytes |
+| Working tree | limpo depois do commit |
+| Dependabot | 2 `moderate` (`minimatch`, `qs`) - cadeia de desenvolvimento, sem correcao sem major |
+
+Ficheiros publicados neste ciclo:
+
+| Ficheiro | O que levou |
+|---|---|
+| `AI/AIConnector.mqh` | `s_gwAuthFails = 0` quando o gateway responde 200 (cooldown de credencial do P2.21) |
+| `Enterprise/DatabaseManager.mqh` | caminho `TERMINAL_PATH` -> `TERMINAL_DATA_PATH`; `sqlite3 indisponivel` -> `DESATIVADA` 1x por sessao |
+| `Enterprise/VersionManager.mqh` | `EA_VERSION_STRING` 1.2.131 + changelog P2.22/P2.21/P2.20 |
+| `Monitoring/ValidationChecklist.mqh` | `[VALIDATION] N BLOCKED` 1x por sessao por conta |
+| `XAU_AI_PRO.mq5` | cabecalho `v1.2.131` alinhado com o `VersionManager` |
+| `PROGRESS.md` | Ciclos 86, 87, 88, 89 |
+| `HANDOFF.md` | tabelas dos Ciclos 86 a 89 |
+| `RELATORIO_BACKTEST_20260901_20261101.md` | relatorio novo do backtest (veredito REPROVADO) |
+| `Profiles/Tester/XAU_AI_PRO.set` | preset do tester comparado (binario, ja rastreado) |
+
+### Documentacao salva nesta sessao
+
+1. `RELATORIO_BACKTEST_20260901_20261101.md` - lucro -213.74 USD, profit factor 0.6206, drawdown de equity 261.09 USD (2.61%), 152 trades, 41.4% de acerto, 10 a 11 perdas seguidas. Veredito **REPROVADO para conta real**, com os criterios de aprovacao a repetir (PF acima de 1.20, perdas seguidas ate 8, drawdown ate 5%, no minimo 100 trades).
+2. `PROGRESS.md` - Ciclos 86 a 89 (P2.20, P2.21, P2.22 e a publicacao).
+3. `HANDOFF.md` - o mesmo em tabela, mais as pendencias do dono que continuam abertas.
+4. Relatorio bruto da simulacao guardado em `Files\Backup\backtest_7704134350896417964.json`.
+
+### O que continua bloqueado (nada disto e codigo)
+
+1. Allowlist de WebRequest na GUI: `https://api.telegram.org`, `https://api.openai.com`, `https://generativelanguage.googleapis.com`, `https://api.anthropic.com`, `https://www.mql5.com`.
+2. Porta do gateway: opcao A (limpar `XAU_GATEWAY_PORT`, volta a 9001) ou opcao B (manter 9011 e mudar `AIGatewayUrl` nos graficos).
+3. `AIGatewayToken`: o grafico envia 17 caracteres, o `XAU_GATEWAY_TOKEN` do `.env` tem 64.
+4. Arrancar o processo que serve `/api/ai/predict`.
+5. Conta real: nao ir com esta configuracao (PF 0.6206).
+
