@@ -1,64 +1,108 @@
 {
   "symbol": "XAUUSD",
   "timeframe": "H4",
-  "feature_version": "25F-v2",
-  "feature_hash": "27727ee00bc30b7f",
-  "feature_count": 25,
+  "feature_version": "XAU-30F-v4",
+  "feature_hash": "5305081777808310",
+  "feature_count": 30,
   "algorithm": "RandomForestClassifier",
+  "model_kind": "rf",
+  "label": "direcao binaria do retorno em 4 barras acima de 0.5 ATR",
   "metrics": {
-    "accuracy": 0.46774193548387094,
-    "f1_score": 0.45813155503806224,
-    "baseline": 0.3333333333333333,
-    "edge": 0.13440860215053763,
-    "train_samples": 771,
-    "test_samples": 186,
-    "purged": 10,
+    "accuracy": 0.5242612942612943,
+    "baseline": 0.5809035409035409,
+    "edge": -0.012332290219120079,
+    "edge_balanced": -0.012332290219120079,
+    "balanced_accuracy": 0.4975823876509994,
+    "auc": 0.5046645077627285,
+    "auc_holdout": 0.4939531833766915,
+    "acc_edge": -0.056642246642246596,
+    "f1_score": 0.5007671652700644,
+    "trade_accuracy": 0.5287005432431133,
+    "trade_share": 0.24925518925518922,
+    "min_edge_fold": -0.06325106602920272,
+    "edge_all_folds": -0.0024176123490006196,
+    "selection_kind": "rf",
+    "holdout_folds": [
+      3,
+      4,
+      5
+    ],
     "folds": [
       {
         "fold": 1,
-        "accuracy": 0.5473684210526316,
-        "baseline": 0.3333333333333333,
-        "edge": 0.2140350877192983,
-        "train": 500,
-        "test": 95
+        "accuracy": 0.5611,
+        "baseline": 0.6333,
+        "edge": 0.0291,
+        "auc": 0.5405,
+        "bal_acc": 0.5291,
+        "acc_edge": -0.0722,
+        "f1": 0.5618,
+        "trade_accuracy": null
       },
       {
         "fold": 2,
-        "accuracy": 0.3894736842105263,
-        "baseline": 0.3333333333333333,
-        "edge": 0.05614035087719299,
-        "train": 595,
-        "test": 95
+        "accuracy": 0.4944,
+        "baseline": 0.5056,
+        "edge": -0.0042,
+        "auc": 0.5009,
+        "bal_acc": 0.4958,
+        "acc_edge": -0.0111,
+        "f1": 0.4868,
+        "trade_accuracy": 0.4516
       },
       {
         "fold": 3,
-        "accuracy": 0.45263157894736844,
-        "baseline": 0.3333333333333333,
-        "edge": 0.11929824561403513,
-        "train": 690,
-        "test": 95
+        "accuracy": 0.5111,
+        "baseline": 0.6056,
+        "edge": -0.0633,
+        "auc": 0.3671,
+        "bal_acc": 0.4367,
+        "acc_edge": -0.0944,
+        "f1": 0.4479,
+        "trade_accuracy": 0.4545
       },
       {
         "fold": 4,
-        "accuracy": 0.6210526315789474,
-        "baseline": 0.3333333333333333,
-        "edge": 0.2877192982456141,
-        "train": 785,
-        "test": 95
+        "accuracy": 0.4722,
+        "baseline": 0.5667,
+        "edge": -0.0049,
+        "auc": 0.504,
+        "bal_acc": 0.4951,
+        "acc_edge": -0.0944,
+        "f1": 0.4588,
+        "trade_accuracy": 0.4545
       },
       {
         "fold": 5,
-        "accuracy": 0.367816091954023,
-        "baseline": 0.3333333333333333,
-        "edge": 0.03448275862068967,
-        "train": 880,
-        "test": 87
+        "accuracy": 0.5824,
+        "baseline": 0.5934,
+        "edge": 0.0312,
+        "auc": 0.6107,
+        "bal_acc": 0.5312,
+        "acc_edge": -0.011,
+        "f1": 0.5485,
+        "trade_accuracy": 0.7541
       }
     ],
-    "edge_estavel": true
+    "positive_folds": 2,
+    "folds_total": 5
   },
-  "publicable": true,
-  "publish_reason": "",
+  "edge_estavel": false,
+  "publicable": false,
+  "publish_reason": "balanced edge -0.0123 abaixo do minimo 0.0300; AUC 0.4940 abaixo do minimo 0.5200; apenas 2/5 folds positivos (minimo 4); balanced edge medio global -0.0024 <= 0",
   "min_edge": 0.05,
-  "train_date": "2026-10-22T23:04:32.574039+00:00"
+  "train_samples": 1496,
+  "test_samples": 7,
+  "purged": 7,
+  "train_date": "2026-11-03T03:36:14.634007+00:00",
+  "dataset": "dataset_mt5_20261101.csv",
+  "bars": 2270,
+  "price": 3954.29,
+  "atr": 30.23731279454429,
+  "proba": {
+    "sell": 0.4568,
+    "neutral": 0.0,
+    "buy": 0.5432
+  },
+  "last_bar": "2026-10-30 08:00:00"
 }

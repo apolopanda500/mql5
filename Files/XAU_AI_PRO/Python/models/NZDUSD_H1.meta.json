@@ -6,59 +6,59 @@
   "feature_count": 25,
   "algorithm": "RandomForestClassifier",
   "metrics": {
-    "accuracy": 0.4473007712082262,
-    "f1_score": 0.4411141209251436,
-    "baseline": 0.3333333333333333,
-    "edge": 0.11396743787489289,
-    "train_samples": 3140,
-    "test_samples": 778,
+    "accuracy": 0.37579250720461094,
+    "f1_score": 0.3523972719586693,
+    "baseline": 0.35331412103746396,
+    "edge": 0.02247838616714698,
+    "train_samples": 6967,
+    "test_samples": 1735,
     "purged": 10,
     "folds": [
       {
         "fold": 1,
-        "accuracy": 0.3784570596797671,
-        "baseline": 0.3333333333333333,
-        "edge": 0.0451237263464338,
+        "accuracy": 0.3564476885644769,
+        "baseline": 0.35340632603406325,
+        "edge": 0.0030413625304136493,
         "train": 500,
-        "test": 687
+        "test": 1644
       },
       {
         "fold": 2,
-        "accuracy": 0.3406113537117904,
-        "baseline": 0.3333333333333333,
-        "edge": 0.007278020378457095,
-        "train": 1187,
-        "test": 687
+        "accuracy": 0.3333333333333333,
+        "baseline": 0.3521897810218978,
+        "edge": -0.01885644768856448,
+        "train": 2144,
+        "test": 1644
       },
       {
         "fold": 3,
-        "accuracy": 0.42212518195050946,
-        "baseline": 0.3333333333333333,
-        "edge": 0.08879184861717615,
-        "train": 1874,
-        "test": 687
+        "accuracy": 0.3254257907542579,
+        "baseline": 0.354014598540146,
+        "edge": -0.02858880778588807,
+        "train": 3788,
+        "test": 1644
       },
       {
         "fold": 4,
-        "accuracy": 0.4745269286754003,
-        "baseline": 0.3333333333333333,
-        "edge": 0.141193595342067,
-        "train": 2561,
-        "test": 687
+        "accuracy": 0.35523114355231145,
+        "baseline": 0.36435523114355234,
+        "edge": -0.009124087591240893,
+        "train": 5432,
+        "test": 1644
       },
       {
         "fold": 5,
-        "accuracy": 0.43823529411764706,
-        "baseline": 0.3333333333333333,
-        "edge": 0.10490196078431374,
-        "train": 3248,
-        "test": 680
+        "accuracy": 0.3691931540342298,
+        "baseline": 0.35635696821515894,
+        "edge": 0.012836185819070867,
+        "train": 7076,
+        "test": 1636
       }
     ],
-    "edge_estavel": true
+    "edge_estavel": false
   },
-  "publicable": true,
-  "publish_reason": "",
+  "publicable": false,
+  "publish_reason": "edge +0.0225 abaixo do minimo +0.0500 (acc 0.3758 vs palpite 0.3533)",
   "min_edge": 0.05,
-  "train_date": "2026-10-22T23:01:39.088417+00:00"
+  "train_date": "2026-11-03T01:27:43.965879+00:00"
 }

@@ -8,8 +8,8 @@
   "metrics": {
     "accuracy": 0.48854961832061067,
     "f1_score": 0.4282919813713136,
-    "baseline": 0.3333333333333333,
-    "edge": 0.15521628498727735,
+    "baseline": 0.4961832061068702,
+    "edge": -0.007633587786259555,
     "train_samples": 1074,
     "test_samples": 262,
     "purged": 10,
@@ -17,48 +17,48 @@
       {
         "fold": 1,
         "accuracy": 0.5263157894736842,
-        "baseline": 0.3333333333333333,
-        "edge": 0.19298245614035087,
+        "baseline": 0.6023391812865497,
+        "edge": -0.07602339181286555,
         "train": 500,
         "test": 171
       },
       {
         "fold": 2,
         "accuracy": 0.5263157894736842,
-        "baseline": 0.3333333333333333,
-        "edge": 0.19298245614035087,
+        "baseline": 0.5380116959064327,
+        "edge": -0.011695906432748537,
         "train": 671,
         "test": 171
       },
       {
         "fold": 3,
         "accuracy": 0.4619883040935672,
-        "baseline": 0.3333333333333333,
-        "edge": 0.1286549707602339,
+        "baseline": 0.5321637426900585,
+        "edge": -0.07017543859649128,
         "train": 842,
         "test": 171
       },
       {
         "fold": 4,
         "accuracy": 0.47953216374269003,
-        "baseline": 0.3333333333333333,
-        "edge": 0.14619883040935672,
+        "baseline": 0.49122807017543857,
+        "edge": -0.011695906432748537,
         "train": 1013,
         "test": 171
       },
       {
         "fold": 5,
         "accuracy": 0.4382716049382716,
-        "baseline": 0.3333333333333333,
-        "edge": 0.1049382716049383,
+        "baseline": 0.5,
+        "edge": -0.06172839506172839,
         "train": 1184,
         "test": 162
       }
     ],
-    "edge_estavel": true
+    "edge_estavel": false
   },
-  "publicable": true,
-  "publish_reason": "",
+  "publicable": false,
+  "publish_reason": "edge -0.0076 abaixo do minimo +0.0500 (acc 0.4885 vs palpite 0.4962)",
   "min_edge": 0.05,
-  "train_date": "2026-10-22T22:56:58.754564+00:00"
+  "train_date": "2026-11-03T01:19:22.891582+00:00"
 }

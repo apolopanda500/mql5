@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.9
+// XAU_AI_PRO v1.2.9
 #ifndef AIENGINE_MQH
 #define AIENGINE_MQH
 
@@ -36,10 +36,31 @@ void   LogAIFeedback(string symbol,double profit);
 // AI FILTER
 //==================================================
 
+//==================================================
+// GATE DE IA
+//==================================================
+// A IA so PODE barrar entrada quando ela e obrigatoria. Com
+// `EnableAutonomousMode=true` (Config.mqh) o gateway ausente deixa de
+// bloquear o EA: a IA continua calculando score e registrando feedback,
+// mas nao veta e nao exige disponibilidade.
+bool AIGateRequired()
+{
+   if(!EnableAIFilter)
+      return(false);
+
+   if(EnableAutonomousMode)
+      return(false);
+
+   return(!AllowTradeWithoutAI);
+}
+
 bool AITradeAllowed(string symbol="")
 {
    if(symbol=="")
       symbol=_Symbol;
+
+   if(!AIGateRequired())
+      return(true);
 
    int signal=GetSignal(symbol);
 
@@ -135,7 +156,7 @@ double GetAIConfidence(int signal,string symbol="")
    // (50 de base + 15 tendencia + 10 RSI + 10 ADX), o multiplicador de lote ia
    // a 1,00 e o piso de veto (50) passava sem nenhum modelo responder. O
    // numero era de indicador com nome de IA.
-   if(!AllowTradeWithoutAI)
+   if(AIGateRequired())
       score = MathMin(score, AIUnavailableConfidenceCap);
 
    score *= MemoryBoost(symbol);
@@ -264,6 +285,45 @@ int GetAIEngineSignal(string symbol="")
 // COMBINED SIGNAL
 //==================================================
 
+//==================================================
+// CONFLITO IA x TECNICO (v1.2.10 - 29/10/2026)
+//==================================================
+// MEDIDO: `GetCombinedSignal` devolvia 0 sempre que tecnico e IA apontavam
+// lados opostos. Com previsao fraca ou desatualizada isso zerava TODA
+// entrada: o EA varria os 11 simbolos, logava "No Signal" e nunca chegava
+// ao AllowTrade (zero linhas DECISION em 3h de journal). Nao era falta de
+// setup tecnico, era o empate.
+//
+// Politica nova: a IA so cancela a entrada quando esta fresca E confiavel
+// (score >= AIConflictMinScore). Fora disso o tecnico prevalece e o evento
+// vira `[AI CONFLICT]`, nunca silencio.
+bool AIConflictBlocks(int tech,int ai,string symbol="")
+{
+   if(!EnableAIConflictResolve)
+      return(true);   // comportamento antigo: empate = nao operar
+
+   bool iaConfiavel = (!AI_IsStale && AI_Score >= AIConflictMinScore);
+
+   static datetime lastConflictLog = 0;
+   datetime conflitoAgora = TimeCurrent();
+
+   if(conflitoAgora - lastConflictLog >= 60)
+     {
+      lastConflictLog = conflitoAgora;
+
+      PrintFormat("[AI CONFLICT] %s | tech=%d | ai=%d | ai_score=%.2f | stale=%s | decisao=%s | min=%.2f",
+                  symbol,
+                  tech,
+                  ai,
+                  AI_Score,
+                  (AI_IsStale ? "SIM" : "NAO"),
+                  (iaConfiavel ? "IA" : "TECNICO"),
+                  AIConflictMinScore);
+     }
+
+   return(iaConfiavel);
+}
+
 int GetCombinedSignal(string symbol="")
 {
    if(symbol=="")
@@ -299,7 +359,7 @@ int GetCombinedSignal(string symbol="")
    if(tech==0 && ai!=0 && AI_Score>75)
       return ai;
 
-   if(tech!=0 && ai!=0 && tech!=ai)
+   if(tech!=0 && ai!=0 && tech!=ai && AIConflictBlocks(tech,ai,symbol))
       return 0;
 
    return tech;
@@ -425,7 +485,7 @@ bool FinalAIAllow(int signal, string symbol="")
 
    // Sem IA nao ha veto; e sem veto nao ha entrada. `AllowTradeWithoutAI=true`
    // e o caminho do Strategy Tester, onde o pipeline Python nao roda.
-   if(!AllowTradeWithoutAI)
+   if(AIGateRequired())
    {
       if(!LoadAIPrediction(symbol) || AI_Signal=="UNAVAILABLE" || AI_Signal=="ERROR")
       {
@@ -459,6 +519,36 @@ bool FinalAIAllow(int signal, string symbol="")
          symbol
       );
    }
+
+   //------------------------------------------------
+   // VETO DE SCORE ZERO (29/10/2026)
+   //------------------------------------------------
+   // `AIGateRequired()` e false com EnableAutonomousMode=true (padrao) e com
+   // AllowTradeWithoutAI=true. Nesse caminho a funcao devolvia TRUE logo
+   // abaixo, sem olhar o score - foi assim que 67 entradas com score 0
+   // passaram (ai_feedback.csv): WR 34,3% e -56,77. Score 0 nao e sinal
+   // fraco: e ausencia de leitura (nenhum componente somou). O veto e
+   // proprio, vale nos dois modos e nao mexe em posicoes abertas.
+   if(BlockZeroAIScore && score <= 0.0)
+   {
+      static datetime lastZeroScore = 0;
+      datetime zeroNow = TimeCurrent();
+
+      if(zeroNow - lastZeroScore >= 60)
+      {
+         lastZeroScore = zeroNow;
+         PrintFormat(
+            "[ADV AI] BLOQUEADO | score=%.2f (sem leitura) | %s",
+            score,
+            symbol
+         );
+      }
+
+      return(false);
+   }
+
+   if(!AIGateRequired())
+      return(true);
 
    return(score >= MinAIConfidence);
 }

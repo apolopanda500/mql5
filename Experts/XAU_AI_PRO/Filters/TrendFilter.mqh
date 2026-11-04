@@ -1,4 +1,4 @@
-﻿// XAU_AI_PRO v1.2.9
+// XAU_AI_PRO v1.2.9
 #ifndef TRENDFILTER_MQH
 #define TRENDFILTER_MQH
 
@@ -43,6 +43,7 @@ bool InitTrendFilter()
    ArrayResize(trendEMABuffer, 3);
    ArraySetAsSeries(trendEMABuffer, true);
 
+   if(LogSessaoPodeImprimir("trend_init_" + _Symbol))
    Print(
       "[TREND] INIT OK | ",
       _Symbol,

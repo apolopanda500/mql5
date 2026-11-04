@@ -396,7 +396,7 @@ def _carregar(symbol: str, timeframe: str) -> tuple[Any | None, dict[str, Any]]:
     Duas defesas, porque uma so nao fecha:
 
     1. `_nome_de_artefato` so aceita `[A-Z0-9]` e `^[A-Z0-9]{1,12}$`, o que
-       ja barra `/`, `\` e `..` na origem. O timeframe tem allowlist
+       ja barra `/`, `\\` e `..` na origem. O timeframe tem allowlist
        fechada, medida nos artefatos reais (H1, H4, M15, M5).
     2. Mesmo com nome valido, o caminho resolvido e conferido dentro de
        `MODELOS_DIR` com `Path.is_relative_to`/`resolve`. Isto cobre o caso

@@ -1,64 +1,108 @@
 {
   "symbol": "XAUUSD",
   "timeframe": "M15",
-  "feature_version": "25F-v2",
-  "feature_hash": "27727ee00bc30b7f",
-  "feature_count": 25,
-  "algorithm": "RandomForestClassifier",
+  "feature_version": "XAU-30F-v4",
+  "feature_hash": "5305081777808310",
+  "feature_count": 30,
+  "algorithm": "HistGradientBoostingClassifier",
+  "model_kind": "hgb",
+  "label": "direcao binaria do retorno em 8 barras acima de 0.5 ATR",
   "metrics": {
-    "accuracy": 0.4140386571719227,
-    "f1_score": 0.3759997992783232,
-    "baseline": 0.3333333333333333,
-    "edge": 0.08070532383858936,
-    "train_samples": 11822,
-    "test_samples": 2949,
-    "purged": 10,
+    "accuracy": 0.5032797179401396,
+    "baseline": 0.5341890611170724,
+    "edge": -0.0012103354098906283,
+    "edge_balanced": -0.0012103354098906283,
+    "balanced_accuracy": 0.5050592626186348,
+    "auc": 0.5069933562701796,
+    "auc_holdout": 0.49793192483164583,
+    "acc_edge": -0.030909343176932835,
+    "f1_score": 0.49438770054586134,
+    "trade_accuracy": 0.5010659631972627,
+    "trade_share": 0.693101259803225,
+    "min_edge_fold": -0.014140048639321723,
+    "edge_all_folds": 0.005059262618634685,
+    "selection_kind": "hgb",
+    "holdout_folds": [
+      3,
+      4,
+      5
+    ],
     "folds": [
       {
         "fold": 1,
-        "accuracy": 0.34044786564030793,
-        "baseline": 0.3333333333333333,
-        "edge": 0.007114532306974619,
-        "train": 500,
-        "test": 2858
+        "accuracy": 0.5015,
+        "baseline": 0.5647,
+        "edge": -0.0155,
+        "auc": 0.4802,
+        "bal_acc": 0.4845,
+        "acc_edge": -0.0632,
+        "f1": 0.495,
+        "trade_accuracy": 0.5036
       },
       {
         "fold": 2,
-        "accuracy": 0.35864240727781665,
-        "baseline": 0.3333333333333333,
-        "edge": 0.02530907394448334,
-        "train": 3358,
-        "test": 2858
+        "accuracy": 0.5467,
+        "baseline": 0.5065,
+        "edge": 0.0445,
+        "auc": 0.561,
+        "bal_acc": 0.5445,
+        "acc_edge": 0.0401,
+        "f1": 0.5333,
+        "trade_accuracy": 0.5531
       },
       {
         "fold": 3,
-        "accuracy": 0.4058782365290413,
-        "baseline": 0.3333333333333333,
-        "edge": 0.072544903195708,
-        "train": 6216,
-        "test": 2858
+        "accuracy": 0.4634,
+        "baseline": 0.5534,
+        "edge": -0.0141,
+        "auc": 0.481,
+        "bal_acc": 0.4859,
+        "acc_edge": -0.09,
+        "f1": 0.4401,
+        "trade_accuracy": 0.4516
       },
       {
         "fold": 4,
-        "accuracy": 0.38768369489153254,
-        "baseline": 0.3333333333333333,
-        "edge": 0.05435036155819922,
-        "train": 9074,
-        "test": 2858
+        "accuracy": 0.5202,
+        "baseline": 0.5018,
+        "edge": 0.0203,
+        "auc": 0.5259,
+        "bal_acc": 0.5203,
+        "acc_edge": 0.0184,
+        "f1": 0.52,
+        "trade_accuracy": 0.5201
       },
       {
         "fold": 5,
-        "accuracy": 0.4145314145314145,
-        "baseline": 0.3333333333333333,
-        "edge": 0.0811980811980812,
-        "train": 11932,
-        "test": 2849
+        "accuracy": 0.4846,
+        "baseline": 0.5445,
+        "edge": -0.0098,
+        "auc": 0.4868,
+        "bal_acc": 0.4902,
+        "acc_edge": -0.0599,
+        "f1": 0.4836,
+        "trade_accuracy": 0.4769
       }
     ],
-    "edge_estavel": false
+    "positive_folds": 2,
+    "folds_total": 5
   },
+  "edge_estavel": false,
   "publicable": false,
-  "publish_reason": "edge medio +0.0481 abaixo do minimo +0.0500: edge por fold: +0.007 +0.025 +0.073 +0.054 +0.081 (media +0.0481, desvio 0.0280, 5/5 positivos)",
+  "publish_reason": "balanced edge -0.0012 abaixo do minimo 0.0300; AUC 0.4979 abaixo do minimo 0.5200; apenas 2/5 folds positivos (minimo 4)",
   "min_edge": 0.05,
-  "train_date": "2026-10-22T23:04:22.143015+00:00"
+  "train_samples": 24899,
+  "test_samples": 11,
+  "purged": 11,
+  "train_date": "2026-11-03T03:35:43.945927+00:00",
+  "dataset": "dataset_mt5_20261101.csv",
+  "bars": 33389,
+  "price": 3894.93,
+  "atr": 9.625836179874247,
+  "proba": {
+    "sell": 0.458,
+    "neutral": 0.0,
+    "buy": 0.542
+  },
+  "last_bar": "2026-11-01 23:30:00"
 }

@@ -28,7 +28,7 @@ void InitDailyRisk()
 {
    CSafetyManager::Init();
 
-   PrintFormat(
+   if(LogInicioDetalhe()) PrintFormat(
       "[DAILYRISK] Delegating to SafetyManager"
    );
 }

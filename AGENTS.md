@@ -108,3 +108,64 @@ Ao alterar um procedimento compartilhado, edite a definição correspondente em
 2. Faça a alteração cirúrgica, respeitando os módulos.
 3. Valide (compilação ou script estático).
 4. Documente mudanças relevantes no README/versionamento quando aplicável.
+
+## Toolkit do agente (Tools/agent-toolkit.ps1)
+
+Script versionado que executa o ciclo completo de trabalho sem depender de
+Python ou de ferramentas externas:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 status
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 check
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 compile
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 commit -Message "tipo(escopo): descricao"
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 push -Remote github -Branch main
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 deploy
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\agent-toolkit.ps1 full -Message "tipo(escopo): descricao"
+```
+
+- `status` — resumo do working tree, upstream e ahead/behind.
+- `check` — UTF-8 estrito, balanceamento de chaves e resolução de `#include`
+  em todos os `.mq5`/`.mqh` de `Experts/XAU_AI_PRO` (sem Python).
+- `compile` — compila `XAU_AI_PRO.mq5` com `metaeditor64.exe` e exige
+  0 errors para prosseguir.
+- `commit` / `push` — `git add --all` respeitando `.gitignore`, commit e push.
+- `deploy` — `check` + `compile`: publica o `.ex5` atualizado na pasta do EA.
+- `full` — `check → compile → commit → push`, parando na primeira falha.
+
+O script nunca executa `reset`, `checkout` destrutivo, `rebase` ou force-push.
+
+## Operacao por outro agente IA
+
+Para que um agente novo assuma o terminal sem depender do historico de
+conversa, existem tres pontos de entrada:
+
+| Arquivo | Papel |
+|---|---|
+| `Tools/AGENT_COMMANDS.md` | manual operacional: catalogo de ferramentas MCP (metaeditor5 e metatrader5), toolkit, git/GitHub, diagnostico de WebRequest e da API, limites e proibicoes |
+| `.claude/commands/*.md` | comandos reutilizaveis: `check`, `build`, `sync`, `diagnose`, `webrequest`, `handoff` |
+| `Tools/HANDOFF.md` | estado medido do terminal (conta, graficos, bloqueios, repo) |
+
+Ferramentas de diagnostico versionadas:
+
+```powershell
+# sonda o gateway de IA: porta, raiz, rota de predicao com e sem token
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\api-probe.ps1
+
+# verifica a allowlist de WebRequest do terminal (compilar + chart_add_script)
+#   metaeditor5__compile_file  Scripts\XAI_WebRequestCheck.mq5
+#   metatrader5__chart_add_script  Scripts\XAI_WebRequestCheck.ex5
+#   metatrader5__get_expert_journal  filter=WEBREQ
+```
+
+Lacunas conhecidas do MCP, que todo agente precisa saber:
+
+- `search_text`/`search_regex` retornam 0 resultados para termos existentes —
+  usar `Select-String` via shell;
+- nao existe ferramenta para executar `.mq5`; compilar e usar `chart_add_script`;
+- as opcoes do terminal (allowlist de WebRequest) ficam fora das raizes lidas
+  e escritas — so o operador altera na GUI.
+
+Automacao completa e permitida. Remocao de guardas de risco, ocultacao de
+atividade, falsificacao de historico e ordem real sem autorizacao explicita
+nao sao, em nenhuma hipotese.

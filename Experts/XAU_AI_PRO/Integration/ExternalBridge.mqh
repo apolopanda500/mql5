@@ -1,10 +1,11 @@
-﻿// XAU_AI_PRO v1.2.9
+// XAU_AI_PRO v1.2.9
 #ifndef EXTERNALBRIDGE_MQH
 #define EXTERNALBRIDGE_MQH
 
 // Metricas de IA expostas pela acao "ai" (guarda AIMETRICS_MQH torna
 // a inclusao inofensiva quando AIEngine.mqh ja incluiu antes).
 #include "../AI/AIMetrics.mqh"
+#include "../Core/TradeGate.mqh"   // P1.62: veredito unico de negociacao
 
 //==================================================================
 // PONTE APP EXTERNO <-> EA (FILE_COMMON)
@@ -12,8 +13,14 @@
 // O heartbeat (`Integration/EAHeartbeat.mqh`) ja leva estado do EA PARA o
 // app: `Common\Files\XAU_AI_PRO_heartbeat.json`, consumido por
 // `backend/mt5_gateway.py` e `backend/watchdog.py`. Faltava o caminho de
-// volta. MQL5 nao abre socket e `WebRequest` so sai (o EA nunca recebe
-// conexao), entao o unico canal que existe nos dois lados e arquivo em
+// volta. v1.2.59 (P1.41): a frase seguinte dizia que "MQL5 nao abre socket"
+// e isso e FALSO - a documentacao oficial de SocketCreate/SocketConnect
+// mostra sockets nativos no MQL5, disponiveis a Expert Advisors e a scripts
+// (ate 128 sockets abertos, com a familia TLS em SocketTlsRead/SocketTlsWrite).
+// O que continua verdade, e que justifica este desenho: `WebRequest` so sai
+// (o EA nao recebe pedidos HTTP) e um socket de ENTRADA exigiria um servidor
+// a escutar, o que o EA nao e. O canal comum aos dois lados e, de facto,
+// arquivo em
 // FILE_COMMON — a mesma pasta que o app ja le.
 //
 // CONTRATO — o app ESCREVE este arquivo:
@@ -171,14 +178,16 @@ string EB_Field(const string json, const string key)
 
 string EB_StatusText()
   {
-   return StringFormat("state=RUNNING version=%s symbol=%s period=%d positions=%d balance=%.2f equity=%.2f autotrading=%s",
+   return StringFormat("state=RUNNING version=%s symbol=%s period=%d positions=%d balance=%.2f equity=%.2f autotrading=%s terminal_trade_allowed=%s trade_gate=%d",
                        EB_Version(),
                        _Symbol,
                        Period(),
                        PositionsTotal(),
                        AccountInfoDouble(ACCOUNT_BALANCE),
                        AccountInfoDouble(ACCOUNT_EQUITY),
-                       ((bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) ? "on" : "off"));
+                       (CTradeGate::Ok() ? "on" : "off"),
+                        ((bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) ? "on" : "off"),
+                        (int)CTradeGate::Evaluate());
   }
 
 void EB_WriteAck(const string request_id, const string action, const bool ok,

@@ -4,6 +4,7 @@
 
 #include "../Core/Config.mqh"
 #include "../Indicators/VolatilityFilter.mqh"
+#include "../Indicators/MarketPulse.mqh"
 #include <Trade/Trade.mqh>
 
 extern CTrade trade;
@@ -59,6 +60,17 @@ ulong ticket = PositionGetTicket(i);
      point = _Point;
 
   double atr = GetATR(symbol);
+
+  // v1.2.16 (29/10/2026): R da posicao = distancia entrada -> alvo.
+  // O TP e o alvo em R do trade (a sonda mediu TP ~ 1,0 R em todas as
+  // posicoes), entao ele serve de escala para gatilho e trava do break even.
+  double rDist = 0.0;
+
+  if(currentTP > 0.0)
+     rDist = MathAbs(currentTP - openPrice);
+
+  if(rDist <= 0.0 && atr > 0.0)
+     rDist = atr;
   double triggerPoints = 0.0;
 
   if(atr > 0.0)
@@ -66,8 +78,72 @@ ulong ticket = PositionGetTicket(i);
   else
      triggerPoints = BreakEvenTrigger;
 
+  if(BreakEvenInR && rDist > 0.0)
+  {
+     double triggerR = rDist * BreakEvenTriggerR / point;
+
+     if(triggerR > triggerPoints)
+        triggerPoints = triggerR;
+  }
+
   // v1.2.0 fix: trigger deve ser MAIOR que o offset (SL valido)
   double offsetPoints = GetBreakEvenStopLevel(symbol);
+
+  // v1.2.16: trava proporcional ao R do trade (antes: entrada + 10 pontos,
+  // o que devolvia quase todo o movimento a favor em qualquer respiro).
+  if(BreakEvenInR && rDist > 0.0)
+  {
+     double lockR = rDist * BreakEvenLockR / point;
+
+     if(lockR > offsetPoints)
+        offsetPoints = lockR;
+  }
+
+  //==================================================
+  // STOP ARMADO NO LUCRO (29/10/2026)
+  //==================================================
+  // Posicao que entrou SEM stop espera o preco andar StoplessArmATRMult ATR a
+  // favor e SO ENTAO recebe stop. O stop nasce StoplessLockATRMult ATR ALEM
+  // da entrada, ou seja JA COM LUCRO TRAVADO: se o preco voltar, fecha no
+  // positivo em vez de virar prejuizo.
+  if(EnableStoplessEntry && currentSL <= 0.0)
+  {
+     double arm  = (atr > 0.0) ? (atr * StoplessArmATRMult  / point)
+                               : (double)StoplessArmMinPoints;
+     double lock = (atr > 0.0) ? (atr * StoplessLockATRMult / point)
+                               : (double)StoplessLockMinPoints;
+
+     if(arm < (double)StoplessArmMinPoints)
+        arm = (double)StoplessArmMinPoints;
+
+     if(lock < (double)StoplessLockMinPoints)
+        lock = (double)StoplessLockMinPoints;
+
+     // REGIME DE DISPARADA (29/10/2026): com volume alto e preco correndo, o
+     // retorno e rapido. O stop e armado mais cedo e mais perto da entrada, em
+     // vez de esperar StoplessArmATRMult ATR cheios.
+     double pulseVol = 0.0;
+     double pulseVel = 0.0;
+
+     if(GetMarketPulse(symbol, pulseVol, pulseVel) != PULSE_NORMAL)
+     {
+        arm  *= PulseFastArmFactor;
+        lock *= PulseFastLockFactor;
+
+        if(arm < (double)StoplessArmMinPoints)
+           arm = (double)StoplessArmMinPoints;
+
+        if(lock < (double)StoplessLockMinPoints)
+           lock = (double)StoplessLockMinPoints;
+     }
+
+     if(arm > triggerPoints)
+        triggerPoints = arm;
+
+     if(lock > offsetPoints)
+        offsetPoints = lock;
+  }
+
   if(offsetPoints >= triggerPoints)
      triggerPoints = offsetPoints + 1.0;
 
@@ -88,14 +164,14 @@ ulong ticket = PositionGetTicket(i);
 
   if(type == POSITION_TYPE_BUY)
   {
-     newSL = openPrice + GetBreakEvenStopLevel(symbol) * point;
+     newSL = openPrice + offsetPoints * point;
 
      if(currentSL > 0.0 && newSL <= currentSL)
         continue;
   }
   else
   {
-     newSL = openPrice - GetBreakEvenStopLevel(symbol) * point;
+     newSL = openPrice - offsetPoints * point;
 
      if(currentSL > 0.0 && newSL >= currentSL)
         continue;
