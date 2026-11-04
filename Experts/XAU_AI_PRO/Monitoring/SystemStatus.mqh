@@ -275,11 +275,31 @@ void SystemStatusUpdate()
 
    ResetLastError();
 
-   int h=FileOpen(
-      "Data\\system_status.json",
-      FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ|FILE_SHARE_WRITE,
+   int h=INVALID_HANDLE;
+   int ssErr=0;
+
+   // v1.2.108 (03/11/2026): 5004 = ERR_CANNOT_OPEN_FILE medido no journal.
+   // Varias instancias abriam o mesmo retrato no mesmo ciclo e a abertura
+   // exclusiva falhava. Abre com partilha e repete antes de desistir; o
+   // ficheiro, a estrutura JSON, o throttle de 15s e o aviso 1x/sessao ficam.
+   for(int tentativa=0; tentativa<3; tentativa++)
+     {
+      ResetLastError();
+
+      h=FileOpen(
+         "Data\\system_status.json",
+         FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ|FILE_SHARE_WRITE,
       0
    );
+
+      if(h!=INVALID_HANDLE)
+         break;
+
+      ssErr=GetLastError();
+
+      // Janela de conflito e de milissegundos: cede o escalonamento e repete.
+      Sleep(20);
+     }
 
    if(h==INVALID_HANDLE)
    {
@@ -290,7 +310,7 @@ void SystemStatusUpdate()
       // construcao: passa a sair UMA linha por sessao, com o codigo, em vez
       // de uma por ciclo. Nada muda no que e escrito quando a abertura passa.
       static bool s_avisouStatusWrite = false;
-      int ssErr = GetLastError();
+      ssErr = GetLastError();
 
       if(!s_avisouStatusWrite)
         {
