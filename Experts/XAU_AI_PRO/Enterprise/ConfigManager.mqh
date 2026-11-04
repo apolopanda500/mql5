@@ -76,7 +76,7 @@ string CFG_ProfilePath(int idx, string name)
 bool CFG_FileSizePositive(string path)
 {
    if(!FileIsExist(path, FILE_COMMON)) return false;
-   int h = FileOpen(path, FILE_COMMON | FILE_READ | FILE_BIN);
+   int h = FileOpen(path, FILE_COMMON | FILE_READ | FILE_BIN | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE) return false;
    ulong sz = FileSize(h);
    FileClose(h);
@@ -187,7 +187,7 @@ bool CConfigManager::SaveProfile(ConfigProfile profile)
    if(!ValidateProfile((int)profile, err)) { Print("[CONFIG] Save rejeitado: ", err); return false; }
 
    string path = CFG_ProfilePath((int)profile, m_profiles[(int)profile].name);
-   int h = FileOpen(path, FILE_COMMON | FILE_WRITE | FILE_TXT | FILE_ANSI);
+   int h = FileOpen(path, FILE_COMMON | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE) { Print("[CONFIG] Falha ao abrir p/ escrita: ", path); return false; }
 
    FileWrite(h, "name=" + m_profiles[(int)profile].name);
@@ -223,7 +223,7 @@ bool CConfigManager::LoadProfile(ConfigProfile profile)
    string path = CFG_ProfilePath((int)profile, m_profiles[(int)profile].name);
    if(!FileIsExist(path, FILE_COMMON)) return false;
 
-   int h = FileOpen(path, FILE_COMMON | FILE_READ | FILE_TXT | FILE_ANSI);
+   int h = FileOpen(path, FILE_COMMON | FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE) return false;
 
    while(!FileIsEnding(h))
@@ -270,7 +270,7 @@ bool CConfigManager::ExportProfile(const string filename)
    int idx = (int)m_current_profile;
 
    string path = CONFIG_DIR + filename;
-   int h = FileOpen(path, FILE_COMMON | FILE_WRITE | FILE_TXT | FILE_ANSI);
+   int h = FileOpen(path, FILE_COMMON | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE) return false;
 
    FileWrite(h, "profile=" + m_profiles[idx].name);
@@ -299,7 +299,7 @@ bool CConfigManager::ImportProfile(const string filename, ConfigProfile profile)
    string path = CONFIG_DIR + filename;
    if(!FileIsExist(path, FILE_COMMON)) return false;
 
-   int h = FileOpen(path, FILE_COMMON | FILE_READ | FILE_TXT | FILE_ANSI);
+   int h = FileOpen(path, FILE_COMMON | FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE) return false;
 
    while(!FileIsEnding(h))

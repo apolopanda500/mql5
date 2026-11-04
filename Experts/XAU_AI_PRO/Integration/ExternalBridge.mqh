@@ -101,7 +101,7 @@ bool EB_ReadFile(const string name, string &out)
    out = "";
    ResetLastError();
 
-   const int h = FileOpen(EB_Name(name), FILE_READ | FILE_TXT | FILE_ANSI | FILE_COMMON);
+   const int h = FileOpen(EB_Name(name), FILE_READ | FILE_TXT | FILE_ANSI | FILE_COMMON | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
       return false;
 
@@ -116,7 +116,7 @@ bool EB_WriteFile(const string name, const string payload)
   {
    ResetLastError();
 
-   const int h = FileOpen(EB_Name(name), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON);
+   const int h = FileOpen(EB_Name(name), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
       return false;
 

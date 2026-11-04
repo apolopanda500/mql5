@@ -1,4 +1,4 @@
-﻿
+
 // Heartbeat somente leitura para integração EA -> Gateway -> App.
 // Não envia ordens, não altera risco e não interfere no TradePipeline.
 #include "../Core/TradeGate.mqh"   // P1.62: veredito unico de negociacao
@@ -27,7 +27,7 @@ bool EAHeartbeatWrite(const string state = "RUNNING")
       return true;
 
    ResetLastError();
-   const int handle = FileOpen(EAHeartbeatFileName(), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON);
+   const int handle = FileOpen(EAHeartbeatFileName(), FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(handle == INVALID_HANDLE)
       return false;
 

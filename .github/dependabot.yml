@@ -1,0 +1,99 @@
+# ============================================================
+# Dependabot - repositorio apolopanda500/mql5 (RAIZ)
+#
+# POR QUE ESTE ARQUIVO EXISTE AQUI E NAO EM Files/XAU_AI_PRO/
+# O GitHub so le `.github/dependabot.yml` na RAIZ do repositorio.
+# A copia antiga vivia em `Files/XAU_AI_PRO/.github/dependabot.yml`,
+# dentro de uma pasta que o GitHub nao trata como raiz, e apontava
+# `directory` para `/`, `/backend`, `/frontend`, `/core` e
+# `/frontend/src-tauri` como se o repositorio fosse a pasta do produto.
+# MEDIDO em 03/11/2026: nenhuma atualizacao de dependencia aberta, nenhum
+# alerta e nenhum manifesto reconhecido.
+#
+# ECOSSISTEMAS COM MANIFESTO VERSIONADO (medido com git ls-files):
+#   Files/XAU_AI_PRO/backend/package.json   (+ package-lock.json)
+#   Files/XAU_AI_PRO/frontend/package.json  (+ package-lock.json)
+#   .github/workflows/ci.yml, .github/workflows/codeql.yml
+#
+# O QUE FICA DE FORA, E POR QUE:
+#   pip  -> Files/XAU_AI_PRO/requirements*.txt e pyproject.toml existem no
+#           disco mas NAO estao versionados (`.gitignore` linha 84 ignora
+#           `Files/XAU_AI_PRO/`). Ecossistema sem manifesto versionado faz
+#           o Dependabot falhar; versionar o manifesto e o passo previo.
+#   cargo -> idem para Files/XAU_AI_PRO/core/Cargo.toml e
+#           Files/XAU_AI_PRO/frontend/src-tauri/Cargo.toml.
+# ============================================================
+version: 2
+updates:
+  # ============================================================
+  # Node.js / npm: gateway desktop (backend do produto)
+  # ============================================================
+  - package-ecosystem: "npm"
+    directory: "/Files/XAU_AI_PRO/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "apolopanda500"
+    labels:
+      - "dependencies"
+      - "security"
+    groups:
+      npm-backend-major:
+        dependency-type: "direct"
+        update-types:
+          - "major"
+      npm-backend-minor:
+        dependency-type: "direct"
+        update-types:
+          - "minor"
+      npm-backend-all:
+        dependency-type: "all"
+
+  # ============================================================
+  # Node.js / npm: interface desktop (frontend do produto)
+  # ============================================================
+  - package-ecosystem: "npm"
+    directory: "/Files/XAU_AI_PRO/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 5
+    reviewers:
+      - "apolopanda500"
+    labels:
+      - "dependencies"
+      - "security"
+    groups:
+      npm-frontend-major:
+        dependency-type: "direct"
+        update-types:
+          - "major"
+      npm-frontend-minor:
+        dependency-type: "direct"
+        update-types:
+          - "minor"
+      npm-frontend-all:
+        dependency-type: "all"
+
+  # ============================================================
+  # GitHub Actions: actions usadas por ci.yml e codeql.yml
+  # ============================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 3
+    reviewers:
+      - "apolopanda500"
+    labels:
+      - "dependencies"
+      - "security"

@@ -877,7 +877,8 @@ bool LoadAIPrediction(string symbol="")
          fileName,
          FILE_READ |
          FILE_TXT |
-         FILE_ANSI
+         FILE_ANSI |
+         FILE_SHARE_READ | FILE_SHARE_WRITE
       );
 
 

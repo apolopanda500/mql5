@@ -747,7 +747,7 @@ void CProductionChecklist::LogResults()
       if(falhas != "")
          falhas += ",";
 
-      falhas += m_names[i] + (m_critical[i] ? "(critico)" : "");
+      falhas += m_names[i] + (m_critical[i] ? "(critico)" : "(opcional)");
      }
 
    if(LogInicioDetalhe()) Print("[CHECKLIST] ", passou, "/", m_item_count, " passed",
@@ -758,7 +758,7 @@ void CProductionChecklist::LogResults()
    // P1.44: FILE_WRITE sozinho apaga o conteudo na abertura.
    // Com FILE_READ | FILE_WRITE, FileSeek(0) e sem truncar, um resumo mais
    // curto deixava o rabo do anterior no disco (medido: READY: YEStical failed).
-   int h = FileOpen("XAU_AI_PRO\\ProductionChecklist.txt", FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON);
+   int h = FileOpen("XAU_AI_PRO\\ProductionChecklist.txt", FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h != INVALID_HANDLE)
      {
       FileSeek(h, 0, SEEK_SET);

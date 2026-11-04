@@ -354,7 +354,7 @@ bool CNotificationCenter::Send(string message, NotifyPriority priority, NotifyCa
 
 void CNotificationCenter::RegisterLog(string status, string detail)
 {
-   int h = FileOpen("Notifications.log", FILE_COMMON | FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI);
+   int h = FileOpen("Notifications.log", FILE_COMMON | FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
       return;
 

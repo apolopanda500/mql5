@@ -270,6 +270,44 @@ void ScenarioSnapFlush()
 }
 
 //==================================================
+// P2.18 (03/11/2026): LEITURA SEM SENTINELA
+//
+// MEDIDO no journal do expert as 22:32:56, no reload: a linha [CENARIO] de
+// EURUSD saiu com "ADX=20.6 | ATR%=-1.00". O -1.00 nao e volatilidade, e o
+// sentinela de "sem leitura" de MarketVolatilityPercent(); o mesmo vale para
+// ADX <= 0. O codigo sempre tratou os dois corretamente (volPct > 0.0 e
+// adx <= 0.0), mas o journal publicava o sentinela como se fosse medida, e um
+// valor negativo de volatilidade nao pode ser lido de duas maneiras.
+// As duas funcoes abaixo traduzem o sentinela para texto; nenhuma deteccao,
+// factor de lote, factor de alvo ou leitura de indicador muda.
+//==================================================
+string ScenarioADXStr(string symbol="")
+{
+   if(symbol == "")
+      symbol = _Symbol;
+
+   double adx = GetADX(symbol);
+
+   if(adx <= 0.0)
+      return("sem leitura");
+
+   return(DoubleToString(adx, 1));
+}
+
+string ScenarioAtrPctStr(string symbol="")
+{
+   if(symbol == "")
+      symbol = _Symbol;
+
+   double volPct = MarketVolatilityPercent(symbol);
+
+   if(volPct < 0.0)
+      return("sem leitura");
+
+   return(DoubleToString(volPct, 2));
+}
+
+//==================================================
 // LINHA DE CENARIO PARA O JOURNAL
 //
 // v1.2.22: deixou de repetir. MEDIDO no journal em 29/10/2026: a mesma linha
@@ -356,8 +394,8 @@ void ScenarioLog(string symbol, string contexto="")
       if(g_scenarioSnapN < SCENARIO_SNAP_MAX)
         {
          g_scenarioSnap[g_scenarioSnapN] = symbol + " " + ScenarioToString(s) +
-                                           " ADX=" + DoubleToString(GetADX(symbol), 1) +
-                                           " ATR%=" + DoubleToString(MarketVolatilityPercent(symbol), 2) +
+                                           " ADX=" + ScenarioADXStr(symbol) +
+                                           " ATR%=" + ScenarioAtrPctStr(symbol) +
                                            " " + MarketRegimeToString(reg) +
                                            " lote x" + DoubleToString(lot, 2) +
                                            " alvo x" + DoubleToString(tgt, 2);
@@ -375,8 +413,8 @@ void ScenarioLog(string symbol, string contexto="")
 
    Print("[CENARIO] ", symbol,
          " | ", ScenarioToString(s),
-         " | ADX=", DoubleToString(GetADX(symbol), 1),
-         " | ATR%=", DoubleToString(MarketVolatilityPercent(symbol), 2),
+         " | ADX=", ScenarioADXStr(symbol),
+         " | ATR%=", ScenarioAtrPctStr(symbol),
          " | tendencia=", MarketRegimeToString(reg),
          " | lote x", DoubleToString(lot, 2),
          " | alvo x", DoubleToString(tgt, 2),

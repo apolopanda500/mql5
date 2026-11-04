@@ -291,7 +291,7 @@ void StatisticsSaveSummary()
    int handle =
       FileOpen(
          "xau_ai_pro_summary.csv",
-         FILE_WRITE |
+         FILE_WRITE | FILE_SHARE_READ | FILE_SHARE_WRITE |
          FILE_CSV |
          FILE_ANSI |
          FILE_COMMON

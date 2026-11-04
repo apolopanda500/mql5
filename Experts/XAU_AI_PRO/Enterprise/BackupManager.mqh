@@ -195,7 +195,7 @@ long CBackupManager::FileSizeOf(
       path,
       FILE_READ |
       FILE_BIN |
-      root
+      root | FILE_SHARE_READ | FILE_SHARE_WRITE
    );
 
    if(h == INVALID_HANDLE)
@@ -398,6 +398,32 @@ bool CBackupManager::BackupFile(
 
    if(srcSize > 0 && dstSize != srcSize)
    {
+      // v1.2.109 (03/11/2026): MEDIDO no journal de 03/11 (21:19 e 21:23):
+      // "[BACKUP] Tamanho divergente: Data\system_status.json (1117) -> ...bak (1141)".
+      // O system_status.json e reescrito a cada 15 s por todas as instancias, logo o
+      // tamanho lido em ExpandPattern deixa de corresponder ao ficheiro no instante da
+      // copia e a igualdade estrita produzia uma "falha" por snapshot sem erro de copia
+      // (o snapshot estava valido, com 1141 bytes). Regra nova: se a origem MUDOU de
+      // tamanho desde a medicao, a copia e aceite como retrato de ficheiro em escrita;
+      // se nao mudou, a divergencia continua a ser falha.
+      long srcNow = FileSizeOf(src, srcRoot);
+
+      if(srcNow != srcSize)
+      {
+         static datetime s_lastVolatileLog = 0;
+
+         if(s_lastVolatileLog == 0 || (TimeCurrent() - s_lastVolatileLog) >= 3600)
+         {
+            s_lastVolatileLog = TimeCurrent();
+
+            Print("[BACKUP] Origem em escrita | snapshot aceite | ", src,
+                  " | medido=", srcSize, " | agora=", srcNow,
+                  " | copiado=", dstSize, " | aviso 1x/hora");
+         }
+
+         return true;
+      }
+
       Print(
          "[BACKUP] Tamanho divergente: ",
          src,
@@ -447,7 +473,7 @@ bool CBackupManager::WriteManifest(
       manifestFile,
       FILE_COMMON |
       FILE_READ |
-      FILE_WRITE |
+      FILE_WRITE | FILE_SHARE_READ | FILE_SHARE_WRITE |
       FILE_TXT |
       FILE_ANSI
    );
@@ -505,7 +531,7 @@ bool CBackupManager::ReadManifest(
       FILE_COMMON |
       FILE_READ |
       FILE_TXT |
-      FILE_ANSI
+      FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE
    );
 
    if(h == INVALID_HANDLE)

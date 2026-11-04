@@ -485,28 +485,65 @@ bool DiagnosticsRun()
          _Symbol
       );
 
+   // v1.2.124 (03/11/2026) - P2.14: MEDIDO no journal de 03/11 as 06:57:39
+   // (GBPUSD H1): o arranque imprimiu "[DIAG] FALHAS DETECTADAS" e a UNICA
+   // reprovacao foi "[DIAG] FALHA | Indicadores | ADX invalido", no MESMO
+   // reload em que "[DIAG] TODOS OS TESTES PASSARAM" saia noutro grafico.
+   // Causa: GetATR/GetADX/GetRSI devolvem 0 ou -1 quando o handle EXISTE mas o
+   // indicador ainda nao tem barras calculadas - BarsCalculated() == 0 no
+   // OnInit, porque o MT5 calcula indicadores de forma assincrona - e este
+   // check tratava "ainda a aquecer" como falha. O autoteste de arranque so
+   // pode provar o HANDLE: invalido = falha real de criacao; valido com
+   // leitura ainda ausente = aquecimento, e a ausencia de leitura em operacao
+   // continua a ser reportada pelo watchdog do HealthMonitor e pelo
+   // [DATA] SEM LEITURA. Nenhum limite, regra de entrada ou de saida, lote,
+   // spread, alvo, precificacao ou parametro de risco muda.
    if(atr <= 0.0)
    {
-      indicatorsOK = false;
+      if(volatilityATRHandle == INVALID_HANDLE)
+      {
+         indicatorsOK = false;
 
-      indicatorsDetail +=
-         "ATR invalido; ";
+         indicatorsDetail +=
+            "ATR invalido (handle); ";
+      }
+      else
+      {
+         indicatorsDetail +=
+            "ATR em aquecimento (init); ";
+      }
    }
 
    if(adx < 0.0)
    {
-      indicatorsOK = false;
+      if(adxHandle == INVALID_HANDLE)
+      {
+         indicatorsOK = false;
 
-      indicatorsDetail +=
-         "ADX invalido; ";
+         indicatorsDetail +=
+            "ADX invalido (handle); ";
+      }
+      else
+      {
+         indicatorsDetail +=
+            "ADX em aquecimento (init); ";
+      }
    }
 
    if(rsi < 0.0 || rsi > 100.0)
    {
-      indicatorsOK = false;
+      if(rsiHandle == INVALID_HANDLE || rsi > 100.0)
+      {
+         indicatorsOK = false;
 
-      indicatorsDetail +=
-         "RSI invalido; ";
+         indicatorsDetail +=
+            "RSI invalido; ";
+      }
+      else
+      {
+         indicatorsDetail +=
+            "RSI em aquecimento (init); ";
+      }
    }
 
    DiagnosticsAdd(
@@ -567,7 +604,7 @@ bool DiagnosticsRun()
          testFile,
          FILE_COMMON |
          FILE_WRITE |
-         FILE_ANSI
+         FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE
       );
 
    if(fileHandle == INVALID_HANDLE)

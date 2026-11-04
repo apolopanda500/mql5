@@ -287,7 +287,7 @@ void ExportDatasetCSV()
 
    int file = FileOpen(
                  "Data\\trades_dataset.csv",
-                 FILE_WRITE |
+                 FILE_WRITE | FILE_SHARE_READ | FILE_SHARE_WRITE |
                  FILE_CSV |
                  FILE_ANSI
               );

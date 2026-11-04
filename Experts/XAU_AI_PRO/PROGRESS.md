@@ -4206,3 +4206,40 @@ EA nos graficos. Toda a evidencia vem do journal (`get_expert_journal`) e de
   `Symbols` mas nao tem grafico. Nada disto trava a operacao (o pipeline do
   master percorre `Symbols` e as instancias extra ficam em STANDBY), mas a
   contabilidade de janelas e de stress por simbolo fica inconsistente.
+
+## Ciclo 84 - 03/11/2026 23:15 - P2.17 + P2.18 + Dependabot na raiz (v1.2.127)
+
+- **P2.18 (novo) - o `[CENARIO]` publicava o sentinela como medicao.** Medido no
+  journal do expert as 22:32:56.730 de 03/11:
+  `[CENARIO] EURUSD | TENDENCIA_FRACA | ADX=20.6 | ATR%=-1.00 | tendencia=RANGING |
+  lote x0.90 | alvo x1.00`. O `-1.00` nao e volatilidade: e o valor que
+  `MarketVolatilityPercent()` devolve quando nao conseguiu ler o ATR, e `GetADX()`
+  devolve `<=0` na mesma situacao. A deteccao sempre tratou esses valores como
+  ausencia de leitura (`volPct>0.0` e `adx<=0` em `MarketScenarioDetect`), mas as
+  duas funcoes que ESCREVEM a linha imprimiam o valor cru. Correcao em
+  `Filters/MarketScenario.mqh`: nascem `ScenarioADXStr()` e `ScenarioAtrPctStr()`,
+  que devolvem `sem leitura`, e os 4 pontos de impressao (2 no RETRATO, 2 na linha
+  por simbolo) passam a usar os helpers. Deteccao, `ScenarioLotFactor`,
+  `ScenarioTargetFactor` e a leitura dos indicadores ficam iguais.
+- **P2.17 (ciclo anterior, confirmado em runtime) - o erro 4022 dizia falha e era
+  aquecimento.** Os 3 blocos `CopyBuffer<=0` do sinal (EMA Fast, EMA Slow, RSI)
+  passam a ler `GetLastError()` e `BarsCalculated()` e a distinguir
+  `em aquecimento (MT5 calcula apos reload)` de `falha ao copiar X`, com 1 linha
+  por hora por conta e simbolo. A classificacao do sinal devolve `1/-1` nas mesmas
+  condicoes. Medido: 12 registos as 22:34:49-22:34:56 com o texto novo.
+- **Dependabot "sem repositorio" resolvido.** O GitHub so le
+  `.github/dependabot.yml` na RAIZ do repositorio, e a copia antiga vivia em
+  `Files/XAU_AI_PRO/.github/` (ainda por cima ignorada pelo `.gitignore` linha 84),
+  logo nunca chegou ao GitHub. Criada a config na raiz com 3 ecossistemas: `npm`
+  em `/Files/XAU_AI_PRO/backend`, `npm` em `/Files/XAU_AI_PRO/frontend` e
+  `github-actions` em `/`; semanal, segunda 06:00 America/Sao_Paulo, grupos
+  major/minor/all, reviewer `apolopanda500`. `pip` e `cargo` ficaram de fora e
+  documentados no proprio YAML porque `requirements*.txt`, `pyproject.toml` e os
+  `Cargo.toml` NAO estao versionados - um ecossistema sem manifesto versionado
+  faria o Dependabot falhar. A copia antiga ficou marcada como "COPIA INATIVA".
+- **Versao:** `EA_VERSION_STRING` sobe para `1.2.127` com as entradas de
+  changelog de P2.17 e P2.18 em `Enterprise/VersionManager.mqh`.
+- **Validacao deste ciclo:** compilacao `0 errors, 0 warnings` (21416 ms, x64);
+  `.ex5` gerado as 23:12:41 com 820350 bytes; validacao estatica
+  `108 fontes OK` (UTF-8, chaves, `#include`); YAML do Dependabot com 0 problemas
+  e os 3 diretorios existentes no disco.

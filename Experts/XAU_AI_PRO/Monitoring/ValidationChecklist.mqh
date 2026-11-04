@@ -330,7 +330,7 @@ bool ValidationChecklistRun()
    // Com FILE_READ | FILE_WRITE, FileSeek(0) e sem truncar, um resumo mais
    // curto que o anterior deixava o rabo do anterior no disco - defeito
    // medido no proprio ficheiro em 01/11/2026.
-   int h = FileOpen("XAU_AI_PRO\\ValidationChecklist.txt", FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON);
+   int h = FileOpen("XAU_AI_PRO\\ValidationChecklist.txt", FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_COMMON | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h != INVALID_HANDLE)
      {
       FileSeek(h, 0, SEEK_SET);

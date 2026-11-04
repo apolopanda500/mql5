@@ -208,3 +208,22 @@ O dono reanexou o EA nos graficos. Verificado por journal e por
   H1 (**NoSignal=155 de 165 visitas** e o bloqueio dominante); `WebRequest`
   desligado (erro 4014) e `AIGatewayToken` vazio (HTTP 401, journal diz
   `IA=SEM PRECO` e `[AI] PREDICAO VENCIDA`).
+
+
+## Ciclo 84 - 03/11/2026 23:15 - v1.2.127 (P2.17 + P2.18 + Dependabot)
+
+| Item | Medicao |
+|---|---|
+| Versao publicada | `1.2.127` (era `1.2.126`) |
+| Compilacao | `0 errors, 0 warnings`, 21416 ms, x64 |
+| `.ex5` | 23:12:41, 820350 bytes |
+| Validacao estatica | 108 fontes OK (UTF-8, chaves, includes) |
+| P2.18 | `[CENARIO]` deixa de publicar `ATR%=-1.00` e `ADX<=0`; passa a `sem leitura` |
+| P2.17 | `[SIGNAL] SEM LEITURA` distingue aquecimento do indicador de falha real |
+| Dependabot | `.github/dependabot.yml` na raiz: npm backend, npm frontend, github-actions |
+
+- Nada disto altera regra de entrada ou de saida, lote, alvo, stop, spread,
+  preco ou parametro de risco: P2.17 e P2.18 sao texto de journal.
+- Continua por decidir pelo dono: `AvoidHoursGMT=9,11,14,18,20,22`, o par RSI
+  45/55 em H1, os 13 graficos contra `Symbols` de 11 entradas, `WebRequest`
+  desligado (erro 4014) e `AIGatewayToken` vazio (`IA=SEM PRECO`).

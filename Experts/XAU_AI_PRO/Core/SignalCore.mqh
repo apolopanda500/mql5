@@ -170,24 +170,63 @@ int GetSignal(string symbol)
    // Copiar buffers
    bool copyOK=true;
 
+   ResetLastError();
+
    if(CopyBuffer(emaFastHandle,0,0,3,fast)<=0)
    {
-      if(logOnce)
-         Print("[SIGNAL] SEM LEITURA | ", symbol, " | falha ao copiar EMA Fast | Error=", GetLastError());
+      // P2.17 (03/11/2026): 4022/aquecimento nao e falta de dado. A MT5
+      // calcula o indicador de forma assincrona depois de cada reload e o
+      // valor sai no ciclo seguinte; a linha passa a dizer qual dos dois
+      // casos e, em 1x/hora por CONTA e por simbolo (eram 15 instancias).
+      int errEmaFast = GetLastError();
+      int calcEmaFast = BarsCalculated(emaFastHandle);
+
+      if(AccountLogGatePodeImprimir("signosem_" + symbol + "_ema_fast", 3600))
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | ",
+               (calcEmaFast < 3 ? "EMA Fast em aquecimento (MT5 calcula apos reload)" : "falha ao copiar EMA Fast"),
+               " | BarsCalc=", calcEmaFast, " | Error=", errEmaFast,
+               " | aviso 1x/hora por conta e simbolo");
+
       copyOK=false;
    }
+
+   ResetLastError();
 
    if(CopyBuffer(emaSlowHandle,0,0,3,slow)<=0)
    {
-      if(logOnce)
-         Print("[SIGNAL] SEM LEITURA | ", symbol, " | falha ao copiar EMA Slow | Error=", GetLastError());
+      // P2.17 (03/11/2026): 4022/aquecimento nao e falta de dado. A MT5
+      // calcula o indicador de forma assincrona depois de cada reload e o
+      // valor sai no ciclo seguinte; a linha passa a dizer qual dos dois
+      // casos e, em 1x/hora por CONTA e por simbolo (eram 15 instancias).
+      int errEmaSlow = GetLastError();
+      int calcEmaSlow = BarsCalculated(emaSlowHandle);
+
+      if(AccountLogGatePodeImprimir("signosem_" + symbol + "_ema_slow", 3600))
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | ",
+               (calcEmaSlow < 3 ? "EMA Slow em aquecimento (MT5 calcula apos reload)" : "falha ao copiar EMA Slow"),
+               " | BarsCalc=", calcEmaSlow, " | Error=", errEmaSlow,
+               " | aviso 1x/hora por conta e simbolo");
+
       copyOK=false;
    }
 
+   ResetLastError();
+
    if(CopyBuffer(signalRSIHandle,0,0,3,rsi)<=0)
    {
-      if(logOnce)
-         Print("[SIGNAL] SEM LEITURA | ", symbol, " | falha ao copiar RSI | Error=", GetLastError());
+      // P2.17 (03/11/2026): 4022/aquecimento nao e falta de dado. A MT5
+      // calcula o indicador de forma assincrona depois de cada reload e o
+      // valor sai no ciclo seguinte; a linha passa a dizer qual dos dois
+      // casos e, em 1x/hora por CONTA e por simbolo (eram 15 instancias).
+      int errRsi = GetLastError();
+      int calcRsi = BarsCalculated(signalRSIHandle);
+
+      if(AccountLogGatePodeImprimir("signosem_" + symbol + "_rsi", 3600))
+         Print("[SIGNAL] SEM LEITURA | ", symbol, " | ",
+               (calcRsi < 3 ? "RSI em aquecimento (MT5 calcula apos reload)" : "falha ao copiar RSI"),
+               " | BarsCalc=", calcRsi, " | Error=", errRsi,
+               " | aviso 1x/hora por conta e simbolo");
+
       copyOK=false;
    }
 

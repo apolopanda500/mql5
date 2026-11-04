@@ -289,8 +289,8 @@ void SystemStatusUpdate()
       h=FileOpen(
          "Data\\system_status.json",
          FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_SHARE_READ|FILE_SHARE_WRITE,
-      0
-   );
+         0
+      );
 
       if(h!=INVALID_HANDLE)
          break;
@@ -310,7 +310,7 @@ void SystemStatusUpdate()
       // construcao: passa a sair UMA linha por sessao, com o codigo, em vez
       // de uma por ciclo. Nada muda no que e escrito quando a abertura passa.
       static bool s_avisouStatusWrite = false;
-      ssErr = GetLastError();
+
 
       if(!s_avisouStatusWrite)
         {
