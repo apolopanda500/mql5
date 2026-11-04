@@ -175,6 +175,30 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
       );
 
 
+   // v1.2.141 (P1.98): o gateway recusa responder quando o walk-forward nao
+   // aprova o ativo e devolve, nesse caso,
+   //   {"ok":true,"available":false,"reason":"...","signal":"NEUTRAL",
+   //    "confidence":0.0,"price":0.0,...}
+   // Este parser nao lia "available" e aceitava a recusa como se fosse uma
+   // previsao valida. MEDIDO no journal as 20:31:39 de 04/11, grafico USDCNH
+   // H1: "[AI] PYTHON | USDCNH | NEUTRAL | PRICE=0.00000 | BUY=0.00% |
+   // SELL=0.00% | SCORE=0.00 | CONF=0.00%" - um preco zero publicado como se
+   // fosse cotacao e uma IA "neutra" que nao existe. O mesmo acontece em
+   // todos os simbolos sem modelo publicado (14 dos 15 graficos). Os campos
+   // passam a ser lidos aqui e a recusa e tratada antes de qualquer escrita
+   // no estado global.
+   string jsonAvailable=
+      ExtractJSON(
+         json,
+         "available"
+      );
+
+   string jsonReason=
+      ExtractJSON(
+         json,
+         "reason"
+      );
+
    string jsonPrice=
       ExtractJSON(
          json,
@@ -296,6 +320,47 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
       return false;
    }
 
+
+   //================================================
+   //================================================
+   // DISPONIBILIDADE (P1.98)
+   // available=false = o gateway RESPONDEU e recusou: nao ha previsao.
+   // Tratar isto como previsao neutra com preco zero era fail-open: o
+   // portao de IA avancado (AIEngine.mqh:512) so bloqueia quando
+   // LoadAIPrediction devolve false ou o sinal e UNAVAILABLE/ERROR, logo a
+   // recusa passava como "IA presente e neutra". Com AllowTradeWithoutAI
+   // = false a IA ausente tem de ser ausencia, nao neutralidade.
+   // A comparacao e textual de proposito: ExtractJSON devolve o valor cru,
+   // e "false"/"0" cobrem as duas formas de o gateway escrever a recusa.
+   // Sem a chave (ficheiro prediction_*.json local) nada muda.
+   //================================================
+
+   if(jsonAvailable!="")
+   {
+      string av=jsonAvailable;
+      StringToLower(av);
+
+      if(av=="false" || av=="0")
+      {
+         ResetAIState();
+
+         AI_Symbol="";
+         AI_Signal="UNAVAILABLE";
+
+         // Uma linha por simbolo por hora: 15 graficos a repetir a mesma
+         // recusa em cada ciclo de polling enchia o journal sem informacao
+         // nova - a razao do gateway ja diz o que falta.
+         if(AccountLogGatePodeImprimir("ai_unavail_" + esperado, 3600))
+            Print(
+               "[AI] INDISPONIVEL | ",
+               esperado,
+               " | MOTIVO=",
+               (jsonReason=="" ? "gateway recusou sem motivo" : jsonReason)
+            );
+
+         return false;
+      }
+   }
 
    //================================================
    // SYMBOL MATCH
@@ -928,6 +993,8 @@ bool FetchPredictionFromGateway(
             motivo = "rota inexistente nesse servidor - confira AIGatewayUrl e se algo serve /api/ai/predict nessa porta";
          else if(status == 422)
             motivo = "requisicao recusada pelo servidor (parametros de symbol/timeframe)";
+         else if(status > 599)
+            motivo = "resposta NAO-HTTP (codigo devolvido pelo transporte, nao pelo servidor; um codigo HTTP valido termina em 599)";
          else if(status >= 500)
             motivo = "backend fora do ar";
          Print("[AI] GATEWAY | HTTP ", status, " | ", url, " | ", motivo,
@@ -1097,7 +1164,9 @@ bool LoadAIPrediction(string symbol="")
 
 
    if(logOnce && AccountLogGatePodeImprimir("ai_load_" + symbol, 86400))
-   if(logOnce)
+   // v1.2.142 (P1.100): o segundo if(logOnce) que aqui estava era redundante -
+   // o portao por conta ja so e consultado quando logOnce e verdadeiro. A
+   // condicao fica so na linha de cima, para nao se ler como um salto.
       Print(
          "[AI] LOAD | SYMBOL=",
          symbol,

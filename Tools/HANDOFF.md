@@ -439,3 +439,29 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 - **`Proximo evento`:** deixou de sair vazio as 20:31:13 - `Licenciamento de Veiculos (Mensal) (impacto=1)` / `Min para evento: 568`.
 - **Testador:** OCUPADO (P-02). Nao lancar backtest por cima.
 - **Conta real:** proibida. PF historico 0,6206 e de um build sem ADX e sem IA.
+
+## Ciclo 98/99/100 - 04/11/2026 20:44 - v1.2.142 (P1.98 + P1.100)
+
+- **Versao em uso:** `1.2.142` (`#property version "1.342"`, cabecalho e
+  `EA_VERSION_STRING` alinhados). `.ex5` 865350 B, 04/11 20:43:56.
+- **Compilacao:** `Result: 0 errors, 0 warnings, 27428 ms elapsed,
+  cpu='X64 Regular'` (`Files\Temp\compile_c100.log`).
+- **Reattach:** `profile_apply Default` -> `profile_apply XAI_P216_LIVE`;
+  28x `[START] XAU_AI_PRO v1.2.142 ... saldo=12592.02` as 20:44:14 e 20:44:24.
+- **P1.98 (fechado):** recusa do gateway (`available:false`) deixa de ser
+  publicada como previsao `NEUTRAL PRICE=0.00000`. Passa a
+  `[AI] INDISPONIVEL | <sym> | MOTIVO=<reason>` (1/hora/simbolo/conta) e
+  `LoadAIPrediction()` devolve `false`, logo `AIEngine.mqh:512` bloqueia.
+- **P1.100 (fechado):** `HTTP 1003 ... backend fora do ar` era falso. Nova faixa
+  `status > 599` testada antes de `>= 500` ->
+  `resposta NAO-HTTP (codigo devolvido pelo transporte ...)`. Removido tambem o
+  `if(logOnce)` duplicado antes do `Print` de `[AI] LOAD`.
+- **Prova P1.98:** journal 20:39:57-20:40:32 com 13x `[AI] INDISPONIVEL` e zero
+  `PRICE=0.00000`; XAUUSD manteve `SELL PRICE=4063.500 CONF=71.90%`.
+- **Portoes limpos:** 16 `loggate_ai_load_*.bin` apagados de
+  `Common\Files\XAU_AI_PRO`.
+- **Conta:** 113568614 (MetaQuotes-Demo), DEMO hedging, 12.592,02,
+  0 posicoes, 0 ordens.
+- **Gateway:** 127.0.0.1:9011 a escutar; fail-closed 401 sem `Bearer`.
+- **Testador:** OCUPADO (P-02). Nao lancar backtest por cima.
+- **Conta real:** proibida. PF historico 0,6206 e de um build sem ADX e sem IA.

@@ -521,3 +521,58 @@ Sem alteracao. Criterio: `tester_get_status` sem job activo; depois re-medir com
 
 ### `[DATA] SEM LEITURA | ATR=0.000000` em simbolos nao-XAU `DONO`
 Medido as 20:19:24 nos graficos nao-XAU do perfil. O XAUUSD le normalmente. Suspeita: historico insuficiente nos simbolos exoticos apos o reload do perfil.
+## 15. Ciclo 98/99/100 - 04/11/2026 20:31-20:44 - P1.98 e P1.100 FECHADOS (v1.2.142)
+
+### P1.98 - recusa do gateway publicada como previsao `FEITO`
+`[AI] PYTHON | USDCNH | NEUTRAL | PRICE=0.00000 | ... | CONF=0.00%`. O
+`ParsePredictionJSON` nao lia a chave `available`, por isso uma recusa legitima
+do gate walk-forward (`available:false`, `price 0.0`) era guardada como previsao
+`NEUTRAL` e atravessava `AIEngine.mqh:512` porque nem `LoadAIPrediction()` era
+`false` nem `AI_Signal` era `UNAVAILABLE`/`ERROR`. Correcao: extrair
+`available`/`reason` e, antes do `// SYMBOL MATCH`, devolver `false` com estado
+limpo e `[AI] INDISPONIVEL` limitado a 1/hora/simbolo/conta. Provado ao vivo no
+build v1.2.141: 13 recusas lidas como indisponibilidade, zero `PRICE=0.00000`,
+XAUUSD a manter `SELL CONF=71.90%`.
+
+### P1.100 - codigo de transporte rotulado como backend morto `FEITO`
+`[AI] GATEWAY | HTTP 1003 | ... | backend fora do ar | WebRequest=LIGADO (a
+chamada SAIU) | corpo=0B`. 1003 nao e codigo HTTP (um HTTP valido termina em
+599) e 8 s depois a mesma chamada devolveu 1120 bytes e um SELL real. Nova faixa
+`status > 599` testada antes de `status >= 500`, com o texto
+`resposta NAO-HTTP (codigo devolvido pelo transporte, nao do servidor ...)`.
+Segundo item: removido o `if(logOnce)` duplicado antes do `Print` de
+`[AI] LOAD`. **Como fechar a verificacao:** esperar o proximo soluÃ§o de
+transporte e confirmar no journal o texto novo em vez de `backend fora do ar`.
+
+### HG-01 - desalinhamento de identidade apanhado e corrigido `FEITO`
+Com o cabecalho em v1.2.141 e `EA_VERSION_STRING "1.2.141"`, o `#property
+version` ainda lia `"1.340"`. Corrigido para `"1.342"` e reconfirmado por
+leitura da linha 22. Regra a manter: identidade = minor*100 + patch, sempre
+igual em tres sitios (cabecalho, `EA_VERSION_STRING`, `#property version`).
+
+### `AI_Symbol=""` no ramo do P1.98 `ABERTO`
+O ramo novo limpa `AI_Symbol`. Ha duas definicoes (`AIConnector.mqh:1606/1616`,
+`AIDataForSymbol()`/`GetAISymbol()`); a busca de chamadores ficou pendente.
+**Como fechar:** procurar chamadores e confirmar que string vazia e tratada como
+"sem simbolo" e nao como erro.
+
+### P-02 - Testador ocupado `DONO`
+Sem alteracao. `tester_list_result_windows` = `[]` com o log do tester a crescer
+163.503.296 -> 163.733.688 B em 6 s. Criterio: `tester_get_status` sem job
+activo; depois re-medir com `XAI_V12135_PRODGEOM_RT_M15.ini` (XAUUSD M15, ticks
+reais, 2026.09.01-2026.11.01, deposito 10000, sem `.set`) e confirmar
+`[AI] LOAD ... ROOT=COMMON` no journal do tester.
+
+### P-03 / P-04 / P-05 - abertos `DONO`
+`DailyProfitTargetUsd 20` vs `DailyProfitTargetMaxUsd 40`;
+`StoplessEmergencyPoints=0`; notificacoes `10060 wsa error`.
+
+### `[DATA] SEM LEITURA | ATR=0.000000` em simbolos nao-XAU `DONO`
+Sem alteracao. XAUUSD le normalmente. Suspeita mantida: historico insuficiente
+nos simbolos exoticos apos o reload do perfil. `[ADX] SEM LEITURA ... Error=4022
+| BarsCalculated=-1` no mesmo conjunto.
+
+### Higiene pendente
+pytest ausente da `.venv`; mojibake em `CONVERSAS.md` antigo (visivel em
+comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo tracking de
+`Files/XAU_AI_PRO`.

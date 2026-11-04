@@ -655,3 +655,70 @@ as 20:30:50, 13x `[START] XAU_AI_PRO v1.2.140` as 20:31:0x.
 **Continua aberto:** P-02 (Testador ocupado, sem re-mediacao de PF), P-03, P-04,
 P-05, `[DATA] SEM LEITURA | ATR=0.000000` em simbolos nao-XAU. Conta real
 continua proibida: o unico PF historico (0,6206) e de um build sem ADX e sem IA.
+
+---
+
+## Ciclo 98/99/100 - 04/11/2026 20:31-20:44 - P1.98 e P1.100 (v1.2.142)
+
+**Pedido do dono:** a linha
+`2026.11.04 20:31:39.698 XAU_AI_PRO (USDCNH,H1) [AI] PYTHON | USDCNH | NEUTRAL |
+PRICE=0.00000 | BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=0.00%` - o EA
+publicava preco zero como se fosse previsao.
+
+**Diagnostico.** A sonda ao gateway provou que a culpa nao era do gateway: USDCNH
+devolvia HTTP 200 com `available:false, reason:"edge -0.1256 abaixo do minimo
++0.0500 (acc 0.2680 vs palpite 0.3936)", price 0.0`, enquanto XAUUSD devolvia
+`available:true, signal:SELL, confidence:70.0, price:4061.64`. O
+`ParsePredictionJSON` do `AI\AIConnector.mqh` nunca lia a chave `available`, por
+isso a recusa walk-forward era guardada como previsao `NEUTRAL` com preco zero e
+passava `AIEngine.mqh:512`.
+
+**P1.98.** Extrair `available`/`reason`; antes do `// SYMBOL MATCH`, se
+`available` for `false`/`0` entao `ResetAIState()`, `AI_Symbol=""`,
+`AI_Signal="UNAVAILABLE"`, `[AI] INDISPONIVEL | <sym> | MOTIVO=<reason>` limitado
+a 1/hora/simbolo/conta (portao `ai_unavail_<sym>`, 3600 s) e `return false`.
+Fail-closed, coerente com `AllowTradeWithoutAI=false`. O caminho local
+`prediction_*.json` ficou intacto (nao tem chave `available`).
+
+**Prova.** v1.2.141 compilou `Result: 0 errors, 0 warnings, 25408 ms`, `.ex5`
+863622 B as 20:37:25. Journal 20:39:57-20:40:32: 13 x
+`[AI] INDISPONIVEL | <sym> | MOTIVO=edge ... abaixo do minimo +0.0500`, zero
+`PRICE=0.00000`, e XAUUSD a manter
+`[AI] PYTHON | XAUUSD | SELL | PRICE=4063.500 | ... | CONF=71.90%`.
+
+**P1.100.** Na mesma leitura apareceu
+`[AI] GATEWAY | HTTP 1003 | ... | backend fora do ar | WebRequest=LIGADO (a
+chamada SAIU) | corpo=0B`. 1003 e codigo de transporte, nao HTTP (um HTTP valido
+termina em 599); 8 s depois a mesma chamada devolveu 1120 bytes e um SELL real.
+Nova faixa `status > 599` testada antes de `status >= 500` com o texto
+`resposta NAO-HTTP (codigo devolvido pelo transporte, nao pelo servidor; um
+codigo HTTP valido termina em 599)`. Segundo item: removido o `if(logOnce)`
+duplicado antes do `Print` de `[AI] LOAD` (comportamento igual, leitura
+correcta).
+
+**Edicao.** `edit` e `replace_text_in_file` falharam em casar os trechos
+multi-linha; feito por `Files\Temp\ciclo99_edit.ps1` ao nivel do byte
+(48433 -> 48813 B, `bom=False`, `old1/old2 count=1`).
+
+**Versao.** 1.2.142. `EA_VERSION_STRING "1.2.142"`, cabecalho
+`// XAU_AI_PRO v1.2.142`, e `#property version` corrigido de `"1.340"`
+(desalinhamento HG-01 apanhado na releitura) para `"1.342"`.
+
+**Compilacao.** `Result: 0 errors, 0 warnings, 27428 ms elapsed, cpu='X64
+Regular'`; `.ex5` 865350 B as 20:43:56; `Files\Temp\compile_c100.log`.
+
+**Reattach.** `profile_apply Default` -> `profile_apply XAI_P216_LIVE`; 28 x
+`[START] XAU_AI_PRO v1.2.142 ... saldo=12592.02` as 20:44:14.780-963 e
+20:44:21-24. Conta 113568614 DEMO, 0 posicoes.
+
+**Portoes limpos.** 16 `loggate_ai_load_*.bin` apagados de
+`Common\Files\XAU_AI_PRO` para o `[AI] LOAD` voltar a imprimir.
+
+**Continua aberto.** P-02 (Testador ocupado, sem re-mediacao de PF), `[AI]
+GATEWAY` ainda nao observado ao vivo depois da correcao, `[DATA] SEM LEITURA |
+ATR=0.000000` e `[ADX] SEM LEITURA ... Error=4022` em simbolos nao-XAU, P-03,
+P-04, P-05, pytest ausente da `.venv`, mojibake em `CONVERSAS.md` antigo, duplo
+tracking de `Files/XAU_AI_PRO`.
+
+**Governanca.** Nenhum parametro de risco alterado. Conta real proibida: o unico
+PF historico (0,6206) e de um build sem ADX e sem IA.

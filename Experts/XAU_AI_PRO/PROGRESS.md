@@ -4506,3 +4506,26 @@ Pendencias do dono (medidas):
 | Reattach | `profile_apply Default` -> `XAI_P216_LIVE`, 13x `[START] XAU_AI_PRO v1.2.140` |
 | Conta | 113568614 DEMO, 12.592,02, 0 posicoes, 0 ordens |
 | Testador | OCUPADO - P-02 aberto |
+## Ciclo 98/99/100 - 04/11/2026 20:31-20:44 - P1.98 e P1.100 (v1.2.142)
+
+| Item | Valor |
+| Sintoma | `[AI] PYTHON | USDCNH | NEUTRAL | PRICE=0.00000 | BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=0.00%` |
+| Gateway (sonda) | USDCNH HTTP 200 `available:false reason:"edge -0.1256 ..."` price 0.0; XAUUSD `available:true SELL 70.0` price 4061.64 |
+| Causa | `ParsePredictionJSON` nao lia `available`; recusa virava previsao NEUTRAL com preco zero e passava `AIEngine.mqh:512` |
+| P1.98 | extrai `available`/`reason`; `available==false/0` -> `ResetAIState()`, `AI_Symbol=""`, `AI_Signal="UNAVAILABLE"`, `[AI] INDISPONIVEL`, `return false` |
+| P1.98 portao | `ai_unavail_<symbol>`, 3600 s, por CONTA (`AccountLogGate.mqh:48`) |
+| P1.98 prova | journal 20:39:57-20:40:32: 13 x `[AI] INDISPONIVEL ... MOTIVO=edge ...`, 0 x `PRICE=0.00000` |
+| P1.98 prova XAU | `[AI] PYTHON | XAUUSD | SELL | PRICE=4063.500 | ... | CONF=71.90%` |
+| P1.100 item 1 | `HTTP 1003 ... backend fora do ar` era falso: 1003 e transporte. Nova faixa `status > 599` antes de `>= 500` -> `resposta NAO-HTTP (codigo devolvido pelo transporte ... termina em 599)` |
+| P1.100 item 2 | dois `if(logOnce)` encadeados antes do `Print` de `[AI] LOAD`; o segundo removido e substituido por comentario |
+| P1.100 prova | ainda nao observada ao vivo (so aparece noutro soluÃ§o de transporte) |
+| Edicao | `Files\Temp\ciclo99_edit.ps1` ao nivel do byte: 48433 -> 48813 B, bom=False, old1/old2 count=1 |
+| Versao | `EA_VERSION_STRING "1.2.142"` + `#property version "1.342"` + cabecalho `// XAU_AI_PRO v1.2.142` |
+| HG-01 | desalinhamento apanhado na releitura: `#property version` ainda `"1.340"` com cabecalho v1.2.141; corrigido para `"1.342"` |
+| Compilacao v1.2.141 | `Result: 0 errors, 0 warnings, 25408 ms`, `.ex5` 863622 B 20:37:25 |
+| Compilacao v1.2.142 | `Result: 0 errors, 0 warnings, 27428 ms`, `.ex5` 865350 B 20:43:56 |
+| Reattach | `profile_apply Default` -> `XAI_P216_LIVE`; 28 x `[START] XAU_AI_PRO v1.2.142 ... saldo=12592.02` as 20:44:14 e 20:44:24 |
+| Portoes limpos | 16 `loggate_ai_load_*.bin` apagados de `Common\Files\XAU_AI_PRO` |
+| Conta | 113568614 (MetaQuotes-Demo) DEMO hedging, 12.592,02, 0 posicoes |
+| Testador | OCUPADO - P-02 aberto; `tester_list_result_windows` = []; log 163.503.296 -> 163.733.688 B em 6 s |
+| Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |
