@@ -167,6 +167,15 @@ ESTADOS = READY | STALE | UNAVAILABLE | ERROR | TRAINING
 - Mudar `FEATURES`, `feature_version` ou o hash **invalida os 39 modelos** de uma
   vez. Treinar sempre contra o contrato, nunca contra um formato novo.
 - `edge_estavel` exige 5 folds com pelo menos 4 positivos - nao e so a media.
+- **CORRECAO MEDIDA em 05/11/2026 (ciclo 108):** este contrato ja nao descreve
+  todos os modelos. Varridos os 87 `*.meta.json` de `Python/models`, ha **tres**
+  contratos vivos: `25F-v2` (80 modelos, hash `27727ee00bc30b7f`),
+  `25F-est-v1` (3 modelos MULTI_*, de 03/10) e **`XAU-30F-v4` nos 4 modelos
+  XAUUSD**, com `feature_count=30` e hash `5305081777808310`. O
+  `PUBLICACAO_MIN_EDGE` em uso pelo gateway e **0,05**, como aqui escrito; o
+  texto "minimo 0,0300" que aparece em `Files/Data/prediction_XAUUSD.json` e
+  do snapshot e nao a regra. Nao unificar os tres contratos: cada modelo foi
+  treinado contra o seu. Ver `Docs/PREPARACAO_CONTA_REAL_20261105.md` §3.2.
 
 ---
 
