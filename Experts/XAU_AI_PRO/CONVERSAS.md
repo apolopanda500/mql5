@@ -1345,3 +1345,19 @@ contramao. Corrigido com cache de handles por simbolo na v1.2.161, 0/0 na compil
 
 Ficou registado o segundo pedido do dono - "nao deixar xauusd como exclusivo" - como P1.124,
 com os quatro caminhos XAUUSD-only ja localizados e a medicao do gateway ainda por fazer.
+
+## 05/11 (20:00) - "sim autorizado a fazer tudo que precisar" (gate da IA, v1.2.162)
+
+Com a autorizacao dada, a sonda ao gateway foi corrida: porta 9011 aberta, root 401 e
+401 nos 11 simbolos, com `XAU_AI_GATEWAY_TOKEN` indefinido e `AIGatewayToken` vazio nos
+13 graficos. Ou seja, o "XAUUSD exclusivo" do P1.98 nao se reproduz hoje - no estado
+actual o gateway recusa a chamada antes de olhar ao simbolo.
+
+O journal confirmou o resto: 25 `BLOCK | AI`, nenhum `AI OK`, nenhum `[ADV AI]`. A causa
+esta no codigo e nao no modelo: o teto de 40 (`AIUnavailableConfidenceCap`) era aplicado
+quando o gate era obrigatorio, e 40 nunca chega ao piso de 60. Corrigido em v1.2.162 com
+`aiReal`; o teto volta a valer so para o fallback.
+
+Fica dito ao dono, sem rodeios: enquanto nao houver token no gateway, o EA nao abre
+posicao em simbolo nenhum - e isso e a configuracao a funcionar como documentada, nao um
+defeito. A alternativa e `EnableAutonomousMode=true`, que e uma decisao dele.

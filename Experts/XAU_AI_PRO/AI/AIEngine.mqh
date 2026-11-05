@@ -119,7 +119,13 @@ double GetAIConfidence(int signal,string symbol="")
    // ETAPA 15.3: UNAVAILABLE nao gera bonus de IA;
    // cai no fallback local (trend/RSI/ADX).
    //------------------------------------------------
-   if(LoadAIPrediction(symbol) && AI_Signal!="UNAVAILABLE")
+   // v1.2.162 - P1.125: diz-se se a leitura veio MESMO da IA. O teto do
+   // fallback so pode valer quando o numero vem dos indicadores; aplicado
+   // tambem com IA real a responder, ele fechava o gate para sempre (ver
+   // o bloco abaixo).
+   bool aiReal = (LoadAIPrediction(symbol) && AI_Signal!="UNAVAILABLE");
+
+   if(aiReal)
    {
       if(signal==1 && AI_Signal=="BUY")
          score+=20.0;
@@ -157,7 +163,15 @@ double GetAIConfidence(int signal,string symbol="")
    // (50 de base + 15 tendencia + 10 RSI + 10 ADX), o multiplicador de lote ia
    // a 1,00 e o piso de veto (50) passava sem nenhum modelo responder. O
    // numero era de indicador com nome de IA.
-   if(AIGateRequired())
+   //
+   // v1.2.162 - P1.125 CORRIGIDO: MEDIDO 05/11/2026 - o teto era
+   // aplicado quando `AIGateRequired()` era VERDADEIRO, ou seja
+   // exactamente quando a IA e obrigatoria: 40 < MinAIConfidence 60,
+   // logo `AITradeAllowed()` devolvia false SEMPRE - com gateway, sem
+   // gateway, com score 95 ou com score 0. O texto do Config.mqh
+   // manda capar o fallback, nao a leitura real. Agora o teto vale so
+   // quando `aiReal` e falso.
+   if(!aiReal)
       score = MathMin(score, AIUnavailableConfidenceCap);
 
    score *= MemoryBoost(symbol);

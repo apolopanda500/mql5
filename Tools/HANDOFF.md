@@ -709,3 +709,16 @@ Treze graficos com o EA anexado, `AutoTrade=true`, conta demo, 0 posicoes, 0 ord
 - `XAU_AI_PRO.ex5` reconstruido: 913720 B, 19:53:30, 0 errors / 0 warnings.
 - Causa medida das 24 h sem entrada: EMA de tendencia contaminada (44.60460 repetido em 5 simbolos) -> `ScenarioTrendGate` vetou 100% dos sinais.
 - Os 13 graficos continuam a correr v1.2.159 ate haver reload autorizado.
+
+## 05/11 20:00 - P1.125 corrigido (v1.2.162 compilada, NAO recarregada)
+
+`AI/AIEngine.mqh` `GetAIConfidence`: o teto do fallback (`AIUnavailableConfidenceCap=40`)
+era aplicado quando `AIGateRequired()` era verdadeiro (modo em que a IA e obrigatoria),
+logo `AITradeAllowed()` devolvia false sempre - 40 < `MinAIConfidence` 60. Passa a marcar
+`aiReal` e a capar so o fallback. 0 errors / 0 warnings, ex5 915628 bytes as 19:59:27.
+
+Medido antes: 25 `[VALIDATION] BLOCK | AI` em 05/11, 0 `AI OK`, 0 `[ADV AI]`; gateway
+9011 com 401 no root e nos 11 simbolos; `AIGatewayToken` vazio nos 13 graficos.
+
+Continua por fazer: reload dos 13 graficos (a correr v1.2.159) e a decisao do dono sobre
+o token do gateway ou `EnableAutonomousMode=true`.

@@ -1,4 +1,4 @@
-# PENDENCIAS — XAU_AI_PRO
+﻿# PENDENCIAS — XAU_AI_PRO
 
 > Fonte unica das pendencias. Indice geral em `README.md`, historico tecnico em
 > `PROGRESS.md`, conversas em `CONVERSAS.md`.
@@ -1001,7 +1001,80 @@ Nesse caso a decisao e do dono, nao do codigo.
 
 ---
 
-## P1.124 - ABERTO: XAUUSD e o unico simbolo com cobertura de IA no gateway
+## P1.125 - RESOLVIDO EM CODIGO (05/11/2026, v1.2.162) - o gate da IA nao podia ser satisfeito por nenhum simbolo
+
+### O que estava medido antes de tocar em nada
+
+| Medicao (05/11/2026) | Resultado |
+|---|---|
+| `[VALIDATION] BLOCK | AI` | 25 linhas, fila de AUDUSD (01:00-02:55), USDJPY (02:40-04:07), NZDUSD (05:35), USDCAD e USDSEK (14:54) |
+| `AI OK` | 0 linhas |
+| `[ADV AI] BLOQUEADO / Score` | 0 linhas |
+| sonda ao gateway 9011 | 401 no root e nos 11 simbolos, token ausente |
+
+### Causa, por leitura do codigo
+
+`AI/AIEngine.mqh`:
+
+```mql5
+bool AIGateRequired()
+{
+   if(!EnableAIFilter)          return(false);
+   if(EnableAutonomousMode)     return(false);
+   return(!AllowTradeWithoutAI);
+}
+```
+
+Com os inputs dos 13 graficos (`EnableAIFilter=true`, `EnableAutonomousMode=false`,
+`AllowTradeWithoutAI=false`) o gate e obrigatorio, e entao `GetAIConfidence` fazia:
+
+```mql5
+if(AIGateRequired())
+   score = MathMin(score, AIUnavailableConfidenceCap);   // 40.0
+```
+
+`40 < MinAIConfidence (60)`, logo `AITradeAllowed()` devolvia `false` no ramo
+`confidence<MinAIConfidence` em **todas** as chamadas: com gateway a responder score
+95, com gateway a responder 401, ou sem gateway nenhum. O teto era aplicado exactamente
+no modo em que a IA e obrigatoria, quando o texto do `Config.mqh` manda capar o
+**fallback** (o numero de indicador com nome de IA), nao a leitura real.
+
+Segundo gate, independente e igualmente fechado: `FinalAIAllow()` recusa quando
+`LoadAIPrediction` devolve `UNAVAILABLE`/`ERROR` - e com 401 e `AIGatewayToken` vazio e
+sempre `UNAVAILABLE`. Nao chegou a imprimir nada porque o primeiro gate barra antes.
+
+### Correcao
+
+`GetAIConfidence` passa a marcar `aiReal = (LoadAIPrediction(symbol) && AI_Signal!="UNAVAILABLE")`
+e o teto passa a valer so quando `aiReal` e falso:
+
+```mql5
+if(!aiReal)
+   score = MathMin(score, AIUnavailableConfidenceCap);
+```
+
+Com IA real o score vale o que medir; sem IA o score continua capado em 40 e o gate
+continua fechado - que e o comportamento pedido em 23/10/2026, quando se descobriu que
+50+15+10+10 passava o piso sem nenhum modelo responder.
+
+Nenhum limite, lote, alvo, stop, spread, RR, regra de entrada ou de saida mudou.
+
+### O que continua ABERTO (decisao do dono, nao do codigo)
+
+O EA continua **sem poder abrir posicao em nenhum simbolo** enquanto o gateway
+responder 401 e `AllowTradeWithoutAI=false`. Sao precisos dois passos, nesta ordem:
+
+1. **Token** - o gateway exige `Authorization: Bearer`; sem token nao ha leitura real e
+   o gate fica fechado por desenho (`IA real: veta e exige gateway`).
+2. **Decisao explicita** sobre `EnableAutonomousMode=true` (IA consultora, deixa de
+   vetar e de exigir disponibilidade) - muda a regra de entrada, portanto nao foi
+   alterado por iniciativa propria.
+
+E o P1.123 continua a precisar de **reload** para entrar em producao: os 13 graficos
+estao a correr v1.2.159 e o ex5 compilado (v1.2.162) nao foi recarregado.
+
+---
+## P1.124 - REFORMULADO (05/11/2026, v1.2.162): o bloqueio NAO e cobertura XAUUSD - e HTTP 401 + o teto de confianca do P1.125
 
 Pedido do dono: "nao deixar xauusd como exclusivo, EA operar todos".
 
@@ -1022,6 +1095,28 @@ Proxima medicao obrigatoria: pedir a rota de predicao para os 11 simbolos e regi
 Nenhum destes ramos, por si, impede os outros simbolos de operar; o que impede e a
 cobertura do modelo.
 
+### MEDIDO DEPOIS (05/11/2026, 19:55) - a premissa do P1.98 nao se reproduz
+
+A sonda ao gateway (`Files\Temp\gw_probe.ps1`, autorizada pelo dono) devolveu:
+
+| Passo | Resultado |
+|---|---|
+| TCP 127.0.0.1:9011 | `porta 9011 aberta: True` |
+| GET raiz | `status=401` (No Autorizado) |
+| GET `/api/ai/predict?symbol=<S>&timeframe=H1` para os 11 simbolos | `401` nos 11, sem `available=true/false` nenhum |
+| `XAU_AI_GATEWAY_TOKEN` / `XAU_AI_API_TOKEN` | indefinidos no ambiente (tamanho 0) |
+| `AIGatewayToken` nos 13 graficos | vazio em todos |
+
+Ou seja: neste estado nao existe "XAUUSD com cobertura e os outros sem" - o gateway
+recusa a chamada antes de olhar ao simbolo. O P1.98 (`available=false` com motivo por
+simbolo) foi medido com o token a funcionar e nao se pode reconfirmar agora.
+
+E o journal de 05/11 confirma que o portao da IA nao abriu para NINGUEM, XAUUSD
+incluido: 25 linhas `[VALIDATION] BLOCK | AI`, ZERO linhas `AI OK` e ZERO linhas
+`[ADV AI]` em todo o dia.
+
+Conclusao deste item: os quatro caminhos XAUUSD-only continuam por tocar, mas nenhum
+deles e o que impede os outros simbolos de operar hoje. O que impede esta no P1.125.
 ---
 ## P1.119 - ABERTO, MAS REFORMULADO (05/11/2026, v1.2.160) - o iATR do EA nao esta morto: falha nos MESMOS ciclos em que o ADX e o RSI falham
 

@@ -4868,3 +4868,25 @@ Correcao: cache de handles por simbolo no SignalCore, criados uma vez com
 Mesmo desenho do ADX (P1.85), do ATR (P1.108/P1.118) e da EMA de tendencia (P1.113).
 0 errors / 0 warnings. Registado tambem o P1.124 (XAUUSD como unico simbolo com cobertura
 de IA no gateway), ainda sem alteracao de codigo.
+
+## Ciclo de 05/11 (19:59) - o gate da IA estava fechado para todos os simbolos (v1.2.162)
+
+Ciclo pedido pelo dono: "nao deixar xauusd como exclusivo, EA operar todos".
+
+Medido primeiro no journal de 05/11: 25 linhas `[VALIDATION] BLOCK | AI` (AUDUSD,
+USDJPY, NZDUSD, USDCAD, USDSEK), **zero** linhas `AI OK` e **zero** linhas `[ADV AI]`.
+Sonda ao gateway 9011: porta aberta, 401 no root e nos 11 simbolos, sem token no
+ambiente e `AIGatewayToken` vazio nos 13 graficos.
+
+Causa por leitura do codigo em `AI/AIEngine.mqh`: `GetAIConfidence` aplicava o teto do
+fallback (`AIUnavailableConfidenceCap=40`) quando `AIGateRequired()` era verdadeiro,
+isto e exactamente quando a IA e obrigatoria - logo a confianca nunca passava de 40
+contra um piso de 60 e `AITradeAllowed()` devolvia false sempre, com ou sem gateway.
+O texto do `Config.mqh` manda capar o fallback, nao a leitura real.
+
+Correcao: `aiReal` marca a leitura real e o teto passa a valer so no fallback. Nenhum
+parametro de risco foi tocado. Compilado 0 errors / 0 warnings, ex5 915628 bytes.
+
+Registado e NAO alterado: com 401 e sem token, o EA continua sem poder operar nenhum
+simbolo; falta token ou decisao do dono para `EnableAutonomousMode=true`. E o reload dos
+13 graficos (ainda em v1.2.159) continua pendente.
