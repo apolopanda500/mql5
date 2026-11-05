@@ -924,6 +924,105 @@ CopyBuffer sem barras | barsCalc=-1 | erro=4807 | grafico=<o proprio par>` -
 ou seja o ramo esta nomeado e e o mesmo em todos os 13 graficos, mesmo DEPOIS
 do drop e da recriacao. O handle NOVO volta a ficar em `barsCalc=-1` com
 `erro=4807`. O drop/recreate e necessario e insuficiente: nasce o P1.119.
+## P1.123 - RESOLVIDO EM CODIGO (05/11/2026, v1.2.161) - as 24 horas sem entrada eram churn de handles no SignalCore
+
+### O que estava medido antes de mexer
+Janela 04/11 19:00 -> 05/11 19:40, grafico mestre USDCNH:
+
+| Medida | Valor |
+|---|---|
+| Abrir posicao | 0 posicoes, 0 ordens |
+| Ultima entrada do EA | 04/11 02:00:05 USDCAD |
+| `[SIGNAL] BUY` | 13 linhas |
+| `[SIGNAL] SELL` | 28 linhas |
+| `[SCANNER] SIGNAL OK` | 60 linhas (truncado em 60) |
+| Entradas | **0** |
+
+Ou seja: o sinal nao estava morto. O que estava morto era o que vem depois dele.
+
+### A prova que fechou o caso
+O journal repetiu o MESMO valor de EMA200 para cinco simbolos diferentes dentro da mesma hora:
+
+| Hora | Simbolo | EMA lida | bid |
+|---|---|---|---|
+| 16:00:33 | AUDUSD | 44.60460 | 0.69415 |
+| 16:15:03 | USDJPY | 44.60460 | 157.78500 |
+| 16:40:45 | GBPUSD | 44.60460 | 1.34477 |
+| 16:41:23 | USDCAD | 44.60460 | 1.39972 |
+| 16:55:46 | EURUSD | 44.60460 | 1.12255 |
+
+E, ao longo do dia, a mesma "EMA" subiu e desceu como um oscilador 0-100:
+26.80 -> 29.23 -> 31.51 -> 33.82 -> 34.68 -> 38.33 -> 39.34 -> 42.79 -> 44.60 -> 47.51 -> 49.71 -> 51.61 -> 44.60 -> 43.87.
+Nenhum par cotado entre 0.69 e 157 tem EMA200 em 44.6. A familia de valores e RSI/ADX.
+
+Tambem apareceram valores da familia ATR (`EMA=0.00209` XAUUSD, `0.00214` USDCNH,
+`0.00180` GBPUSD, `0.00163` EURUSD) e o ADX do proprio simbolo do grafico saiu
+como `0.00` (`[VALIDATION] USDCNH | ADX=0.00 | Min=18.00` -> `BLOCK | ADX`).
+
+### A causa
+`Core/SignalCore.mqh` criava TRES handles (`iMA` x2 + `iRSI`) e chamava
+`IndicatorRelease` nos tres, na MESMA leitura, para cada um dos 11 simbolos, a cada
+ciclo de scan: ~33 criacoes/destroicoes por ciclo. O terminal reaproveita os slots
+numericos libertados, e um handle de vida longa - EMA de tendencia, ADX, ATR, todos em
+cache desde a P1.85 / P1.108 / P1.113 - passa a apontar para o slot de um indicador de
+OUTRO tipo.
+
+### O efeito em cadeia (todos medidos)
+1. `TrendBuy`/`TrendSell` liam lixo -> `ScenarioTrendGate` respondia **contramao** a todos os sinais:
+   `TREND SELL | USDCAD | contramao vetada | tendencia formada | ADX=43.7 >= 22.0`
+   `TREND SELL | USDSEK | contramao vetada | tendencia formada | ADX=36.9 >= 22.0`
+   `TREND BUY  | USDJPY | contramao vetada | tendencia formada | ADX=31.3 >= 22.0`
+   `TREND BUY  | USDCNH | contramao vetada | ADX indisponivel`
+2. `AVOID HOUR` fechava GMT 18 (`GMT=18h | lista=9,11,14,18,20,22`) - 25% do dia em 6 horas.
+3. `BLOCK | AI` apareceu em USDCAD/USDSEK (14:54).
+4. `BLOCK | ADX` quando o ADX do proprio grafico lia 0.00.
+
+O `[ADV AI]` nao imprimiu uma unica linha em 24 h: `FinalAIAllow` nunca chegou a ser
+chamado, logo o veto da IA NAO era o bloqueio visivel nesta janela.
+
+### Correcao aplicada (v1.2.161)
+`Core/SignalCore.mqh`: cache de handles por simbolo (`SIG_CACHE_MAX 64`), criados
+uma vez com `XAI_WaitSeriesReady`, descartados quando a copia falha (o par sara
+sozinho), libertados no `OnDeinit` por `ReleaseSignalHandles`. Desenho identico ao
+que ja funciona no ADX (P1.85), no ATR (P1.108/P1.118) e na EMA de tendencia (P1.113).
+
+Nada mais mudou: nenhum limite, regra de entrada/saida, lote, alvo, stop, spread ou RR.
+Compilado 0 errors / 0 warnings; `XAU_AI_PRO.ex5` 913720 B as 19:53:30.
+
+### O que falta para provar em producao
+Sem reload autorizado os 13 graficos continuam na v1.2.159 e o defeito continua vivo.
+Depois do reload, a prova e uma destas duas:
+- `[TREND] LEITURA SUSPEITA` deve cair para ~0 por hora (eram ~20/h);
+- `[VALIDATION] BLOCK | TREND ...` deve deixar de dizer "contramao" em todos os sinais.
+
+Se a contramao PERSISTIR depois do reload, entao a EMA esta certa e o problema e a
+propria regra: o sinal pede pullback (preco abaixo da EMA200) e o gate veta pullback.
+Nesse caso a decisao e do dono, nao do codigo.
+
+---
+
+## P1.124 - ABERTO: XAUUSD e o unico simbolo com cobertura de IA no gateway
+
+Pedido do dono: "nao deixar xauusd como exclusivo, EA operar todos".
+
+Medido antes (P1.98, v1.2.141): o gateway responde `available=true` so para XAUUSD e
+`available=false` com motivo para todos os outros simbolos. Com
+`AllowTradeWithoutAI=false` e `EnableAIFilter=true`, os outros 10 simbolos ficam
+estruturalmente proibidos de passar no portao da IA - nao por regra de risco, por falta
+de cobertura do modelo.
+
+Caminhos XAUUSD-only no codigo, ja localizados e ainda NAO alterados:
+- `AI/AIConnector.mqh:207` -> `return "XAUUSD";` (alias GOLD/XAU);
+- `Core/BrokerConfig.mqh:19-21` -> `TradeGold` resolvido so para XAUUSD/./c;
+- `Core/Config.mqh:921` -> lista `Symbols` por omissao a comecar em XAUUSD;
+- `Core/SymbolManager.mqh:127` -> ramo especial `baseSymbol == "XAUUSD"`.
+
+Proxima medicao obrigatoria: pedir a rota de predicao para os 11 simbolos e registar
+`available`/motivo por simbolo ANTES de tocar em qualquer um destes quatro pontos.
+Nenhum destes ramos, por si, impede os outros simbolos de operar; o que impede e a
+cobertura do modelo.
+
+---
 ## P1.119 - ABERTO, MAS REFORMULADO (05/11/2026, v1.2.160) - o iATR do EA nao esta morto: falha nos MESMOS ciclos em que o ADX e o RSI falham
 
 ### A pergunta unica deste item: o terminal deduplica o handle?

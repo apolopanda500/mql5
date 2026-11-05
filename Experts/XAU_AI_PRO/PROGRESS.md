@@ -4844,3 +4844,27 @@ Compilado `0 errors, 0 warnings` (build 6296 X64 Regular), binario actualizado n
 pasta do EA. Nenhum limite, lote, alvo, stop, spread, preco, regra de entrada ou
 de saida, ou parametro de risco foi alterado. Sem reload, sem push: a medicao
 dentro do EA so existe depois de uma recarga autorizada.
+
+## Ciclo de 05/11 (19:40) - 24 horas sem entrada: o churn de handles do sinal (v1.2.161)
+
+O dono perguntou por que o EA passou 24 h sem abrir posicao. A resposta medida nao foi
+"nao houve sinal": foram 13 sinais BUY, 28 sinais SELL e 60 linhas `[SCANNER] SIGNAL OK`
+entre 04/11 19:00 e 05/11 19:40, com ZERO entradas.
+
+O fio que se puxou foi uma linha do journal que parecia ruido: `[TREND] LEITURA SUSPEITA`.
+Ela apareceu com o MESMO valor de EMA para cinco simbolos dentro da mesma hora
+(`44.60460` em AUDUSD, USDJPY, GBPUSD, USDCAD e EURUSD) e, ao longo do dia, com uma
+serie que sobe e desce como um oscilador 0-100 (26.80 -> 51.61 -> 43.87). Nenhum par
+cotado entre 0.69 e 157 tem EMA200 ali.
+
+A causa: `SignalCore.mqh` criava e libertava tres handles por simbolo por ciclo
+(~33 slots reciclados por ciclo de scan). O terminal reaproveita esses slots; os handles
+de vida longa (EMA de tendencia, ADX, ATR) ficaram a apontar para indicadores de outro
+tipo. Com a EMA de tendencia a devolver lixo, `ScenarioTrendGate` respondeu "contramao
+vetada" a 100% dos sinais - e nenhuma posicao abriu.
+
+Correcao: cache de handles por simbolo no SignalCore, criados uma vez com
+`XAI_WaitSeriesReady`, descartados na falha de copia e libertados no `OnDeinit`.
+Mesmo desenho do ADX (P1.85), do ATR (P1.108/P1.118) e da EMA de tendencia (P1.113).
+0 errors / 0 warnings. Registado tambem o P1.124 (XAUUSD como unico simbolo com cobertura
+de IA no gateway), ainda sem alteracao de codigo.

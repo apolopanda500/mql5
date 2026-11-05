@@ -702,3 +702,10 @@ Treze graficos com o EA anexado, `AutoTrade=true`, conta demo, 0 posicoes, 0 ord
   `ATR=0.000000`, `RSI=0.00`, `ADX=51.17`). O ATR a zero e sintoma do P1.110.
 - Binario: v1.2.160 (`#property version "1.360"`), `0 errors, 0 warnings`.
   Os 13 graficos continuam a correr a v1.2.159: falta recarga autorizada.
+
+## 05/11 19:53 - P1.123 corrigido (v1.2.161 compilada, NAO recarregada)
+
+- `Core/SignalCore.mqh`: handles do sinal em cache por simbolo; sem `IndicatorRelease` na leitura.
+- `XAU_AI_PRO.ex5` reconstruido: 913720 B, 19:53:30, 0 errors / 0 warnings.
+- Causa medida das 24 h sem entrada: EMA de tendencia contaminada (44.60460 repetido em 5 simbolos) -> `ScenarioTrendGate` vetou 100% dos sinais.
+- Os 13 graficos continuam a correr v1.2.159 ate haver reload autorizado.

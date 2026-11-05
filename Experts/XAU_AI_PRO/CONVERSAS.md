@@ -1329,3 +1329,19 @@ medicao separar "serie sem barras" de "handle preso a outra serie"; a linha
 `[ATR] LEITURA SUSPEITA` passa a publicar o `handle`. Compilado `0 errors,
 0 warnings`. Nada de risco foi tocado. Sem push e sem reload - a medicao dentro
 do EA so existe depois de uma recarga autorizada.
+
+## 05/11 (19:53) - "EA ESTA 24HORAS SEM ABRIR POSICAO CORRIGIR TAMBEM"
+
+Comecei por medir em vez de mexer. Zero posicoes, zero ordens, ultima entrada do EA em
+04/11 02:00:05. Mas o sinal existia: 13 BUY, 28 SELL, 60 `SIGNAL OK` em 24 h.
+
+O elo partido estava a jusante. A prova foi a repeticao do valor `44.60460` como EMA200
+de cinco simbolos diferentes, e a serie a oscilar 26.80 -> 51.61 -> 43.87 ao longo do dia,
+que e o comportamento de um RSI/ADX e nao de uma media de preco.
+
+Diagnostico: churn de handles no `SignalCore` (~33 slots reciclados por ciclo) a
+desalinhar os handles de vida longa; `ScenarioTrendGate` a vetar 100% dos sinais como
+contramao. Corrigido com cache de handles por simbolo na v1.2.161, 0/0 na compilacao.
+
+Ficou registado o segundo pedido do dono - "nao deixar xauusd como exclusivo" - como P1.124,
+com os quatro caminhos XAUUSD-only ja localizados e a medicao do gateway ainda por fazer.
