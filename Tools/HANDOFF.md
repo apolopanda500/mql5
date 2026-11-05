@@ -690,3 +690,15 @@ Estado no instante do fecho: HEAD `44b4bfaf` (379 commits, todos locais, nenhum 
 ### O que fica a correr
 
 Treze graficos com o EA anexado, `AutoTrade=true`, conta demo, 0 posicoes, 0 ordens, 0 alertas, 0 servicos. O EA nao foi removido dos graficos nem o AutoTrading foi desligado: o pedido foi fechar o TRABALHO, nao parar a producao. Para parar de vez, remover o EA dos treze graficos (ou desligar o AutoTrading) - accao de um clique, do dono.
+## 05/11 19:08 - P1.119 medido (v1.2.160 compilada, NAO recarregada)
+
+- Sonda `Scripts/XAI_AtrDiag.mq5` v1.010 as 19:16:10 no grafico `AUDUSD,H1`:
+  handles `10`..`23` distintos, um por simbolo, cada um com `barsCalc` igual as
+  barras do SEU simbolo; mesmo par -> mesmo handle; outro par/periodo -> handle
+  novo. O terminal NAO deduplica e nao liga o handle a serie errada num script.
+- EA em producao: o `ATR%` do mestre `USDCNH,H1` alterna entre `0.03` e
+  `sem leitura` a cada ~90 s, e os ciclos maus sao os mesmos em que o ADX e o
+  RSI falham (`[DATA] SEM LEITURA` em 5 graficos as 19:00:35-19:01:11 com
+  `ATR=0.000000`, `RSI=0.00`, `ADX=51.17`). O ATR a zero e sintoma do P1.110.
+- Binario: v1.2.160 (`#property version "1.360"`), `0 errors, 0 warnings`.
+  Os 13 graficos continuam a correr a v1.2.159: falta recarga autorizada.

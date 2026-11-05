@@ -4803,3 +4803,44 @@ Resultado por item:
 ## Fecho do ciclo 112 (v1.2.159) - o trabalho para aqui, com o que esta provado escrito ao lado
 
 Ciclo encerrado em `44b4bfaf`, working tree limpo, 379 commits locais e nenhum push. O que fica provado: a v1.2.159 compila com 0 errors / 0 warnings, e o que corre nos treze graficos; o P1.119 tem causa medida (o ATR lido e o do XAUUSD, `22.597860`, `barsCalc=60369`), e a guarda do P1.112 devolve 0.0 em todas as linhas, portanto o defeito custa DADOS e nao risco. O que nao fica provado: o mecanismo do P1.121 e a sonda do P1.119. O que fica aberto e do dono: push, separacao do `6fe56e53`, `USDBRL,M5`, as herdadas (P1.110/P1.111, simbolos, `EnableVolatilityFilter=false`, gateway 401/1003 e 30F contra 25F) e a proibicao de conta real (PF 0.6206 nao remedido). Treze graficos continuam a correr em demo com 0 posicoes, 0 ordens, 0 alertas e 0 servicos.
+## Ciclo de 05/11 (19:08) - P1.119: a pergunta unica respondida, e o ATR que nao esta morto (v1.2.160)
+
+A pergunta que o registo mandava responder antes de tocar em codigo era uma so:
+o terminal deduplica a instancia de indicador por (nome, periodo, parametros)
+ignorando o simbolo, ou o handle fica ligado a serie errada?
+
+Resposta, medida com a sonda `Scripts/XAI_AtrDiag.mq5` v1.010 no grafico
+`AUDUSD,H1` as 19:16:10 (build 6296, 14 handles num so pedido):
+
+- um handle por simbolo, cada um com as barras do SEU simbolo (`10` XAUUSD
+  60371, `11` AUDUSD 100013, `12` USDCNH 66891, `20` USDCZK 72095, `21` USDBRL
+  2206) e `barsCalc` igual a `barsSerie` em todos;
+- o mesmo par devolve o mesmo handle (`C1 igual=SIM`), outro par devolve outro
+  handle (`C2`/`C3 igual=NAO`), e o periodo 15 abre um handle novo (`D1
+  handle=24`, `igualAoDe14=NAO`);
+- `iATR(_Symbol,...)` criado por ULTIMO (passo E) devolve o handle e as barras do
+  simbolo do grafico.
+
+Sem deduplicacao e sem serie errada quando o pedido vem de um script. A
+hipotese que o item mandava testar primeiro fica refutada nesse contexto.
+
+O journal do EA, na mesma hora, diz o resto: no mestre `USDCNH,H1` o `ATR%`
+alterna entre `0.03` (leitura boa) e `sem leitura(atr=0.000000,bid=6.665560)` a
+cada ~90 s, e os ciclos maus sao os mesmos em que o ADX e o RSI falham -
+`[DATA] SEM LEITURA` em cinco graficos entre 19:00:35 e 19:01:11, todos com
+`ATR=0.000000`, `RSI=0.00` e o MESMO `ADX=51.17`, logo depois do fecho da barra
+H1 das 19:00. As ondas de hora a hora sao o portao de 3600 s do `ATRLogNoRead` a
+rearmar, nao uma recorrencia do defeito.
+
+Conclusao desta janela: o ATR a zero e vitima do evento que contamina o lote de
+indicadores (P1.110), nao um `iATR` que nunca aquece. O P1.117/P1.118 continuam
+a tratar o sintoma - quatro horas depois de instalados, a falha continua a
+aparecer.
+
+Codigo (v1.2.160), so de diagnostico: o ramo `CopyBuffer sem barras` do `GetATR`
+publica `handle`, `barrasSerie`, `barrasGrafico` e `serieSync` ao lado de
+`barsCalc` e do `bid`; a linha `[ATR] LEITURA SUSPEITA` publica o `handle`.
+Compilado `0 errors, 0 warnings` (build 6296 X64 Regular), binario actualizado na
+pasta do EA. Nenhum limite, lote, alvo, stop, spread, preco, regra de entrada ou
+de saida, ou parametro de risco foi alterado. Sem reload, sem push: a medicao
+dentro do EA so existe depois de uma recarga autorizada.

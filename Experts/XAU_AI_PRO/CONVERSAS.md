@@ -1296,3 +1296,36 @@ aberto; por ele ja existir, os dois itens deste ciclo ficaram P1.120 e P1.121.
 
 Nada de risco foi alterado: nem lote, nem alvo, nem stop, nem spread, nem RR,
 nem limites, nem regras de entrada ou de saida. Sem push, sem reload.
+## 05/11 (19:08) - «proximo» depois do ciclo 112: P1.119 medido (v1.2.160)
+
+O item seguinte era o P1.119, e o registo dizia que antes de mexer no codigo era
+preciso responder a UMA pergunta: o terminal deduplica a instancia de indicador
+por nome+periodo+parametros ignorando o simbolo?
+
+A sonda respondeu. `Scripts/XAI_AtrDiag.mq5` v1.010, corrida as 19:16:10 no
+grafico `AUDUSD,H1`, pediu `iATR` para 14 simbolos: handles `10` a `23`,
+distintos, cada um com `barsCalc` igual as barras do SEU simbolo; o mesmo par
+devolve o mesmo handle, outro par devolve outro, e o periodo 15 abre um handle
+novo (`24`). Sem deduplicacao e sem ligacao a serie errada no contexto de
+script - a hipotese cai.
+
+Para a sonda correr foi preciso contornar uma limitacao do MCP: o
+`chart_add_script` valida contra um catalogo de programas lido no arranque do
+servidor, portanto um `.ex5` criado na sessao nao existe para ele (`specified
+script not found in base` e depois `access to the specified file is
+prohibited`). Solucao: juntar a sonda ao `XAI_AtrDiag.mq5`, que ja estava no
+catalogo, e lancar esse.
+
+O journal do EA, na mesma hora, reformulou o item: o ATR nao esta morto. No
+mestre `USDCNH,H1` o `ATR%` alterna entre `0.03` e `sem leitura` a cada ~90 s, e
+os ciclos maus coincidem com os ciclos em que o ADX e o RSI tambem falham -
+cinco graficos as 19:00:35-19:01:11 com `ATR=0.000000`, `RSI=0.00` e o mesmo
+`ADX=51.17`, logo apos o fecho da barra H1. As ondas de hora a hora sao o portao
+de 3600 s do `ATRLogNoRead` a rearmar.
+
+Ficou uma correcao de diagnostico (v1.2.160): a linha `[ATR] SEM LEITURA` passa a
+publicar `handle`, `barrasSerie`, `barrasGrafico` e `serieSync`, para a proxima
+medicao separar "serie sem barras" de "handle preso a outra serie"; a linha
+`[ATR] LEITURA SUSPEITA` passa a publicar o `handle`. Compilado `0 errors,
+0 warnings`. Nada de risco foi tocado. Sem push e sem reload - a medicao dentro
+do EA so existe depois de uma recarga autorizada.

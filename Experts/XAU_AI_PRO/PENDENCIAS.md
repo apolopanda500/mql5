@@ -924,30 +924,75 @@ CopyBuffer sem barras | barsCalc=-1 | erro=4807 | grafico=<o proprio par>` -
 ou seja o ramo esta nomeado e e o mesmo em todos os 13 graficos, mesmo DEPOIS
 do drop e da recriacao. O handle NOVO volta a ficar em `barsCalc=-1` com
 `erro=4807`. O drop/recreate e necessario e insuficiente: nasce o P1.119.
-## P1.119 - ABERTO (05/11/2026, v1.2.157) - o iATR criado pelo EA nunca aquece
-MEDIDO: 12 linhas `[ATR] SEM LEITURA | <par> | CopyBuffer sem barras |
-barsCalc=-1 | erro=4807 | grafico=<o proprio par>` entre 15:31:05.262 e
+## P1.119 - ABERTO, MAS REFORMULADO (05/11/2026, v1.2.160) - o iATR do EA nao esta morto: falha nos MESMOS ciclos em que o ADX e o RSI falham
+
+### A pergunta unica deste item: o terminal deduplica o handle?
+
+RESPOSTA MEDIDA: NAO. A sonda `Scripts/XAI_AtrDiag.mq5` v1.010, corrida as
+19:16:10 no grafico `AUDUSD,H1` (build 6296), pediu `iATR` para 14 simbolos e
+para dois periodos:
+
+| Passo | Pergunta | Medicao |
+|---|---|---|
+| A | um handle por simbolo? | `handle=10` XAUUSD `barsCalc=60371` = `barsSerie`; `11` AUDUSD 100013; `12` USDCNH 66891; `20` USDCZK 72095; `21` USDBRL 2206 - cada um com as barras do SEU simbolo |
+| C1 | o mesmo par devolve o mesmo handle? | `handle1=10 handle2=10 igual=SIM barsCalc2=60371` |
+| C2 / C3 | outro par devolve outro handle? | `igual=NAO` nas duas comparacoes (`10` vs `11`, `11` vs `12`) |
+| D1 | o periodo entra na identidade? | `periodo=15 -> handle=24`, `igualAoDe14=NAO` |
+| E1 | `iATR(_Symbol,...)` criado por ultimo? | `handle=11 barsCalc=100013` = `barsSerie` do grafico |
+
+Logo, quando o pedido vem de um script: sem deduplicacao por
+(nome, periodo, parametros) e sem ligacao a serie errada. A hipotese que este
+item mandava testar primeiro fica REFUTADA nesse contexto.
+
+### O que o EA faz de diferente (medido no journal de producao)
+
+1. O ATR NAO esta permanentemente a zero. No mestre `USDCNH,H1`, entre as
+   18:51:02 e as 19:07:18 de 05/11: `ATR%=0.03` as 18:51:02, 18:54:23, 18:57:42,
+   19:04:14 e 19:07:18; `ATR%=sem leitura(atr=0.000000,bid=6.665560)` as 18:52:10,
+   18:55:28, 18:59:02 e 19:05:17. Alterna a cada ~90 s. O valor bom
+   (0.0021 sobre 6.6656 = 0.03%) e o ATR correcto do par.
+2. As "ondas de hora a hora" nao sao ondas: sao o portao de 3600 s do
+   `ATRLogNoRead` (P1.121) a rearmar. O que e continuo e a falha, nao o aviso.
+3. O ATR falha no MESMO ciclo em que o ADX e o RSI falham. `[DATA] SEM LEITURA`
+   entre 19:00:35 e 19:01:11 de 05/11 em USDCHF, USDCAD, NZDUSD, USDJPY e USDSEK,
+   todos com `ATR=0.000000`, `RSI=0.00` e o MESMO `ADX=51.17` - a assinatura ja
+   registada no cabecalho de `Indicators/SymbolDataReady.mqh` (P1.113), agora
+   medida em cinco graficos no mesmo segundo e imediatamente apos o fecho da
+   barra H1 das 19:00.
+
+Portanto o ATR a zero e VITIMA do mesmo evento que contamina o lote de
+indicadores (P1.110), e nao um `iATR` que nunca aquece. As duas recuperacoes do
+P1.117/P1.118 (`ATRCacheDrop` por suspeita e por 180 s de falha) tratam o
+sintoma: quatro horas depois de instaladas, a falha continua a aparecer.
+
+### Codigo deste ciclo (v1.2.160, so diagnostico)
+
+O ramo `CopyBuffer sem barras` do `GetATR` passa a publicar `handle`,
+`barrasSerie`, `barrasGrafico` e `serieSync` ao lado de `barsCalc` e do `bid`, e
+a linha `[ATR] LEITURA SUSPEITA` passa a publicar o `handle`. Com `barsCalc` (do
+handle) ao lado de `barrasSerie` (da serie pedida), a proxima medicao distingue
+"serie sem barras" de "handle preso a outra serie" sem sonda externa. Nenhum
+limite, lote, alvo, stop, spread, preco, regra de entrada ou de saida, ou
+parametro de risco foi alterado: muda o texto de duas linhas de diagnostico.
+
+### O que falta para fechar
+
+Uma medicao DENTRO do EA, que so existe depois de uma recarga autorizada: com
+`handle`, `barsCalc`, `barrasSerie` e `serieSync` publicados na linha de falha,
+provar se o handle do ATR do par do grafico fica preso ao XAUUSD nos ciclos em
+que o `ADX` publicado tem o valor do Ouro (51.17) e o `RSI` sai 0.00.
+
+Historico anterior deste item (mantido): 12 linhas `[ATR] SEM LEITURA | <par> |
+CopyBuffer sem barras | barsCalc=-1 | erro=4807` entre 15:31:05.262 e
 15:32:11.607, uma por grafico, todas do PROPRIO simbolo do grafico e todas
-DEPOIS de o P1.118 ter removido e recriado a entrada da cache. O handle novo
-nasce igual ao velho.
-Prova cruzada nas MESMAS instancias: o ADX le - a linha `[CENARIO] USDCNH |
-TENDENCIA_FORTE | ADX=51.6 | ATR%=sem leitura` tem o ADX do par certo e o ATR a
-zero na mesma linha. E a sonda `XAI_AtrDiag`, as 15:18:10 no mesmo grafico
-`USDCNH,H1`, leu `XAUUSD atr=22.476429 atrPct=0.5485 bars=60369` e `USDCNH
-atr=0.002087 atrPct=0.0313 bars=66887` com handles criados por um SCRIPT. A
-serie existe, o simbolo esta sincronizado, o terminal calcula o ATR quando o
-pedido vem de um script - e nao calcula os 11-13 handles que o EA cria em
-`ATRSymbolHandle` (`iATR(symbol, (ENUM_TIMEFRAMES)Period(), 14)`, linha 197 de
-`Indicators/VolatilityFilter.mqh`, precedido de `XAI_WaitSeriesReady(symbol,
-Period())` na linha 195).
-Hipotese a testar primeiro: o `iATR` e criado antes de a serie ter barras e o
-MT5 nao o recalcula depois; a espera `XAI_WaitSeriesReady` nao garante barras
-calculadas, so a prontidao da serie. Segunda hipotese: um script e uma
-instancia de EA aquecem de maneiras diferentes quando o grafico acabou de ser
-carregado por `profile_apply`.
-NAO fechado. Nada foi alterado no codigo por causa deste item.
+DEPOIS de o P1.118 ter removido e recriado a entrada da cache; prova cruzada de
+que o ADX lia o par certo na mesma linha (`[CENARIO] USDCNH | TENDENCIA_FORTE |
+ADX=51.6 | ATR%=sem leitura`) e de que a sonda lia os dois pares com handles de
+script (`XAUUSD atr=22.476429 atrPct=0.5485 bars=60369`, `USDCNH atr=0.002087
+atrPct=0.0313 bars=66887`).
+
 ## Herdadas, ainda abertas
-- P1.110: a contaminacao por simbolo reapareceu intermitente e por INSTANCIA
+- P1.110: a contaminacao por simbolo reapareceu intermitente e por INSTANCIA - re-medida a 05/11 as 19:00:35-19:01:11 em cinco graficos (USDCHF, USDCAD, NZDUSD, USDJPY, USDSEK) com `ATR=0.000000`, `RSI=0.00` e o MESMO `ADX=51.17`, logo apos o fecho da barra H1; e a causa do ATR a zero que o P1.119 perseguia.
   (rajadas de `ATR=0.000000` as 20:19:24/USDCHF, 21:27:47 e 22:39:42/AUDUSD).
 - P1.111: varias instancias escrevem o mesmo `dataset.csv` sem sincronizacao
   (linhas partidas e coladas) — requer decisao do dono.

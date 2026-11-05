@@ -414,7 +414,26 @@ double GetATR(string symbol)
       // aquecimento impede o indicador de aquecer.
       int copyErr=GetLastError();
       int barsCalcAgora=(int)BarsCalculated(handle);
-      ATRLogNoRead(symbol, "CopyBuffer sem barras | barsCalc=" + IntegerToString(barsCalcAgora) + " | erro=" + IntegerToString(copyErr) + " | bid=" + DoubleToString(SymbolInfoDouble(symbol, SYMBOL_BID), symbolDigits));
+      // v1.2.160 - P1.122: a falha passa a publicar a IDENTIDADE do handle.
+      // MEDIDO no mestre USDCNH,H1 a 05/11 entre as 18:51:02 e as 19:07:18: a
+      // MESMA instancia alterna [CENARIO] USDCNH | ATR%=0.03 (leitura boa) e
+      // ATR%=sem leitura(atr=0.000000,bid=6.665560) a cada ~90 s, o que prova
+      // que o handle deste simbolo nao esta morto - o "nunca aquece" do P1.119
+      // descrevia mal o defeito. O que a linha nao dizia era QUAL das duas
+      // causas: serie sem barras no terminal, ou handle ligado a serie de
+      // OUTRO simbolo. barsCalc (do handle) ao lado de barrasSerie (da serie
+      // pedida) separa os dois casos: iguais = handle certo, diferentes =
+      // handle preso noutra serie. serieSync diz se o terminal considera a
+      // serie sincronizada. Nenhum limite, lote, alvo, stop, spread, preco,
+      // regra de entrada ou de saida, ou parametro de risco foi alterado.
+      long xaiSerieSync=0;
+      SeriesInfoInteger(symbol, (ENUM_TIMEFRAMES)Period(), SERIES_SYNCHRONIZED, xaiSerieSync);
+      ATRLogNoRead(symbol, "CopyBuffer sem barras | barsCalc=" + IntegerToString(barsCalcAgora) + " | erro=" + IntegerToString(copyErr)
+                   + " | handle=" + IntegerToString(handle)
+                   + " | barrasSerie=" + IntegerToString(Bars(symbol, (ENUM_TIMEFRAMES)Period()))
+                   + " | barrasGrafico=" + IntegerToString(Bars(_Symbol, (ENUM_TIMEFRAMES)Period()))
+                   + " | serieSync=" + IntegerToString((int)xaiSerieSync)
+                   + " | bid=" + DoubleToString(SymbolInfoDouble(symbol, SYMBOL_BID), symbolDigits));
 
       // v1.2.157 - P1.118: handle que NUNCA aquece. MEDIDO as 15:14:25 e
       // 15:14:47: XAUUSD e USDCNH ainda com ATR%=sem leitura mais de dois
@@ -460,6 +479,7 @@ double GetATR(string symbol)
                   " | preco=", DoubleToString(precoAtual, symbolDigits),
                   " | ATR%=", DoubleToString((result / precoAtual) * 100.0, 2),
                   " | grafico=", _Symbol,
+                  " | handle=", IntegerToString(handle),
                   " | barsCalc=", IntegerToString(BarsCalculated(handle)),
                   " | barrasSerie=", IntegerToString(Bars(symbol, (ENUM_TIMEFRAMES)Period())),
                   " | barrasGrafico=", IntegerToString(Bars(_Symbol, (ENUM_TIMEFRAMES)Period())),
