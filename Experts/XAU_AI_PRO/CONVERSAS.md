@@ -1163,3 +1163,22 @@ Compilação: 0 errors, 0 warnings (build 6296, X64 Regular, 25726 ms),
 preco=5.5123 | ATR%=70911.39` (13:53:26.183) - a magnitude não é o ouro nem o
 próprio par; fica à espera de medição com os campos novos.
 
+
+
+### Fecho do ciclo 110 - medicao em producao (05/11/2026, 15:12-15:13)
+O reload foi feito com o build v1.2.156 (commit c54f0983) e os graficos do
+perfil XAI_P216_LIVE arrancaram com `[START] XAU_AI_PRO v1.2.156`. Tres
+arranques na janela: 15 graficos as 15:12:30.169-15:12:30.871 (com USDCLP,
+USDCOP e USDRUB, que nao estao nos 13 finais), 13 graficos as
+15:12:37.404-15:12:37.458 e 13 graficos as 15:13:06.496-15:13:07.936.
+`filter=[ATR]` devolveu 12 linhas, todas entre 15:12:30.864 e 15:12:33.966,
+todas `CopyBuffer sem barras | barsCalc=-1`: 10 com `erro=4807` e 2 com
+`erro=4022` (as duas do grafico USDBRL,M5, uma delas a nomear NZDUSD a partir
+do grafico do real). Depois de 15:13:07.936: nenhuma linha `[ATR]`.
+Leitura honesta: o P1.116 fica confirmado (o ramo persistente e o terceiro, o
+`CopyBuffer` sem barras no attach) e o P1.117 nao introduziu regressao, mas o
+ramo de queda nao foi exercitado - nao houve uma unica leitura suspeita em ~2
+minutos. Fechar o P1.117 "por queda" exige uma sessao em que a suspeita dispare
+e o par sara; os campos `barsCalc`/`barrasSerie`/`barrasGrafico` ja estao la
+para essa medicao. `Tools/HANDOFF.md` e `Docs/CONVERSA_20261105_P1117_V1156.md`
+guardam o estado medido deste fecho.

@@ -568,3 +568,35 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
   P1.111 (dataset.csv escrito por varias instancias), P-07, P-02/P-03/P-04 (dono).
 - Proximo: identificar a instancia que le o outro par (coluna de instancia no
   dataset) e so depois re-medir o PF no Strategy Tester.
+
+---
+
+## Ciclo 109/110 - 05/11/2026 15:15 - fecho do XAU AI PRO (v1.2.156)
+
+| Campo | Valor |
+|---|---|
+| Build em producao | `XAU_AI_PRO v1.2.156`, `.ex5` compilado com `0 errors, 0 warnings` (build 6296, X64 Regular, 25726 ms) |
+| Versao tripla | header `v1.2.156`, `#property version "1.356"`, `EA_VERSION_STRING "1.2.156"` (HG-01) |
+| Commits locais | `a9cfa33d` (ciclo 109, v1.2.151-155) e `c54f0983` (ciclo 110, v1.2.156). Sem push |
+| Reload | 3 arranques: 15 graficos 15:12:30.169-15:12:30.871; 13 graficos 15:12:37.404-15:12:37.458; 13 graficos 15:13:06.496-15:13:07.936 - todos `[START] XAU_AI_PRO v1.2.156` |
+| Graficos | 13 no perfil `XAI_P216_LIVE`, todos com `Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` e `AutoTrade=true` |
+| Conta | 113568614 MetaQuotes-Demo, DEMO hedging, saldo/equity **12636.32**, **0 posicoes**, **0 ordens** |
+| `[ATR]` no reload | 12 linhas entre 15:12:30.864 e 15:12:33.966, todas `CopyBuffer sem barras \| barsCalc=-1`: 10x `erro=4807`, 2x `erro=4022` (grafico USDBRL,M5). **Zero** `[ATR] LEITURA SUSPEITA` depois de 15:13:07.936 |
+| P1.116 | FECHADO por medicao: o ramo persistente e o 3.o (`CopyBuffer` sem barras no attach) |
+| P1.117 | FECHADO no codigo: `ATRCacheDrop()` tinha 0 chamadas; agora `ATRCacheDropAllowed()` (portao 60 s por simbolo) + `ATRCacheDrop(symbol)` no ramo suspeito |
+| P1.117 em producao | **sem regressao**, mas o ramo de queda NAO foi exercitado em ~2 min (nenhuma leitura suspeita). Falta uma sessao em que a suspeita dispare e o par sara |
+| Risco | inalterado: RewardRatio 0.65 / MinRewardRatio 0.55 / MaxDailyLossUsd 60 / MaxDrawdownPercent 15 / DailyProfitTargetUsd 20 / MaxUsd 40 / StreakBrakeLosses 3 / RiskPercent 1.0 / RiskPerTradeUsd 2.0 / MinAIConfidence 60 / MaxPredictionAgeSec 900 / MinimumADX 18 / StoplessEmergencyPoints 0 / escada 5-1-7-10 USD / EnableRealAccountGuard true / AllowTradeWithoutAI false |
+| Docs | `Docs\CONVERSA_20261105_P1112_P1116_V1151_V1155.md` (ciclo 109) e `Docs\CONVERSA_20261105_P1117_V1156.md` (ciclo 110) |
+
+### Portas que ficaram fechadas
+
+1. `P1.116` - instrumentado, medido e nomeado; nao se infere mais a causa pela magnitude do ATR.
+2. `P1.117` - a causa (codigo morto) esta corrigida e compilada; a ausencia de regressao esta medida.
+3. `Profiles/Tester/XAU_AI_PRO.set` - estava modificado e por gravar desde as 05:38 (`RewardRatio 1.30 -> 1.60`, `MinRewardRatio 1.00 -> 1.60`, `EnableAdaptiveTargets true -> false`). Ficou em commit proprio `chore(tester)` para nao perder a informacao; reverter com `git revert` se nao foi intencional. Nao afecta a producao (graficos com 0.65 / 0.55 / true).
+
+### Portas que so o dono fecha
+
+1. **Push**: todos os commits sao locais. `origin` = Forge MQL5, `github` = `apolopanda500/mql5`. Nada foi publicado.
+2. **`[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 | preco=5.5123 | ATR%=70911.39`** (13:53:26.183) - magnitude que nao e o ouro nem o proprio par. Com `barsCalc`/`barrasSerie`/`barrasGrafico` no log, a proxima ocorrencia responde sozinha.
+3. Herdadas de `PENDENCIAS.md`: P1.110, P1.111, contradicao de simbolos (11 em `Symbols` vs 13 graficos), `EnableVolatilityFilter=false`, gateway 401/1003 com contrato 30F vs 25F, `MCPServerToken` vazio, PF a re-medir.
+4. **Conta real continua proibida**: PF 0.6206, acerto 41.4%, 10-11 perdas seguidas - e esse numero e de um build sem ADX e sem IA.

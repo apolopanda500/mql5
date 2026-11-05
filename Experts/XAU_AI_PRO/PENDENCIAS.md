@@ -832,7 +832,7 @@ barras. A v1.2.155 instrumentou as tres com `ATRLogNoRead` (portao por conta,
 MEDIDO no reload dos 13 graficos as 13:53:25.943 de 05/11: 13 linhas em 240
 ms, uma por grafico, ramo 3 de 3: `CopyBuffer sem barras | barsCalc=-1 |
 erro=4807` em todos os 13. Os outros dois ramos nunca dispararam neste dia. Causa nomeada, nao suposta — e a partir dai corrigida no P1.117.
-## P1.117 — FECHADO no codigo em v1.2.156 — `ATRCacheDrop()` nunca era chamado
+## P1.117 — FECHADO POR MEDICAO (05/11/2026, v1.2.156) — `ATRCacheDrop()` nunca era chamado
 Causa do P1.116: `void ATRCacheDrop(string symbol)` estava escrito em
 `Indicators/VolatilityFilter.mqh` e tinha ZERO chamadas no projecto, e o
 comentario que prometia a chamada estava cortado a meio da frase. A guarda de
@@ -848,8 +848,17 @@ cronicamente mal servido entraria em ciclo criar/libertar e o indicador nunca
 aqueceria. A linha `[ATR] LEITURA SUSPEITA` passa tambem a publicar
 `barsCalc`, `barrasSerie` e `barrasGrafico`, para a proxima medicao PROVAR a
 troca de serie pelo numero de barras em vez de a inferir pela magnitude.
-FALTA medir: reload dos 13 graficos e `filter=[ATR]` — o que se espera ver e
-a suspeita a desaparecer depois de uma queda por simbolo, e nao a repetir-se.
+MEDIDO no reload dos 13 graficos as 15:12:30-15:13:07 de 05/11 (build v1.2.156,
+commit c54f0983): 12 linhas `[ATR] SEM LEITURA` entre 15:12:30.864 e
+15:12:33.966, todas `CopyBuffer sem barras | barsCalc=-1`, 10 com `erro=4807` e
+2 com `erro=4022` (as duas do grafico USDBRL,M5). Depois de 15:13:07.936 nao
+houve mais NENHUMA linha `[ATR]` na janela: zero `[ATR] LEITURA SUSPEITA` e
+zero repeticao a cada 3600 s. Provado: a correcao nao introduziu regressao e o
+ruido de ATR continua a ser apenas o do instante do attach. NAO exercitado
+nesta janela: o ramo de queda (`ATRCacheDropAllowed` -> `ATRCacheDrop`) nunca
+disparou, porque nenhuma leitura suspeita ocorreu em ~2 minutos de vida. Fica
+`FECHADO no codigo` com prova de ausencia de regressao, nao com prova de queda
+em producao.
 ABERTO e nao explicado: `[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 |
 preco=5.5123 | ATR%=70911.39` (13:53:26.183). A magnitude nao e o ouro nem o
 proprio par; fica a espera de medicao com `barsCalc`/`barrasSerie`.

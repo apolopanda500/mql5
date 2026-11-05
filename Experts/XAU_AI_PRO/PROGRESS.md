@@ -4727,6 +4727,8 @@ nomeado. Nao se infere mais a causa a partir da magnitude do ATR.
 | P1.117 `ATRCacheDrop()` escrito e nunca chamado | v1.2.156 | FECHADO no codigo | `ATRCacheDrop` em `Indicators/VolatilityFilter.mqh` tinha 0 chamadas no projecto e o comentario do P1.113 estava cortado a meio; `[CENARIO] USDCNH | ATR%=sem leitura` as 13:55:06.580 = par que nunca sara |
 | P1.117 portao de queda | v1.2.156 | NOVO | `ATRCacheDropAllowed()` + `ATR_DROP_GATE_SEC` 60 s por simbolo: uma queda por minuto, para nao repetir o P1.108 (libertar durante o aquecimento) |
 | P1.117 diagnostico da troca de serie | v1.2.156 | NOVO | `[ATR] LEITURA SUSPEITA` passa a publicar `barsCalc`, `barrasSerie` e `barrasGrafico`, para a proxima medicao provar a troca de serie pelo numero de barras |
+| P1.117 medicao em producao | v1.2.156 | MEDIDO (sem regressao) | reload 05/11 15:12:30-15:13:07: 12 `[ATR] SEM LEITURA` so no attach (10x `erro=4807`, 2x `erro=4022` no grafico USDBRL,M5) e ZERO `[ATR] LEITURA SUSPEITA` depois de 15:13:07.936; o ramo de queda nao foi exercitado em ~2 min |
+| P1.117 o que falta para fechar por queda | - | ABERTO | ver uma sessao em que `[ATR] LEITURA SUSPEITA` dispare e o par sara: a linha tem de aparecer UMA vez por simbolo e o `[CENARIO] ATR%=sem leitura` nao pode voltar horas depois |
 HG-01: `EA_VERSION_STRING` passou a `1.2.156` e `#property version` a `1.356`
 (=1.2.156). Regra `minor*100+patch` mantida nos dois sitios;
 `Enterprise/VersionManager.mqh` continua a ser a fonte unica e o changelog
