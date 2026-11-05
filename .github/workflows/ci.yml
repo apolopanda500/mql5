@@ -34,6 +34,12 @@ on:
   # permite acionar manualmente em qualquer branch
   workflow_dispatch:
 
+# Menor privilegio: os jobs so leem o repositorio. Sem este bloco o CodeQL
+# acusa `actions/missing-workflow-permissions` (alertas #3 e #9) e o token
+# do GITHUB_TOKEN herda o padrao do repositorio.
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: 'Validacao do codigo XAU_AI_PRO'
