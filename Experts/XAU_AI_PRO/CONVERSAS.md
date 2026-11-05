@@ -1237,3 +1237,25 @@ Fica por medir, e por isso o ciclo NAO esta fechado: reload dos 13 graficos com
 v1.2.157 e, na mesma sessao, `[ATR] HANDLE MORTO` uma vez por simbolo
 recalcitrante, `[CENARIO] ATR%=sem leitura` fora da janela, e nenhum par sadio a
 perder o handle.
+### P1.118 medido em producao - e o que ele nao cura (05/11/2026, 15:19-15:32)
+
+O `[ATR] HANDLE MORTO` foi visto a funcionar. Com a v1.2.157 ja nos graficos
+desde as 15:19:59/15:20:09, entre 15:23:14.590 e 15:25:01.819 sairam 11 linhas,
+uma por simbolo, todas `sem barras ha 180 s | barsCalc=-1 | erro=4807 | entrada
+removida da cache`. E o desenho do P1.118 a funcionar: so depois dos 180 s da
+MESMA falha, uma vez por simbolo, e o portao de 3600 s a impedir a repeticao.
+
+O reload de fecho as 15:26:46.458-15:26:55.036 (28 `[START] v1.2.157`, 15 + 13
+graficos, conta 113568614, 0 posicoes) mostrou a outra metade: o sintoma
+continua. As 15:28:14.015 e 15:28:35.864 o grafico `USDCNH,H1` ainda publicava
+`[CENARIO] XAUUSD | ... | ATR%=sem leitura` e `[CENARIO] USDCNH | ... | ATR%=sem
+leitura`. E, limpos os gates `loggate_atr_no_read_*.bin` (estado de log, nao de
+trading), as 15:31:05.262-15:32:11.607 sairam 12 `[ATR] SEM LEITURA | <par> |
+CopyBuffer sem barras | barsCalc=-1 | erro=4807 | grafico=<o proprio par>` -
+depois do drop, com um handle NOVO, exactamente o mesmo resultado.
+
+Conclusao honesta: o P1.118 esta certo e medido, e nao chega. O ATR do EA nao
+aquece neste terminal nem a primeira nem a segunda vez; o mesmo `iATR` criado
+por um script aquece (XAI_AtrDiag, 15:18:10, no mesmo grafico). Fica aberto como
+P1.119, com a hipotese a testar escrita: o handle nasce antes de a serie ter
+barras e o MT5 nao o recalcula depois.

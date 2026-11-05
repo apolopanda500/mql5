@@ -412,7 +412,7 @@ double GetATR(string symbol)
       // aquecimento impede o indicador de aquecer.
       int copyErr=GetLastError();
       int barsCalcAgora=(int)BarsCalculated(handle);
-      ATRLogNoRead(symbol, "CopyBuffer sem barras | barsCalc=" + IntegerToString(barsCalcAgora) + " | erro=" + IntegerToString(copyErr));
+      ATRLogNoRead(symbol, "CopyBuffer sem barras | barsCalc=" + IntegerToString(barsCalcAgora) + " | erro=" + IntegerToString(copyErr) + " | bid=" + DoubleToString(SymbolInfoDouble(symbol, SYMBOL_BID), symbolDigits));
 
       // v1.2.157 - P1.118: handle que NUNCA aquece. MEDIDO as 15:14:25 e
       // 15:14:47: XAUUSD e USDCNH ainda com ATR%=sem leitura mais de dois

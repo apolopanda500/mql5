@@ -600,3 +600,37 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 2. **`[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 | preco=5.5123 | ATR%=70911.39`** (13:53:26.183) - magnitude que nao e o ouro nem o proprio par. Com `barsCalc`/`barrasSerie`/`barrasGrafico` no log, a proxima ocorrencia responde sozinha.
 3. Herdadas de `PENDENCIAS.md`: P1.110, P1.111, contradicao de simbolos (11 em `Symbols` vs 13 graficos), `EnableVolatilityFilter=false`, gateway 401/1003 com contrato 30F vs 25F, `MCPServerToken` vazio, PF a re-medir.
 4. **Conta real continua proibida**: PF 0.6206, acerto 41.4%, 10-11 perdas seguidas - e esse numero e de um build sem ADX e sem IA.
+
+---
+
+## Ciclo 111 - 05/11/2026 15:35 - P1.118 medido e o P1.119 que ele revelou (v1.2.157)
+
+| Campo | Valor |
+|---|---|
+| Build em producao | `XAU_AI_PRO v1.2.157`, `.ex5` compilado com `0 errors, 0 warnings` (build 6296, X64 Regular, 24806 ms) |
+| Versao tripla | header `v1.2.157`, `#property version "1.357"`, `EA_VERSION_STRING "1.2.157"` (HG-01 fechado) |
+| Commits locais | `513fbe12` (v1.2.157 + docs corrigidas). Anteriores: `3bbc4aa3`, `79aaccf6`, `c54f0983`, `a9cfa33d`. Sem push |
+| Reload | 2 vagas as 15:19:59.004-15:19:59.058 (15 graficos) e 15:20:09.339-15:20:09.369 (13 graficos); reload de fecho as 15:26:46.458-15:26:46.504 (15) e 15:26:54.996-15:26:55.036 (13) - todos `[START] XAU_AI_PRO v1.2.157` |
+| Graficos | 13 no perfil `XAI_P216_LIVE`, `AutoTrade=true` |
+| Conta | 113568614 MetaQuotes-Demo, DEMO hedging, saldo/equity **12636.32**, **0 posicoes**, **0 ordens** |
+| `[ATR] HANDLE MORTO` | 11 linhas entre 15:23:14.590 e 15:25:01.819, UMA por simbolo (USDBRL, USDCNH, USDCHF, USDCAD, AUDUSD, USDJPY, GBPUSD, USDSEK, NZDUSD, USDCZK, USDSGD), todas `sem barras ha 180 s \| barsCalc=-1 \| erro=4807 \| entrada removida da cache` -> P1.118 funciona |
+| `[ATR] SEM LEITURA` (gates limpos) | 12 linhas entre 15:31:05.262 e 15:32:11.607, todas `CopyBuffer sem barras \| barsCalc=-1 \| erro=4807 \| grafico=<o proprio par>` - DEPOIS do drop e da recriacao |
+| `[CENARIO]` | 15:28:14.015 `XAUUSD ... ATR%=sem leitura` e 15:28:35.864 `USDCNH ... ATR%=sem leitura`, ambos do grafico `USDCNH,H1` -> o sintoma NAO fechou |
+| Prova cruzada | `XAI_AtrDiag` as 15:18:10 no mesmo grafico `USDCNH,H1`: `XAUUSD atr=22.476429 atrPct=0.5485 bars=60369`, `USDCNH atr=0.002087 atrPct=0.0313 bars=66887` - o mesmo `iATR` criado por SCRIPT aquece |
+| Risco | inalterado: RewardRatio 0.65 / MinRewardRatio 0.55 / MaxDailyLossUsd 60 / MaxDrawdownPercent 15 / DailyProfitTargetUsd 20 / MaxUsd 40 / StreakBrakeLosses 3 / RiskPercent 1.0 / RiskPerTradeUsd 2.0 / MinAIConfidence 60 / MaxPredictionAgeSec 900 / MinimumADX 18 / StoplessEmergencyPoints 0 / escada 5-1-7-10 USD / EnableRealAccountGuard true / AllowTradeWithoutAI false |
+| Docs | `Docs\CONVERSA_20261105_P1117_V1156.md` (seccoes 6 e 9), `PENDENCIAS.md` (P1.118 e P1.119), `PROGRESS.md` (linhas do ciclo 110), `CONVERSAS.md` |
+
+### Portas que ficaram fechadas
+
+1. `P1.116` - fechado por medicao (duas vezes): o ruido de ATR e o ramo `CopyBuffer` sem barras.
+2. `P1.117` - fechado no codigo; `ATRCacheDrop` deixou de ser codigo morto, com portao de 60 s por simbolo.
+3. `P1.118` - fechado no codigo E medido em producao: 11 `[ATR] HANDLE MORTO`, uma por simbolo, com a idade de 180 s escrita na linha.
+4. `Profiles\Tester\XAU_AI_PRO.set` - ficou em commit proprio `79aaccf6`; o terminal volta a tocar-lhe no comentario `; saved automatically on`, que e reescrito a cada compilacao e nao muda nenhum input.
+
+### Portas que so o dono fecha
+
+1. **Push**: todos os commits sao locais. `origin` = Forge MQL5, `github` = `apolopanda500/mql5`. Nada foi publicado.
+2. **P1.119 (novo, aberto)**: o `iATR` criado pelo EA nunca aquece - `barsCalc=-1`/`erro=4807` nos 13 graficos mesmo depois do drop/recreate, enquanto o ADX da MESMA instancia le (ADX=51.6 na mesma linha em que o ATR% falha) e o `iATR` de um script le. Hipotese escrita: o handle nasce antes de a serie ter barras (`XAI_WaitSeriesReady` garante a serie, nao as barras) e o MT5 nao o recalcula.
+3. **`[ATR] LEITURA SUSPEITA | USDBRL ...` (13:53:26.183)** - sem nova ocorrencia desde que os campos `barsCalc`/`barrasSerie`/`barrasGrafico` entraram; a proxima ocorrencia responde sozinha.
+4. Herdadas de `PENDENCIAS.md`: P1.110, P1.111, contradicao de simbolos (11 em `Symbols` vs 13 graficos), `EnableVolatilityFilter=false`, gateway 401/1003 com contrato 30F vs 25F, `MCPServerToken` vazio, PF a re-medir.
+5. **Conta real continua proibida**: PF 0.6206, acerto 41.4%, 10-11 perdas seguidas - e esse numero e de um build sem ADX e sem IA.

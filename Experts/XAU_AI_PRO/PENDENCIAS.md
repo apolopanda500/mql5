@@ -873,7 +873,7 @@ ABERTO e nao explicado: `[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 |
 preco=5.5123 | ATR%=70911.39` (13:53:26.183). A magnitude nao e o ouro nem o
 proprio par; fica a espera de medicao com `barsCalc`/`barrasSerie`.
 
-## P1.118 - CORRIGIDO NO CODIGO, FALTA MEDIR (05/11/2026, v1.2.157) - o handle que nunca aquece
+## P1.118 - FECHADO NO CODIGO E MEDIDO EM PRODUCAO, MAS NAO CURA (05/11/2026, v1.2.157) - o handle que nunca aquece
 Sintoma medido na MESMA sessao do fecho do P1.117 (build v1.2.156, commit
 c54f0983): a etiqueta `[ATR]` ficou muda depois de 15:13:07.936, mas o
 `[CENARIO]` continuou a publicar `ATR%=sem leitura` as 15:14:08.104
@@ -906,6 +906,46 @@ sessao, (a) `[ATR] HANDLE MORTO` aparece UMA vez por simbolo recalcitrante,
 de correr sobre a etiqueta do sintoma, nao sobre a etiqueta do diagnostico,
 (c) nenhum par que aquece normalmente perde o handle.
 
+MEDIDO EM PRODUCAO com a v1.2.157 (o .ex5 gerado as 15:19 ja estava nos graficos
+antes deste fecho): 28 `[START] XAU_AI_PRO v1.2.157` as 15:19:59.004-15:19:59.058
+(15 graficos) e 15:20:09.339-15:20:09.369 (13 graficos). Entre 15:23:14.590 e
+15:25:01.819 sairam 11 linhas `[ATR] HANDLE MORTO`, UMA por simbolo - USDBRL,
+USDCNH, USDCHF, USDCAD, AUDUSD, USDJPY, GBPUSD, USDSEK, NZDUSD, USDCZK, USDSGD -
+todas com `sem barras ha 180 s | barsCalc=-1 | erro=4807 | entrada removida da
+cache`. O P1.118 faz exactamente o que foi desenhado: dispara so depois dos
+180 s da MESMA falha, remove a entrada e o portao de 3600 s garante uma linha
+por simbolo por hora.
+O QUE NAO CURA: as 15:28:14.015 e 15:28:35.864 o grafico `USDCNH,H1` ainda
+publicava `[CENARIO] XAUUSD | ... | ATR%=sem leitura` e `[CENARIO] USDCNH | ...
+| ATR%=sem leitura`. E, depois de limpar os gates de log
+`Common\Files\XAU_AI_PRO\loggate_atr_no_read_*.bin` (estado de log, nao de
+trading), as 15:31:05.262-15:32:11.607 sairam 12 `[ATR] SEM LEITURA | <par> |
+CopyBuffer sem barras | barsCalc=-1 | erro=4807 | grafico=<o proprio par>` -
+ou seja o ramo esta nomeado e e o mesmo em todos os 13 graficos, mesmo DEPOIS
+do drop e da recriacao. O handle NOVO volta a ficar em `barsCalc=-1` com
+`erro=4807`. O drop/recreate e necessario e insuficiente: nasce o P1.119.
+## P1.119 - ABERTO (05/11/2026, v1.2.157) - o iATR criado pelo EA nunca aquece
+MEDIDO: 12 linhas `[ATR] SEM LEITURA | <par> | CopyBuffer sem barras |
+barsCalc=-1 | erro=4807 | grafico=<o proprio par>` entre 15:31:05.262 e
+15:32:11.607, uma por grafico, todas do PROPRIO simbolo do grafico e todas
+DEPOIS de o P1.118 ter removido e recriado a entrada da cache. O handle novo
+nasce igual ao velho.
+Prova cruzada nas MESMAS instancias: o ADX le - a linha `[CENARIO] USDCNH |
+TENDENCIA_FORTE | ADX=51.6 | ATR%=sem leitura` tem o ADX do par certo e o ATR a
+zero na mesma linha. E a sonda `XAI_AtrDiag`, as 15:18:10 no mesmo grafico
+`USDCNH,H1`, leu `XAUUSD atr=22.476429 atrPct=0.5485 bars=60369` e `USDCNH
+atr=0.002087 atrPct=0.0313 bars=66887` com handles criados por um SCRIPT. A
+serie existe, o simbolo esta sincronizado, o terminal calcula o ATR quando o
+pedido vem de um script - e nao calcula os 11-13 handles que o EA cria em
+`ATRSymbolHandle` (`iATR(symbol, (ENUM_TIMEFRAMES)Period(), 14)`, linha 197 de
+`Indicators/VolatilityFilter.mqh`, precedido de `XAI_WaitSeriesReady(symbol,
+Period())` na linha 195).
+Hipotese a testar primeiro: o `iATR` e criado antes de a serie ter barras e o
+MT5 nao o recalcula depois; a espera `XAI_WaitSeriesReady` nao garante barras
+calculadas, so a prontidao da serie. Segunda hipotese: um script e uma
+instancia de EA aquecem de maneiras diferentes quando o grafico acabou de ser
+carregado por `profile_apply`.
+NAO fechado. Nada foi alterado no codigo por causa deste item.
 ## Herdadas, ainda abertas
 - P1.110: a contaminacao por simbolo reapareceu intermitente e por INSTANCIA
   (rajadas de `ATR=0.000000` as 20:19:24/USDCHF, 21:27:47 e 22:39:42/AUDUSD).
