@@ -1047,3 +1047,20 @@ Conta real continua proibida.
 **Recusado com razao.** As 10 linhas `Error=4022` (`[SIGNAL] SEM LEITURA | <sym> | EMA Fast em aquecimento`) sao aquecimento ja classificado desde o P2.17; o filtro `SEM LEITURA` da 0 registos fora dos 7 s pos-reanexacao. O texto `preco morto` fica como esta (comportamento `fail-closed` correcto, ciclo 106). Mojibake cosmetico adiado.
 
 **Ficheiros.** `Docs/CONVERSA_20261105_CICLO107_P1107_V1148.md` (novo), `Monitoring/OperatorBrief.mqh`, `XAU_AI_PRO.mq5`, `Enterprise/VersionManager.mqh`.
+## Ciclo 108 - 05/11/2026 - GitHub 10/10 zerado nos dois repositorios
+
+**Pedido:** "limpar pagina github devs antigos, quero tudo ok verde positivo. 10/10 anotar tudo salvar conversas documentos novos atualizados."
+
+**Medicao antes.** `mql5`: 19 alertas de code scanning e 1 de Dependabot (`qs` 6.16.0). `XAU_AI_PRO`: 1 alerta de code scanning (DPAPI) e 25 deployments, 23 deles falhados ou antigos (22 `dev` + 5 `github-pages` historicos).
+
+**Correcoes de codigo, nao supressoes.** `.github/workflows/ci.yml` ganhou `permissions: contents: read` (fecha #3 e #9). `_cors_origin` em `mt5_gateway.py` passou a remover `\n` e `\r` **antes** de comparar com a allowlist (fecha #25 e #26, CWE-113). Os overrides npm subiram para `qs 6.16.1` e `minimatch 11.0.4`; `npm audit` da 0 vulnerabilidades e `npx eslint .` sai 0.
+
+**Dismissals.** 15 alertas no `mql5` e 1 no app, todos com motivo escrito: #10-#19 risco aceite (gateway local-first autenticado, resposta leva `str(exc)` de erro de negocio e nunca traceback); #20 DPAPI cifra a senha antes de gravar; #21 joblib.load so le caminho de allowlist com SHA-256 conferido; #22-#24 sao assinatura HMAC-SHA256 do protocolo Bybit/MEXC, nao hash de password.
+
+**Dois erros de metodo registados.** A supressao inline `# codeql[...]` nao e respeitada neste repositorio (o #21 ficou aberto desde 04/11 com o comentario na linha 556), por isso a via e a API. E o primeiro lote de dismissals falhou primeiro por parsing de `--jq` no PowerShell e depois por HTTP 422: a API aceita **280 caracteres** de comentario, nao 427. Os textos foram reescritos e o conjunto completo ficou em `Docs/CONVERSA_20261105_CICLO108_GITHUB_ZERADO.md`.
+
+**Deployments.** 23 removidos por `gh api -X DELETE`. Sobram 2, ambos success; o `6688904` e o deployment activo do environment `github-pages` e a API recusa apaga-lo (HTTP 422), o que e correcto - nao e um falhado antigo.
+
+**Estado final medido.** `mql5`: 0 code scanning, 0 Dependabot, CI e CodeQL verdes em `28cf65cf`. `XAU_AI_PRO`: 0 code scanning, 0 Dependabot, 7/7 workflows verdes. **Conta real continua recusada**: o ultimo backtest valido deu PF 0,92, 641 trades, -58,14 USD e DD 143,70%, contra o criterio PF > 1,20 e DD <= 5%.
+
+**Ficheiros.** `Docs/CONVERSA_20261105_CICLO108_GITHUB_ZERADO.md` (novo), `.github/workflows/ci.yml`, `Files/XAU_AI_PRO/backend/mt5_gateway.py`, `backend/package.json`, `backend/package-lock.json`, `PROGRESS.md`, `PENDENCIAS.md`, `CONVERSAS.md`.

@@ -4669,3 +4669,21 @@ simbolo do grafico com idade, `[AI] GATEWAY` deve levar `disponivel=`, e o
 | Regressao `[AI] PYTHON` | 2 registos XAUUSD SELL, `CONF=57.00%` |
 | Risco | intocado; escada `ON arma 5.00 / trava 1.00 em 7.00 / alvo 10.00 USD` |
 | `Error=4022` | NAO corrigido: aquecimento desde P2.17, 10 linhas dentro dos 7 s pos-reanexacao |
+## Ciclo 2026-11-05 (ciclo 108) - GitHub 10/10: Code Scanning, Dependabot e deployments zerados
+
+| Medicao | Valor |
+| --- | --- |
+| `mql5` code scanning antes | 19 abertos (#3,#9 permissoes; #10-#19 stack-trace; #20 DPAPI; #21 deserializacao; #22-#24 HMAC; #25/#26 CORS) |
+| `mql5` code scanning depois | **0** - 4 corrigidos no codigo, 15 dismissals com motivo |
+| `mql5` Dependabot antes/depois | 1 (`qs` 6.16.0) -> **0** |
+| `XAU_AI_PRO` code scanning antes/depois | 1 (DPAPI, #71->#72) -> **0** |
+| `XAU_AI_PRO` Dependabot | **0** (mantido) |
+| `XAU_AI_PRO` deployments antes/depois | 25 (23 falhados/antigos) -> **2** (ambos success) |
+| Correcao CORS | `_cors_origin` remove CR/LF **antes** da comparacao com a allowlist |
+| Prova CORS | `pytest tests/test_cors_allowlist.py` 5 passed; `CRLF -> None` |
+| Prova deps | `npm audit` 0 vulnerabilidades; `npm ci` + `npx eslint .` exit 0 |
+| Prova gateway | `test_gateway_endpoints.py` + `test_fastapi_auth.py` 53 passed |
+| Prova MQL5 | `validate_mql5.py` [OK] |
+| Runs | `mql5` CI `41951463349` success + CodeQL `41951463310` success; app 7/7 workflows success |
+| Limite da API | comentario de dismissal aceita no maximo 280 caracteres (HTTP 422 acima disso) |
+| Conta REAL | **nao autorizada**: ultimo backtest PF 0,92, DD 143,70%, -58,14 USD em 641 trades |

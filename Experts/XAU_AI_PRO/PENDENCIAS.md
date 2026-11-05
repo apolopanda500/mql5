@@ -776,3 +776,13 @@ lote, alvo, stop, spread, preco ou regra de entrada/saida foi tocado.
 - **Aberto - P-07.** `XAI_P216_LIVE` tem 14 `.chr` no disco mas 15 instancias a correr; `USDCLP` e `USDCOP` nao estao no perfil gravado. Reanexar resolve em memoria, mas o proximo `profile_apply` volta a deixar 13/14.
 - **Aberto - P-05.** `git push origin main` continua a falhar (`Credentials are incorrect or have expired` em forge.mql5.io). `github/main` sincronizado.
 - **Aberto - P-02 (DONO).** Testador ocupado desde 20:26:22 por job v1.2.138; `tester_list_result_windows` devolve `{"windows":[]}`. Falta correr `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini` e trazer PF + perdas seguidas.
+### Ciclo 108 - GitHub 10/10 nos dois repositorios `AGENTE`
+- **Fechado.** `mql5` passou de 19 para **0** alertas de code scanning e de 1 para **0** Dependabot; `XAU_AI_PRO` passou de 1 para **0** code scanning e manteve 0 Dependabot. Provas locais: `npm audit` 0, `npx eslint .` exit 0, `test_cors_allowlist.py` 5 passed, `test_gateway_endpoints.py` + `test_fastapi_auth.py` 53 passed, `validate_mql5.py` [OK].
+- **Corrigido no codigo, nao suprimido.** `permissions: contents: read` em `ci.yml` (#3, #9) e `_cors_origin` removendo CR/LF antes da allowlist (#25, #26). Overrides npm: `qs 6.16.1`, `minimatch 11.0.4`.
+- **Dismissals com motivo escrito.** 15 no `mql5` (#10-#19 risco aceite, #20 DPAPI, #21 deserializacao com 3 defesas, #22-#24 HMAC de exchange) e 1 no app (DPAPI). A supressao inline `# codeql[...]` **nao funciona** aqui - a via efectiva e a API, com limite de **280 caracteres** por comentario.
+- **Deployments.** `XAU_AI_PRO` de 25 para 2 (ambos success). O `6688904` e o deployment activo do environment `github-pages` e nao pode ser apagado enquanto for o unico activo (HTTP 422) - nao e um falhado antigo.
+- **Aberto - conta REAL.** Continua recusada por medicao: PF 0,92, 641 trades, -58,14 USD, DD 143,70% contra criterio PF > 1,20 e DD <= 5%. `EnableRealAccountGuard` e `AllowTradeWithoutAI=false` intocados.
+- **Aberto - P-02 (DONO).** Slot do Strategy Tester ocupado; sem run novo nao ha PF novo.
+- **Aberto - reattach v1.2.149.** Sem ferramentas MCP `metatrader5`/`tester` nesta sessao; producao segue no build anterior em memoria.
+- **Aberto - P-05.** `origin` (forge.mql5.io) com credenciais expiradas; so o remoto `github` sincroniza.
+- **Documentacao.** `Docs/CONVERSA_20261105_CICLO108_GITHUB_ZERADO.md`.
