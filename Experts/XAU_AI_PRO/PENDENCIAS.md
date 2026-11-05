@@ -1008,3 +1008,70 @@ A primeira compilacao da v1.2.159 saiu com `0 errors, 1 warnings`
 (`VersionManager.mqh(63,147) : warning 86: 'F' - unrecognized character escape
 sequence`): `Common\Files` escrito dentro de um literal de string. Corrigido
 para `Common\\Files` e recompilado: `0 errors, 0 warnings, 22066 ms`.
+
+## Ciclo de 05/11 (15:40) - v1.2.159 recarregada e o ATR medido no reload
+
+### P1.120 / P1.121 - implementados; o que fica PROVADO e o que NAO fica
+
+O codigo das duas entradas esta em `VolatilityFilter.mqh` (as tres chaves do ATR
+levam `IntegerToString((long)__DATETIME__)`), compila com `0 errors, 0 warnings`
+e a recarga do perfil `XAI_P216_LIVE` correu sobre o binario novo: os treze
+graficos escrevem `[START] XAU_AI_PRO v1.2.159` entre 15:40:14.901 e
+15:40:14.935 de 05/11 (e ja tinham escrito o mesmo as 15:39:50.125-15:39:50.926,
+no attach anterior).
+
+O que **nao** fica provado nesta janela: que um ficheiro `loggate_*.bin` gravado
+por build antigo deixe de calar o build novo. A prova exigiria dois builds
+seguidos na mesma janela e, como os `.bin` do ATR foram apagados as 15:31, a
+ausencia de silencio nao e atribuivel a `__DATETIME__`. Fica escrito como
+implementado-e-compilado, nao como medido.
+
+### P1.119 - causa MEDIDA (item continua ABERTO)
+
+O reload das 15:39:50-15:40:56 expos a assinatura completa. Linhas medidas:
+
+    [ATR] LEITURA SUSPEITA | AUDUSD | ATR=22.597860 | preco=0.69474 | ATR%=3252.71 | grafico=AUDUSD | barsCalc=60369 | barrasSerie=100009 | barrasGrafico=100009 | devolvido=0.0
+    [ATR] LEITURA SUSPEITA | USDCHF | ATR=22.597860 | preco=0.81499 | ATR%=2772.78 | grafico=USDCHF | barsCalc=60369 | barrasSerie=100009 ...
+    [ATR] LEITURA SUSPEITA | NZDUSD | ATR=22.597860 | preco=0.56088 | ATR%=4029.00 | grafico=NZDUSD | barsCalc=60369 ...
+    [ATR] LEITURA SUSPEITA | GBPUSD | ATR=22.597860 | preco=1.34683 | ATR%=1677.86 | grafico=GBPUSD | barsCalc=60369 ...
+    [ATR] LEITURA SUSPEITA | USDSEK | ATR=22.597860 | preco=9.79160 | ATR%=230.79 | grafico=USDSEK | barsCalc=60369 ...
+    [ATR] LEITURA SUSPEITA | USDCNH | ATR=22.597860 | preco=6.66483 | ATR%=339.06 | grafico=USDCNH | barsCalc=60369 | barrasSerie=66887 ...
+    [ATR] LEITURA SUSPEITA | USDCAD | ATR=22.597860 | preco=1.39899 | ATR%=1615.30 | grafico=USDCAD | barsCalc=60369 ...
+    [ATR] LEITURA SUSPEITA | USDSGD | ATR=22.597860 | preco=1.27946 | ATR%=1766.20 | grafico=USDSGD | barsCalc=60369 ...
+    [ATR] LEITURA SUSPEITA | USDCZK | ATR=22.597860 | preco=21.66700 | ATR%=104.30 | grafico=USDCZK | barsCalc=60369 | barrasSerie=72091 ...
+    [ATR] LEITURA SUSPEITA | USDJPY | ATR=22.598000 | preco=157.722 | ATR%=14.33 | grafico=USDJPY | barsCalc=60369 ...
+    [ATR] LEITURA SUSPEITA | USDBRL | ATR=3831.556600 | preco=5.5190 | ATR%=69424.83 | grafico=USDBRL | barsCalc=2204 | barrasSerie=24599 | barrasGrafico=24599 | devolvido=0.0
+
+Leitura honesta destes numeros:
+
+1. `ATR=22.597860` ao sexto decimal em nove instrumentos diferentes e o ATR do
+   OURO (o `[START]` do XAUUSD e o primeiro, 15:39:50.125);
+2. `barsCalc=60369` e o numero de barras do grafico `XAUUSD,H1`, nao o de cada
+   par - `AUDUSD` tem `barrasSerie=100009`, `USDCNH` 66887, `USDCZK` 72091;
+3. portanto o handle em cache, em cada instancia, le UMA serie que nao e a do
+   simbolo pedido - e o mesmo padrao que o P1.113 ja tinha medido no ADX/RSI
+   (sete pares com `ADX=33.77` e `RSI=82.72` no mesmo segundo);
+4. isto acontece no simbolo do PROPRIO grafico, com a serie provada no instante
+   da leitura (`barrasSerie=100009`), pelo que a hipotese escrita no ciclo
+   anterior ("o handle nasce antes de a serie ter barras") **nao explica** o
+   observado: `XAI_WaitSeriesReady` devolve verdadeiro e o handle continua a ler
+   outra serie;
+5. a cura automatica tambem nao cura: as 15:40:51 (USDSGD) e 15:40:56 (USDCZK),
+   depois da queda do handle pelo portao do P1.117, o handle NOVO volta a ler
+   22.597860. O `ATRCacheDrop` esta a ser chamado (ramo `LEITURA SUSPEITA`,
+   portao de 60 s) e o resultado e o mesmo;
+6. o `XAUUSD` em si falha em sentido contrario no arranque:
+   `[ATR] SEM LEITURA | XAUUSD | CopyBuffer sem barras | barsCalc=-1 | erro=4807`;
+7. `USDBRL,M5` fecha o quadro: `ATR=3831.556600` com `barsCalc=2204` contra
+   `barrasSerie=24599` - tambem nao e a serie do proprio grafico.
+
+Consequencia para risco (importante e favoravel): **nenhum ATR errado chega as
+decisoes**. Todas as linhas acima terminam em `devolvido=0.0`, porque a guarda de
+plausibilidade do P1.112 as intercepta. O custo e de DADOS (o par fica sem ATR,
+logo sem candle no dataset), nao de risco.
+
+O que falta para fechar, e que NAO foi feito nesta janela: uma sonda isolada que
+responda a uma pergunta unica - o terminal deduplica a instancia do indicador por
+(nome, periodo, parametros) ignorando o simbolo, ou o handle nasce ligado a serie
+errada? Enquanto essa pergunta nao tiver resposta medida, qualquer "correcao"
+seria uma aposta. Nao se embarcou nenhuma alteracao de codigo para o P1.119.

@@ -643,3 +643,19 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 4. Estado do codigo: `#property version "1.359"` e `EA_VERSION_STRING "1.2.159"`; compilacao `0 errors, 0 warnings` (build 6296, X64 Regular, 22177 ms). Binario `XAU_AI_PRO.ex5` regenerado; o EA nos graficos NAO foi recarregado.
 5. Numeracao: `P1.119` continua a ser o item aberto do ciclo anterior (o `iATR` do EA que nunca aquece) - os itens deste ciclo sao `P1.120` e `P1.121`.
 6. Continua proibido: push (`origin` = Forge MQL5, `github` = `apolopanda500/mql5`) e conta real (PF 0.6206, acerto 41.4 por cento, 10-11 perdas seguidas, e esse numero e de um build sem ADX e sem IA).
+
+## Medicao de 05/11 15:40 (v1.2.159)
+
+- conta: MetaQuotes-Demo 113568614 (hedging), saldo 12636.32 USD, 0 posicoes,
+  0 ordens, servidor 20:40.
+- perfil aplicado: `XAI_P216_LIVE` as 15:40:14.9; 13 graficos, todos com
+  `Experts\XAU_AI_PRO\XAU_AI_PRO.ex5`, zero indicadores anexados.
+- versao em producao: v1.2.159 (HG-01 em dia: 1.359 / 1.2.159).
+- gateway de IA: nao arrancado nesta janela (`services_list` vazio); a URL dos
+  treze graficos aponta para `http://127.0.0.1:9011/api/ai/predict` com token
+  vazio (cai no `.env`), logo as entradas dependem de `AllowTradeWithoutAI`.
+- ATR: os treze graficos leem hoje o ATR do XAUUSD (22.597860) e a guarda P1.112
+  devolve 0.0 - ver P1.119 em `PENDENCIAS.md`. Nao ha ATR errado a chegar a
+  decisao.
+- git: HEAD local, sem push. Push, USDBRL, itens herdados e a proibicao de conta
+  real continuam a ser portas que so o dono fecha.

@@ -4777,3 +4777,26 @@ nem no log do toolkit; foi lido correndo o `metaeditor64.exe` com `/compile` e
 codigo do aviso.
 Nenhum limite, lote, alvo, stop, spread, preco, regra de entrada ou de saida, ou
 parametro de risco foi alterado: mudam duas linhas de diagnostico.
+
+## Ciclo de 05/11 (15:40) - recarga da v1.2.159 e o ATR medido
+
+Recarga: `profile_apply XAI_P216_LIVE` as 15:40:14.9 (servidor 20:40:14), treze
+graficos com `XAU_AI_PRO.ex5`, zero indicadores anexados, conta demo 113568614
+com 0 posicoes e 0 ordens antes e depois da recarga.
+Build: v1.2.159 (`#property version "1.359"` + `EA_VERSION_STRING "1.2.159"`,
+HG-01 em dia), `0 errors, 0 warnings`, build 6296 X64 Regular.
+Journal: treze `[START] XAU_AI_PRO v1.2.159` - um por grafico - e, em paralelo, o
+diagnostico do ATR a falar a cada par.
+
+Resultado por item:
+
+- P1.120 / P1.121: implementados, compilados e presentes no binario que corre.
+  A prova estrita (build antigo a calar build novo) nao foi obtida nesta janela e
+  fica registada como tal em `PENDENCIAS.md`.
+- P1.119: a causa deixou de ser hipotese. O ATR lido por todos os graficos e o do
+  XAUUSD (`22.597860` em nove pares, `barsCalc=60369` contra `barrasSerie`
+  proprios de 66887/72091/100009), inclusive no simbolo do proprio grafico, e a
+  queda/reconstrucao do handle devolve o mesmo valor. Nenhum ATR errado chega as
+  decisoes: `devolvido=0.0` em todas as linhas. Item continua ABERTO.
+- P1.118: o ramo `[ATR] HANDLE MORTO` nao voltou a disparar nesta janela porque a
+  falha mudou de forma - o handle nao esta "morto", esta a ler a serie errada.
