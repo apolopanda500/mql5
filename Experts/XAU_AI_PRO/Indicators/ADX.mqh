@@ -3,6 +3,7 @@
 #define ADX_MQH
 
 #include "../Core/Config.mqh"
+#include "SymbolDataReady.mqh"   // v1.2.152 - P1.113
 
 //==================================================
 // ADX INDICATOR
@@ -59,7 +60,10 @@ int ADXSymbolHandle(string symbol)
    if(g_adxCacheCount >= ADX_SYMBOL_CACHE)
       return INVALID_HANDLE;
 
-   int handle = iADX(symbol, PERIOD_CURRENT, ADXPeriod);
+   // v1.2.152 - P1.113: handle so nasce com a serie do simbolo provada.
+   XAI_WaitSeriesReady(symbol, (ENUM_TIMEFRAMES)Period());
+
+   int handle = iADX(symbol, (ENUM_TIMEFRAMES)Period(), ADXPeriod);
 
    if(handle == INVALID_HANDLE)
       return INVALID_HANDLE;
@@ -71,6 +75,44 @@ int ADXSymbolHandle(string symbol)
    return handle;
 }
 
+//==================================================
+// v1.2.152 (05/11/2026) - P1.113: CACHE AUTOLIMPAVEL
+//
+// MEDIDO no journal as 23:16:40 de 04/11, build v1.2.151: SETE pares
+// (GBPUSD, USDJPY, AUDUSD, USDCAD, NZDUSD, USDCHF, USDCNH) devolveram o
+// MESMO ADX=33.77 e o MESMO RSI=82.72 no mesmo segundo, e o ATR devolvido
+// era o do OURO (29.454290) num par cotado a 1.34881. Nao existe mercado em
+// que sete instrumentos tenham o ADX igual ao centesimo: o handle por
+// simbolo nasceu enquanto a serie pedida ainda nao existia e ficou preso a
+// serie de OUTRO instrumento. Como o handle nunca saia da cache, o simbolo
+// nunca sarava e ficava sem ADX durante horas.
+//
+// A leitura provada como contaminada passa a deitar fora a entrada da
+// cache, para a leitura seguinte criar um handle novo.
+//==================================================
+void ADXCacheDrop(string symbol)
+{
+   for(int i = 0; i < g_adxCacheCount; i++)
+     {
+      if(g_adxCacheSymbol[i] != symbol)
+         continue;
+
+      if(g_adxCacheHandle[i] != INVALID_HANDLE)
+         IndicatorRelease(g_adxCacheHandle[i]);
+
+      for(int j = i; j < g_adxCacheCount - 1; j++)
+        {
+         g_adxCacheSymbol[j] = g_adxCacheSymbol[j + 1];
+         g_adxCacheHandle[j] = g_adxCacheHandle[j + 1];
+        }
+
+      g_adxCacheCount--;
+      g_adxCacheSymbol[g_adxCacheCount] = "";
+      g_adxCacheHandle[g_adxCacheCount] = INVALID_HANDLE;
+
+      return;
+     }
+}
 void ADXReleaseSymbolHandles()
 {
    for(int i = 0; i < g_adxCacheCount; i++)
@@ -199,7 +241,7 @@ double GetADXInstance()
    // depender de adivinhar o codigo de erro.
    int calculadas = BarsCalculated(adxHandle);
 
-   if(calculadas > 0 && calculadas < ADXPeriod * 2)   // v1.2.136 P1.91: -1 NAO e warm-up, e impasse -> tentar CopyBuffer
+   if(calculadas > 0 && calculadas < ADXPeriod * 3)   // v1.2.154 P1.115: com menos de 3x o periodo o ADX sai inflado (83.12 medido em USDCNH/USDSEK). P1.91: -1 NAO e warm-up, e impasse -> tentar CopyBuffer
    {
       g_adxUnavailable++;
       ADXLogNoRead(_Symbol, "BarsCalculated=" + IntegerToString(calculadas));
@@ -262,6 +304,12 @@ double GetADX(string symbol)
       g_adxUnavailable++;
       return -1.0;
    }
+   // v1.2.152 - P1.113: sem serie provada nao ha leitura (SymbolDataReady.mqh).
+   if(!XAI_SymbolDataReady(symbol))
+   {
+      g_adxUnavailable++;
+      return -1.0;
+   }
 
    // Warm-up: datos insuficientes para el ADX quede estable
    if(Bars(symbol, PERIOD_CURRENT) < ADXPeriod * 3)
@@ -289,7 +337,7 @@ double GetADX(string symbol)
    // nao ha leitura, e sem leitura nao ha veto.
    int calculadas = BarsCalculated(handle);
 
-   if(calculadas > 0 && calculadas < ADXPeriod * 2)   // v1.2.136 P1.91: -1 NAO e warm-up, e impasse -> tentar CopyBuffer
+   if(calculadas > 0 && calculadas < ADXPeriod * 3)   // v1.2.154 P1.115: com menos de 3x o periodo o ADX sai inflado (83.12 medido em USDCNH/USDSEK). P1.91: -1 NAO e warm-up, e impasse -> tentar CopyBuffer
    {
       g_adxUnavailable++;
       ADXLogNoRead(symbol, "BarsCalculated=" + IntegerToString(calculadas));
@@ -320,7 +368,17 @@ double GetADX(string symbol)
    {
       result = buffer[0];
 
-      if(result > 0.0)
+      // v1.2.152 - P1.113: o ADX nao passa de 100. Um valor acima disso e
+      // leitura de outro instrumento, logo entra no caminho do 0.0 e o
+      // handle sai da cache.
+      if(result > 100.0)
+      {
+         g_adxUnavailable++;
+         ADXLogNoRead(symbol, "ADX impossivel=" + DoubleToString(result, 2));
+         ADXCacheDrop(symbol);
+         result = -1.0;
+      }
+      else if(result > 0.0)
          g_adxValid++;
       else
       {
@@ -342,6 +400,28 @@ double GetADX(string symbol)
       result = -1.0;
    }
 
+   // v1.2.152 - P1.113: valor indistinguivel do valor do simbolo do grafico
+   // e a assinatura medida da contaminacao. A leitura e recusada e o handle
+   // sai da cache para o simbolo poder sarar.
+   if(symbol != _Symbol && result > 0.0)
+     {
+      double adxDoGrafico = GetADX(_Symbol);
+
+      if(XAI_LeituraDeOutroSimbolo(result, adxDoGrafico))
+        {
+         g_adxUnavailable++;
+
+         if(AccountLogGatePodeImprimir("adx_outro_sim_" + symbol, 3600))
+            Print("[ADX] VALOR DE OUTRO SIMBOLO | ", symbol,
+                  " | ADX=", DoubleToString(result, 2),
+                  " | grafico=", _Symbol,
+                  " | devolvido=-1.0");
+
+         ADXCacheDrop(symbol);
+
+         return -1.0;
+        }
+     }
    // v1.2.96 - P1.85: sem IndicatorRelease aqui. O handle vive no cache
    // por simbolo; libertar a cada leitura era a causa do ADX nunca aquecer.
    return result;

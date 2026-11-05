@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| Monitoring/DiagGate.mqh                                          |
-//| XAU_AI_PRO v1.2.50 (31/10/2026) - P1.17 + P1.25                   |
+//| XAU_AI_PRO v1.2.153 (05/11/2026) - P1.17/P1.25/P1.114             |
 //+------------------------------------------------------------------+
 // PORTEIRO DE DIAGNOSTICO DO JOURNAL
 //
@@ -51,6 +51,11 @@
 //
 // Em caso de duvida o portao LIBERTA (devolve true): uma tabela
 // cheia ou um estado inconsistente nunca devem esconder journal.
+//
+// v1.2.153 - P1.114: tabela cheia passou a EVACUAR a chave usada ha
+// mais tempo, em vez de desligar o portao ate ao fim da sessao. Medido
+// pelo DiagGateSelfTest: a partir da 256a chave o portao devolvia true
+// a tudo, e o journal voltava a crescer sem que nada o dissesse.
 //+------------------------------------------------------------------+
 
 #ifndef DIAG_GATE_MQH
@@ -80,11 +85,14 @@ struct DiagGateEntry
    string   seen[DIAG_GATE_SEEN];   // P1.25: desfechos JA vistos nesta janela
    int      seenCount;              // quantos desses estao preenchidos
    datetime windowStart;            // P1.25: inicio da janela corrente
+   datetime lastUse;                // v1.2.153: ultima chamada (eviccao LRU)
 };
 
 DiagGateEntry g_diagGate[DIAG_GATE_MAX];
 int           g_diagGateCount      = 0;
 long          g_diagGateSuppressed = 0;   // linhas evitadas (auditoria)
+long          g_diagGateEvicted    = 0;   // v1.2.153: chaves evacuadas por tabela cheia
+datetime      g_diagGateLastEvictNotice = 0;   // v1.2.153: throttle do aviso de tabela cheia
 
 //+------------------------------------------------------------------+
 //| Procura a entrada de "simbolo|tag". -1 quando nao existe.        |
@@ -98,6 +106,31 @@ int DiagGateFind(const string key)
    }
 
    return -1;
+}
+
+//+------------------------------------------------------------------+
+//| v1.2.153 - P1.114: indice da chave usada ha mais tempo.           |
+//| -1 quando a tabela esta vazia. Nunca esconde journal: quem chama  |
+//| evacua, insere a chave nova e devolve true.                       |
+//+------------------------------------------------------------------+
+int DiagGateEvictLRU()
+{
+   if(g_diagGateCount <= 0)
+      return(-1);
+
+   int      vitima     = 0;
+   datetime maisAntigo = g_diagGate[0].lastUse;
+
+   for(int i = 1; i < g_diagGateCount; i++)
+   {
+      if(g_diagGate[i].lastUse < maisAntigo)
+      {
+         maisAntigo = g_diagGate[i].lastUse;
+         vitima     = i;
+      }
+   }
+
+   return(vitima);
 }
 
 //+------------------------------------------------------------------+
@@ -124,23 +157,52 @@ bool DiagGateAllow(const string symbol, const string tag,
    // Primeira vez deste simbolo/tag: registra sempre.
    if(idx < 0)
    {
-      // Tabela cheia: nunca suprimir por falha do proprio portao.
+      // v1.2.153 (05/11/2026) - P1.114: MEDIDO pelo auto-teste
+      // (DiagGateSelfTest.mq5, reprovado em C2 e C3 a 04/11 21:30): depois de
+      // a tabela encher, o portao devolvia true a TODA a chave nova e ficava
+      // desligado ate ao fim da sessao - o bloco C, que mede ciclos, passou a
+      // medir um portao inexistente (3000 linhas em vez de 0). Agora liberta-se
+      // a vaga da chave usada ha mais tempo: a chave nova continua a sair (nada
+      // e escondido) e o portao continua a abafar as repeticoes.
       if(g_diagGateCount >= DIAG_GATE_MAX)
-         return(true);
+      {
+         int vitima = DiagGateEvictLRU();
 
-      idx = g_diagGateCount;
+         if(vitima < 0)
+            return(true);   // fail-open: erro do portao nunca esconde journal
+
+         g_diagGateEvicted++;
+
+         if(g_diagGateEvicted == 1 || (now - g_diagGateLastEvictNotice) >= 3600)
+         {
+            g_diagGateLastEvictNotice = now;
+            Print("[DIAGGATE] tabela cheia | chaves=", g_diagGateCount,
+                  " | libertei a chave usada ha mais tempo | evacuacoes=", g_diagGateEvicted,
+                  " | o portao continua a abafar");
+         }
+
+         idx = vitima;
+      }
+      else
+      {
+         idx = g_diagGateCount;
+         g_diagGateCount++;
+      }
 
       g_diagGate[idx].key         = key;
       g_diagGate[idx].outcome     = outcome;
       g_diagGate[idx].last        = now;
+      g_diagGate[idx].lastUse     = now;
       g_diagGate[idx].windowStart = now;
       g_diagGate[idx].seenCount   = 1;
       g_diagGate[idx].seen[0]     = outcome;
 
-      g_diagGateCount++;
-
       return(true);
    }
+
+   // v1.2.153 - P1.114: recencia para a eviccao. Uma chave que continua a ser
+   // consultada nunca e a evacuada.
+   g_diagGate[idx].lastUse = now;
 
    //--------------------------------------------------------------
    // P1.25: janela vencida -> recomeca a memoria de desfechos.
@@ -202,6 +264,7 @@ string DiagGateSummary()
    return("[DIAGGATE] " + IntegerToString(g_diagGateCount) +
           " chaves activas | linhas suprimidas=" +
           IntegerToString(g_diagGateSuppressed) +
+          " | evacuacoes=" + IntegerToString(g_diagGateEvicted) +
           " | janelas=" + IntegerToString(DIAG_GATE_WINDOW_DEFAULT) + "s/" +
           IntegerToString(DIAG_GATE_SEEN) + " desfechos");
 }

@@ -1102,3 +1102,27 @@ P1.110 (a mesma falha reapareceu, intermitente e por instancia),
 P1.111 (varias instancias escrevem o mesmo `dataset.csv` sem sincronizacao,
 produzindo linhas partidas e coladas). Nenhum limite, lote, alvo, stop, spread,
 preco, regra de entrada/saida ou parametro de risco foi alterado.
+
+### Ciclo 109 — P1.112 a P1.116 (v1.2.151 a v1.2.155)
+Cinco ciclos, todos de leitura de indicador e de observabilidade. Nenhum
+limite, lote, alvo, stop, spread, preco, regra de entrada/saida ou parametro de
+risco foi alterado.
+**Antes** (23:16:40-23:17:31, build v1.2.151): dez pares escreveram
+`[ATR] LEITURA SUSPEITA ... ATR=29.454290` — o ATR do ouro — com ATR% a chegar
+a 5222.11 no NZDUSD, cada um seguido de `[DATA] SEM LEITURA` com o mesmo
+ADX=33.77 e RSI=82.72, e a vela deixava de ser gravada.
+**Depois** (23:50:44, sonda `XAI_AtrDiag` no grafico USDCNH,H1): cada par com o
+seu ATR — XAUUSD 29.543571 (0.7145 %), USDCNH 0.002889 (0.0433 %), EURUSD
+0.001401, GBPUSD 0.001304, USDCZK 0.029471.
+O que ainda nao fecha e o `[CENARIO] XAUUSD/USDCNH | ATR%=sem leitura` das
+23:45:11 e 23:51:42: como a sonda le os dois pares no mesmo segundo, o zero nao
+vem da serie nem do indicador, vem do getter do EA. `MarketVolatilityPercent`
+devolve `-1.0` quando `GetATR(symbol)` devolve `0.0`, e `GetATR` tinha tres
+saidas silenciosas. A v1.2.155 instrumentou as tres com `ATRLogNoRead` e a linha
+`[ATR] SEM LEITURA | <simbolo> | <motivo> | grafico=<_Symbol>`; a causa corrige-se
+depois de o journal a nomear.
+Compilacao final: 0 errors, 0 warnings (build 6296, X64 Regular, 18979 ms),
+`XAU_AI_PRO.ex5` 897.702 bytes, `#property version "1.355"` alinhado com
+`EA_VERSION_STRING "1.2.155"` (HG-01). Detalhe completo em
+`Docs/CONVERSA_20261105_P1112_P1116_V1151_V1155.md`.
+

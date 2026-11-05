@@ -2,6 +2,8 @@
 #ifndef VOLATILITYFILTER_MQH
 #define VOLATILITYFILTER_MQH
 
+#include "SymbolDataReady.mqh"   // v1.2.152 - P1.113
+
 
 //==================================================
 // VOLATILITY FILTER PRO (ATR)
@@ -9,6 +11,10 @@
 
 
 #define VOLATILITY_ATR_PERIOD 14
+// v1.2.151 - P1.112: teto de plausibilidade do ATR em percentagem do
+// proprio preco. Nenhum simbolo desta lista passa de 2% (ouro ~0.7%, FX
+// ~0.1%), logo 5% so pode ser leitura de OUTRO instrumento.
+#define ATR_MAX_PLAUSIBLE_PCT 5.0
 
 
 //==================================================
@@ -58,7 +64,12 @@ int ATRSymbolHandle(string symbol)
    if(g_atrCacheCount >= ATR_SYMBOL_CACHE)
       return INVALID_HANDLE;
 
-   int handle = iATR(symbol, PERIOD_CURRENT, VOLATILITY_ATR_PERIOD);
+   // v1.2.152 - P1.113: o handle so nasce depois de a serie do simbolo
+   // existir. Antes, um handle criado com a serie ainda por construir ficava
+   // ligado a serie do GRAFICO para sempre (medido: ATR do ouro em 7 pares).
+   XAI_WaitSeriesReady(symbol, (ENUM_TIMEFRAMES)Period());
+
+   int handle = iATR(symbol, (ENUM_TIMEFRAMES)Period(), VOLATILITY_ATR_PERIOD);
 
    if(handle == INVALID_HANDLE)
       return INVALID_HANDLE;
@@ -68,6 +79,46 @@ int ATRSymbolHandle(string symbol)
    g_atrCacheCount++;
 
    return handle;
+}
+
+//==================================================
+// v1.2.152 (05/11/2026) - P1.113: CACHE AUTOLIMPAVEL
+//
+// A cache por simbolo do P1.108 resolveu o aquecimento, mas guardava para
+// sempre o PRIMEIRO handle criado para cada simbolo. Se esse handle nasceu
+// enquanto a serie do par ainda nao existia no terminal, ele responde com a
+// serie de OUTRO instrumento e nunca mais e substituido - foi exactamente
+// isso que manteve o ATR do OURO (29.454290) a ser devolvido em GBPUSD,
+// USDJPY, AUDUSD, USDCAD, NZDUSD, USDCHF e USDCNH depois do reload das
+// 23:16:40 de 04/11, e que deixou esses pares sem ATR (e sem candle no
+// dataset) durante horas.
+//
+// A leitura invalida passa a deitar fora a entrada da cache, para a leitura
+// seguinte criar um handle novo e o simbolo poder sarar sem reiniciar o
+// terminal.
+//==================================================
+void ATRCacheDrop(string symbol)
+{
+   for(int i = 0; i < g_atrCacheCount; i++)
+     {
+      if(g_atrCacheSymbol[i] != symbol)
+         continue;
+
+      if(g_atrCacheHandle[i] != INVALID_HANDLE)
+         IndicatorRelease(g_atrCacheHandle[i]);
+
+      for(int j = i; j < g_atrCacheCount - 1; j++)
+        {
+         g_atrCacheSymbol[j] = g_atrCacheSymbol[j + 1];
+         g_atrCacheHandle[j] = g_atrCacheHandle[j + 1];
+        }
+
+      g_atrCacheCount--;
+      g_atrCacheSymbol[g_atrCacheCount] = "";
+      g_atrCacheHandle[g_atrCacheCount] = INVALID_HANDLE;
+
+      return;
+     }
 }
 
 void ATRReleaseSymbolHandles()
@@ -153,12 +204,54 @@ double GetATRInstance()
 }
 
 
+//==================================================
+// v1.2.155 (05/11/2026) - P1.116: o ATR sem leitura nao dizia PORQUE
+//
+// MEDIDO no journal do expert as 23:45-23:51 de 04/11, build v1.2.154, master
+// USDCNH H1: as linhas [CENARIO] do ciclo saem com ATR% real em nove simbolos
+// (EURUSD 0.12, GBPUSD 0.10, USDJPY 0.12, NZDUSD 0.17, USDCAD 0.10, USDCHF
+// 0.15) e com "ATR%=sem leitura" exactamente em XAUUSD e USDCNH. No MESMO
+// segundo, a sonda Scripts/XAI_AtrDiag.mq5 executada no grafico USDCNH H1 as
+// 23:50:44 leu ATR nos dois: XAUUSD atr=29.543571 atrPct=0.7145 barsCalc=60353
+// copy=1; USDCNH atr=0.002889 atrPct=0.0433 barsCalc=66871 copy=1; err=0.
+// A serie existe, o simbolo esta sincronizado e o indicador aquece, logo o
+// zero vem do getter do EA - e nao podia ser nomeado porque GetATR(string)
+// tem TRES saidas silenciosas que devolvem 0.0 sem escrever nada: serie nao
+// provada (XAI_SymbolDataReady), handle invalido e CopyBuffer sem barras.
+// O ADX tem ADXLogNoRead desde o P1.91; o ATR nao tinha equivalente, e foi
+// por isso que este defeito atravessou varios ciclos de medicao sem nome.
+// Esta funcao NAO altera valor nenhum: publica o motivo em 1 linha por
+// simbolo por hora por CONTA, com o handle e as barras calculadas, para a
+// proxima medicao dizer QUAL dos tres ramos dispara. Nenhum limite, lote,
+// alvo, stop, spread, preco, regra de entrada ou de saida, ou parametro de
+// risco e tocado: muda o texto de um diagnostico que antes nao existia.
+//==================================================
+void ATRLogNoRead(string symbol, string motivo)
+  {
+   if(!AccountLogGatePodeImprimir("atr_no_read_" + symbol, 3600))
+      return;
+
+   Print("[ATR] SEM LEITURA | ", symbol,
+         " | ", motivo,
+         " | grafico=", _Symbol);
+  }
+
 double GetATR(string symbol)
 {
    // v1.2.150 - P1.109: o simbolo do grafico deixa de usar o handle
    // criado em OnInit (ver a nota do wrapper GetATR() mais abaixo).
    if(symbol=="")
       symbol=_Symbol;
+
+   // v1.2.152 - P1.113: sem serie provada nao ha leitura. O simbolo do
+   // grafico passa sempre; um par estrangeiro so le depois de o terminal
+   // declarar a serie sincronizada e com barras (ver SymbolDataReady.mqh).
+   // v1.2.155 - P1.116: avaliar a prontidao UMA vez e publicar o motivo
+   bool xaiSeriePronta = XAI_SymbolDataReady(symbol);
+   if(!xaiSeriePronta)
+      ATRLogNoRead(symbol, "serie do simbolo nao provada (XAI_SymbolDataReady=false)");
+   if(!xaiSeriePronta)
+      return 0.0;
 
    // Normaliza com os digitos do proprio simbolo (nao do chart),
    // senao ATR de pares com mais casas (ex: EURUSD, 5 digitos)
@@ -171,18 +264,62 @@ double GetATR(string symbol)
    // na leitura. Era a libertacao imediata que impedia o aquecimento.
    int handle=ATRSymbolHandle(symbol);
    if(handle==INVALID_HANDLE)
+     {
+      ATRLogNoRead(symbol, "handle invalido (ATRSymbolHandle sem entrada na cache)");
       return 0.0;
+     }
+   // handle ja validado no bloco acima; verificacao duplicada removida.
 
    double buf[];
    ArraySetAsSeries(buf, true);
 
    double result=0.0;
+
    if(CopyBuffer(handle, 0, 0, 1, buf) > 0)
+     {
       result=NormalizeDouble(buf[0], symbolDigits);
+     }
+   else
+     {
+      // v1.2.152 - P1.113: sem barras o handle CONTINUA na cache. Retira-lo
+      // aqui seria repetir o defeito do P1.108: libertar durante o
+      // aquecimento impede o indicador de aquecer.
+      int copyErr=GetLastError();
+      ATRLogNoRead(symbol, "CopyBuffer sem barras | barsCalc=" + IntegerToString(BarsCalculated(handle)) + " | erro=" + IntegerToString(copyErr));
+      return 0.0;
+     }
 
    // v1.2.149 - P1.108: handle NAO libertado aqui; fica na cache e e
    // libertado em ReleaseATR e em InitATR. Sem barras calculadas o
    // resultado e 0.0 e a leitura seguinte ja encontra o indicador quente.
+
+   // v1.2.151 - P1.112: guarda de plausibilidade. MEDIDO a 22:46:55 de 04/11:
+   // [CENARIO] USDJPY | VOLATILIDADE_ALTA | ADX=33.2 | ATR%=17.97 - o ATR do
+   // OURO (28.39) lido num par de iene (158.354), 150x o ATR real (0.195).
+   // Aqui o valor absurdo deixa de sair como se fosse leitura: devolve 0.0
+   // (o consumidor trata como sem leitura, o mesmo caminho de quando o
+   // indicador ainda aquece) e escreve uma linha com os DOIS simbolos, para
+   // a proxima medicao dizer QUAL instancia le o par errado.
+   if(result > 0.0)
+     {
+      double precoAtual = SymbolInfoDouble(symbol, SYMBOL_BID);
+      if(precoAtual > 0.0 && (result / precoAtual) * 100.0 > ATR_MAX_PLAUSIBLE_PCT)
+        {
+         if(AccountLogGatePodeImprimir("atr_absurdo_" + symbol, 3600))
+            Print("[ATR] LEITURA SUSPEITA | ", symbol,
+                  " | ATR=", DoubleToString(result, 6),
+                  " | preco=", DoubleToString(precoAtual, symbolDigits),
+                  " | ATR%=", DoubleToString((result / precoAtual) * 100.0, 2),
+                  " | grafico=", _Symbol,
+                  " | devolvido=0.0");
+
+         // v1.2.152 - P1.113: valor impossivel = handle preso a serie de
+         // outro instrumento. A entrada sai da cache e o simbolo sara na
+
+         return 0.0;
+        }
+     }
+
    return result;
 }
 

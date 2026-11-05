@@ -817,3 +817,33 @@ quando o ATR lido for incompativel com a escala do simbolo.
 Um consumidor do CSV pode ler o OHLC de um simbolo com os indicadores de outro.
 Correcao recomendada (muda o contrato do pipeline): um ficheiro por instancia
 (`dataset_<simbolo>.csv`) ou um unico escritor. Requer decisao do dono.
+
+## P1.116 — `[CENARIO] ATR%=sem leitura` (instrumentado em v1.2.155)
+Medido em 04/11 as 23:45:11 e 23:51:42 (build v1.2.154): `[CENARIO] XAUUSD |
+TENDENCIA_FORTE | ADX=33.8 | ATR%=sem leitura` e `[CENARIO] USDCNH |
+TENDENCIA_FORTE | ADX=26.8 | ATR%=sem leitura`, enquanto EURUSD/GBPUSD/USDJPY/
+NZDUSD/USDCAD/USDCHF publicavam 0.10-0.17 na mesma janela. A sonda
+`XAI_AtrDiag`, as 23:50:44, leu o ATR dos dois no mesmo segundo
+(29.543571 e 0.002889, `copy=1 err=0`), logo o zero vem do getter do EA.
+`GetATR(string)` em `Indicators/VolatilityFilter.mqh` tem tres saidas
+silenciosas: `XAI_SymbolDataReady` falso, handle invalido, e `CopyBuffer` sem
+barras. A v1.2.155 instrumentou as tres com `ATRLogNoRead` (portao por conta,
+1 linha/hora/simbolo).
+FALTA: reload dos 13 graficos e `get_expert_journal` com `filter=[ATR]` para
+saber qual dos tres ramos dispara em XAUUSD e USDCNH. So depois se corrige a
+causa — nunca antes.
+## Herdadas, ainda abertas
+- P1.110: a contaminacao por simbolo reapareceu intermitente e por INSTANCIA
+  (rajadas de `ATR=0.000000` as 20:19:24/USDCHF, 21:27:47 e 22:39:42/AUDUSD).
+- P1.111: varias instancias escrevem o mesmo `dataset.csv` sem sincronizacao
+  (linhas partidas e coladas) — requer decisao do dono.
+- Simbolos: `Symbols` com 11 nomes, 13 graficos abertos, EURUSD na lista sem
+  grafico, CHART11 em M5, `[CENARIO] RETRATO simbolos=10` vs `[PIPELINE] 11`.
+- `EnableVolatilityFilter=false` nos 13 graficos: confirmar se e intencional.
+- Gateway de IA: 401 `token RECUSADO` e 1003 `backend fora do ar`; modelo
+  publicado espera 30 features e o runtime monta 25 (25F-v2).
+- `MCPServerToken` vazio com `EnableMCPServer=false`.
+- PF (0.6206) tem de ser re-medidos: descrevem um EA sem ATR/ADX/RSI nos 10
+  simbolos nao-grafico.
+- ROTULAGEM (fechada em 05/11): `Filters/TrendFilter.mqh` (cabecalho e 4 blocos)
+  e `Indicators/ADX.mqh` (2 sitios) diziam v1.2.153/P1.114 a descrever o P1.115; passaram a v1.2.154/P1.115.

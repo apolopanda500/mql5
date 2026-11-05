@@ -3,6 +3,7 @@
 #define RSI_MQH
 
 #include "../Core/Config.mqh"
+#include "SymbolDataReady.mqh"   // v1.2.152 - P1.113
 
 //==================================================
 // RSI
@@ -34,7 +35,10 @@ int RSISymbolHandle(string symbol)
    if(g_rsiCacheCount >= RSI_SYMBOL_CACHE)
       return INVALID_HANDLE;
 
-   int handle = iRSI(symbol, PERIOD_CURRENT, RSIPeriod, PRICE_CLOSE);
+   // v1.2.152 - P1.113: handle so nasce com a serie do simbolo provada.
+   XAI_WaitSeriesReady(symbol, (ENUM_TIMEFRAMES)Period());
+
+   int handle = iRSI(symbol, (ENUM_TIMEFRAMES)Period(), RSIPeriod, PRICE_CLOSE);
 
    if(handle == INVALID_HANDLE)
       return INVALID_HANDLE;
@@ -46,6 +50,39 @@ int RSISymbolHandle(string symbol)
    return handle;
 }
 
+//==================================================
+// v1.2.152 (05/11/2026) - P1.113: CACHE AUTOLIMPAVEL
+//
+// MEDIDO no journal as 23:16:40 de 04/11, build v1.2.151: SETE pares
+// devolveram o MESMO RSI=82.72 no mesmo segundo, ao lado do MESMO ADX=33.77
+// e do ATR do OURO. O handle por simbolo nasceu enquanto a serie pedida
+// ainda nao existia e ficou preso a serie de outro instrumento; como nunca
+// saia da cache, o simbolo ficava a ler o RSI errado indefinidamente.
+// A leitura provada como contaminada passa a deitar fora a entrada.
+//==================================================
+void RSICacheDrop(string symbol)
+{
+   for(int i = 0; i < g_rsiCacheCount; i++)
+     {
+      if(g_rsiCacheSymbol[i] != symbol)
+         continue;
+
+      if(g_rsiCacheHandle[i] != INVALID_HANDLE)
+         IndicatorRelease(g_rsiCacheHandle[i]);
+
+      for(int j = i; j < g_rsiCacheCount - 1; j++)
+        {
+         g_rsiCacheSymbol[j] = g_rsiCacheSymbol[j + 1];
+         g_rsiCacheHandle[j] = g_rsiCacheHandle[j + 1];
+        }
+
+      g_rsiCacheCount--;
+      g_rsiCacheSymbol[g_rsiCacheCount] = "";
+      g_rsiCacheHandle[g_rsiCacheCount] = INVALID_HANDLE;
+
+      return;
+     }
+}
 void RSIReleaseSymbolHandles()
 {
    for(int i = 0; i < g_rsiCacheCount; i++)
@@ -140,6 +177,10 @@ double GetRSI(string symbol)
    if(!SymbolSelect(symbol, true))
       return 0.0;
 
+   // v1.2.152 - P1.113: sem serie provada nao ha leitura (SymbolDataReady.mqh).
+   if(!XAI_SymbolDataReady(symbol))
+      return 0.0;
+
    int handle = RSISymbolHandle(symbol);
 
    if(handle == INVALID_HANDLE)
@@ -170,6 +211,26 @@ double GetRSI(string symbol)
          result = 0.0;
    }
 
+   // v1.2.152 - P1.113: valor indistinguivel do valor do simbolo do grafico
+   // e a assinatura medida da contaminacao. A leitura e recusada e o handle
+   // sai da cache para o simbolo poder sarar.
+   if(symbol != _Symbol && result > 0.0)
+     {
+      double rsiDoGrafico = GetRSI(_Symbol);
+
+      if(XAI_LeituraDeOutroSimbolo(result, rsiDoGrafico))
+        {
+         if(AccountLogGatePodeImprimir("rsi_outro_sim_" + symbol, 3600))
+            Print("[RSI] VALOR DE OUTRO SIMBOLO | ", symbol,
+                  " | RSI=", DoubleToString(result, 2),
+                  " | grafico=", _Symbol,
+                  " | devolvido=0.0");
+
+         RSICacheDrop(symbol);
+
+         return 0.0;
+        }
+     }
    // v1.2.96 - P1.86: handle vive no cache por simbolo; libertar aqui
    // devolvia o indicador ao estado "sem serie" em cada leitura.
    return result;

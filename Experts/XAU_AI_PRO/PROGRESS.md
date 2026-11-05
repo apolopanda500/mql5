@@ -4701,3 +4701,22 @@ simbolo do grafico com idade, `[AI] GATEWAY` deve levar `disponivel=`, e o
 | P-07 perfil com 13 .chr e 15 instancias | - | ABERTO | USDCLP e USDCOP com `[START]` e sem `.chr` |
 
 Compilacao: 0 errors, 0 warnings (build 6296, X64 Regular). Reattach: Default -> XAI_P216_LIVE.
+
+### Ciclo 109 — P1.112 a P1.116 (v1.2.151 a v1.2.155)
+| item | versao | estado | prova |
+|---|---|---|---|
+| P1.112 ATR de outro instrumento entrava na decisao | v1.2.151 | FECHADO | USDJPY ATR% 18.38 as 22:59:55 (ATR do ouro num par de iene); guarda ATR_MAX_PLAUSIBLE_PCT=5.0 |
+| P1.113 sete pares liam ADX/RSI/ATR do ouro | v1.2.152 | FECHADO | 10 `[ATR] LEITURA SUSPEITA` as 23:16:40-23:17:31; depois: sonda XAI_AtrDiag 23:50:44 le o ATR proprio de cada par |
+| P1.114 DiagGate desligava-se com a tabela cheia | v1.2.153 | FECHADO | auto-teste no terminal 23:43:57: chaves=256 suprimidas=3009 evacuacoes=55 falhas=0 APROVADO |
+| P1.115 guarda da EMA descartava a leitura certa | v1.2.154 | FECHADO | `[TREND] ... AUDUSD EMA=0.70084 grafico=USDCNH` as 23:40:51 (0.70084 = EMA200 H1 real do AUDUSD); guarda local ao simbolo + gate ADX 3x |
+| P1.116 `[CENARIO] ATR%=sem leitura` sem motivo | v1.2.155 | INSTRUMENTADO | XAUUSD/USDCNH as 23:45:11 e 23:51:42 com ATR% real nos outros pares; `[ATR] SEM LEITURA` passa a nomear o ramo |
+HG-01: `#property version` estava em `1.353` (=1.2.153) com `EA_VERSION_STRING`
+`1.2.154`; passou a `1.354` e depois a `1.355` (=1.2.155). Regra:
+`minor*100+patch` tem de coincidir com `EA_VERSION_STRING`
+(`Enterprise/VersionManager.mqh`), que e a fonte unica.
+Compilacao: 0 errors, 0 warnings (build 6296, X64 Regular, 18979 ms);
+`XAU_AI_PRO.ex5` 897.702 bytes. Documentacao do ciclo em
+`Docs/CONVERSA_20261105_P1112_P1116_V1151_V1155.md`.
+O P1.116 nao fecha neste ciclo: os tres ramos silenciosos de `GetATR(string)`
+foram instrumentados ANTES de se tocar na causa, para o journal a nomear. Falta
+o reload e a leitura de `[ATR] SEM LEITURA`.
