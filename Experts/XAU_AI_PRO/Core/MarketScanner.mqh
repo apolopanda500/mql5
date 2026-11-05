@@ -236,6 +236,17 @@ void ScanBlock(ENUM_SCAN_BUCKET bucket, string symbol, string detalhe="")
          " | ", symbol, detalhe);
 }
 
+// P1.106 (04/11/2026): o delta ADX/SIG podia sair NEGATIVO quando o modulo de
+// indicadores recriava os contadores no reattach (Handle/CopyBuffer) enquanto
+// o baseline publicado pelo scanner sobrevivia. MEDIDO no journal as
+// 18:13:56: "[SCANNER] RESUMO ... ADX(sem/ok)=-2951/-29135". Um delta negativo
+// nao tem leitura possivel; passa a 0. O baseline e reescrito logo abaixo com
+// o valor atual, logo so a linha daquela janela era afetada.
+int MaxInt0(int v)
+{
+   return(v < 0 ? 0 : v);
+}
+
 void ScanFlush(datetime now)
 {
    if(g_scanSimbolos <= 0)
@@ -275,8 +286,8 @@ void ScanFlush(datetime now)
    int sigN = SignalNoReadCount();
    int sigR = SignalNeutralCount();
 
-   string prova = " | ADX(sem/ok)=" + IntegerToString(adxU - g_scanAdxUPub) + "/" + IntegerToString(adxV - g_scanAdxVPub) +
-                  " | SIG(sem/neutro)=" + IntegerToString(sigN - g_scanSigNoReadPub) + "/" + IntegerToString(sigR - g_scanSigNeutroPub);
+   string prova = " | ADX(sem/ok)=" + IntegerToString(MaxInt0(adxU - g_scanAdxUPub)) + "/" + IntegerToString(MaxInt0(adxV - g_scanAdxVPub)) +
+                  " | SIG(sem/neutro)=" + IntegerToString(MaxInt0(sigN - g_scanSigNoReadPub)) + "/" + IntegerToString(MaxInt0(sigR - g_scanSigNeutroPub));
 
    // P2.01 (03/11/2026): com sinal ou trade o RESUMO saia a CADA ciclo - o
    // USDCNH escreveu 4 linhas em 4 minutos (~60/hora) e o retrato era o do

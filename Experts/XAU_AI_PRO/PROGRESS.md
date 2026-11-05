@@ -4604,3 +4604,51 @@ Pendencias do dono (medidas):
 | Push github | OK `d36be65d..160a1481` |
 | Push origin | FALHOU - credenciais expiradas no forge.mql5.io (accao do dono) |
 | Ficheiros novos | `Tools\auto-deploy.ps1`, `Docs\AUTODEPLOY.md`, `Docs\CONVERSA_20261105_P1103_V1146.md` |
+---
+
+## Ciclo 105 - 04/11/2026 21:43-21:50 - P1.102 / P1.105 / P1.106 (v1.2.147)
+
+Tres defeitos de observabilidade fechados no codigo. Nenhum parametro de risco,
+lote, alvo, stop, spread, preco ou regra de entrada/saida foi alterado.
+
+| Item | Prova medida |
+|---|---|
+| P1.102 defeito | `21:27:55 [AI] PYTHON \| XAUUSD \| SELL \| CONF=76.80%` e `21:28:00 [RESUMO] ... IA=UNAVAILABLE 0.0%` na MESMA instancia `(USDJPY,H1)` |
+| P1.102 causa | slot unico `AI_Symbol/AI_Signal` + pipeline de 11 simbolos por volta; recusas faziam `ResetAIState()` |
+| P1.102 correcao | cache `g_aiState*` (32 slots), `AIRecordState()`, `AIStateForSymbol()`; `[RESUMO]` le o `_Symbol` e mostra `(ha Ns)` |
+| P1.105 defeito | 55 linhas `[AI] GATEWAY \| <simbolo> \| H1 \| 357 bytes` no dia, todas recusas, sem motivo visivel |
+| P1.105 correcao | ` \| disponivel=true/false` na linha; motivo continua 1x/hora no `INDISPONIVEL` |
+| P1.106 defeito | `18:13:56 [SCANNER] RESUMO ... ADX(sem/ok)=-2951/-29135` apos reattach |
+| P1.106 correcao | `MaxInt0()` nos quatro deltas de ADX/SIG |
+| Portao de versao tripla | `1.2.147` / `"1.347"` / `"1.2.147"` - coerente |
+| Compilacao | `0 errors, 0 warnings, 19314 ms elapsed, cpu='X64 Regular'` |
+| Binario | `.ex5` 877320 B, 21:48:35, mais recente que `XAU_AI_PRO.mq5` (21:48:15) |
+| Validacao estatica | `validate_mql5.py` `[OK] Nenhum problema de validacao encontrado.` |
+| pytest | `tests/test_mql5_compila.py` 2 passed |
+| Reattach | **NAO FEITO** - sem MCP `metatrader5`/`tester` nesta sessao; producao continua em v1.2.146 |
+| Strategy Tester | **NAO CORRIDO** - P-02 (slot ocupado) |
+| Commit / push | nenhum (por instrucao) |
+| Documentacao | `Docs\CONVERSA_20261105_CICLO105_V1147.md`, `PENDENCIAS.md` ciclo 105 |
+
+Criterio de fecho em runtime: apos reattach, `[RESUMO]` deve mostrar o estado do
+simbolo do grafico com idade, `[AI] GATEWAY` deve levar `disponivel=`, e o
+`[SCANNER] RESUMO` nao pode voltar a publicar delta negativo.
+
+## Ciclo 2026-11-04 (noite, ciclo 106) - [SCANNER] Stale USDBRL + deploy v1.2.147
+
+| Verificacao | Resultado |
+|---|---|
+| Emissor do aviso | `Core/MarketScanner.mqh:381-383` (`SymbolDataFresh`), portao `MaxSymbolTickAgeSec=900` |
+| Idade reportada vs relogio | 14 325 s -> `2026-11-04 22:59:59` servidor = `update_time` do USDBRL. Exacto ao segundo |
+| Hora de Brasilia do ultimo tick | 17:59:59 - fecho da sessao onshore do BRL |
+| Simbolos vivos (03:04 servidor) | EURUSD, GBPUSD, USDCHF, USDJPY, USDCNH, AUDUSD, NZDUSD, USDCAD, USDSEK, USDCZK, USDSGD, XAUUSD |
+| Simbolos mortos | USDBRL 4h04m, USDCOP 7h04m, USDCLP 7h34m, USDRUB 10h08m |
+| Monotonicidade | 903/2704/4963/7111/8914/10719/12521/14325 s - todos implicam 17:59:59 |
+| Volume de log | 8 linhas em 3h43m = 2/hora |
+| Veredicto | **fail-closed correcto, nao e defeito**; codigo e risco intocados |
+| Deploy v1.2.147 | `0 errors, 0 warnings`, 25391 ms, `.ex5` 876 726 B as 22:05:24 |
+| Reattach | `profile_apply Default` -> `XAI_P216_LIVE`, 29 x `[START] v1.2.147` em 15 simbolos |
+| Regressao `PRICE=0.00000` | 0 registos |
+| Gateway | XAUUSD `1122 bytes | disponivel=true SELL PRICE=4095.600 CONF=55.70%`; 12 simbolos `disponivel=false` |
+| `[AI] LOAD` | `SYMBOL=XAUUSD | ROOT=LOCAL` |
+| P1.107 candidato | `[RESUMO]` nao nomeia o simbolo do campo `IA=`; proposta `IA(%s)=%s`. Nao aplicado |

@@ -87,6 +87,83 @@ void ResetAIState()
 
 
 //==================================================
+// ESTADO DE IA POR SIMBOLO (P1.102)
+//==================================================
+// AI_Symbol/AI_Signal/AI_Confidence sao um slot UNICO por instancia, e o
+// pipeline do grafico master percorre os 11 simbolos dentro da mesma volta.
+// MEDIDO no journal de 04/11 as 21:27:55: a instancia (USDJPY,H1) escreveu
+// "[AI] PYTHON | XAUUSD | SELL | CONF=76.80%" e, cinco segundos depois, o
+// [RESUMO] da MESMA instancia publicou "IA=UNAVAILABLE 0.0%" - porque as
+// visitas seguintes a EURUSD...USDCNH passaram pelo ramo de recusa, que faz
+// ResetAIState(). O resumo lia o estado do ULTIMO simbolo visitado (USDCNH),
+// nao o do par que o grafico negoceia, e o dono concluiu "a IA caiu" com a
+// previsao do XAUUSD fresca na linha de cima.
+//
+// Esta cache e SO DE LEITURA para o resumo: nao entra em decisao, nao altera
+// AI_Signal nem qualquer portao. Guarda os ultimos 32 simbolos visitados.
+#define AI_STATE_CACHE_MAX 32
+
+string   g_aiStateSymbol[AI_STATE_CACHE_MAX];
+string   g_aiStateSignal[AI_STATE_CACHE_MAX];
+double   g_aiStateConf[AI_STATE_CACHE_MAX];
+datetime g_aiStateWhen[AI_STATE_CACHE_MAX];
+
+void AIRecordState(string symbol, string signal, double conf)
+{
+   if(symbol=="" || signal=="")
+      return;
+
+   int slot=-1;
+
+   for(int i=0; i<AI_STATE_CACHE_MAX; i++)
+   {
+      if(g_aiStateSymbol[i]==symbol)
+      {
+         slot=i;
+         break;
+      }
+
+      if(slot<0 && g_aiStateSymbol[i]=="")
+         slot=i;
+   }
+
+   // Cache cheia: reutiliza o slot 0. Sao 32 simbolos para 15 graficos; o
+   // pior caso e uma linha de resumo a mostrar um estado antigo, nunca uma
+   // decisao de trade.
+   if(slot<0)
+      slot=0;
+
+   g_aiStateSymbol[slot]=symbol;
+   g_aiStateSignal[slot]=signal;
+   g_aiStateConf[slot]=conf;
+   g_aiStateWhen[slot]=TimeCurrent();
+}
+
+bool AIStateForSymbol(string symbol, string &signal, double &conf, datetime &when)
+{
+   signal="";
+   conf=0.0;
+   when=0;
+
+   if(symbol=="")
+      return false;
+
+   for(int i=0; i<AI_STATE_CACHE_MAX; i++)
+   {
+      if(g_aiStateSymbol[i]==symbol)
+      {
+         signal=g_aiStateSignal[i];
+         conf=g_aiStateConf[i];
+         when=g_aiStateWhen[i];
+         return true;
+      }
+   }
+
+   return false;
+}
+
+
+//==================================================
 // NORMALIZE AI SYMBOL
 // Converte o sÃƒÂ­mbolo do broker no nome base usado
 // pelo pipeline Python. Ex: GOLD# -> XAUUSD,
@@ -347,6 +424,10 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
          AI_Symbol="";
          AI_Signal="UNAVAILABLE";
 
+         // P1.102: a recusa fica registada por simbolo para o [RESUMO] poder
+         // distinguir "o MEU par nao tem modelo" de "outro par da volta nao tem".
+         AIRecordState(esperado, "UNAVAILABLE", 0.0);
+
          // Uma linha por simbolo por hora: 15 graficos a repetir a mesma
          // recusa em cada ciclo de polling enchia o journal sem informacao
          // nova - a razao do gateway ja diz o que falta.
@@ -595,6 +676,9 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
          "%"
       );
 
+
+   // P1.102: guarda o estado por simbolo para o [RESUMO] da instancia.
+   AIRecordState(esperado, AI_Signal, AI_Confidence);
 
    return true;
 }
@@ -1098,8 +1182,22 @@ bool LoadAIPrediction(string symbol="")
             ultimaConsulta = TimeCurrent();
 
             if(logOnce)
+            {
+               // P1.105: o journal mostrava so o tamanho da resposta. MEDIDO
+               // em 04/11: 55 linhas "[AI] GATEWAY | <simbolo> | H1 | 357
+               // bytes" sem nada que dissesse que 357 B era uma RECUSA do
+               // walk-forward e nao uma avaria; o motivo so saia 1x/hora na
+               // linha INDISPONIVEL. Aqui vai o estado, sem repetir o motivo.
+               string avLog = ExtractJSON(jsonGateway, "available");
+               StringToLower(avLog);
+
+               string estadoG = (avLog == "false" || avLog == "0")
+                                ? "disponivel=false"
+                                : "disponivel=true";
+
                Print("[AI] GATEWAY | ", normalized, " | ", PeriodLabel(),
-                     " | ", StringLen(jsonGateway), " bytes");
+                     " | ", StringLen(jsonGateway), " bytes | ", estadoG);
+            }
 
             // O JSON do gateway entra pelo MESMO parser do arquivo. Um
             // formato, um parser: se os dois divergirem, a divergencia aparece

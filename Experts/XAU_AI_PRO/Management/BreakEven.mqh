@@ -180,6 +180,35 @@ ulong ticket = PositionGetTicket(i);
   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
   newSL = NormalizeDouble(newSL, digits);
 
+  // P2.25 (04/11/2026): o break even so validava o SL contra a ENTRADA e contra
+  // o SL anterior, nunca contra o PRECO ATUAL. Medido no journal do run
+  // 7704472817938539810 (04/11/2026 14:02): tres PositionModify no mesmo
+  // segundo no #407 AUDUSD SELL, todos com sl/tp iguais ao que a posicao ja
+  // tinha e todos rejeitados com [Invalid stops]. Duas causas independentes:
+  // (1) a comparacao era feita com o newSL ainda por normalizar, por isso um
+  //     desvio de menos de um ponto deixava passar o reenvio do MESMO SL;
+  // (2) nada garantia que o SL ficava fora da zona morta do broker em relacao
+  //     ao preco atual, e o servidor rejeita o pedido inteiro.
+  // Agora a trava nunca e enviada para dentro da zona morta: fica onde esta e
+  // volta a ser tentada quando o preco se afastar. Nenhuma regra de risco,
+  // entrada ou alvo foi tocada - so a validacao do pedido de modificacao.
+  double minDistPreco = MathMax((double)SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL), 10.0) * point;
+
+  bool dentroZonaMorta = false;
+
+  if(type == POSITION_TYPE_BUY && (currentPrice - newSL) < minDistPreco)
+     dentroZonaMorta = true;
+
+  if(type == POSITION_TYPE_SELL && (newSL - currentPrice) < minDistPreco)
+     dentroZonaMorta = true;
+
+  if(dentroZonaMorta)
+     continue;
+
+  // Banda morta POS-normalizacao: nao reenviar o SL que a posicao ja tem.
+  if(currentSL > 0.0 && MathAbs(newSL - currentSL) < point * 0.5)
+     continue;
+
   ResetLastError();
 
   if(!trade.PositionModify(symbol, newSL, currentTP))

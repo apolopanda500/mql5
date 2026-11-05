@@ -9,7 +9,8 @@
 > - Dono: `DONO` = so o dono do terminal resolve (clicar, autorizar, decidir);
 >   `AGENTE` = trabalho de codigo/medicao aqui; `AMBOS` = quem estiver na vez.
 > - Nada aqui e promessa de lucro. Backtest nao prova lucro futuro.
-> - Ultima revisao desta lista: 2026-11-04 19:05 (conta 113568614, v1.2.135).
+> - Ultima revisao desta lista: 2026-11-04 21:50 (conta 113568614, v1.2.147
+>   compilada e validada; producao ainda em v1.2.146 ate reattach).
 
 ---
 
@@ -708,3 +709,61 @@ comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo trackin
   devolve `Authentication failed`. So o dono renova.
 - **`list_open_charts` nao conta graficos:** devolveu 14 janelas quando estavam 15
   instancias activas. Para contar instancias, usar `get_expert_journal filter=[START]`.
+
+### Ciclo 105 - P1.102/P1.105/P1.106 fechados no codigo (v1.2.147) `AGENTE`
+
+Tres leituras do journal que mentiam. Todas de observabilidade; nenhum limite,
+lote, alvo, stop, spread, preco ou regra de entrada/saida foi tocado.
+
+- **P1.102 FEITO no codigo - `[RESUMO]` lia o estado do ultimo simbolo visitado.**
+  MEDIDO no journal de 04/11 as 21:27:55: a instancia `(USDJPY,H1)` escreveu
+  `[AI] PYTHON | XAUUSD | SELL | CONF=76.80%` e as 21:28:00 o `[RESUMO]` da MESMA
+  instancia publicou `IA=UNAVAILABLE 0.0%`. Causa: o pipeline do master percorre
+  11 simbolos por volta e `AI_Symbol`/`AI_Signal` sao um slot UNICO, logo as
+  recusas seguintes (EURUSD...USDCNH) faziam `ResetAIState()` e o resumo lia o
+  ultimo visitado, nao o par dono do grafico.
+  Correcao em `AI\AIConnector.mqh`: cache `g_aiState*` de 32 slots +
+  `AIRecordState()` / `AIStateForSymbol()`, escrita no sucesso e na recusa.
+  `Monitoring\OperatorBrief.mqh` passa a ler o simbolo do grafico e a mostrar a
+  idade (`IA=SELL 76.8% (ha 12s)`); se nao houver entrada, cai para o slot global
+  com `(ultimo <SIMBOLO>)`. A cache e **so de leitura** para o resumo: nao entra em
+  decisao nem altera portao nenhum.
+  **Fechar** quando o journal mostrar `[RESUMO] ... IA=<estado do simbolo do
+  grafico> (ha Ns)` numa volta com 11 simbolos, incluindo os recusados.
+- **P1.105 FEITO no codigo - `[AI] GATEWAY` dizia bytes e nao o que aquilo era.**
+  MEDIDO: 55 linhas `[AI] GATEWAY | <simbolo> | H1 | 357 bytes` no dia, todas
+  recusas do walk-forward; o `MOTIVO=` so saia 1x/hora na linha `INDISPONIVEL`,
+  deixando o resto a ler-se como avaria. Agora a linha leva
+  ` | disponivel=true/false`, sem repetir o motivo (o throttle do `INDISPONIVEL`
+  continua igual).
+- **P1.106 FEITO no codigo - delta de contadores negativo.** MEDIDO as 18:13:56:
+  `[SCANNER] RESUMO | ... | ADX(sem/ok)=-2951/-29135` quando o modulo de ADX
+  recriou os contadores no reattach e o baseline publicado sobreviveu. `MaxInt0()`
+  em `Core\MarketScanner.mqh` poe o delta a 0; o baseline e reescrito logo abaixo
+  com o valor actual, logo so a linha daquela janela era afectada.
+- **Build e validacao:** `0 errors, 0 warnings`, 19314 ms; `.ex5` 877 320 B as
+  21:48:35, mais recente que `XAU_AI_PRO.mq5` (21:48:15);
+  `validate_mql5.py` `[OK]`; `pytest tests/test_mql5_compila.py` 2 passed.
+  Versao tripla coerente: header `v1.2.147`, `#property version "1.347"`,
+  `EA_VERSION_STRING "1.2.147"`.
+- **NAO reanexada nesta sessao:** nao ha ferramentas MCP `metatrader5`/`tester`
+  neste ambiente, logo a producao continua em `v1.2.146`. Fechar em runtime
+  exige reattach pelo dono (ou por um agente com `profile_apply`) e confirmar
+  as tres linhas novas no journal.
+- **P-02 continua `DONO`:** o slot do Strategy Tester tem de ser libertado
+  (Stop na aba Testador) antes de correr `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini`.
+  Sem esse job nao ha numero novo de PF, e sem PF > 1.20 a conversa sobre conta
+  real nao avanca.
+- **P-07 continua aberto:** `profile_apply`, quando for feito, e a altura certa
+  para alinhar `XAI_P216_LIVE` (14 `.chr` em disco) com as 15 instancias activas.
+- **origin sem credenciais:** `git push origin main` continua a falhar; so o dono
+  renova. O remoto `github` nao foi tocado.
+- **Documentacao:** `Docs/CONVERSA_20261105_CICLO105_V1147.md`.
+
+### Ciclo 106 - [SCANNER] Stale USDBRL encerrado como comportamento correcto `AGENTE`
+
+- **Nao e defeito.** `SymbolDataFresh()` (`Core/MarketScanner.mqh:381`) comparou a idade do ultimo tick com `MaxSymbolTickAgeSec=900` e recusou USDBRL com 14 325 s. A idade foi provada exacta ao segundo contra o `update_time` do Market Watch (`2026-11-04 22:59:59` servidor = 17:59:59 de Brasilia, fecho do onshore BRL). Censo no mesmo instante: 12 pares liquidos vivos ao segundo, USDBRL/USDCOP/USDCLP/USDRUB mortos por sessao fechada. Fechado sem alteracao de codigo, risco ou versao.
+- **Volume aceitavel:** 8 linhas de detalhe em 3h43m. Balde Stale so reimprime quando o desfecho muda e passa por `AccountLogGatePodeImprimir("scanblock_<simbolo>_Stale", 1800)`.
+- **Recusado por falta de razao medida:** alterar o texto "preco morto"; retirar os exotcos da lista `Symbols`; mexer em `MaxSymbolTickAgeSec`. Qualquer um deles e decisao do dono.
+- **Novo P1.107 `AGENTE` (por decidir):** o `[RESUMO]` do master nomeia o valor da IA mas nao o simbolo. Medido: master USDJPY publica `IA=UNAVAILABLE 0.0%` enquanto o XAUUSD tem `SELL 55.70%`. O P1.102 tornou o valor honesto; falta o sujeito. Proposta minima `IA(%s)=%s` com `_Symbol`, exige versao nova.
+- **v1.2.147 em producao** desde as 22:05:34 (15 simbolos). O ciclo 105 tinha deixado a build compilada mas nao reanexada; agora esta deployada, verificada e commitada.

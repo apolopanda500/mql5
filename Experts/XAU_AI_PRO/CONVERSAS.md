@@ -980,3 +980,52 @@ disco e o estado em memoria ja divergiram; `profile_add` fica como pendencia.
 Nao e um defeito do repositorio - so o dono renova essas credenciais.
 
 **Governanca:** conta real continua proibida.
+---
+
+## Ciclo 105 - 04/11/2026 - P1.102 / P1.105 / P1.106 (v1.2.147)
+
+Fecho dos tres defeitos de observabilidade que ficaram abertos no ciclo anterior.
+O journal de 04/11 mentia em tres sitios diferentes e todos foram medidos antes
+de mexer:
+
+1. **P1.102** - as 21:27:55 a instancia `(USDJPY,H1)` escreveu
+   `[AI] PYTHON | XAUUSD | SELL | CONF=76.80%` e as 21:28:00 o `[RESUMO]` da
+   MESMA instancia publicou `IA=UNAVAILABLE 0.0%`. O slot de estado de IA e unico
+   por instancia e o pipeline do master percorre 11 simbolos por volta, logo o
+   resumo lia o ultimo visitado (USDCNH, recusado). Passa a haver cache por
+   simbolo, **so de leitura** para o resumo, e o `[RESUMO]` mostra o estado do
+   simbolo do grafico com a idade em segundos.
+2. **P1.105** - 55 linhas `[AI] GATEWAY | <simbolo> | H1 | 357 bytes` no dia, sem
+   nada que dissesse que 357 B era uma recusa do walk-forward. Passa a levar
+   `disponivel=true/false`.
+3. **P1.106** - `18:13:56 [SCANNER] RESUMO ... ADX(sem/ok)=-2951/-29135` depois de
+   um reattach. `MaxInt0()` poe o delta a 0.
+
+Build: `0 errors, 0 warnings`, `.ex5` 877 320 B as 21:48:35 (fonte 21:48:15),
+`validate_mql5.py` `[OK]`, `pytest` 2 passed, versao tripla coerente
+(`1.2.147` / `"1.347"` / `"1.2.147"`).
+
+**Nao reanexada:** esta sessao nao tem MCP `metatrader5`/`tester`. Producao
+continua em `v1.2.146` ate o dono (ou agente com `profile_apply`) reanexar.
+Strategy Tester continua bloqueado pelo P-02. Sem commit e sem push.
+Conta real continua proibida.
+
+## Ciclo 106 - 04/11/2026 22:00-22:12 - [SCANNER] Stale USDBRL (veredicto) + deploy v1.2.147
+
+**Pedido do dono:** entender o aviso `[SCANNER] BLOCK | Stale | USDBRL | preco morto | ultimo tick ha 14325s`.
+
+**Veredicto: nao e defeito.** O portao `SymbolDataFresh()` (`Core/MarketScanner.mqh:381`) compara a idade do ultimo tick com `MaxSymbolTickAgeSec=900` (`Core/Config.mqh:473`) e recusou USDBRL porque a idade era 14 325 s.
+
+**A idade e honesta ao segundo:** 21:58:44.490 local (UTC-3) = 02:58:44 servidor (UTC+2); menos 14 325 s = `2026-11-04 22:59:59`, exactamente o `update_time` do USDBRL no Market Watch. Em hora de Brasilia isso e 17:59:59 - o fecho da sessao onshore do real.
+
+**Censo no mesmo instante (03:04 servidor):** os 12 pares liquidos incluindo XAUUSD atualizados ao segundo; quatro exotcos mortos - USDBRL 4h04m, USDCOP 7h04m, USDCLP 7h34m, USDRUB 10h08m. Oito medicoes de USDBRL em 3h43m apontam sempre para o mesmo instante de origem, logo nao ha tick a chegar.
+
+**Nao e ruido:** 8 linhas em 3h43m = 2 por hora, porque o balde Stale so reimprime quando o desfecho muda e ainda passa por `AccountLogGatePodeImprimir("scanblock_USDBRL_Stale", 1800)`.
+
+**Contexto historico:** este portao existe porque em 02/11 o USDBRL com feed morto desde 30/10 gerou 1 771 dos 1 839 sinais do dia (96,3% do ruido). A linha e a prova de que o defeito continua corrigido.
+
+**Codigo, risco e versao NAO foram tocados por este aviso.** Recusado alterar o texto "preco morto", tirar os exotcos da lista `Symbols` ou mexer em `MaxSymbolTickAgeSec`: nenhum tem razao medida.
+
+**Deploy fechado neste ciclo:** a v1.2.147 estava compilada desde as 21:48 mas nunca reanexada nem commitada (o ciclo 105 nao tinha ferramentas `metatrader5`). ProduÃ§Ã£o estava em v1.2.146. Agora: backup do binario, `Tools/auto-deploy.ps1` com versao tripla coerente, `0 errors, 0 warnings`, `.ex5` 876 726 B as 22:05:24, reattach `Default -> XAI_P216_LIVE` e 29 linhas `[START] v1.2.147` em 15 simbolos. Regressoes a zero: `PRICE=0.00000` 0 registos, gateway XAUUSD `1122 bytes | disponivel=true SELL CONF=55.70%`, `[AI] LOAD ROOT=LOCAL`.
+
+**P1.107 candidato (nao aplicado):** o `[RESUMO]` do master (USDJPY, sem modelo) publica `IA=UNAVAILABLE 0.0%` sem nomear o simbolo, enquanto o XAUUSD tem `SELL 55.70%` no mesmo instante. O valor e honesto desde o P1.102, mas o sujeito nao e visivel. Proposta: `IA(%s)=%s` com `_Symbol`. Exige versao nova - fica por decidir.

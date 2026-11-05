@@ -105,8 +105,27 @@ void OperatorBriefTick(int tradesToday)
 
    string master = PipelineIsMaster() ? "SIM" : "STANDBY";
 
-   string ai = (AI_Signal == "") ? "SEM PRECO"
-                                 : (AI_Signal + " " + DoubleToString(AI_Confidence, 1) + "%");
+   // P1.102: AI_Symbol/AI_Signal sao um slot unico e o pipeline do master
+   // percorre 11 simbolos por volta; o [RESUMO] mostrava o estado do ULTIMO
+   // visitado, nao do par dono do grafico. MEDIDO a 21:27:55: XAUUSD SELL
+   // 76.80% escrito e, 5 s depois, "IA=UNAVAILABLE 0.0%" no resumo.
+   string aiSignal="";
+   double aiConf=0.0;
+   datetime aiWhen=0;
+   string ai;
+
+   if(AIStateForSymbol(_Symbol, aiSignal, aiConf, aiWhen))
+   {
+      ai = aiSignal + " " + DoubleToString(aiConf, 1) + "%";
+
+      if(aiWhen > 0 && TimeCurrent() >= aiWhen)
+         ai += " (ha " + IntegerToString((int)(TimeCurrent() - aiWhen)) + "s)";
+   }
+   else if(AI_Signal != "")
+      ai = AI_Signal + " " + DoubleToString(AI_Confidence, 1) + "%"
+           + (AI_Symbol != "" ? " (ultimo " + AI_Symbol + ")" : "");
+   else
+      ai = "SEM PRECO";
 
    string ladder = "OFF";
 

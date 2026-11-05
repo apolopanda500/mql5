@@ -519,3 +519,19 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 | Bloqueios | P-02 (DONO: Stop manual), P1.103 nao exercitada em falha real, P1.100 sem disparo, P-03/P-04/P-05 |
 | Risco | inalterado: RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false |
 | Governanca | conta real proibida (PF > 1.20 E perdas consecutivas <= 8, com guarda e risco baixo) |
+
+### Ciclo 106 - 2026-11-04 22:12 - [SCANNER] Stale USDBRL (correcto) + v1.2.147 em producao
+
+| Item | Estado medido |
+|---|---|
+| Build em uso | `XAU_AI_PRO v1.2.147`, `.ex5` 876 726 B, 22:05:24, `0 errors, 0 warnings` |
+| Versao tripla | header `v1.2.147` / `#property version "1.347"` / `EA_VERSION_STRING "1.2.147"` |
+| Graficos | 15 instancias `[START] v1.2.147` as 22:05:34 (XAUUSD, USDCLP, USDCOP, USDRUB, USDSGD, USDCZK, USDCNH, AUDUSD, USDCHF, NZDUSD, USDBRL M5, GBPUSD, USDSEK, USDCAD, USDJPY) |
+| `[SCANNER] BLOCK Stale USDBRL` | **nao e defeito** - feed morto desde 2026-11-04 22:59:59 servidor (17:59:59 Brasilia); portao `MaxSymbolTickAgeSec=900` |
+| Simbolos mortos as 03:04 servidor | USDBRL 4h04m, USDCOP 7h04m, USDCLP 7h34m, USDRUB 10h08m; os 12 liquidos vivos ao segundo |
+| Gateway | XAUUSD `1122 bytes | disponivel=true`, `SELL PRICE=4095.600 CONF=55.70%`; 12 simbolos `disponivel=false` (357 B) |
+| `[AI] LOAD` | `SYMBOL=XAUUSD | ROOT=LOCAL` |
+| Posicoes | 0 |
+| Risco | inalterado (RewardRatio 0.65, MaxDailyLossUsd 60, DailyProfitTargetUsd 20 / Max 40, RiskPercent 1.0, StoplessEmergencyPoints 0) |
+| P-02 Strategy Tester | continua DONO - slot ocupado, sem numero novo de PF |
+| P1.107 | novo, por decidir: `[RESUMO]` nao nomeia o simbolo do campo `IA=` |
