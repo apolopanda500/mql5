@@ -4587,3 +4587,20 @@ Pendencias do dono (medidas):
 | Compilacao | `Result: 0 errors, 0 warnings, 28863 ms elapsed, cpu='X64 Regular'`; `.ex5` 869606 B 21:27:33 |
 | Reattach | `profile_apply Default` -> `XAI_P216_LIVE`; `[START] XAU_AI_PRO v1.2.146 ... saldo=12592.02` as 21:27:43 |
 | Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |
+
+## Ciclo 2026-11-04 (noite, ciclo 104) - autoupdate / auto-deploy (v1.2.146)
+
+| Item | Medicao |
+|---|---|
+| Portao de versao tripla | `1.2.146` / `"1.346"` / `"1.2.146"` - coerente |
+| Compilacao | `0 errors, 0 warnings, 19634 ms elapsed, cpu='X64 Regular'` |
+| Binario | `.ex5` 869028 B, 21:32:31, mais recente que `XAU_AI_PRO.mq5` (21:27:04) |
+| Reattach | 15 instancias `[START] v1.2.146` as 21:32:54 |
+| Regressao `PRICE=0.00000` | 0 registos em 21:32:54-21:36:00 |
+| Regressao `PREDICAO VENCIDA` | 0 registos na mesma janela |
+| IA real consumida | `[AI] GATEWAY \| XAUUSD \| H1 \| 1122 bytes` -> `SELL CONF=73.40%` |
+| Recusa fail-closed | 357 B por simbolo sem modelo (9 simbolos observados) |
+| Commit | `160a1481` |
+| Push github | OK `d36be65d..160a1481` |
+| Push origin | FALHOU - credenciais expiradas no forge.mql5.io (accao do dono) |
+| Ficheiros novos | `Tools\auto-deploy.ps1`, `Docs\AUTODEPLOY.md`, `Docs\CONVERSA_20261105_P1103_V1146.md` |

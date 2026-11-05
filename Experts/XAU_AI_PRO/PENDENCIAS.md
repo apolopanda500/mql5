@@ -683,3 +683,28 @@ comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo trackin
   isto protege a posicao mas pode fechar antes do plano; e decisao de risco.
 - **P-02 continua a bloquear a medicao.** O job do Testador (v1.2.138) tem de
   ser parado na GUI antes de correr `XAI_V12135_PRODGEOM_RT_M15.ini`.
+
+### Ciclo 104 - autoupdate entregue (opcao 1); opcao 3 continua recusada `AGENTE`
+
+- **Entregue:** `Tools\auto-deploy.ps1` - gate HG-01/HG-02 -> compilar -> exigir
+  `0 errors` -> provar que o `.ex5` existe e e mais recente que as fontes ->
+  imprimir o reattach MCP. Com `-Commit` faz commit+push. Documentado em
+  `Docs/AUTODEPLOY.md`.
+- **Recusado sem confirmacao:** opcao 3 (o EA substituir o proprio binario a partir
+  de git/HTTP). Se for pedida, entra como **P-06** com hash/assinatura e trava de
+  seguranca; um EA que se auto-substitui e superficie de ataque.
+- **P-02 continua `DONO`:** o tester segue ocupado com o job de 20:26:22 (v1.2.138).
+- **P1.103 nao exercitada em falha real:** a correcao so actua quando o transporte
+  do gateway falha. Teste pendente: parar o gateway e confirmar que `[RESUMO]` mantem
+  `IA=SELL` em vez de cair para `UNAVAILABLE`. Se cair, a P1.103 nao esta a funcionar.
+- **Novo P-07 `AGENTE`:** o perfil `XAI_P216_LIVE` tem 14 `.chr` mas 15 instancias a
+  correr (USDCLP e USDCOP nao estao no perfil em disco). Um `profile_add` a seguir a
+  este estado gravaria o que esta em memoria e alinharia os dois. Nao feito neste
+  ciclo para nao reescrever o perfil sem o dono ver.
+- **`chart14.chr` sem EA - deliberado:** segundo grafico `XAUUSD,H1` do mesmo perfil.
+  Se lhe fosse anexado o EA com o mesmo `MagicNumber 2026001` abriria posicoes
+  duplicadas no mesmo simbolo.
+- **origin (forge.mql5.io) com credenciais expiradas:** `git push origin main`
+  devolve `Authentication failed`. So o dono renova.
+- **`list_open_charts` nao conta graficos:** devolveu 14 janelas quando estavam 15
+  instancias activas. Para contar instancias, usar `get_expert_journal filter=[START]`.

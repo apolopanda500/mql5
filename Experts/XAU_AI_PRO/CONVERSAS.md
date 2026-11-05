@@ -900,3 +900,83 @@ numero que ja aparece no historico, este ciclo usa v1.2.146.
 **Continua aberto.** P-02 (o dono tem de parar o job do Testador para a
 re-mediacao), P-03 e P-04 (decisao de risco do dono), P1.100 nao exercitado,
 `[RESUMO]` a publicar o estado de IA do simbolo do grafico master.
+
+## Ciclo 104 - 04/11/2026 21:30-21:38 - autoupdate (v1.2.146)
+
+**Pedido do dono:** `ativar autoupdate` seguido de `ok iniciar`.
+
+**Estado a entrada:** v1.2.146 compilada e reanexada, mas o ciclo 103 deixara tres
+lacunas de documentacao (`Docs/CONVERSA_20261105_P1103_V1146.md` referenciado em
+PENDENCIAS e nunca criado, `Tools/HANDOFF.md` e `README.md` sem a seccao do ciclo 103).
+
+**Decisao de escopo.** O pedido `autoupdate` nao tinha opcao escolhida entre as tres
+apresentadas no ciclo 103 (1: reattach/deploy automatico; 2: actualizacao do modelo no
+backend; 3: self-update do binario por git/HTTP). O `ok iniciar` foi interpretado como
+autorizacao para a **opcao 1** (a mais segura e a unica que nao toca em risco nem em
+binarios vindos da rede). A **opcao 3 continua recusada** sem confirmacao explicita.
+
+**Entregue: `Tools\auto-deploy.ps1` (265 linhas).** Um portao unico:
+
+1. valida a versao tripla (HG-01/HG-02): header `// XAU_AI_PRO vX.Y.ZZZ`,
+   `#property version "A.BCD"` com `BCD = Y*100+ZZZ`, e `EA_VERSION_STRING`. Uma
+   divergencia aborta antes de compilar - o compilador nao detecta isto e ja custou
+   dois ciclos (v1.2.141 vs `"1.340"`);
+2. compila com `metaeditor64.exe /compile /log /inc`;
+3. le o log em UTF-16 e exige `0 errors` (avisos sao listados, nao bloqueiam);
+4. prova que o `.ex5` existe, tem bytes e e mais recente que o `.mq5`/`.mqh` mais
+   recente - um compile falhado APAGA o `.ex5` e isso deixaria os 15 graficos sem
+   binario no reload seguinte;
+5. imprime a sequencia MCP de reanexacao (nao a finge: `profile_apply` e accao do
+   servidor MCP, sem equivalente em MQL5 nem em CLI);
+6. com `-Commit -Message` faz commit e push para os dois remotes.
+
+**Execucao real do script:**
+
+```
+=== 1. Gate de versao (HG-01 / HG-02) ===
+  [..]   header              = 1.2.146
+  [..]   #property version   = "1.346"   (esperado "1.346")
+  [..]   EA_VERSION_STRING   = "1.2.146"
+  [OK]   versao tripla coerente: 1.2.146
+=== 2. Compilacao via metaeditor64 ===
+  [..]   Result: 0 errors, 0 warnings, 19634 ms elapsed, cpu='X64 Regular'
+  [OK]   compilacao limpa
+=== 3. Verificacao do .ex5 publicado ===
+  [..]   .ex5 = 869028 B   2026-11-04 21:32:31
+  [..]   fonte mais recente = XAU_AI_PRO.mq5   2026-11-04 21:27:04
+  [OK]   .ex5 publicado e mais recente que todas as fontes
+```
+
+**Reattach e prova.** `profile_apply Default` -> `profile_apply XAI_P216_LIVE`
+as 21:32:54. **15 instancias** com `[START] XAU_AI_PRO v1.2.146 | conta=113568614 |
+saldo=12592.02 | equity=12592.02`: XAUUSD, USDCLP, USDCOP, USDRUB, USDSGD, USDCZK,
+USDCNH, AUDUSD, USDCHF, NZDUSD, USDBRL (M5), GBPUSD, USDSEK, USDCAD, USDJPY.
+Nota: `list_open_charts` devolveu apenas 14 janelas - USDCLP e USDCOP nao aparecem na
+listagem mas estao a correr, prova de que a contagem de graficos NAO deve ser feita
+so por essa ferramenta.
+
+Janela 21:32:54-21:36:00:
+
+| Verificacao | Resultado |
+|---|---|
+| `PRICE=0.00000` | **0 registos** |
+| `[AI] PREDICAO VENCIDA` | **0 registos** |
+| `[AI] GATEWAY \| XAUUSD` | 1122 bytes (autenticado) |
+| `[AI] PYTHON \| XAUUSD \| SELL` | `PRICE=4092.290 CONF=73.40%` / `4091.330 71.40%` / `4092.14 73.40%` |
+| Simbolos sem modelo | recusa 357 B (AUDUSD, GBPUSD, NZDUSD, USDCNH, USDBRL, USDCHF, USDRUB, USDSGD, USDCZK) |
+
+**Achado lateral, nao corrigido:** `chart14.chr` (segundo `XAUUSD,H1` do perfil
+`XAI_P216_LIVE`) nao tem EA. Mantido assim de proposito - uma segunda instancia no
+mesmo simbolo com o mesmo `MagicNumber 2026001` abriria posicoes duplicadas. O perfil
+tem 14 ficheiros `.chr` mas 15 instancias a correr, o que mostra que o perfil em
+disco e o estado em memoria ja divergiram; `profile_add` fica como pendencia.
+
+**Documentacao fechada neste ciclo:** `Docs/CONVERSA_20261105_P1103_V1146.md` (novo,
+149 linhas), `Docs/AUTODEPLOY.md` (novo, 94 linhas), seccao do ciclo 103/104 em
+`Tools/HANDOFF.md` (31427 -> 33211 B) e `README.md` (18313 -> 20392 B).
+
+**Git:** commit `160a1481`, push para `github/main` OK (`d36be65d..160a1481`).
+`origin/main` (forge.mql5.io) **falhou**: `Credentials are incorrect or have expired`.
+Nao e um defeito do repositorio - so o dono renova essas credenciais.
+
+**Governanca:** conta real continua proibida.
