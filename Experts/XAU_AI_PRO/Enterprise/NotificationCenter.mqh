@@ -68,6 +68,7 @@ private:
    static bool     m_dedup_enabled;
    static int      m_dedup_sec;
    static string   NCUrlEncode(string s);
+   static void     UmaLinha(string &s);
    static bool     SendTelegram(string message);
    static bool     SendPush(string message);
    static void     RegisterLog(string status, string detail);
@@ -324,18 +325,19 @@ bool CNotificationCenter::Send(string message, NotifyPriority priority, NotifyCa
    {
       if(SendPush(message))
          anySent = true;
-      else
-         m_failed_count++;
    }
 
    if(m_telegram_token != "" && m_telegram_chat_id != "")
    {
       if(SendTelegram(message))
          anySent = true;
-      else
-         m_failed_count++;
    }
 
+   // P2.21 (04/11/2026): a mensagem era contada DUAS vezes quando o canal
+   // falhava - uma no ramo do canal e outra aqui. MEDIDO no journal do tester
+   // as 20:58:22: `[NOTIFY] Sent=0 | Failed=1156`, com push ligado e Telegram
+   // desligado; 1156 = 578 mensagens x 2. O contador passa a medir MENSAGENS
+   // que nao sairam por canal nenhum, uma vez por mensagem.
    if(anySent)
       m_sent_count++;
    else
@@ -352,14 +354,55 @@ bool CNotificationCenter::Send(string message, NotifyPriority priority, NotifyCa
 // LOG PROPRIO (FILE_COMMON, append)
 //--------------------------------------------------
 
+void CNotificationCenter::UmaLinha(string &s)
+{
+   // O ficheiro e comum a todos os graficos e nao tem estrutura de registos:
+   // uma notificacao multi-linha virava N linhas soltas. MEDIDO em 04/11/2026
+   // no `Common\Files\Notifications.log`: 1 644 441 linhas / 53 200 689 bytes,
+   // dos quais 41 491 blocos "HEALTH MONITOR" de ~39.6 linhas cada. O bloco
+   // inteiro do HEALTH era UMA notificacao que se partia em 40 registos sem
+   // data, sem estado e sem dono. Passa a uma linha so, com o texto ligado.
+   StringReplace(s, "\r\n", " / ");
+   StringReplace(s, "\n", " / ");
+   StringReplace(s, "\r", " / ");
+   StringReplace(s, "\t", " ");
+
+   // Tecto de 400: o detalhe serve para identificar o evento, nao para
+   // arquivar um relatorio dentro do log de notificacoes.
+   if(StringLen(s) > 400)
+      s = StringSubstr(s, 0, 397) + "...";
+}
+
 void CNotificationCenter::RegisterLog(string status, string detail)
 {
+   // P2.21: rotacao. Sem ela o ficheiro cresceu ate 53 MB desde 14/08/2026,
+   // porque cada abertura e um append e nada o corta. Acima de 8 MB o actual
+   // passa a `Notifications.old.log` (o anterior e substituido) e recomeca-se
+   // um ficheiro limpo; o historico imediato fica disponivel.
+   int hSize = FileOpen("Notifications.log", FILE_COMMON | FILE_READ | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
+   if(hSize != INVALID_HANDLE)
+   {
+      ulong tam = FileSize(hSize);
+      FileClose(hSize);
+      if(tam > 8388608)
+         FileMove("Notifications.log", FILE_COMMON,
+                  "Notifications.old.log", FILE_REWRITE);
+   }
+
    int h = FileOpen("Notifications.log", FILE_COMMON | FILE_READ | FILE_WRITE | FILE_TXT | FILE_ANSI | FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
       return;
 
+   // P2.21: o separador era implicito e nao saia no ficheiro. MEDIDO na linha
+   // 1 do log real: `2026.08.14 00:00:00FAIL[RELATORIO] Profit=0.00`, isto e,
+   // data, estado e mensagem colados uns aos outros - impossivel separar sem
+   // adivinhar. Passa a ser escrito um unico campo ja delimitado.
+   string linha = TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS)
+                  + " | " + status + " | " + detail;
+   UmaLinha(linha);
+
    FileSeek(h, 0, SEEK_END);
-   FileWrite(h, TimeToString(TimeCurrent(), TIME_DATE | TIME_SECONDS), status, detail);
+   FileWrite(h, linha);
    FileClose(h);
 }
 
@@ -369,8 +412,10 @@ void CNotificationCenter::RegisterLog(string status, string detail)
 
 void CNotificationCenter::RegisterAudit(string detail, bool ok)
 {
-   // AuditLogSimple(symbol, direction, result, score) - registra evento simples
-   AuditLogSimple(_Symbol, "NOTIFY", (ok ? "OK" : "FAIL") + "|" + detail, 0.0);
+   // P2.21: a auditoria recebia o bloco cru, com quebras de linha incluidas.
+   string linha = detail;
+   UmaLinha(linha);
+   AuditLogSimple(_Symbol, "NOTIFY", (ok ? "OK" : "FAIL") + "|" + linha, 0.0);
 }
 
 //--------------------------------------------------
