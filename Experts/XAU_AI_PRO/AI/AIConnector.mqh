@@ -516,18 +516,38 @@ bool ParsePredictionJSON(string json, string esperado, bool logOnce)
                // A chave passa a ser da CONTA e a linha continua a nomear o
                // simbolo: nenhuma informacao de decisao se perde, so deixa de
                // ser repetida uma vez por simbolo.
-               if(AccountLogGatePodeImprimir("ai_stale", 3600))
-               Print(
-                  "[AI] PREDICAO VENCIDA | ",
-                  esperado,
-                  " | AGE=",
-                  (string)age,
-                  "s > LIMIT=",
-                  IntegerToString(MaxPredictionAgeSec),
-                  "s"
-               );
+               // P1.101 (05/11/2026): a leitura VENCIDA de OUTRO simbolo nao pode
+               // apagar o estado de IA do simbolo que esta bom. MEDIDO no journal de
+               // 04/11, instancia XAU_AI_PRO (USDJPY,H1): as 9 linhas PREDICAO VENCIDA
+               // da sessao sairam TODAS desta instancia, nomeando XAUUSD (AGE 4666 s e a
+               // subir), AUDUSD (152199 s) e USDJPY (153013 s) - ficheiros locais
+               // obsoletos - e cada uma chamava ResetAIState(), que e um slot UNICO.
+               // Resultado na mesma janela: [AI] GATEWAY | XAUUSD | 1122 bytes e
+               // [AI] PYTHON | XAUUSD | SELL seguidos de IA=UNAVAILABLE 0.0% no
+               // [RESUMO], porque a previsao fresca era apagada pela leitura velha de
+               // outro par. O estado so e limpo quando o slot e do proprio simbolo
+               // pedido (ou esta vazio); o primeiro aviso continua a sair com o mesmo
+               // texto, logo o facto nunca fica escondido. O valor devolvido para o
+               // simbolo pedido nao muda: continua false.
+               bool estadoEhDoSimbolo =
+                  (AI_Symbol=="" || AI_Symbol==esperado);
 
-               ResetAIState();
+               if(estadoEhDoSimbolo)
+               {
+                  if(AccountLogGatePodeImprimir("ai_stale", 3600))
+                  Print(
+                     "[AI] PREDICAO VENCIDA | ",
+                     esperado,
+                     " | AGE=",
+                     (string)age,
+                     "s > LIMIT=",
+                     IntegerToString(MaxPredictionAgeSec),
+                     "s"
+                  );
+
+                  ResetAIState();
+               }
+
                return false;
             }
          }

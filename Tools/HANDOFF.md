@@ -465,3 +465,20 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 - **Gateway:** 127.0.0.1:9011 a escutar; fail-closed 401 sem `Bearer`.
 - **Testador:** OCUPADO (P-02). Nao lancar backtest por cima.
 - **Conta real:** proibida. PF historico 0,6206 e de um build sem ADX e sem IA.
+
+---
+
+## Ciclo 101 - 2026-11-04 21:07 (UTC 2026-11-05T00:07Z)
+
+| Campo | Valor |
+|---|---|
+| Build em uso | `XAU_AI_PRO v1.2.143`, `.ex5` 866222 B, 21:05:06, `0 errors, 0 warnings` |
+| Versao tripla | header `v1.2.143`, `#property version "1.343"`, `EA_VERSION_STRING "1.2.143"` |
+| Graficos | 15 + 15 reanexados por `profile_apply Default` -> `XAI_P216_LIVE` as 21:05:28-21:05:36 |
+| Conta | 113568614 MetaQuotes-Demo, DEMO hedging, saldo/equity 12592.02, 0 posicoes |
+| IA | XAUUSD com previsao fresca (`SELL`, `CONF=79.30%`, 21:06:04); restantes simbolos sem modelo -> recusa fail-closed |
+| Gateway | `http://127.0.0.1:9011` no ar, token de 64 chars, `available=true` para XAUUSD |
+| Testador | OCUPADO desde 20:26:22 na v1.2.138 (pre-fix) - P-02; `tester_list_result_windows` = [] |
+| Bloqueios | P-02 (DONO: Stop manual), P1.100 nao exercitado, P1.102 candidato, P-03/P-04/P-05 |
+| Risco | inalterado: RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false |
+| Governanca | conta real proibida (PF > 1.20 E perdas consecutivas <= 8, com guarda e risco baixo) |

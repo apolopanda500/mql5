@@ -283,3 +283,21 @@ Este EA executa ordens reais quando anexado a uma conta real. Nenhuma
 afirmacao de lucratividade aqui e promessa: backtest nao prova resultado
 futuro. Toda versao deste projeto e validada por compilacao 0/0 **e** por
 leitura do journal ao vivo antes de ser considerada ativa.
+
+---
+
+## Estado apos o ciclo 101 (v1.2.143, 04/11/2026 21:05)
+
+- Build em uso: `XAU_AI_PRO v1.2.143` (`#property version "1.343"`,
+  `EA_VERSION_STRING "1.2.143"`), compilado com `0 errors, 0 warnings`,
+  `.ex5` 866222 bytes.
+- Ultima correcao: **P1.101** - a leitura vencida de um simbolo deixou de apagar
+  o estado de IA de outro simbolo (slot global unico). Detalhe em
+  `Docs/CONVERSA_20261105_P1101_V1143.md`.
+- Estado medido: XAUUSD com previsao fresca do gateway (`SELL`, `CONF=79.30%`);
+  os 13 simbolos sem modelo publicado devolvem recusa e ficam bloqueados
+  (`AllowTradeWithoutAI=false`). Zero linhas `PRICE=0.00000` depois do deploy.
+- Pendencia principal: **P-02** - o Strategy Tester esta ocupado com um job
+  antigo (v1.2.138) e so o dono o pode parar; sem isso nao ha re-mediacao de PF.
+- Governanca: conta real continua proibida (PF > 1.20 E perdas consecutivas
+  <= 8, e mesmo assim com `EnableRealAccountGuard=true` e risco baixo).

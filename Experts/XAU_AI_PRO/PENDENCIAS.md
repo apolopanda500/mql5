@@ -597,3 +597,27 @@ comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo trackin
   (`[AI] PREDICAO VENCIDA | XAUUSD | AGE=5068s > LIMIT=900s`, `IA=UNAVAILABLE
   0.0%`) apesar de `[AI] GATEWAY` responder 1122 B. Suspeita: cadencia do
   backend/modelo, nao do EA. Medir `as_of` devolvido pelo gateway antes de mexer.
+
+### Verificacao pos-deploy 21:05-21:07 (ciclo 101) `AGENTE`
+- **P1.101 corrigido e deployado (v1.2.143).** `AI\AIConnector.mqh` deixou de
+  limpar o estado global de IA quando a leitura vencida e de OUTRO simbolo
+  (`bool estadoEhDoSimbolo = (AI_Symbol=="" || AI_Symbol==esperado);`); o
+  `return false` continua fora da guarda, logo o simbolo pedido segue bloqueado
+  com `AllowTradeWithoutAI=false`. Fechar quando aparecer a primeira
+  `[AI] PREDICAO VENCIDA` de um simbolo sem modelo SEM que o `[RESUMO]` perca a
+  previsao do XAUUSD.
+- **`[AI] LOAD ... ROOT=LOCAL` nao e defeito.** A leitura tenta LOCAL primeiro e
+  COMMON como fallback (tester tem `MQL5\Files` proprio). Em producao o pipeline
+  escreve em `<terminal>\MQL5\Files\Data\prediction_<SIMBOLO>.json`, portanto
+  LOCAL e o caminho saudavel; `ROOT=COMMON` so aparece no backtest.
+- **Candidato P1.102:** o `[RESUMO]` da instancia master publica o estado de IA
+  do simbolo DONO do grafico (USDJPY -> `IA=UNAVAILABLE 0.0%`) e nao o do par
+  negociado (XAUUSD -> SELL 79.30%). Nao bloqueia nada, mas le-se como alarme
+  falso; medir antes de mexer no texto.
+- **P-02 continua aberto (DONO):** job do Testador iniciado 20:26:22 com
+  `v1.2.138` (pre-fix). `tester_stop`, `tester_get_status` e
+  `tester_get_configuration` exigem um `run_id` que o terminal nao fornece e
+  `tester_list_result_windows` = []. So o dono para pela aba Testador; depois
+  re-medir com `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini`.
+- **P1.100 ainda nao exercitado ao vivo:** o ramo `status > 599` (resposta
+  NAO-HTTP do transporte) so imprime quando houver um codigo fora da faixa HTTP.

@@ -722,3 +722,83 @@ tracking de `Files/XAU_AI_PRO`.
 
 **Governanca.** Nenhum parametro de risco alterado. Conta real proibida: o unico
 PF historico (0,6206) e de um build sem ADX e sem IA.
+
+---
+
+## Ciclo 101 - 04/11/2026 20:44-21:10 - P1.101 (v1.2.143)
+
+**Pedido do dono (verbatim).**
+
+```
+2026.11.04 20:31:39.698	XAU_AI_PRO (USDCNH,H1)	[AI] PYTHON | USDCNH | NEUTRAL | PRICE=0.00000 | BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=0.00%
+```
+
+**Medido.** A linha acima ja estava corrigida pela P1.98 (v1.2.142): o
+`ParsePredictionJSON` passou a ler a chave `available` do gateway e a recusa
+legitima deixou de ser publicada como previsao com preco zero. Depois do deploy
+da v1.2.143 nao existe nenhuma linha `[AI] PYTHON` com `PRICE=0.00000`.
+
+Mas o journal de 20:44-20:57 mostrou um defeito NOVO, na mesma familia: as 9
+linhas `[AI] PREDICAO VENCIDA` da sessao sairam TODAS da instancia
+`XAU_AI_PRO (USDJPY,H1)`, nomeando XAUUSD (AGE 4666 s e a subir 15 s por 15 s),
+AUDUSD (152199 s) e USDJPY (153013 s) - ficheiros `Data\prediction_<SIMBOLO>.json`
+locais e obsoletos, lidos no ramo de fallback. Cada uma dessas linhas chamava
+`ResetAIState()`, que e um slot UNICO para toda a instancia. Resultado na mesma
+janela: `[AI] GATEWAY | XAUUSD | H1 | 1122 bytes` e `[AI] PYTHON | XAUUSD | SELL
+| CONF=71.90%` seguidos de `IA=UNAVAILABLE 0.0%` no `[RESUMO]` - a previsao
+fresca era apagada pela leitura velha de OUTRO par. Com
+`AllowTradeWithoutAI=false`, isso bloqueia a entrada mesmo havendo previsao
+valida.
+
+**Decidido.** P1.101: guarda de posse no ramo de leitura vencida
+(`AI\AIConnector.mqh`). O estado global so e limpo quando o slot pertence ao
+proprio simbolo pedido (`AI_Symbol=="" || AI_Symbol==esperado`); o `return
+false` fica FORA da guarda, logo o simbolo pedido continua bloqueado. O aviso
+continua a sair com o mesmo texto e o mesmo portao de 1x/hora por conta, e
+nenhum limite, lote, alvo, stop, spread, regra de entrada/saida ou parametro de
+risco foi alterado.
+
+**Build e deploy.** v1.2.143 (`#property version "1.343"`, `EA_VERSION_STRING
+"1.2.143"`, cabecalho `// XAU_AI_PRO v1.2.143`).
+`Result: 0 errors, 0 warnings, 19268 ms elapsed, cpu='X64 Regular'`,
+`XAU_AI_PRO.ex5` 866222 B as 21:05:06. Reattach por `profile_apply Default` ->
+`XAI_P216_LIVE`: 39 registos `[START] XAU_AI_PRO v1.2.143 | conta=113568614 |
+... | saldo=12592.02 | equity=12592.02` entre 21:05:28 e 21:05:36.
+
+**Prova de campo (21:05-21:06).**
+
+```
+21:05:25.084 (build anterior) [AI] PREDICAO VENCIDA | USDSEK | AGE=153464s > LIMIT=900s
+21:05:32.546 [RESUMO] ... | IA=SEM PRECO | ...
+21:05:43.836 [RESUMO] ... | IA=UNAVAILABLE 0.0% | ...
+21:06:04.195 [AI] PYTHON | XAUUSD | SELL | PRICE=4062.55 | BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=79.30%
+```
+
+Zero `PRICE=0.00000` e zero `[AI] PREDICAO VENCIDA` depois do primeiro `[START]`
+da v1.2.143. O `IA=UNAVAILABLE` do `[RESUMO]` e do simbolo dono da instancia
+master (USDJPY), que nao tem modelo publicado - fail-closed correto.
+
+**Gateway.** Sonda com o token de 64 caracteres de `MQL5\Files\XAU_AI_PRO\.env`
+em UTC 2026-11-05T00:00:22: XAUUSD `HTTP 200 available=true SELL conf 63.2 price
+4064.47 inference 35.22 ms model "XAUUSD 1H"`; USDCNH `HTTP 200 available=false
+"edge -0.1256 abaixo do minimo +0.0500 (acc 0.2680 vs palpite 0.3936)"`. O
+gateway nao e a causa de nada estranho no journal.
+
+**`ROOT=LOCAL` explicado.** O dono esperava `[AI] LOAD ... ROOT=COMMON`. A
+leitura tenta a raiz LOCAL primeiro e a COMMON apenas como fallback (necessario
+porque o tester tem `MQL5\Files` proprio). Em producao o pipeline escreve em
+`<terminal>\MQL5\Files\Data\prediction_XAUUSD.json`, portanto o LOCAL e o
+caminho saudavel; `ROOT=COMMON` so aparece no backtest.
+
+**Continua aberto.** P-02 (Testador ocupado com um job de 20:26:22 na v1.2.138,
+pre-fix; so o dono o para pela GUI), P1.102 candidato (`[RESUMO]` publica o
+estado de IA do simbolo dono do grafico e nao do par negociado), P1.100 ainda
+nao exercitado ao vivo, `[SAFETY] Daily loss limit` duplicado no tester,
+`[DATA]/[ADX] SEM LEITURA` em simbolos sem historico, P-03, P-04, P-05, pytest
+ausente da `.venv`, mojibake em trechos antigos.
+
+**Governanca.** Nenhum parametro de risco alterado (RewardRatio 0.65,
+MaxDailyLossUsd 60, MaxDrawdownPercent 15, RiskPercent 1.0, MinAIConfidence 60.0,
+AllowTradeWithoutAI false). Conta real proibida: a regra e PF > 1.20 E perdas
+consecutivas <= 8, e mesmo assim com `EnableRealAccountGuard=true` e risco
+baixo. O unico PF historico (0,6206) e de um build sem ADX e sem IA.

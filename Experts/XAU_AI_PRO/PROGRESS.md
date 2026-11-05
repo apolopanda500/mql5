@@ -4529,3 +4529,25 @@ Pendencias do dono (medidas):
 | Conta | 113568614 (MetaQuotes-Demo) DEMO hedging, 12.592,02, 0 posicoes |
 | Testador | OCUPADO - P-02 aberto; `tester_list_result_windows` = []; log 163.503.296 -> 163.733.688 B em 6 s |
 | Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |
+
+---
+
+## Ciclo 2026-11-04 (noite, ciclo 101) - P1.101 (v1.2.143)
+
+| Item | Medicao |
+|---|---|
+| Defeito | `[AI] PREDICAO VENCIDA` de um simbolo apagava o estado de IA de OUTRO simbolo (slot global unico) |
+| Prova | 9 linhas `PREDICAO VENCIDA` da sessao, todas da instancia `(USDJPY,H1)`, nomeando XAUUSD (AGE 4666 s), AUDUSD (152199 s) e USDJPY (153013 s) |
+| Efeito | `[AI] GATEWAY | XAUUSD | 1122 bytes` + `[AI] PYTHON | XAUUSD | SELL | CONF=71.90%` seguidos de `IA=UNAVAILABLE 0.0%` no `[RESUMO]` |
+| Correcao | `AI\AIConnector.mqh`: `bool estadoEhDoSimbolo = (AI_Symbol=="" || AI_Symbol==esperado);` em volta do aviso + `ResetAIState()`; `return false` mantido fora |
+| Edicao | `Files\Temp\ciclo101_edit.ps1` ao nivel do byte: AIConnector 48814 -> 50119 B, VersionManager 127670 -> 128948 B, ANCHOR_COUNT=1, INDENT=15 |
+| Versao | `// XAU_AI_PRO v1.2.143` + `#property version "1.343"` + `EA_VERSION_STRING "1.2.143"` (HG-01: 1*100+343) |
+| Aviso corrigido | `warning 86: 'p' - unrecognized character escape sequence` causado por `Data\prediction_` no changelog; trocado para `Data/prediction_` |
+| Compilacao | `Result: 0 errors, 0 warnings, 19268 ms elapsed, cpu='X64 Regular'`; `.ex5` 866222 B 21:05:06 |
+| Reattach | `profile_apply Default` -> `XAI_P216_LIVE`; 39 x `[START] XAU_AI_PRO v1.2.143 ... saldo=12592.02` as 21:05:28-21:05:36 |
+| Prova pos-deploy | 21:06:04.195 `[AI] PYTHON | XAUUSD | SELL | PRICE=4062.55 | CONF=79.30%`; zero `PRICE=0.00000`; zero `PREDICAO VENCIDA` |
+| Gateway | XAUUSD `available=true SELL 63.2 price 4064.47`; USDCNH `available=false edge -0.1256` (HTTP 200 ambos, token 64 chars) |
+| `ROOT=LOCAL` | correto em producao: o ficheiro existe em `<terminal>\MQL5\Files\Data\`; `ROOT=COMMON` e so o fallback do tester |
+| Conta | 113568614 (MetaQuotes-Demo) DEMO hedging, 12.592,02, 0 posicoes |
+| Testador | OCUPADO desde 20:26:22 na v1.2.138 (pre-fix) - P-02 aberto; `tester_list_result_windows` = [] |
+| Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |
