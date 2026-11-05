@@ -856,3 +856,47 @@ ausente da `.venv`, mojibake antigo.
 **Governanca.** Nenhum parametro de risco alterado. Conta real proibida: PF >
 1.20 E perdas consecutivas <= 8, e mesmo assim com `EnableRealAccountGuard=true`
 e risco baixo.
+
+---
+
+## Ciclo 103 - 04/11/2026 21:21-21:29 - P1.103 (v1.2.146)
+
+**Pedido do dono.** Reanexar o build novo nos 15 graficos; correr o tester com
+`XAI_V12135_PRODGEOM_RT_M15.ini` e trazer PF e perdas seguidas; decidir P-03
+(`DailyProfitTargetUsd 20` vs `MaxUsd 40`) e P-04 (`StoplessEmergencyPoints=0`).
+
+**Medido (linhas do dono, verbatim).**
+
+```
+21:21:29.101 XAU_AI_PRO (USDJPY,H1) [AI] PREDICAO VENCIDA | XAUUSD | AGE=6787s > LIMIT=900s
+21:21:44.446 XAU_AI_PRO (USDJPY,H1) [RESUMO] ... | IA=UNAVAILABLE 0.0% | ...
+```
+
+Com `AI_Symbol==XAUUSD==esperado`, a guarda do P1.101 deixa passar - e deve
+deixar, porque a leitura vencida e do proprio simbolo. O problema e a ORIGEM da
+leitura: o gateway estava vivo (sonda as 21:12:40 devolveu `available=true`,
+SELL conf 81.0, price 4064.0) e mesmo assim o EA leu
+`Data/prediction_XAUUSD.json`, um retrato parado desde ~19:28 (AGE 6787 s) que
+quem escreve e o pipeline Python, nao o EA. Uma falha de transporte num poll
+virava `IA=UNAVAILABLE` e bloqueava a entrada ate ao poll seguinte.
+
+**Decidido.** P1.103 em `AI\AIConnector.mqh`, imediatamente antes da FONTE 2:
+se `AIUseGateway` esta ligado, o gateway ja respondeu para ESTE simbolo
+(`AI_Symbol==normalized`), ha preco (`AI_Price>0`) e a consulta bem sucedida tem
+menos de `MaxPredictionAgeSec`, devolve-se a previsao em memoria e nao se le o
+ficheiro. O ficheiro continua a ser plano B quando nao ha nada em memoria
+(arranque, modo legado, tester). Nenhuma regra de trading mudou: sem previsao
+fresca o retorno continua `false` e a entrada continua bloqueada.
+
+**Build e deploy.** v1.2.146 (`#property version "1.346"`, `EA_VERSION_STRING
+"1.2.146"`), `Result: 0 errors, 0 warnings, 28863 ms`, `.ex5` 869606 B as
+21:27:33. Reattach por `profile_apply Default` -> `XAI_P216_LIVE`; `[START]
+XAU_AI_PRO v1.2.146 | conta=113568614 | ... | saldo=12592.02` as 21:27:43.
+
+**Nota de versionamento.** A cadeia de changelog ja tinha uma entrada rotulada
+v1.2.145 (P2.21, 04/11) que nunca chegou a ser publicada; para nao reutilizar um
+numero que ja aparece no historico, este ciclo usa v1.2.146.
+
+**Continua aberto.** P-02 (o dono tem de parar o job do Testador para a
+re-mediacao), P-03 e P-04 (decisao de risco do dono), P1.100 nao exercitado,
+`[RESUMO]` a publicar o estado de IA do simbolo do grafico master.

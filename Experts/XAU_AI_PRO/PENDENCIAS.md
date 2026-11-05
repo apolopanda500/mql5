@@ -133,6 +133,19 @@
   um evento.
 - **Criterio:** um evento de teste chega no celular/e-mail. Sem isso, o dono
   descobre problema de risco tarde.
+- **Correcao de observabilidade (v1.2.145, 04/11/2026):** o *registo* das
+  notificacoes estava ilegivel e sem limite, independentemente do envio. MEDIDO
+  as 21:17 em `Common\Files\Notifications.log`: 53 200 689 bytes, 1 644 441
+  linhas, 41 491 blocos `HEALTH MONITOR` de ~39.6 linhas cada e a linha 1 era
+  `2026.08.14 00:00:00FAIL[RELATORIO] Profit=0.00` (data, estado e mensagem
+  colados, porque o separador implicito do `FileWrite` nao sai no ficheiro).
+  O `[NOTIFY] Failed` do tester as 20:58:22 dizia `1156` para 578 mensagens —
+  o contador somava duas vezes a mesma falha. Corrigido: uma notificacao = uma
+  linha delimitada por ` | `, tecto de 400 caracteres, rotacao para
+  `Notifications.old.log` acima de 8 MB e contagem unica por mensagem.
+  `0 errors, 0 warnings`; `validate_mql5.py` `[OK]`; `pytest
+  tests/test_mql5_compila.py` 2 passed. Falta reanexar o EA para a v1.2.145
+  entrar em producao.
 
 ---
 
@@ -656,3 +669,17 @@ comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo trackin
   XAUUSD. Zero `PRICE=0.00000` e zero `IA=UNAVAILABLE` na janela.
 - **Criterio cumprido.** O simbolo pedido continua bloqueado quando a SUA
   leitura esta vencida (`return false` fora da guarda), como antes.
+
+### Ciclo 103 - P1.103 fechado no codigo, P-03/P-04 aguardam decisao do dono `AGENTE`
+- **P1.103 corrigido e deployado (v1.2.146).** Ver `Docs/CONVERSA_20261105_P1103_V1146.md`.
+  **Fechar** quando aparecer uma falha de transporte e o `[RESUMO]` mantiver
+  `IA=SELL` em vez de cair para `UNAVAILABLE`.
+- **P-03 (`DailyProfitTargetUsd 20` vs `DailyProfitTargetMaxUsd 40`) - `DONO`.**
+  Nao e bug de codigo: sao dois limites com semantica diferente (alvo diario e
+  teto do alvo). O que falta e a DECISAO de qual valor manda no dia; qualquer
+  alteracao muda o comportamento de fecho e nao foi feita.
+- **P-04 (`StoplessEmergencyPoints=0`) - `DONO`.** Com 0, uma posicao que fique
+  sem stop por falha de modificacao nao tem rede de seguranca em pontos. Ligar
+  isto protege a posicao mas pode fechar antes do plano; e decisao de risco.
+- **P-02 continua a bloquear a medicao.** O job do Testador (v1.2.138) tem de
+  ser parado na GUI antes de correr `XAI_V12135_PRODGEOM_RT_M15.ini`.

@@ -4571,3 +4571,19 @@ Pendencias do dono (medidas):
 | Gateway | XAUUSD `available=true SELL 81.0 price 4064.0`; USDCNH `available=false edge -0.1256` (HTTP 200 ambos) |
 | Conta | 113568614 (MetaQuotes-Demo) DEMO hedging, 12.592,02, 0 posicoes |
 | Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |
+
+---
+
+## Ciclo 2026-11-04 (noite, ciclo 103) - P1.103 (v1.2.146)
+
+| Item | Medicao |
+|---|---|
+| Defeito | falha de transporte do gateway trocava previsao fresca em memoria por ficheiro local obsoleto -> `IA=UNAVAILABLE` |
+| Prova | 21:21:29.101 `[AI] PREDICAO VENCIDA | XAUUSD | AGE=6787s` e 21:21:44.446 `[RESUMO] ... IA=UNAVAILABLE 0.0%`, com o gateway a responder `available=true` (sonda 21:12:40) |
+| Origem | `Data/prediction_XAUUSD.json` parado desde ~19:28 (quem escreve e o pipeline Python) |
+| Correcao | `AI\AIConnector.mqh` antes da FONTE 2: se `AIUseGateway` && `AI_Symbol==normalized` && `AI_Price>0` && `TimeCurrent()-ultimaConsulta <= MaxPredictionAgeSec` -> `return true` sem ler o ficheiro |
+| Edicao | AIConnector 50119 -> 51439 B; VersionManager 131483 -> 132597 B |
+| Versao | `// XAU_AI_PRO v1.2.146` + `#property version "1.346"` + `EA_VERSION_STRING "1.2.146"` |
+| Compilacao | `Result: 0 errors, 0 warnings, 28863 ms elapsed, cpu='X64 Regular'`; `.ex5` 869606 B 21:27:33 |
+| Reattach | `profile_apply Default` -> `XAI_P216_LIVE`; `[START] XAU_AI_PRO v1.2.146 ... saldo=12592.02` as 21:27:43 |
+| Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |

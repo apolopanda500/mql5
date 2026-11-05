@@ -1120,6 +1120,27 @@ bool LoadAIPrediction(string symbol="")
    }
 
    //==================================================
+   // P1.103 (05/11/2026): uma falha de TRANSPORTE do gateway nao pode trocar
+   // uma previsao fresca em memoria por um ficheiro local obsoleto. MEDIDO no
+   // journal de 04/11: 21:21:29.101 [AI] PREDICAO VENCIDA | XAUUSD | AGE=6787s
+   // seguida de 21:21:44.446 [RESUMO] com IA=UNAVAILABLE 0.0%, enquanto a sonda
+   // ao MESMO endpoint devolvia available=true (XAUUSD SELL conf 81.0). O
+   // ficheiro Data/prediction_XAUUSD.json esta parado desde ~19:28 - quem o
+   // escreve e o pipeline Python, nao o EA - por isso cada consulta falhada ao
+   // gateway virava "IA indisponivel" e bloqueava a entrada ate ao poll seguinte.
+   // Se o gateway JA respondeu para ESTE simbolo e a previsao em memoria ainda
+   // esta dentro de MaxPredictionAgeSec, devolve-se essa previsao e nao se le o
+   // ficheiro. O ficheiro continua a ser o plano B quando nao ha nada em memoria
+   // (arranque, modo legado, tester). Nenhuma regra de trading muda: sem
+   // previsao fresca o retorno continua false e a entrada continua bloqueada
+   // com AllowTradeWithoutAI=false.
+   if(AIUseGateway &&
+      AI_Symbol == normalized &&
+      AI_Price > 0.0 &&
+      ultimaConsulta > 0 &&
+      MaxPredictionAgeSec > 0 &&
+      (long)(TimeCurrent() - ultimaConsulta) <= (long)MaxPredictionAgeSec)
+      return true;
    // FONTE 2: ARQUIVO (fallback e modo legado)
    //==================================================
    string fileName=
