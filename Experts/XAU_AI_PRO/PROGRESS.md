@@ -4800,3 +4800,6 @@ Resultado por item:
   decisoes: `devolvido=0.0` em todas as linhas. Item continua ABERTO.
 - P1.118: o ramo `[ATR] HANDLE MORTO` nao voltou a disparar nesta janela porque a
   falha mudou de forma - o handle nao esta "morto", esta a ler a serie errada.
+## Fecho do ciclo 112 (v1.2.159) - o trabalho para aqui, com o que esta provado escrito ao lado
+
+Ciclo encerrado em `44b4bfaf`, working tree limpo, 379 commits locais e nenhum push. O que fica provado: a v1.2.159 compila com 0 errors / 0 warnings, e o que corre nos treze graficos; o P1.119 tem causa medida (o ATR lido e o do XAUUSD, `22.597860`, `barsCalc=60369`), e a guarda do P1.112 devolve 0.0 em todas as linhas, portanto o defeito custa DADOS e nao risco. O que nao fica provado: o mecanismo do P1.121 e a sonda do P1.119. O que fica aberto e do dono: push, separacao do `6fe56e53`, `USDBRL,M5`, as herdadas (P1.110/P1.111, simbolos, `EnableVolatilityFilter=false`, gateway 401/1003 e 30F contra 25F) e a proibicao de conta real (PF 0.6206 nao remedido). Treze graficos continuam a correr em demo com 0 posicoes, 0 ordens, 0 alertas e 0 servicos.

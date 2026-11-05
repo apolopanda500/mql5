@@ -659,3 +659,34 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
   decisao.
 - git: HEAD local, sem push. Push, USDBRL, itens herdados e a proibicao de conta
   real continuam a ser portas que so o dono fecha.
+---
+
+## ENCERRAMENTO do ciclo 112 (v1.2.159) - o que fica provado e as portas que so o dono fecha
+
+Estado no instante do fecho: HEAD `44b4bfaf` (379 commits, todos locais, nenhum push), working tree limpo, conta 113568614 (MetaQuotes-Demo, hedging) com 0 posicoes e 0 ordens, `alerts_list` vazio, `services_list` vazio, treze graficos do perfil `XAI_P216_LIVE` com `Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` (v1.2.159; HG-01 em dia: `1.359` = `1.2.159`).
+
+### O que fica PROVADO
+
+1. Codigo: v1.2.158/P1.120 e v1.2.159/P1.121 compilam com `0 errors, 0 warnings` (build 6296, X64 Regular) e sao o que corre nos treze graficos.
+2. Recarga: `profile_apply XAI_P216_LIVE` devolveu `ok`, com treze linhas `[START] XAU_AI_PRO v1.2.159` no journal, zero indicadores anexados.
+3. P1.119 - causa MEDIDA: o ATR lido pelos treze graficos e o do XAUUSD (`22.597860` em nove pares; `barsCalc=60369`, que e o numero de barras do `XAUUSD,H1`), inclusive no simbolo do PROPRIO grafico com a serie provada; a cura automatica (drop + recreate) devolve o mesmo valor. A hipotese "o handle nasce antes de a serie ter barras" fica rejeitada pelos numeros.
+4. Risco: nenhum ATR errado chega a decisao - todas as linhas terminam em `devolvido=0.0` pela guarda do P1.112. O custo e de DADOS (par sem candle no dataset), nao de risco.
+5. `.set` do tester: a unica diferenca face a HEAD era o comentario `; saved automatically on ...` que o MetaEditor reescreve a cada compilacao; nenhum input muda (producao corre `RewardRatio 0.65`, `MinRewardRatio 0.55`, `EnableAdaptiveTargets true`).
+
+### O que NAO fica provado (nao deve ser lido como provado)
+
+1. P1.119 continua ABERTO: falta a sonda isolada que responda a uma pergunta unica - o terminal deduplica a instancia do indicador por (nome, timeframe, parametros) ignorando o simbolo, ou o handle nasce ligado a serie errada?
+2. P1.121 nao foi provado no seu mecanismo: os `.bin` do ATR foram apagados as 15:31, logo a ausencia de bloqueio do loggate nao e atribuivel ao carimbo de compilacao `__DATETIME__`; a prova exigiria dois builds seguidos na mesma janela.
+3. PF 0.6206 e acerto 41.4% nao foram remedidos neste ciclo.
+
+### Portas que so o dono fecha
+
+1. `push` para `origin` (Forge MQL5) e para `github` (apolopanda500/mql5): 379 commits locais, nada enviado.
+2. O commit `6fe56e53` tem rotulo `docs(ciclo111)` e leva dentro o codigo v1.2.158/P1.119; separar ou aceitar e decisao do dono.
+3. `USDBRL,M5` (CHART11): `ATR=3831.556600` com `barsCalc=2204` contra `barrasSerie=24599` - aberto proprio, que o P1.119 dos pares H1 nao explica.
+4. Herdadas: P1.110/P1.111 (`dataset.csv` escrito por varias instancias), contradicao de simbolos (`Symbols` com 11 pares contra 13 graficos; EURUSD sem grafico; USDCZK/USDRUB/USDSGD com grafico e fora de `Symbols`; CHART11 em USDBRL,M5), `EnableVolatilityFilter=false` nos treze, gateway de IA com 401/1003 e contrato de features 30F contra 25F (`services_list` vazio, sem gateway a correr).
+5. Conta real continua PROIBIDA: o numero conhecido (PF 0.6206, acerto 41.4%, 10-11 perdas seguidas) e de um build sem ADX e sem IA.
+
+### O que fica a correr
+
+Treze graficos com o EA anexado, `AutoTrade=true`, conta demo, 0 posicoes, 0 ordens, 0 alertas, 0 servicos. O EA nao foi removido dos graficos nem o AutoTrading foi desligado: o pedido foi fechar o TRABALHO, nao parar a producao. Para parar de vez, remover o EA dos treze graficos (ou desligar o AutoTrading) - accao de um clique, do dono.

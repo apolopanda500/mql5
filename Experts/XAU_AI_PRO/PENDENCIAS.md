@@ -1075,3 +1075,19 @@ responda a uma pergunta unica - o terminal deduplica a instancia do indicador po
 (nome, periodo, parametros) ignorando o simbolo, ou o handle nasce ligado a serie
 errada? Enquanto essa pergunta nao tiver resposta medida, qualquer "correcao"
 seria uma aposta. Nao se embarcou nenhuma alteracao de codigo para o P1.119.
+## Encerramento do ciclo 112 (v1.2.159) - o que fecha e o que fica aberto
+
+| Item | Estado no fecho | Prova |
+|---|---|---|
+| P1.120 | implementado e compilado (v1.2.158) | codigo no binario que corre; mecanismo nao exercitado |
+| P1.121 | implementado e compilado (v1.2.159) | idem; prova estrita nao obtida |
+| P1.119 | ABERTO | causa medida (ATR do XAUUSD em nove pares, `barsCalc=60369`); falta a sonda de deduplicacao |
+| P1.118 | implementado | nao voltou a disparar porque a falha mudou de forma |
+| USDBRL M5 | ABERTO | `barsCalc=2204` contra `barrasSerie=24599` |
+| P1.110 / P1.111 | herdados, abertos | `dataset.csv` por varias instancias |
+| simbolos | herdado, aberto | 11 pares em `Symbols`, 13 graficos, EURUSD sem grafico |
+| gateway IA | herdado, aberto | 401/1003, 30F contra 25F, sem gateway a correr |
+| PF 0.6206 | nao remedido neste ciclo | conta real continua proibida |
+| `push` | nunca feito | 379 commits locais; so o dono |
+
+Nenhum item foi fechado por etiqueta: o que fecha, fecha por medida; o que nao tem medida fica registado como ABERTO. Neste fecho nao houve alteracao de codigo, de inputs, de ordens ou de configuracao. HEAD `44b4bfaf`.
