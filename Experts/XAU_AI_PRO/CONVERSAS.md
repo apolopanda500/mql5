@@ -802,3 +802,57 @@ MaxDailyLossUsd 60, MaxDrawdownPercent 15, RiskPercent 1.0, MinAIConfidence 60.0
 AllowTradeWithoutAI false). Conta real proibida: a regra e PF > 1.20 E perdas
 consecutivas <= 8, e mesmo assim com `EnableRealAccountGuard=true` e risco
 baixo. O unico PF historico (0,6206) e de um build sem ADX e sem IA.
+
+---
+
+## Ciclo 102 - 04/11/2026 21:07-21:18 - P1.102 (v1.2.144)
+
+**Pedido do dono.** Continuar a limpar tudo ("corrigir todas falhas, erros,
+avisos") e garantir o EA pronto para uso real.
+
+**Medido.** Depois do deploy da v1.2.143, a MESMA instancia imprimiu duas linhas
+`[AI] PREDICAO VENCIDA | XAUUSD` com 20 s de diferenca (21:09:52.802 e
+21:10:12.129) apesar de o portao pedir 1 linha por HORA por conta. A causa nao
+estava no portao: estava no ficheiro que ele usa. Leitura direta de
+`Common\Files\XAU_AI_PRO\loggate_ai_stale.bin`:
+
+```
+RAW=1788984000  ->  STAMP=2026-09-09 20:00:00
+NOW=2026-11-04 21:14:38
+```
+
+O Strategy Tester (job de 20:26:22, 4 processos `metatester64`) grava nesse
+ficheiro PARTILHADO o tempo SIMULADO do backtest. Com um valor no passado,
+`agora >= ultimo + janela` e sempre verdade e o throttle nunca filtra. Dezenas
+de `loggate_*.bin` foram reescritos todos entre 21:14:02 e 21:14:04. E a mesma
+causa das 129 linhas/dia que o P2.00 tentou travar.
+
+**Decidido.** P1.102: no inicio de `AccountLogGatePodeImprimir`, o tester
+devolve SEMPRE `true` e deixa de escrever nos ficheiros de gate partilhados
+(cada passe tem o seu journal; nao ha conta partilhada a proteger). A producao
+recupera o 1x/hora por tag e por conta. O modulo so decide impressao - nenhuma
+regra de trading foi tocada.
+
+**Build e deploy.** v1.2.144 (`#property version "1.344"`, `EA_VERSION_STRING
+"1.2.144"`), `Result: 0 errors, 0 warnings, 26804 ms`, `.ex5` 867576 B as
+21:16:04. Reattach por `profile_apply Default` -> `XAI_P216_LIVE`: `[START]
+XAU_AI_PRO v1.2.144 | conta=113568614 | ... | saldo=12592.02` as 21:16:20.
+
+**Limite honesto.** O job do Testador em curso carregou a v1.2.138 em memoria;
+recompilar nao o altera. Enquanto nao for parado continua a poluir os ficheiros
+de gate, logo o efeito pleno da P1.102 so aparece depois do P-02 fechar.
+
+**Gateway.** Sonda as 21:12:40 (UTC 00:12:40): XAUUSD `HTTP 200 available=true
+SELL conf 81.0 price 4064.0 inference 267.07 ms`; USDCNH `available=false edge
+-0.1256`. Modelo publicado e portao walk-forward a funcionar.
+
+**Continua aberto.** P-02 (DONO: parar o job e re-medir com
+`XAI_V12135_PRODGEOM_RT_M15.ini`), P1.103 candidato (queda para ficheiro local
+obsoleto quando uma consulta ao gateway falha: `AGE=6090s` as 21:09 com o
+gateway vivo), P1.100 nao exercitado, `[RESUMO]` a mostrar o estado de IA do
+simbolo do grafico master em vez do par negociado, P-03/P-04/P-05, pytest
+ausente da `.venv`, mojibake antigo.
+
+**Governanca.** Nenhum parametro de risco alterado. Conta real proibida: PF >
+1.20 E perdas consecutivas <= 8, e mesmo assim com `EnableRealAccountGuard=true`
+e risco baixo.

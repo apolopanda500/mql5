@@ -50,6 +50,20 @@ bool AccountLogGatePodeImprimir(const string tag,const int janelaSeg)
    if(janelaSeg<=0)
       return(true);
 
+   // P1.102 (05/11/2026): o TESTER partilha esta pasta FILE_COMMON com a
+   // producao e escrevia aqui o tempo SIMULADO do backtest. MEDIDO: o ficheiro
+   // Common\Files\XAU_AI_PRO\loggate_ai_stale.bin continha 2026-09-09 20:00:00
+   // enquanto o terminal vivia 2026-11-04 21:14. Com um valor no PASSADO,
+   // "agora >= ultimo + janela" e sempre verdade, logo o throttle por conta
+   // deixava de filtrar: duas linhas [AI] PREDICAO VENCIDA com 20 s de
+   // diferenca na mesma instancia (21:09:52 e 21:10:12) apesar da janela de
+   // 3600 s, e 129 linhas/dia antes do P2.00. No tester cada passe tem o seu
+   // proprio journal e nao ha conta partilhada a proteger, por isso o gate
+   // devolve SEMPRE true e deixa de escrever no ficheiro comum. A producao
+   // recupera o throttle de 1x/hora por tag e por conta.
+   if(MQLInfoInteger(MQL_TESTER))
+      return(true);
+
    string nome="XAU_AI_PRO\\loggate_"+tag+".bin";
       // P2.05: os 15 graficos do terminal abrem o MESMO ficheiro de gate em
    // threads diferentes. Sem partilha declarada a segunda abertura pode

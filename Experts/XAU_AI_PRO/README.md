@@ -301,3 +301,21 @@ leitura do journal ao vivo antes de ser considerada ativa.
   antigo (v1.2.138) e so o dono o pode parar; sem isso nao ha re-mediacao de PF.
 - Governanca: conta real continua proibida (PF > 1.20 E perdas consecutivas
   <= 8, e mesmo assim com `EnableRealAccountGuard=true` e risco baixo).
+
+---
+
+## Estado apos o ciclo 102 (v1.2.144, 04/11/2026 21:16)
+
+- Build em uso: `XAU_AI_PRO v1.2.144` (`#property version "1.344"`,
+  `EA_VERSION_STRING "1.2.144"`), `0 errors, 0 warnings`, `.ex5` 867576 bytes.
+- Ultima correcao: **P1.102** - o Strategy Tester gravava o tempo SIMULADO nos
+  ficheiros de gate partilhados (`loggate_*.bin` em `Common\Files`), o que
+  anulava o throttle de 1 linha/hora por conta; agora o tester nao escreve nesses
+  ficheiros. Detalhe em `Docs/CONVERSA_20261105_P1102_V1144.md`.
+- Correcao anterior no mesmo dia: **P1.101** (v1.2.143) - a leitura vencida de um
+  simbolo deixou de apagar o estado de IA de outro simbolo.
+- Pendencia principal: **P-02** - o Strategy Tester esta ocupado com um job
+  antigo (v1.2.138) que so o dono pode parar; sem isso nao ha re-mediacao de PF
+  nem o efeito pleno da P1.102.
+- Governanca: conta real continua proibida (PF > 1.20 E perdas consecutivas
+  <= 8, e mesmo assim com `EnableRealAccountGuard=true` e risco baixo).

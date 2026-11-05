@@ -4551,3 +4551,23 @@ Pendencias do dono (medidas):
 | Conta | 113568614 (MetaQuotes-Demo) DEMO hedging, 12.592,02, 0 posicoes |
 | Testador | OCUPADO desde 20:26:22 na v1.2.138 (pre-fix) - P-02 aberto; `tester_list_result_windows` = [] |
 | Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |
+
+---
+
+## Ciclo 2026-11-04 (noite, ciclo 102) - P1.102 (v1.2.144)
+
+| Item | Medicao |
+|---|---|
+| Defeito | o throttle de log por CONTA nao filtrava: `[AI] PREDICAO VENCIDA` 2x em 20 s com janela de 3600 s |
+| Prova | `Common\Files\XAU_AI_PRO\loggate_ai_stale.bin` = `2026-09-09 20:00:00` (tempo SIMULADO do tester) contra `NOW=2026-11-04 21:14:38` |
+| Causa | o Strategy Tester escreve nos MESMOS ficheiros FILE_COMMON de gate; com data no passado, `agora >= ultimo + janela` e sempre verdade |
+| Correlacao | dezenas de `loggate_*.bin` reescritos as 21:14:02-04, com 4 processos `metatester64` activos |
+| Correcao | `Monitoring\AccountLogGate.mqh`: `if(MQLInfoInteger(MQL_TESTER)) return(true);` no inicio do gate - o tester deixa de escrever nos ficheiros partilhados |
+| Edicao | `Files\Temp\ciclo102_edit.ps1`: AccountLogGate 5111 -> 5988 B, VersionManager 128948 -> 129958 B, contagens todas = 1 |
+| Versao | `// XAU_AI_PRO v1.2.144` + `#property version "1.344"` + `EA_VERSION_STRING "1.2.144"` (HG-01: 1*100+344) |
+| Compilacao | `Result: 0 errors, 0 warnings, 26804 ms elapsed, cpu='X64 Regular'`; `.ex5` 867576 B 21:16:04 |
+| Reattach | `profile_apply Default` -> `XAI_P216_LIVE`; `[START] XAU_AI_PRO v1.2.144 ... saldo=12592.02` as 21:16:20.77-20.80 |
+| Limite | o job do tester corre a v1.2.138 em memoria e continua a poluir os gates ate ser parado (P-02) |
+| Gateway | XAUUSD `available=true SELL 81.0 price 4064.0`; USDCNH `available=false edge -0.1256` (HTTP 200 ambos) |
+| Conta | 113568614 (MetaQuotes-Demo) DEMO hedging, 12.592,02, 0 posicoes |
+| Risco | nenhum parametro alterado (RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false) |

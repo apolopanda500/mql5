@@ -482,3 +482,20 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 | Bloqueios | P-02 (DONO: Stop manual), P1.100 nao exercitado, P1.102 candidato, P-03/P-04/P-05 |
 | Risco | inalterado: RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false |
 | Governanca | conta real proibida (PF > 1.20 E perdas consecutivas <= 8, com guarda e risco baixo) |
+
+---
+
+## Ciclo 102 - 2026-11-04 21:18 (UTC 2026-11-05T00:18Z)
+
+| Campo | Valor |
+|---|---|
+| Build em uso | `XAU_AI_PRO v1.2.144`, `.ex5` 867576 B, 21:16:04, `0 errors, 0 warnings` |
+| Versao tripla | header `v1.2.144`, `#property version "1.344"`, `EA_VERSION_STRING "1.2.144"` |
+| Ultima correcao | P1.102 - o Strategy Tester deixou de escrever o tempo simulado nos ficheiros de gate partilhados (throttle por conta restaurado) |
+| Graficos | reanexados por `profile_apply Default` -> `XAI_P216_LIVE` as 21:16:20 |
+| Conta | 113568614 MetaQuotes-Demo, DEMO hedging, 12592.02, 0 posicoes |
+| IA | gateway vivo (`available=true` para XAUUSD, conf 81.0); restantes simbolos sem modelo -> recusa fail-closed |
+| Testador | OCUPADO (job de 20:26:22 na v1.2.138, 4 processos `metatester64`) - P-02; `tester_list_result_windows` = [] |
+| Gates | `loggate_ai_stale.bin` estava com `2026-09-09 20:00:00` (tempo do tester) antes da v1.2.144 |
+| Risco | inalterado: RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false |
+| Governanca | conta real proibida (PF > 1.20 E perdas consecutivas <= 8, com guarda e risco baixo) |

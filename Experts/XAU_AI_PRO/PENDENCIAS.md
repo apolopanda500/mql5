@@ -621,3 +621,24 @@ comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo trackin
   re-medir com `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini`.
 - **P1.100 ainda nao exercitado ao vivo:** o ramo `status > 599` (resposta
   NAO-HTTP do transporte) so imprime quando houver um codigo fora da faixa HTTP.
+
+### Verificacao pos-deploy 21:16 (ciclo 102) `AGENTE`
+- **P1.102 corrigido e deployado (v1.2.144).** O throttle por conta estava
+  furado porque o Strategy Tester gravava o tempo SIMULADO do backtest em
+  `Common\Files\XAU_AI_PRO\loggate_<tag>.bin` (medido: `2026-09-09 20:00:00`
+  contra `2026-11-04 21:14:38`). Com um valor no passado a condicao
+  `agora >= ultimo + janela` e sempre verdade. Agora o tester devolve `true` e
+  nao escreve nos ficheiros partilhados. **Fechar** quando o P-02 fechar e se
+  confirmar 1 linha de `[AI] PREDICAO VENCIDA` por hora (e nao por poll).
+- **Efeito pleno depende do P-02.** O job de 20:26:22 corre a v1.2.138 ja
+  carregada em memoria; recompilar nao o altera e ele continua a escrever nos
+  gates ate terminar.
+- **Candidato P1.103 (medido):** quando uma consulta ao gateway falha, o EA cai
+  para `Data/prediction_<SIMBOLO>.json`, que em producao esta parado desde
+  ~19:28 (`AGE=6090 s` as 21:09), e publica `IA=UNAVAILABLE` durante o ciclo de
+  poll mesmo com o gateway vivo (sonda das 21:12: `available=true`). Fail-closed
+  esta correto; o que se deve medir e a frequencia das falhas de transporte
+  antes de trocar o fallback por "reter a ultima previsao fresca".
+- **Candidato P1.104:** o `[RESUMO]` mostra o estado de IA do simbolo dono do
+  grafico master (USDJPY -> `IA=UNAVAILABLE 0.0%`) e nao o do par negociado
+  (XAUUSD -> SELL 79.30%). Texto, sem efeito de trading, mas le-se como alarme.
