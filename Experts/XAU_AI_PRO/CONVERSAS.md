@@ -1361,3 +1361,15 @@ quando o gate era obrigatorio, e 40 nunca chega ao piso de 60. Corrigido em v1.2
 Fica dito ao dono, sem rodeios: enquanto nao houver token no gateway, o EA nao abre
 posicao em simbolo nenhum - e isso e a configuracao a funcionar como documentada, nao um
 defeito. A alternativa e `EnableAutonomousMode=true`, que e uma decisao dele.
+
+## 05/11 (20:39) - "sim autorizado a fazer tudo que precisar" (a v1.2.162 entrou em producao)
+
+O ciclo fechou o P1.125 em codigo e commitou-o localmente (615b1301, sem push). O reload das 20:05:04 colocou a v1.2.162 nos 13 graficos, e a medicao seguinte respondeu a pergunta que estava em aberto: o gate da IA deixou de fechar por aritmetica.
+
+O que se poe ao dono, medido e nao suposto:
+
+1. **O gateway serve UM simbolo.** `disponivel=true` so para o XAUUSD (1119 bytes de resposta); `disponivel=false` para os outros dez (357 bytes). Com `AllowTradeWithoutAI=false` e `EnableAutonomousMode=false`, o EA nao pode abrir posicao em nove dos dez simbolos que digitaliza, por muito bom que seja o sinal. Isto nao e um defeito do EA: e a configuracao a fazer o que diz. As saidas sao do dono - ou o gateway passa a servir os outros simbolos, ou se aceita `EnableAutonomousMode=true` (IA consultora) ou `AllowTradeWithoutAI=true` (fallback capado em 40).
+2. **O transporte do gateway e instavel:** `HTTP 1003` (codigo de transporte, nao do servidor, corpo=0B) as 20:26 e 20:28, com recuperacao automatica. Enquanto isso acontecer, um sinal pode apanhar o gateway cego.
+3. **O ATR continua a ser o do XAUUSD em todos os simbolos** (P1.119, agora com handle e barras): 33.952860 em oito pares, `barsCalc=60372` = barras do XAUUSD,H1. As guardas devolvem ausencia de leitura, logo o risco nao e contaminado, mas o filtro de volatilidade decide sem dado em dez graficos.
+
+Nenhum parametro de risco foi tocado. Zero posicoes, zero ordens.

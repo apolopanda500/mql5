@@ -1002,6 +1002,7 @@ Nesse caso a decisao e do dono, nao do codigo.
 ---
 
 ## P1.125 - RESOLVIDO EM CODIGO (05/11/2026, v1.2.162) - o gate da IA nao podia ser satisfeito por nenhum simbolo
+**CONFIRMADO EM PRODUCAO (05/11/2026, reload das 20:05:04, 13 graficos a v1.2.162).** O teto deixou de fechar o gate por si. No periodo 20:05-20:39 sairam 12 linhas `[SCANNER] SIGNAL OK` (USDCAD e USDSEK, sempre Signal=-1, todas na instancia mestre USDCNH,H1) e ZERO linhas `[VALIDATION] AI OK` - mas agora cada bloqueio tem causa nomeada: USDSEK fecha no gate de IA porque o gateway responde `disponivel=false` (sem leitura real, o cap de 40 continua a valer, logo o gate continua fechado, que e o comportamento pedido), e o USDCAD fecha ainda antes disso no TREND (`contramao vetada | tendencia formada | ADX=57.8 >= 22.0`, com o retrato a publicar `USDCAD TENDENCIA_FORTE ADX=57.8 TREND_UP`, ou seja um SELL contra a tendencia). O XAUUSD tem `disponivel=true` no gateway e nao gerou sinal no periodo. Zero posicoes e zero ordens na conta.
 
 ### O que estava medido antes de tocar em nada
 
@@ -1119,6 +1120,28 @@ Conclusao deste item: os quatro caminhos XAUUSD-only continuam por tocar, mas ne
 deles e o que impede os outros simbolos de operar hoje. O que impede esta no P1.125.
 ---
 ## P1.119 - ABERTO, MAS REFORMULADO (05/11/2026, v1.2.160) - o iATR do EA nao esta morto: falha nos MESMOS ciclos em que o ADX e o RSI falham
+**MEDIDO EM PRODUCAO (05/11/2026, 20:05-20:39, v1.2.162 recem-instalada no reload das 20:05:04, 13 graficos).** A sonda interna do P1.117 passou a publicar o handle e as barras, e o que sai agora nomeia o mecanismo:
+
+| hora | instancia | simbolo lido | ATR | preco | handle | barsCalc | barrasSerie | devolvido |
+|---|---|---|---|---|---|---|---|---|
+| 20:05:05.225 | USDJPY,H1 | USDJPY | 33.953000 | 157.562 | 10 | 60372 | 100014 | 0.0 |
+| 20:05:05.810 | AUDUSD,H1 | AUDUSD | 33.952860 | 0.69326 | 10 | 60372 | 100014 | 0.0 |
+| 20:05:06.090 | USDCHF,H1 | USDCHF | 33.952860 | 0.81602 | 10 | 60372 | 100014 | 0.0 |
+| 20:05:06.403 | USDSEK,H1 | USDSEK | 33.952860 | 9.80153 | 10 | 60372 | 100014 | 0.0 |
+| 20:05:06.607 | NZDUSD,H1 | NZDUSD | 33.952860 | 0.55969 | 10 | 60372 | 100014 | 0.0 |
+| 20:16:10.189 | USDCAD,H1 | USDCAD | 33.952860 | 1.40183 | 10 | 60372 | 100014 | 0.0 |
+| 20:16:12.258 | GBPUSD,H1 | GBPUSD | 33.952860 | 1.34527 | 10 | 60372 | 100014 | 0.0 |
+| 20:16:51.525 | USDCZK,H1 | USDCZK | 33.952860 | 21.67780 | 10 | 60372 | 72096 | 0.0 |
+| 20:11:11.643 | USDCNH,H1 | USDCNH | 25.327790 | 6.66418 | 50 | 60372 | 66892 | 0.0 |
+
+Tres leituras que o numero permite fechar:
+1. **O valor e o MESMO em oito simbolos** (33.952860 / 33.953000) e corresponde ao ATR do ouro com o bid em 4094.690000 (0.83 por cento do preco), logo nao e o ATR de cada par: AUDUSD a 0.69326 com ATR 33.95 daria 4897 por cento e USDSEK a 9.80153 daria 346 por cento.
+2. **barsCalc=60372 em todos os casos**, que e exactamente o total_bars do grafico XAUUSD,H1 (CHART01) neste terminal, enquanto barrasSerie e o numero de barras do proprio par (100014 em sete graficos, 72096 no USDCZK, 66892 no USDCNH). Ou seja: o handle em cache esta a calcular sobre a serie do XAUUSD, e nao sobre a serie do simbolo pedido.
+3. O mesmo defeito atinge o ADX, com guarda propria: `[ADX] VALOR DE OUTRO SIMBOLO | XAUUSD | ADX=25.33 | grafico=USDSEK` as 20:05:04.834 e `| grafico=USDJPY` as 20:27:51.154, e 25.33 e o valor que o retrato das 20:30:02 publica para o XAUUSD (ADX=25.3).
+
+O retrato das 20:30:02 mostra ainda o simbolo do proprio grafico mestre sem leitura: `XAUUSD TENDENCIA_FORTE ADX=25.3 ATR%=sem leitura(atr=0.000000,bid=4094.690000)`.
+
+Nada disto chega hoje a decisao com aparencia de verdade - a guarda do P1.112 devolve 0.0 no ATR e a do P1.113 devolve -1.0 no ADX -, mas o custo e real: dez dos treze graficos operam com ATR ausente e o ADX de alguns pares chega ausente, portanto o filtro de volatilidade e o portao de cenario decidem sem essa informacao. **A causa mecanica (porque e que iATR(simbolo,PERIOD_H1,14) devolve um handle preso a serie do XAUUSD) fica por provar: e o que falta medir antes de tocar no codigo.** Nenhum ficheiro foi alterado neste ciclo para este item.
 
 ### A pergunta unica deste item: o terminal deduplica o handle?
 
@@ -1330,3 +1353,45 @@ seria uma aposta. Nao se embarcou nenhuma alteracao de codigo para o P1.119.
 | `push` | nunca feito | 379 commits locais; so o dono |
 
 Nenhum item foi fechado por etiqueta: o que fecha, fecha por medida; o que nao tem medida fica registado como ABERTO. Neste fecho nao houve alteracao de codigo, de inputs, de ordens ou de configuracao. HEAD `44b4bfaf`.
+
+---
+
+## Ciclo 113 - P1.126 / P1.127 / P1.128 - reconexao autonoma do gateway de IA (PROVADA)
+
+Build **v1.2.165** (XAU_AI_PRO.ex5 = 923.626 B, 05/11/2026 20:27), conta demo 113568614.
+Simulacao REAL: gateway Python parado com taskkill e relancado, sem tocar no EA nem no terminal.
+
+| Passo | Hora local | Evidencia medida |
+|---|---|---|
+| v1.2.165 reattach a 14 graficos | 20:28:52 / 20:28:57 | 14x `[START] XAU_AI_PRO v1.2.165` |
+| gateway vivo (pid 7912) | 20:29:00.846 | `[AI] GATEWAY | XAUUSD | H1 | 1120 bytes | disponivel=true` |
+| gateway MORTO (taskkill /PID 7912) | 20:29:00 | `tasklist` python.exe = 0 processos |
+| **FALHA visivel** | 20:29:09.157 | `[AI] GATEWAY | HTTP 1001 | .../predict?symbol=EURUSD&timeframe=H1 | resposta NAO-HTTP ... | corpo=0B` |
+| FALHA repetida (portao 300 s) | 20:34:09.379 | mesma linha, symbol=USDCAD, 300.2 s depois |
+| gateway RELANCADO (pid 14992) | ~20:34:55 | uvicorn `Application startup complete` |
+| **RECUPERACAO autonoma** | 20:35:04.522 | `[AI] GATEWAY RECUPERADO | USDCAD | H1 | falhas=159 | cego=357s | resposta=357B | sem intervencao` |
+
+### O que fica PROVADO
+- O EA deteta a queda do gateway e recupera **sozinho**: sem reattach do EA, sem reiniciar o terminal, sem accao do operador.
+- Pela primeira vez o journal tem **as duas metades** da mesma paragem: falha (20:29:09) e recuperacao (20:35:04).
+- O portao de 300 s da classe transporte e respeitado ao segundo (20:29:09 para 20:34:09).
+- Canal independente: o stdout do uvicorn relancado mostra o assalto de pedidos do EA nos primeiros segundos (`GET /api/ai/predict?symbol=... HTTP/1.1" 200 OK` para USDCAD, NZDUSD, USDCHF, USDSEK, USDCNH, XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD).
+
+### Causa raiz corrigida neste ciclo
+O rasto da metade FALHA estava mudo por **tres relogios** que mediam tempo com `TimeCurrent()` (hora do servidor, que CONGELA quando o link ao broker cai) em vez de `TimeLocal()`:
+1. `Monitoring/AccountLogGate.mqh` (linhas ~79 e ~89) - portao por conta/tag: o valor gravado nunca avancava, logo o aviso era filtrado para sempre.
+2. Ramo HTTP != 200 em `AI/AIConnector.mqh` - janela unica de 1800 s por conta, tambem em `TimeCurrent()`.
+3. Portao do poll (15 s) e teste de frescura em `AIConnector.mqh` - comparavam `TimeCurrent()` (servidor) com um valor gravado por `AIClockRelogio()` (local): desvio medido +18000 s, o que degenerava o poll para uma chamada por tick.
+`AIClockRelogio()` devolve `TimeLocal()` em producao e `TimeCurrent()` dentro de `MQL_TESTER`, para os backtests continuarem a medir tempo MODELADO como antes.
+
+### O que NAO fica provado (registo honesto)
+- Codigos 5201 / 5202 / 5203: nunca observados nesta maquina. Com o gateway parado o `WebRequest` devolve **1001** (codigo de transporte, nao -1), portanto a linha real e o ramo `[AI] GATEWAY | HTTP 1001 | ...` e nao `[AI] GATEWAY falhou | erro=5201`.
+- Queda do link ao **broker**: o EA nao pode forcar a reconexao terminal->broker; `Enterprise/ConnectionGuard.mqh` e `Enterprise/RecoveryManager.mqh` apenas LEEM `TERMINAL_CONNECTED` e `ACCOUNT_TRADE_ALLOWED`. Essa camada pertence ao terminal.
+- Reboot do PC: o gateway e um processo comum (`uvicorn`), nao um servico Windows; nao sobrevive a um reinicio.
+- Relogios residuais, sem efeito nesta prova: `AIConnector.mqh` linha ~1295 `datetime logNow = TimeCurrent();` (portao logOnce de 1800 s do `LoadAIPrediction`) e linha ~139 `g_aiStateWhen[slot]=TimeCurrent();`.
+
+### Inalterado (deliberado)
+Nenhum limite, lote, alvo, stop, spread, preco, regra de entrada/saida ou parametro de risco foi tocado. `AllowTradeWithoutAI=false` e `MinAIConfidence=60.0` mantidos. 5201/5203 continuam sem cooldown; 4014/4060/5200 continuam com 1800 s. Sem push (380 commits locais). Conta real PROIBIDA.
+
+### Porque o EA continua sem abrir operacoes (diagnostico anterior, ainda valido)
+O gateway responde 200 mas devolve `available=false` em 12 de 13 simbolos com `edge ... abaixo do minimo +0.0500` (EURUSD -0.0161, GBPUSD -0.0207, USDJPY +0.0248, AUDUSD -0.0184, USDCAD +0.0317, NZDUSD +0.0225, USDCHF +0.0253, USDSEK -0.0403, USDCNH -0.1256, USDCZK -0.0072, USDSGD +0.0193, USDRUB +0.0166, USDBRL M5 +0.0240). So XAUUSD/H1 devolve `available=true`, e XAUUSD nao esta na lista de pares negociados. O bloqueio e de MODELO (edge), nao de infraestrutura.
