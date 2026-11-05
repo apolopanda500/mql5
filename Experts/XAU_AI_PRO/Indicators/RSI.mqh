@@ -99,7 +99,7 @@ bool InitRSI()
 // GET RSI
 //==================================================
 
-double GetRSI()
+double GetRSIInstance()
 {
    if(rsiHandle == INVALID_HANDLE)
       return 0.0;
@@ -133,8 +133,9 @@ double GetRSI()
 
 double GetRSI(string symbol)
 {
-   if(symbol == "" || symbol == _Symbol)
-      return GetRSI();
+   // v1.2.150 - P1.109: sem atalho para o handle da instancia.
+   if(symbol == "")
+      symbol = _Symbol;
 
    if(!SymbolSelect(symbol, true))
       return 0.0;
@@ -177,6 +178,16 @@ double GetRSI(string symbol)
 //==================================================
 // BUY
 //==================================================
+
+//==================================================
+// v1.2.150 (05/11/2026) - P1.109: RSI DO SIMBOLO DO GRAFICO
+//==================================================
+double GetRSI()
+{
+   return GetRSI(_Symbol);
+}
+
+
 
 bool RSI_OK_Buy()
 {

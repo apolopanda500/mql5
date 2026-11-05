@@ -547,3 +547,24 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 | Risco | intocado; escada `ON arma 5.00 / trava 1.00 em 7.00 / alvo 10.00 USD` |
 | Docs | `Docs\CONVERSA_20261105_CICLO107_P1107_V1148.md` |
 | Proximo | P1.103 ao vivo (parar gateway), P-07 perfil 14 vs 15, P-02 tester (dono) |
+
+---
+
+## Ciclo 108 - 04/11/2026 23:05
+
+- Build em producao: **XAU_AI_PRO v1.2.150** (`#property version "1.350"`),
+  `.ex5` 879812 B de 22:58:26, compilado com 0 errors / 0 warnings (build 6296).
+- Reattach feito: `profile_apply Default` -> `profile_apply XAI_P216_LIVE`.
+  15 `[START] XAU_AI_PRO v1.2.150` entre 22:58:40.304 e 22:58:51.683
+  (inclui USDCLP e USDCOP, que nao existem em `Profiles\Charts\XAI_P216_LIVE`
+  - a divergencia P-07 continua).
+- Conta 113568614 (MetaQuotes-Demo, DEMO, hedging) saldo/equity 12592.02, 0 posicoes.
+- Risco inalterado: RewardRatio 0.65 / MinRewardRatio 0.55 / MaxDailyLossUsd 60 /
+  MaxDrawdownPercent 15 / DailyProfitTargetUsd 20 / MaxUsd 40 / StreakBrakeLosses 3 /
+  RiskPercent 1.0 / RiskPerTradeUsd 2.0 / MinAIConfidence 60 / MaxPredictionAgeSec 900 /
+  MinimumADX 18 / StoplessEmergencyPoints 0 / escada 5-1-7-10 USD /
+  EnableRealAccountGuard true / AllowTradeWithoutAI false.
+- Aberto: P1.110 (leitura cruzada de indicador ainda intermitente),
+  P1.111 (dataset.csv escrito por varias instancias), P-07, P-02/P-03/P-04 (dono).
+- Proximo: identificar a instancia que le o outro par (coluna de instancia no
+  dataset) e so depois re-medir o PF no Strategy Tester.

@@ -1064,3 +1064,41 @@ Conta real continua proibida.
 **Estado final medido.** `mql5`: 0 code scanning, 0 Dependabot, CI e CodeQL verdes em `28cf65cf`. `XAU_AI_PRO`: 0 code scanning, 0 Dependabot, 7/7 workflows verdes. **Conta real continua recusada**: o ultimo backtest valido deu PF 0,92, 641 trades, -58,14 USD e DD 143,70%, contra o criterio PF > 1,20 e DD <= 5%.
 
 **Ficheiros.** `Docs/CONVERSA_20261105_CICLO108_GITHUB_ZERADO.md` (novo), `.github/workflows/ci.yml`, `Files/XAU_AI_PRO/backend/mt5_gateway.py`, `backend/package.json`, `backend/package-lock.json`, `PROGRESS.md`, `PENDENCIAS.md`, `CONVERSAS.md`.
+
+---
+
+## CICLO 108 - 04/11/2026 22:20-23:05 - v1.2.149 (P1.108) e v1.2.150 (P1.109)
+
+Detalhe completo: `Docs\CONVERSA_20261105_CICLO108_P1108_P1109_V1149_V1150.md`
+
+### P1.108 - FECHADO (v1.2.149)
+`[DATA] SEM LEITURA | USDSEK | ATR=0.000000 | ADX=42.12 | RSI=42.99` (22:39:42).
+O `GetATR(string)` criava `iATR()` e chamava `IndicatorRelease()` na MESMA leitura,
+logo o handle era destruido antes do primeiro `CopyBuffer` bom e o indicador nunca
+aquecia. Passou a `ATR_SYMBOL_CACHE` (256) + `ATRSymbolHandle()` +
+`ATRReleaseSymbolHandles()`, o padrao que o ADX ja usava desde a v1.2.96 (P1.85).
+Prova por efeito: `dataset.csv` passou a gravar USDSEK `0.01426` e USDCNH
+`0.00278`; zero `[DATA] SEM LEITURA` entre 22:45:40 e 23:10:00.
+
+### P1.109 - PARCIAL (v1.2.150), reaberto como P1.110
+`[CENARIO] USDJPY | VOLATILIDADE_ALTA | ADX=33.2 | ATR%=17.97` (22:46:55) publicou
+a volatilidade do OURO num par de iene. Prova aritmetica com a base do proprio EA
+(mesma barra 02:00): USDJPY ATR=0.195 ADX=26.25 / XAUUSD ATR=28.39 ADX=33.156;
+`28.39/158.354*100 = 17.93` (~17.97) e 33.156 (~33.2). O preco estava certo
+(158.354 = bid USDJPY): so a leitura de indicador vazou.
+Correcao: `GetATR()` / `GetADX()` / `GetRSI()` passaram a ser wrappers que delegam
+em `GetATR(_Symbol)` / `GetADX(_Symbol)` / `GetRSI(_Symbol)` (o caminho por cache,
+que produz as linhas certas); as leituras antigas ficaram em `*Instance()`; o
+`HighVolatility` passou a usar `ATRSymbolHandle(_Symbol)` na media de 20 barras.
+
+### Validacao
+Gate HG-01/HG-02 `[OK] versao tripla coerente: 1.2.150`; compilacao
+`0 errors, 0 warnings` (33317 ms); `.ex5` 879812 B as 22:58:26;
+`profile_apply Default` -> `profile_apply XAI_P216_LIVE`;
+15 `[START] XAU_AI_PRO v1.2.150` entre 22:58:40.304 e 22:58:51.683.
+
+### Nao fechado neste ciclo
+P1.110 (a mesma falha reapareceu, intermitente e por instancia),
+P1.111 (varias instancias escrevem o mesmo `dataset.csv` sem sincronizacao,
+produzindo linhas partidas e coladas). Nenhum limite, lote, alvo, stop, spread,
+preco, regra de entrada/saida ou parametro de risco foi alterado.

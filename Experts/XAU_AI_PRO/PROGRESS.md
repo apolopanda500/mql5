@@ -4687,3 +4687,17 @@ simbolo do grafico com idade, `[AI] GATEWAY` deve levar `disponivel=`, e o
 | Runs | `mql5` CI `41951463349` success + CodeQL `41951463310` success; app 7/7 workflows success |
 | Limite da API | comentario de dismissal aceita no maximo 280 caracteres (HTTP 422 acima disso) |
 | Conta REAL | **nao autorizada**: ultimo backtest PF 0,92, DD 143,70%, -58,14 USD em 641 trades |
+
+---
+
+### Ciclo 108 - 04/11/2026
+
+| Item | Versao | Estado | Prova |
+|---|---|---|---|
+| P1.108 ATR multi-simbolo nunca aquecia | v1.2.149 | FECHADO | dataset.csv com USDSEK 0.01426 e USDCNH 0.00278; 0 `[DATA] SEM LEITURA` em 22:45:40-23:10:00 |
+| P1.109 simbolo do grafico lia outro par | v1.2.150 | PARCIAL | wrappers GetATR/GetADX/GetRSI delegam em (_Symbol) + cache; 15 `[START] v1.2.150` |
+| P1.110 mesma falha reapareceu pos-deploy | - | ABERTO | 03:00 USDJPY gravado 2x: ATR 0.182 (certo) e ATR 28.369 + ADX 33.266 (XAUUSD) |
+| P1.111 CSV escrito por varias instancias | - | ABERTO | linhas partidas/coladas no dataset.csv |
+| P-07 perfil com 13 .chr e 15 instancias | - | ABERTO | USDCLP e USDCOP com `[START]` e sem `.chr` |
+
+Compilacao: 0 errors, 0 warnings (build 6296, X64 Regular). Reattach: Default -> XAI_P216_LIVE.

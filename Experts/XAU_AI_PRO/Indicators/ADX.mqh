@@ -179,7 +179,7 @@ bool InitADX()
 // Consumidores tratam valor negativo como neutro/skip.
 //==================================================
 
-double GetADX()
+double GetADXInstance()
 {
    if(adxHandle == INVALID_HANDLE)
    {
@@ -252,8 +252,9 @@ double GetADX()
 
 double GetADX(string symbol)
 {
-   if(symbol == "" || symbol == _Symbol)
-      return GetADX();
+   // v1.2.150 - P1.109: sem atalho para o handle da instancia.
+   if(symbol == "")
+      symbol = _Symbol;
 
    if(!SymbolSelect(symbol, true))
    {
@@ -352,6 +353,20 @@ double GetADX(string symbol)
 // (retorna true = neutro, no bloquea). Solo bloquea
 // cuando hay un valor valido por debajo del minimo.
 //==================================================
+
+//==================================================
+// v1.2.150 (05/11/2026) - P1.109: ADX DO SIMBOLO DO GRAFICO
+//
+// Pela mesma medicao do ATR (ver VolatilityFilter.mqh): o handle
+// criado em OnInit devolveu o ADX de OUTRO par no reload do perfil,
+// e o handle por simbolo, criado em runtime, sempre devolveu o certo.
+//==================================================
+double GetADX()
+{
+   return GetADX(_Symbol);
+}
+
+
 
 bool ADX_OK()
 {

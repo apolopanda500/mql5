@@ -786,3 +786,34 @@ lote, alvo, stop, spread, preco ou regra de entrada/saida foi tocado.
 - **Aberto - reattach v1.2.149.** Sem ferramentas MCP `metatrader5`/`tester` nesta sessao; producao segue no build anterior em memoria.
 - **Aberto - P-05.** `origin` (forge.mql5.io) com credenciais expiradas; so o remoto `github` sincroniza.
 - **Documentacao.** `Docs/CONVERSA_20261105_CICLO108_GITHUB_ZERADO.md`.
+
+---
+
+## CICLO 108 - novas pendencias tecnicas
+
+### P1.110 - ABERTO - o simbolo do grafico ainda le a serie de outro par (intermitente, por instancia)
+Medido 3 minutos depois do deploy da v1.2.150, mesma barra 03:00 do servidor:
+
+```
+2026.11.05 03:00:00,USDJPY,...,0.182,30.02728040685277,41.40582173222608,...   <- correto
+2026.11.05 03:00:00,USDJPY,...,28.369,33.26630490148689,0.0,...               <- XAUUSD
+2026.11.04 22:59:55.519 XAU_AI_PRO (USDJPY,H1) [CENARIO] USDJPY | VOLATILIDADE_ALTA | ADX=33.3 | ATR%=18.38
+```
+
+O valor 33.26630490148689 e identico ao da linha XAUUSD da mesma barra, logo a
+leitura de um simbolo estrangeiro foi servida pela serie do simbolo do grafico em
+pelo menos uma instancia. Efeito: cenario, lote (x0.60) e alvo (x1.15) decididos
+com a volatilidade do ouro.
+Proximo passo: gravar a identidade da instancia (simbolo do grafico) numa coluna
+propria do dataset para identificar QUAL instancia erra, ou recusar a gravacao
+quando o ATR lido for incompativel com a escala do simbolo.
+
+### P1.111 - ABERTO - varias instancias escrevem o mesmo dataset.csv sem sincronizacao
+```
+...42.6676916264
+6481,0.002098819455872317,...        <- linha partida
+2026.11.05 02:00:002026.11.05 03:00:00,EURUSD,...   <- duas linhas coladas
+```
+Um consumidor do CSV pode ler o OHLC de um simbolo com os indicadores de outro.
+Correcao recomendada (muda o contrato do pipeline): um ficheiro por instancia
+(`dataset_<simbolo>.csv`) ou um unico escritor. Requer decisao do dono.
