@@ -1182,3 +1182,58 @@ minutos. Fechar o P1.117 "por queda" exige uma sessao em que a suspeita dispare
 e o par sara; os campos `barsCalc`/`barrasSerie`/`barrasGrafico` ja estao la
 para essa medicao. `Tools/HANDOFF.md` e `Docs/CONVERSA_20261105_P1117_V1156.md`
 guardam o estado medido deste fecho.
+
+### Correcao ao fecho do ciclo 110 (15:14, mesma sessao)
+
+A primeira leitura do reload estava incompleta e fica corrigida aqui: a etiqueta
+`[ATR]` ficou muda depois de 15:13:07.936, mas o sintoma nao fechou. O
+`[CENARIO]` continuou a publicar `ATR%=sem leitura`:
+
+- 15:14:08.104 `[CENARIO] RETRATO | simbolos=11 | XAUUSD TENDENCIA_FORTE
+  ADX=25.8 ATR%=sem leitura ...`
+- 15:14:25.153 `[CENARIO] XAUUSD | TENDENCIA_FORTE | ADX=25.8 | ATR%=sem
+  leitura | tendencia=RANGING`
+- 15:14:47.034 `[CENARIO] USDCNH | TENDENCIA_FORTE | ADX=51.6 | ATR%=sem
+  leitura | tendencia=RANGING`
+
+As tres saem do grafico `USDCNH,H1`. O ATR de XAUUSD e de USDCNH continuava a
+zero mais de dois minutos depois do arranque, com o build v1.2.156.
+
+O que isto significa para o P1.117: ele fecha o caminho em que a leitura e
+SUSPEITA - valor absurdo, apanhado pela guarda de plausibilidade do P1.112 - e
+nao o caminho em que a leitura NAO CHEGA. No ramo `CopyBuffer sem barras` a
+funcao devolve `0.0` sem valor nenhum, logo nem a guarda nem o `ATRCacheDrop`
+sao accionados; o handle que nunca aqueceu fica na cache e o par fica sem ATR
+para sempre. Essa metade e o P1.118 (o handle que nunca aquece), corrigido na
+v1.2.157 com `ATR_STALE_RECREATE_SEC` (180 s), `ATRStaleExpired`/`ATRStaleClear`
+e a linha `[ATR] HANDLE MORTO`.
+
+Licao de metodo, que fica escrita: fechar um P1 pela etiqueta que o proprio P1
+instrumentou nao chega. O sintoma original vivia no `[CENARIO]`, e foi la que
+sobreviveu - a medicao do fecho tem de correr sobre a etiqueta do sintoma, nao
+sobre a etiqueta do diagnostico.
+
+### P1.118 - o handle que nunca aquece: a correcao (v1.2.157, 15:18-15:20)
+
+A medicao de fecho do P1.117 olhou para a etiqueta `[ATR]`; o sintoma vivia no
+`[CENARIO]`. O ramo `CopyBuffer sem barras` devolve `0.0` sem valor nenhum, logo
+nem a guarda de plausibilidade do P1.112 nem o `ATRCacheDrop` do P1.117 sao
+accionados: o handle que nunca aqueceu fica na cache para sempre.
+
+Provado que o dado existe: sonda `XAI_AtrDiag` as 15:18:10, corrida no MESMO
+grafico `USDCNH,H1`, com handle novo, leu `XAUUSD copy=1 atr=22.476429
+atrPct=0.5485 bars=60369` e `USDCNH copy=1 atr=0.002087 atrPct=0.0313
+bars=66887`. O ATR nao faltava na serie, faltava no handle.
+
+Correcao v1.2.157: `ATRStaleSlot` / `ATRStaleExpired` / `ATRStaleClear` com
+`ATR_STALE_RECREATE_SEC=180`, e so ao fim de 180 s da MESMA falha a entrada sai
+da cache, com a linha `[ATR] HANDLE MORTO` atras de portao de 3600 s por
+simbolo. Uma leitura com sucesso limpa a marca - um handle que aquece tarde
+nunca e deitado fora, que era o medo do P1.108. HG-01 fechado
+(`#property version "1.357"` <-> `EA_VERSION_STRING "1.2.157"`), compilado
+0 errors, 0 warnings, build 6296 X64 Regular.
+
+Fica por medir, e por isso o ciclo NAO esta fechado: reload dos 13 graficos com
+v1.2.157 e, na mesma sessao, `[ATR] HANDLE MORTO` uma vez por simbolo
+recalcitrante, `[CENARIO] ATR%=sem leitura` fora da janela, e nenhum par sadio a
+perder o handle.

@@ -86,6 +86,76 @@ string   g_atrDropSymbol[ATR_SYMBOL_CACHE];
 datetime g_atrDropStamp[ATR_SYMBOL_CACHE];
 int      g_atrDropCount = 0;
 
+//==================================================
+// v1.2.157 (05/11/2026) - P1.118: O HANDLE QUE NUNCA AQUECE
+//
+// MEDIDO no reload de 05/11 as 15:12:30-15:12:33, build v1.2.156: os treze
+// graficos escrevem [ATR] SEM LEITURA | <par> | CopyBuffer sem barras |
+// barsCalc=-1 | erro=4807 - aquecimento normal, e por isso o P1.108 proibe
+// libertar o handle nesta ramo. O que NAO estava previsto e o que veio
+// depois: as 15:14:25 o mestre (USDCNH) ainda publicava
+// [CENARIO] XAUUSD | ATR%=sem leitura e as 15:14:47
+// [CENARIO] USDCNH | ATR%=sem leitura - o proprio simbolo do grafico, mais de
+// dois minutos depois do arranque. As 15:18:10 a sonda XAI_AtrDiag, no MESMO
+// grafico USDCNH H1, leu os dois com um handle novo: XAUUSD copy=1
+// atr=22.476429 atrPct=0.5485 bars=60369 e USDCNH copy=1 atr=0.002087
+// atrPct=0.0313 bars=66887. A serie existe e o dado esta la; o handle em
+// cache e que nunca aqueceu.
+//
+// Este caminho devolve 0.0 sem valor nenhum, logo a guarda de plausibilidade
+// do P1.112 nunca o ve e o ATRCacheDrop do P1.117 nunca dispara: o par fica
+// sem ATR para sempre, que era exactamente o sintoma a fechar.
+//
+// A correcao respeita o P1.108: NAO se liberta no primeiro CopyBuffer falhado.
+// Marca-se o instante da primeira falha por simbolo e, se a MESMA leitura
+// continuar a falhar ATR_STALE_RECREATE_SEC (180 s) depois, a entrada sai da
+// cache uma vez e o simbolo ganha um handle novo. Uma leitura com exito
+// limpa a marca, portanto um handle que aquece tarde nunca e deitado fora.
+//==================================================
+#define ATR_STALE_RECREATE_SEC 180
+
+string   g_atrStaleSymbol[ATR_SYMBOL_CACHE];
+datetime g_atrStaleSince[ATR_SYMBOL_CACHE];
+int      g_atrStaleCount = 0;
+
+int ATRStaleSlot(string symbol)
+{
+   for(int i = 0; i < g_atrStaleCount; i++)
+      if(g_atrStaleSymbol[i] == symbol)
+         return i;
+
+   if(g_atrStaleCount >= ATR_SYMBOL_CACHE)
+      return -1;
+
+   g_atrStaleSymbol[g_atrStaleCount] = symbol;
+   g_atrStaleSince[g_atrStaleCount] = TimeCurrent();
+   g_atrStaleCount++;
+
+   return g_atrStaleCount - 1;
+}
+
+bool ATRStaleExpired(string symbol)
+{
+   int slot = ATRStaleSlot(symbol);
+   if(slot < 0)
+      return false;
+
+   if(TimeCurrent() - g_atrStaleSince[slot] < ATR_STALE_RECREATE_SEC)
+      return false;
+
+   g_atrStaleSince[slot] = TimeCurrent();
+   return true;
+}
+
+void ATRStaleClear(string symbol)
+{
+   int slot = ATRStaleSlot(symbol);
+   if(slot < 0)
+      return;
+
+   g_atrStaleSince[slot] = TimeCurrent();
+}
+
 bool ATRCacheDropAllowed(string symbol)
 {
    datetime agora = TimeCurrent();
@@ -333,6 +403,7 @@ double GetATR(string symbol)
    if(CopyBuffer(handle, 0, 0, 1, buf) > 0)
      {
       result=NormalizeDouble(buf[0], symbolDigits);
+      ATRStaleClear(symbol);   // v1.2.157 - P1.118: aqueceu, zera a marca de falha
      }
    else
      {
@@ -340,7 +411,28 @@ double GetATR(string symbol)
       // aqui seria repetir o defeito do P1.108: libertar durante o
       // aquecimento impede o indicador de aquecer.
       int copyErr=GetLastError();
-      ATRLogNoRead(symbol, "CopyBuffer sem barras | barsCalc=" + IntegerToString(BarsCalculated(handle)) + " | erro=" + IntegerToString(copyErr));
+      int barsCalcAgora=(int)BarsCalculated(handle);
+      ATRLogNoRead(symbol, "CopyBuffer sem barras | barsCalc=" + IntegerToString(barsCalcAgora) + " | erro=" + IntegerToString(copyErr));
+
+      // v1.2.157 - P1.118: handle que NUNCA aquece. MEDIDO as 15:14:25 e
+      // 15:14:47: XAUUSD e USDCNH ainda com ATR%=sem leitura mais de dois
+      // minutos depois do arranque, enquanto uma sonda com handle novo leu os
+      // dois (atrPct 0.5485 e 0.0313). Como este ramo devolve 0.0 sem valor,
+      // a guarda de plausibilidade nao o ve e o ATRCacheDrop do P1.117 nunca
+      // dispara. O P1.108 proibe deitar o handle fora no PRIMEIRO CopyBuffer
+      // falhado; aqui so se deita fora quando a MESMA falha dura ha mais de
+      // ATR_STALE_RECREATE_SEC, e uma leitura com exito limpa a marca.
+      if(ATRStaleExpired(symbol) && ATRCacheDropAllowed(symbol))
+        {
+         ATRCacheDrop(symbol);
+
+         if(AccountLogGatePodeImprimir("atr_handle_morto_" + symbol, 3600))
+            Print("[ATR] HANDLE MORTO | ", symbol,
+                  " | sem barras ha ", IntegerToString(ATR_STALE_RECREATE_SEC), " s",
+                  " | barsCalc=", IntegerToString(barsCalcAgora),
+                  " | erro=", IntegerToString(copyErr),
+                  " | entrada removida da cache | grafico=", _Symbol);
+        }
       return 0.0;
      }
 
