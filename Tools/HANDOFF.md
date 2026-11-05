@@ -634,3 +634,12 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 3. **`[ATR] LEITURA SUSPEITA | USDBRL ...` (13:53:26.183)** - sem nova ocorrencia desde que os campos `barsCalc`/`barrasSerie`/`barrasGrafico` entraram; a proxima ocorrencia responde sozinha.
 4. Herdadas de `PENDENCIAS.md`: P1.110, P1.111, contradicao de simbolos (11 em `Symbols` vs 13 graficos), `EnableVolatilityFilter=false`, gateway 401/1003 com contrato 30F vs 25F, `MCPServerToken` vazio, PF a re-medir.
 5. **Conta real continua proibida**: PF 0.6206, acerto 41.4%, 10-11 perdas seguidas - e esse numero e de um build sem ADX e sem IA.
+
+### Ciclo 1119/1120 (05/11, tarde): o diagnostico do ATR passa a poder ser lido
+
+1. `P1.120` (v1.2.158): `ScenarioAtrPctStr` publica `sem leitura(atr=<v>,bid=<v>)` em vez do texto fixo `sem leitura`; o ramo `CopyBuffer sem barras` do `GetATR` publica o `bid`. So diagnostico - o valor devolvido continua `0.0`.
+2. `P1.121` (v1.2.159): as tres chaves do portao do ATR (`atr_no_read_`, `atr_handle_morto_`, `atr_absurdo_`) passam a incluir `IntegerToString((long)__DATETIME__)`. O estado em `Common\Files\XAU_AI_PRO\loggate_*.bin` tinha 3600 s por conta e a vez de XAUUSD (15:12:30.864) e USDCNH (15:12:31.846) ja estava gasta: um build antigo calava um build novo. A janela mantem-se em 3600 s, logo nao ha mais ruido dentro do mesmo build.
+3. Warning do ciclo: `VersionManager.mqh(63,147) : warning 86: 'F' - unrecognized character escape sequence`, de `Common\Files` dentro do literal do changelog; corrigido para `Common\\Files`. O texto do aviso so se le correndo o `metaeditor64.exe` com `/compile` e `/log` para um ficheiro proprio - o `metaeditor.log` guarda apenas o resumo.
+4. Estado do codigo: `#property version "1.359"` e `EA_VERSION_STRING "1.2.159"`; compilacao `0 errors, 0 warnings` (build 6296, X64 Regular, 22177 ms). Binario `XAU_AI_PRO.ex5` regenerado; o EA nos graficos NAO foi recarregado.
+5. Numeracao: `P1.119` continua a ser o item aberto do ciclo anterior (o `iATR` do EA que nunca aquece) - os itens deste ciclo sao `P1.120` e `P1.121`.
+6. Continua proibido: push (`origin` = Forge MQL5, `github` = `apolopanda500/mql5`) e conta real (PF 0.6206, acerto 41.4 por cento, 10-11 perdas seguidas, e esse numero e de um build sem ADX e sem IA).

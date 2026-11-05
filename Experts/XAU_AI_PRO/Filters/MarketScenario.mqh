@@ -302,7 +302,7 @@ string ScenarioAtrPctStr(string symbol="")
    double volPct = MarketVolatilityPercent(symbol);
 
    if(volPct < 0.0)
-      return("sem leitura(atr=" + DoubleToString(GetATR(symbol), 6) + ",bid=" + DoubleToString(SymbolInfoDouble(symbol, SYMBOL_BID), 6) + ")");   // v1.2.158 - P1.119: nomeia a causa em vez de a esconder
+      return("sem leitura(atr=" + DoubleToString(GetATR(symbol), 6) + ",bid=" + DoubleToString(SymbolInfoDouble(symbol, SYMBOL_BID), 6) + ")");   // v1.2.158 - P1.120: nomeia a causa em vez de a esconder
 
    return(DoubleToString(volPct, 2));
 }

@@ -4745,3 +4745,35 @@ e nao de uma inferencia.
 Aberto e nao explicado: `[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 |
 preco=5.5123 | ATR%=70911.39` (13:53:26.183). A magnitude nao e o ouro nem o
 proprio par; fica a espera de medicao com `barsCalc`/`barrasSerie`.
+
+## Ciclo 2026-11-05 (ciclo 109) - P1.120 e P1.121: a causa do ATR deixa de ser invisivel (v1.2.158/v1.2.159)
+
+| Item | Build | Estado | Prova |
+|---|---|---|---|
+| P1.120 nomeia a causa | v1.2.158 | CORRIGIDO | `[CENARIO] ... ATR%=sem leitura(atr=<v>,bid=<v>)` e o ramo CopyBuffer do GetATR passa a publicar o bid |
+| P1.121 a chave do portao leva o build | v1.2.159 | CORRIGIDO | as tres chaves do ATR passam a incluir `IntegerToString((long)__DATETIME__)` |
+| warning 86 no changelog | v1.2.159 | CORRIGIDO | `VersionManager.mqh(63,147): warning 86: 'F' - unrecognized character escape sequence`; `Common\Files` no literal passou a `Common\\Files` |
+
+Porque estes dois itens existem: as 15:26:31.831, 15:28:14.015, 15:26:43.146 e
+15:28:35.864 de 05/11, build v1.2.157, grafico mestre `USDCNH,H1`, o
+`[CENARIO]` publicou `ATR%=sem leitura` para XAUUSD e USDCNH, os mesmos pares
+que as 14:55:12 e 15:01:35 publicavam `ATR%=0.55` e `ATR%=0.54`.
+
+Duas razoes ao mesmo tempo: (a) a janela do portao (`atr_no_read_<par>`, 3600 s
+por CONTA, gravada em `Common\Files\XAU_AI_PRO\loggate_*.bin`) ja tinha gasto a
+vez de XAUUSD as 15:12:30.864 e a de USDCNH as 15:12:31.846, portanto nenhum
+build novo conseguia falar desses pares durante uma hora; (b) a string
+`sem leitura` era texto fixo e nao distinguia `atr<=0.0` de `SYMBOL_BID<=0.0`.
+
+Numeracao: o item aberto do ciclo anterior ja se chama `P1.119` em
+`PENDENCIAS.md` (o `iATR` do EA que nunca aquece), portanto os dois itens deste
+ciclo ficaram `P1.120` e `P1.121` - nao ha dois itens com o mesmo numero.
+
+Compilacao: 0 errors, 0 warnings (build 6296, X64 Regular, 22177 ms), depois da
+correcao do warning e da renumeracao dos tags.
+Nota de metodo: o texto do warning nao estava no `metaeditor.log` (so o resumo)
+nem no log do toolkit; foi lido correndo o `metaeditor64.exe` com `/compile` e
+`/log` para um ficheiro proprio em `Files\Temp`, que escreve ficheiro, coluna e
+codigo do aviso.
+Nenhum limite, lote, alvo, stop, spread, preco, regra de entrada ou de saida, ou
+parametro de risco foi alterado: mudam duas linhas de diagnostico.

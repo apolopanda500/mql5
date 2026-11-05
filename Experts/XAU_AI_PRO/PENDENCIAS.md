@@ -961,3 +961,50 @@ NAO fechado. Nada foi alterado no codigo por causa deste item.
   simbolos nao-grafico.
 - ROTULAGEM (fechada em 05/11): `Filters/TrendFilter.mqh` (cabecalho e 4 blocos)
   e `Indicators/ADX.mqh` (2 sitios) diziam v1.2.153/P1.114 a descrever o P1.115; passaram a v1.2.154/P1.115.
+
+## P1.120 - FECHADO NO CODIGO (05/11/2026, v1.2.158) - o [CENARIO] escondia PORQUE nao havia ATR
+
+MEDIDO no journal do expert as 15:26:31.831, 15:28:14.015, 15:26:43.146 e
+15:28:35.864 de 05/11, build v1.2.157, grafico mestre `USDCNH,H1`:
+`[CENARIO] XAUUSD | ADX=25.8 | ATR%=sem leitura` e
+`[CENARIO] USDCNH | ADX=51.6 | ATR%=sem leitura`, embora os mesmos dois pares
+tivessem publicado `ATR%=0.55` as 14:55:12 e `ATR%=0.54` as 15:01:35 na MESMA
+instancia.
+
+O `-1.0` de `MarketVolatilityPercent` tem DUAS origens - `atr<=0.0` lido do
+`GetATR`, ou `SymbolInfoDouble(simbolo,SYMBOL_BID)<=0.0` - e a string devolvida
+era `sem leitura`, texto fixo, portanto a medicao seguinte ficava a adivinhar
+qual das duas era.
+
+Correcao (v1.2.158), so de diagnostico: `ScenarioAtrPctStr` passa a publicar
+`sem leitura(atr=<valor>,bid=<valor>)` e o ramo `CopyBuffer sem barras` do
+`GetATR` passa a publicar tambem o `bid`. O valor devolvido nao muda (continua
+`0.0`), logo nenhuma decisao do EA muda.
+
+## P1.121 - FECHADO NO CODIGO (05/11/2026, v1.2.159) - um build antigo calava um build novo
+
+MEDIDO nos ficheiros do portao em `Common\Files`: o `ATRLogNoRead` gastou a vez
+de XAUUSD as 15:12:30.864 e a de USDCNH as 15:12:31.846 (tag
+`atr_no_read_<par>`) e a janela e de 3600 s por CONTA. O build seguinte nao
+tinha como voltar a falar desses dois pares durante uma hora - foi o que
+aconteceu entre as 15:12 e as 15:28 de 05/11.
+
+A chave do portao nao levava nada que mudasse entre builds, portanto o estado
+gravado por um build antigo silenciava o build novo.
+
+Correcao (v1.2.159), so de diagnostico: as tres chaves do ATR
+(`atr_no_read_`, `atr_handle_morto_`, `atr_absurdo_`) passam a incluir a marca de
+COMPILACAO `IntegerToString((long)__DATETIME__)`. Cada build fala uma vez por
+simbolo por conta e um build antigo nao gasta a vez do novo; a janela de 3600 s
+mantem-se, portanto nao ha aumento de ruido dentro do mesmo build.
+
+## Numeracao e warning deste ciclo
+
+`P1.119` continua a ser o item aberto do ciclo anterior (o `iATR` criado pelo EA
+que nunca aquece): os dois itens deste ciclo ficaram `P1.120` e `P1.121` para nao
+haver dois itens com o mesmo numero no registo.
+
+A primeira compilacao da v1.2.159 saiu com `0 errors, 1 warnings`
+(`VersionManager.mqh(63,147) : warning 86: 'F' - unrecognized character escape
+sequence`): `Common\Files` escrito dentro de um literal de string. Corrigido
+para `Common\\Files` e recompilado: `0 errors, 0 warnings, 22066 ms`.

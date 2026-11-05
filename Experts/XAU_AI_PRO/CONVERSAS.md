@@ -1259,3 +1259,40 @@ aquece neste terminal nem a primeira nem a segunda vez; o mesmo `iATR` criado
 por um script aquece (XAI_AtrDiag, 15:18:10, no mesmo grafico). Fica aberto como
 P1.119, com a hipotese a testar escrita: o handle nasce antes de a serie ter
 barras e o MT5 nao o recalcula depois.
+
+## Ciclo 05/11 (tarde) - P1.120 e P1.121: o diagnostico do ATR existia e nao podia ser lido
+
+Pedido do dono, com estas palavras: Â«corrigir tudo de erradoÂ».
+
+Comecou por medir o que ja estava escrito: as 15:26-15:28 de 05/11 o grafico
+mestre `USDCNH,H1` publicava `[CENARIO] XAUUSD | ... | ATR%=sem leitura` e
+`[CENARIO] USDCNH | ... | ATR%=sem leitura` com XAUUSD e USDCNH, os mesmos pares
+que 30 minutos antes publicavam `ATR%=0.55`. O valor do ATR nao estava em causa:
+a sonda `XAI_AtrDiag` no MESMO grafico lia os dois pares. O que falhava era o
+registo da causa.
+
+Duas correcoes, ambas so de diagnostico:
+
+1. v1.2.158 / P1.120 - `ScenarioAtrPctStr` deixou de devolver o texto fixo
+   `sem leitura` e passou a devolver `sem leitura(atr=<valor>,bid=<valor>)`; o
+   ramo `CopyBuffer sem barras` do `GetATR` passou a publicar o `bid` tambem.
+   Sem isto, `atr<=0` e `bid<=0` eram indistinguiveis.
+2. v1.2.159 / P1.121 - as tres chaves do portao do ATR passaram a terminar na
+   marca de COMPILACAO `__DATETIME__`. O estado do portao vive em
+   `Common\Files\XAU_AI_PRO\loggate_*.bin` e a janela e de 3600 s por conta: um
+   build antigo gastava a vez do build novo, e foi exactamente isso que manteve
+   o silencio entre as 15:12 e as 15:28.
+
+A primeira compilacao da v1.2.159 trouxe `0 errors, 1 warnings`; o aviso era
+`VersionManager.mqh(63,147) : warning 86: 'F' - unrecognized character escape
+sequence`, causado por `Common\Files` escrito dentro do literal de string do
+changelog. Corrigido para `Common\\Files` e recompilado para `0 errors,
+0 warnings`. Para ler o texto do aviso foi preciso correr o `metaeditor64.exe`
+com `/compile` e `/log` para um ficheiro proprio: o `metaeditor.log` guarda so
+o resumo `0 errors, 1 warnings`.
+
+O item `P1.119` (o `iATR` do EA que nunca aquece) NAO foi tocado e continua
+aberto; por ele ja existir, os dois itens deste ciclo ficaram P1.120 e P1.121.
+
+Nada de risco foi alterado: nem lote, nem alvo, nem stop, nem spread, nem RR,
+nem limites, nem regras de entrada ou de saida. Sem push, sem reload.

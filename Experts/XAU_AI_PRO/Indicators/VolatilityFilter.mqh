@@ -350,10 +350,12 @@ double GetATRInstance()
 // proxima medicao dizer QUAL dos tres ramos dispara. Nenhum limite, lote,
 // alvo, stop, spread, preco, regra de entrada ou de saida, ou parametro de
 // risco e tocado: muda o texto de um diagnostico que antes nao existia.
+// v1.2.159 - P1.121: a chave do portao leva a marca de COMPILACAO, senao o
+// ficheiro de Common\Files gravado por um build antigo calava o build novo.
 //==================================================
 void ATRLogNoRead(string symbol, string motivo)
   {
-   if(!AccountLogGatePodeImprimir("atr_no_read_" + symbol, 3600))
+   if(!AccountLogGatePodeImprimir("atr_no_read_" + symbol + "_" + IntegerToString((long)__DATETIME__), 3600))
       return;
 
    Print("[ATR] SEM LEITURA | ", symbol,
@@ -426,7 +428,7 @@ double GetATR(string symbol)
         {
          ATRCacheDrop(symbol);
 
-         if(AccountLogGatePodeImprimir("atr_handle_morto_" + symbol, 3600))
+         if(AccountLogGatePodeImprimir("atr_handle_morto_" + symbol + "_" + IntegerToString((long)__DATETIME__), 3600))
             Print("[ATR] HANDLE MORTO | ", symbol,
                   " | sem barras ha ", IntegerToString(ATR_STALE_RECREATE_SEC), " s",
                   " | barsCalc=", IntegerToString(barsCalcAgora),
@@ -452,7 +454,7 @@ double GetATR(string symbol)
       double precoAtual = SymbolInfoDouble(symbol, SYMBOL_BID);
       if(precoAtual > 0.0 && (result / precoAtual) * 100.0 > ATR_MAX_PLAUSIBLE_PCT)
         {
-         if(AccountLogGatePodeImprimir("atr_absurdo_" + symbol, 3600))
+         if(AccountLogGatePodeImprimir("atr_absurdo_" + symbol + "_" + IntegerToString((long)__DATETIME__), 3600))
             Print("[ATR] LEITURA SUSPEITA | ", symbol,
                   " | ATR=", DoubleToString(result, 6),
                   " | preco=", DoubleToString(precoAtual, symbolDigits),
