@@ -499,3 +499,23 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 | Gates | `loggate_ai_stale.bin` estava com `2026-09-09 20:00:00` (tempo do tester) antes da v1.2.144 |
 | Risco | inalterado: RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false |
 | Governanca | conta real proibida (PF > 1.20 E perdas consecutivas <= 8, com guarda e risco baixo) |
+
+---
+
+## Ciclo 103/104 - 2026-11-04 21:33 (UTC 2026-11-05T00:33Z)
+
+| Campo | Valor |
+|---|---|
+| Build em uso | `XAU_AI_PRO v1.2.146`, `.ex5` 869028 B, 21:32:31, `0 errors, 0 warnings` |
+| Versao tripla | header `v1.2.146`, `#property version "1.346"`, `EA_VERSION_STRING "1.2.146"` (verificada por `Tools\auto-deploy.ps1`) |
+| Ultima correcao | P1.103 - uma falha de TRANSPORTE do gateway deixa de trocar uma previsao fresca em memoria por um ficheiro local obsoleto |
+| Graficos | 15 instancias `[START] v1.2.146` as 21:32:54 (XAUUSD, USDCLP, USDCOP, USDRUB, USDSGD, USDCZK, USDCNH, AUDUSD, USDCHF, NZDUSD, USDBRL M5, GBPUSD, USDSEK, USDCAD, USDJPY) |
+| Conta | 113568614 MetaQuotes-Demo, DEMO hedging, 12592.02, 0 posicoes |
+| IA | gateway autenticado: `[AI] GATEWAY \| XAUUSD \| H1 \| 1122 bytes` + `SELL CONF=73.40%`; simbolos sem modelo -> recusa 357 B, bloqueados |
+| Regressao | `PRICE=0.00000` = 0 registos e `[AI] PREDICAO VENCIDA` = 0 registos na janela 21:32:54-21:36:00 |
+| Autoupdate | novo `Tools\auto-deploy.ps1`: gate de versao tripla -> compilar -> verificar `.ex5` -> imprimir reattach MCP; `-Commit` faz commit+push nos dois remotes. Detalhe em `Docs/AUTODEPLOY.md` |
+| Grafico sem EA | `chart14.chr` (2.o XAUUSD,H1) nao tem EA por desenho - evita segunda instancia no mesmo simbolo/magic 2026001 |
+| Testador | OCUPADO desde 20:26:22 na v1.2.138 (pre-fix) - P-02; `tester_list_result_windows` = [] |
+| Bloqueios | P-02 (DONO: Stop manual), P1.103 nao exercitada em falha real, P1.100 sem disparo, P-03/P-04/P-05 |
+| Risco | inalterado: RewardRatio 0.65, MaxDailyLossUsd 60, RiskPercent 1.0, MinAIConfidence 60.0, AllowTradeWithoutAI false |
+| Governanca | conta real proibida (PF > 1.20 E perdas consecutivas <= 8, com guarda e risco baixo) |

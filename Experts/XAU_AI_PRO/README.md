@@ -319,3 +319,36 @@ leitura do journal ao vivo antes de ser considerada ativa.
   nem o efeito pleno da P1.102.
 - Governanca: conta real continua proibida (PF > 1.20 E perdas consecutivas
   <= 8, e mesmo assim com `EnableRealAccountGuard=true` e risco baixo).
+
+---
+
+## Estado apos o ciclo 103/104 (v1.2.146, 04/11/2026 21:33)
+
+- Build em uso: `XAU_AI_PRO v1.2.146` (`#property version "1.346"`,
+  `EA_VERSION_STRING "1.2.146"`), `0 errors, 0 warnings`, `.ex5` 869028 bytes,
+  reanexado nos 15 graficos as 21:32:54.
+- Ultima correcao: **P1.103** - uma falha de *transporte* do gateway deixou de
+  trocar uma previsao fresca em memoria por um ficheiro local obsoleto. O ficheiro
+  `Data/prediction_XAUUSD.json` e escrito pelo pipeline Python, nao pelo EA, e
+  estava parado desde ~19:28; quando o HTTP falhava, o EA lia esse ficheiro,
+  disparava `[AI] PREDICAO VENCIDA` e apagava o estado bom com `ResetAIState()`.
+  Detalhe em `Docs/CONVERSA_20261105_P1103_V1146.md`.
+- Correcoes anteriores no mesmo dia: **P1.102** (v1.2.144, o tester deixou de
+  escrever o tempo simulado nos `loggate_*.bin` partilhados) e **P1.101**
+  (v1.2.143, leitura vencida de um simbolo deixou de apagar a IA de outro).
+- **Autoupdate / auto-deploy**: `Tools\auto-deploy.ps1` passou a ser o portao do
+  EA - valida a versao tripla (HG-01/HG-02), compila com `metaeditor64.exe`,
+  exige `0 errors`, prova que o `.ex5` existe e e mais recente que as fontes, e
+  imprime a sequencia MCP obrigatoria de reanexacao. Com `-Commit` faz commit e
+  push para `github` e `origin`. Nao faz self-update do binario por git/HTTP:
+  essa opcao continua proibida sem confirmacao explicita do dono. Detalhe em
+  `Docs/AUTODEPLOY.md`.
+- Estado medido em 21:32:54-21:36:00: zero `PRICE=0.00000`, zero
+  `[AI] PREDICAO VENCIDA`; `[AI] GATEWAY | XAUUSD | H1 | 1122 bytes` com
+  `SELL CONF=73.40%`; os 13 simbolos sem modelo publicado devolvem recusa de
+  357 bytes e ficam bloqueados (`AllowTradeWithoutAI=false`).
+- Pendencia principal: **P-02** - o Strategy Tester esta ocupado com um job
+  antigo (v1.2.138) que so o dono pode parar; sem isso nao ha re-mediacao de PF
+  nem o efeito pleno da P1.102.
+- Governanca: conta real continua proibida (PF > 1.20 E perdas consecutivas
+  <= 8, e mesmo assim com `EnableRealAccountGuard=true` e risco baixo).
