@@ -535,3 +535,15 @@ linhas: `[AI] LOAD ... ROOT=COMMON` e a leitura de ADX (sem
 | Risco | inalterado (RewardRatio 0.65, MaxDailyLossUsd 60, DailyProfitTargetUsd 20 / Max 40, RiskPercent 1.0, StoplessEmergencyPoints 0) |
 | P-02 Strategy Tester | continua DONO - slot ocupado, sem numero novo de PF |
 | P1.107 | novo, por decidir: `[RESUMO]` nao nomeia o simbolo do campo `IA=` |
+
+### Ciclo 107 - 2026-11-04 22:40 - P1.107 entregue, v1.2.148 em producao
+| Item | Valor |
+| --- | --- |
+| Build em uso | `XAU_AI_PRO v1.2.148`, `.ex5` `877 132 B`, `22:39:24`, `0 errors, 0 warnings` |
+| Mudanca | `[RESUMO]` publica `IA(<SIMBOLO>)=<sinal> <conf>%` (`Monitoring/OperatorBrief.mqh`) |
+| Graficos | 15 instancias reanexadas via `profile_apply Default` -> `XAI_P216_LIVE` |
+| Conta | `113568614` (MetaQuotes-Demo), saldo `12592.02`, 0 posicoes |
+| Ia real | `[AI] PYTHON \| XAUUSD \| SELL \| CONF=57.00%`; `[AI] GATEWAY` com `disponivel=true` em XAUUSD |
+| Risco | intocado; escada `ON arma 5.00 / trava 1.00 em 7.00 / alvo 10.00 USD` |
+| Docs | `Docs\CONVERSA_20261105_CICLO107_P1107_V1148.md` |
+| Proximo | P1.103 ao vivo (parar gateway), P-07 perfil 14 vs 15, P-02 tester (dono) |

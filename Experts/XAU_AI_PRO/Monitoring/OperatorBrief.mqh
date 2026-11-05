@@ -136,7 +136,7 @@ void OperatorBriefTick(int tradesToday)
                " / alvo " + DoubleToString(LadderTpUsd, 2) + " USD";
 
    PrintFormat(
-      "[RESUMO] master=%s | posicoes: %d EA (%+.2f USD) + %d manual | dia fechado: %+.2f de %.2f USD (%.0f%%) | flutuante conta: %+.2f | trades=%d | IA=%s | escada=%s",
+      "[RESUMO] master=%s | posicoes: %d EA (%+.2f USD) + %d manual | dia fechado: %+.2f de %.2f USD (%.0f%%) | flutuante conta: %+.2f | trades=%d | IA(" + _Symbol + ")=%s | escada=%s",
       master,
       eaPositions,
       eaFloating,

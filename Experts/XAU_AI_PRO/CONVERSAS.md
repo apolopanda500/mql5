@@ -1029,3 +1029,21 @@ Conta real continua proibida.
 **Deploy fechado neste ciclo:** a v1.2.147 estava compilada desde as 21:48 mas nunca reanexada nem commitada (o ciclo 105 nao tinha ferramentas `metatrader5`). ProduÃ§Ã£o estava em v1.2.146. Agora: backup do binario, `Tools/auto-deploy.ps1` com versao tripla coerente, `0 errors, 0 warnings`, `.ex5` 876 726 B as 22:05:24, reattach `Default -> XAI_P216_LIVE` e 29 linhas `[START] v1.2.147` em 15 simbolos. Regressoes a zero: `PRICE=0.00000` 0 registos, gateway XAUUSD `1122 bytes | disponivel=true SELL CONF=55.70%`, `[AI] LOAD ROOT=LOCAL`.
 
 **P1.107 candidato (nao aplicado):** o `[RESUMO]` do master (USDJPY, sem modelo) publica `IA=UNAVAILABLE 0.0%` sem nomear o simbolo, enquanto o XAUUSD tem `SELL 55.70%` no mesmo instante. O valor e honesto desde o P1.102, mas o sujeito nao e visivel. Proposta: `IA(%s)=%s` com `_Symbol`. Exige versao nova - fica por decidir.
+
+## Ciclo 107 - 04/11/2026 22:12-22:40 - P1.107: o [RESUMO] nomeia o simbolo da IA (v1.2.148)
+
+**Pedido:** `corrigir o maximo` (autorizacao permanente: corrigir tudo, deixar limpo, commitar, push, deploy, anotar).
+
+**Medicao antes da edicao.** Com a v1.2.147 no ar, no mesmo instante (22:05:52): o master `(USDJPY,H1)` escreveu `[RESUMO] ... IA=UNAVAILABLE 0.0%`, enquanto `(XAUUSD,H1)` tinha `[AI] GATEWAY | XAUUSD | H1 | 1122 bytes | disponivel=true` e `[AI] PYTHON | XAUUSD | SELL | PRICE=4095.600 | CONF=55.70%`. Duas verdades e uma frase que as contradiz.
+
+**Causa raiz.** O P1.102 (v1.2.147) tornou o valor honesto - o resumo le o estado do simbolo do grafico e nao o do ultimo visitado - mas o **sujeito** ficou invisivel. O master e o grafico USDJPY, que nao tem modelo publicado, logo `UNAVAILABLE` esta certo e o texto e que mente por omissao.
+
+**Correcao.** `Monitoring/OperatorBrief.mqh`: o campo passa de `IA=%s` para `IA(<SIMBOLO>)=%s` lendo `_Symbol`. Zero alteracoes a limites, lotes, alvos, stops, spread, precos, regras de entrada/saida ou risco.
+
+**Gate e build.** Versao tripla coerente (`// XAU_AI_PRO v1.2.148`, `#property version "1.348"` = 1*100+48, `EA_VERSION_STRING "1.2.148"`); `0 errors, 0 warnings, 25043 ms`, `.ex5` `877132 B` as `22:39:24`, mais recente que `VersionManager.mqh` (`22:38:39`).
+
+**Prova em runtime.** Reanexado nos 15 graficos (conta 113568614, saldo 12592.02): `[RESUMO] ... | IA(USDJPY)=UNAVAILABLE 0.0% | escada=ON arma 5.00 / trava 1.00 em 7.00 / alvo 10.00 USD` as `22:39:55.403`, e `IA(USDJPY)=SEM PRECO` as `22:39:42.684` antes de a primeira previsao chegar.
+
+**Recusado com razao.** As 10 linhas `Error=4022` (`[SIGNAL] SEM LEITURA | <sym> | EMA Fast em aquecimento`) sao aquecimento ja classificado desde o P2.17; o filtro `SEM LEITURA` da 0 registos fora dos 7 s pos-reanexacao. O texto `preco morto` fica como esta (comportamento `fail-closed` correcto, ciclo 106). Mojibake cosmetico adiado.
+
+**Ficheiros.** `Docs/CONVERSA_20261105_CICLO107_P1107_V1148.md` (novo), `Monitoring/OperatorBrief.mqh`, `XAU_AI_PRO.mq5`, `Enterprise/VersionManager.mqh`.

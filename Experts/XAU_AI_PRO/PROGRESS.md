@@ -4652,3 +4652,20 @@ simbolo do grafico com idade, `[AI] GATEWAY` deve levar `disponivel=`, e o
 | Gateway | XAUUSD `1122 bytes | disponivel=true SELL PRICE=4095.600 CONF=55.70%`; 12 simbolos `disponivel=false` |
 | `[AI] LOAD` | `SYMBOL=XAUUSD | ROOT=LOCAL` |
 | P1.107 candidato | `[RESUMO]` nao nomeia o simbolo do campo `IA=`; proposta `IA(%s)=%s`. Nao aplicado |
+
+## Ciclo 2026-11-04 (noite, ciclo 107) - P1.107: [RESUMO] nomeia o simbolo da IA (v1.2.148)
+
+| Medicao | Valor |
+| --- | --- |
+| Sintoma | `[RESUMO] ... IA=UNAVAILABLE 0.0%` no master `(USDJPY,H1)` as 22:05:52 |
+| Contraprova no mesmo instante | `[AI] GATEWAY \| XAUUSD \| H1 \| 1122 bytes \| disponivel=true` + `[AI] PYTHON \| XAUUSD \| SELL \| CONF=55.70%` |
+| Causa raiz | P1.102 acertou o valor, faltava o sujeito: o master e USDJPY, sem modelo publicado |
+| Correcao | `IA=%s` -> `IA(<SIMBOLO>)=%s` em `Monitoring/OperatorBrief.mqh` |
+| Versao tripla | `1.2.148` / `"1.348"` / `EA_VERSION_STRING "1.2.148"` - coerente |
+| Compilacao | `0 errors, 0 warnings, 25043 ms elapsed, cpu='X64 Regular'` |
+| `.ex5` | `877132 B` as `2026-11-04 22:39:24` (fonte mais recente `22:38:39`) |
+| Prova runtime | `IA(USDJPY)=UNAVAILABLE 0.0%` as `22:39:55.403`; `IA(USDJPY)=SEM PRECO` as `22:39:42.684` |
+| Regressao `PRICE=0.00000` | 0 registos |
+| Regressao `[AI] PYTHON` | 2 registos XAUUSD SELL, `CONF=57.00%` |
+| Risco | intocado; escada `ON arma 5.00 / trava 1.00 em 7.00 / alvo 10.00 USD` |
+| `Error=4022` | NAO corrigido: aquecimento desde P2.17, 10 linhas dentro dos 7 s pos-reanexacao |

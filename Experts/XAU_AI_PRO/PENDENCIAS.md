@@ -767,3 +767,12 @@ lote, alvo, stop, spread, preco ou regra de entrada/saida foi tocado.
 - **Recusado por falta de razao medida:** alterar o texto "preco morto"; retirar os exotcos da lista `Symbols`; mexer em `MaxSymbolTickAgeSec`. Qualquer um deles e decisao do dono.
 - **Novo P1.107 `AGENTE` (por decidir):** o `[RESUMO]` do master nomeia o valor da IA mas nao o simbolo. Medido: master USDJPY publica `IA=UNAVAILABLE 0.0%` enquanto o XAUUSD tem `SELL 55.70%`. O P1.102 tornou o valor honesto; falta o sujeito. Proposta minima `IA(%s)=%s` com `_Symbol`, exige versao nova.
 - **v1.2.147 em producao** desde as 22:05:34 (15 simbolos). O ciclo 105 tinha deixado a build compilada mas nao reanexada; agora esta deployada, verificada e commitada.
+
+### Ciclo 107 - P1.107 fechado, v1.2.148 em producao `AGENTE`
+- **Fechado.** O `[RESUMO]` passou a publicar `IA(<SIMBOLO>)=<sinal> <conf>%` lendo `_Symbol`. O defeito era o sujeito em falta, nao o valor: o master e o grafico `USDJPY`, sem modelo publicado, logo `UNAVAILABLE` estava certo e o texto mentia por omissao. Provado em runtime com `IA(USDJPY)=UNAVAILABLE 0.0%` as `22:39:55.403`.
+- **Build.** `v1.2.148`, `.ex5` `877132 B` as `22:39:24`, `0 errors, 0 warnings`, 15 graficos reanexados.
+- **Recusado.** `Error=4022` (aquecimento P2.17, 10 linhas nos 7 s pos-reanexacao); texto `preco morto` (fail-closed correcto, ciclo 106); mojibake cosmetico em `AIConnector.mqh` e documentos antigos.
+- **Aberto - P1.103 por exercitar ao vivo.** Parar o gateway e confirmar que o `[RESUMO]` mantem o ultimo `IA=SELL` em vez de cair para `UNAVAILABLE`. Requer parar o processo Python: acao do dono ou autorizacao explicita.
+- **Aberto - P-07.** `XAI_P216_LIVE` tem 14 `.chr` no disco mas 15 instancias a correr; `USDCLP` e `USDCOP` nao estao no perfil gravado. Reanexar resolve em memoria, mas o proximo `profile_apply` volta a deixar 13/14.
+- **Aberto - P-05.** `git push origin main` continua a falhar (`Credentials are incorrect or have expired` em forge.mql5.io). `github/main` sincronizado.
+- **Aberto - P-02 (DONO).** Testador ocupado desde 20:26:22 por job v1.2.138; `tester_list_result_windows` devolve `{"windows":[]}`. Falta correr `Profiles\Tester\XAI_V12135_PRODGEOM_RT_M15.ini` e trazer PF + perdas seguidas.
