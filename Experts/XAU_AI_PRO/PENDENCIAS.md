@@ -818,7 +818,7 @@ Um consumidor do CSV pode ler o OHLC de um simbolo com os indicadores de outro.
 Correcao recomendada (muda o contrato do pipeline): um ficheiro por instancia
 (`dataset_<simbolo>.csv`) ou um unico escritor. Requer decisao do dono.
 
-## P1.116 — `[CENARIO] ATR%=sem leitura` (instrumentado em v1.2.155)
+## P1.116 — FECHADO POR MEDICAO (05/11/2026, v1.2.156) — `[CENARIO] ATR%=sem leitura`
 Medido em 04/11 as 23:45:11 e 23:51:42 (build v1.2.154): `[CENARIO] XAUUSD |
 TENDENCIA_FORTE | ADX=33.8 | ATR%=sem leitura` e `[CENARIO] USDCNH |
 TENDENCIA_FORTE | ADX=26.8 | ATR%=sem leitura`, enquanto EURUSD/GBPUSD/USDJPY/
@@ -829,9 +829,31 @@ NZDUSD/USDCAD/USDCHF publicavam 0.10-0.17 na mesma janela. A sonda
 silenciosas: `XAI_SymbolDataReady` falso, handle invalido, e `CopyBuffer` sem
 barras. A v1.2.155 instrumentou as tres com `ATRLogNoRead` (portao por conta,
 1 linha/hora/simbolo).
-FALTA: reload dos 13 graficos e `get_expert_journal` com `filter=[ATR]` para
-saber qual dos tres ramos dispara em XAUUSD e USDCNH. So depois se corrige a
-causa — nunca antes.
+MEDIDO no reload dos 13 graficos as 13:53:25.943 de 05/11: 13 linhas em 240
+ms, uma por grafico, ramo 3 de 3: `CopyBuffer sem barras | barsCalc=-1 |
+erro=4807` em todos os 13. Os outros dois ramos nunca dispararam neste dia. Causa nomeada, nao suposta — e a partir dai corrigida no P1.117.
+## P1.117 — FECHADO no codigo em v1.2.156 — `ATRCacheDrop()` nunca era chamado
+Causa do P1.116: `void ATRCacheDrop(string symbol)` estava escrito em
+`Indicators/VolatilityFilter.mqh` e tinha ZERO chamadas no projecto, e o
+comentario que prometia a chamada estava cortado a meio da frase. A guarda de
+plausibilidade do P1.112 detectava a troca de serie, escrevia a linha e
+devolvia 0.0 sem deitar a entrada fora — o handle envenenado ficava na cache
+para sempre e o par nunca sarava (medido as 13:55:06.580: `[CENARIO] USDCNH |
+ATR%=sem leitura` horas depois do reload).
+Correcao: `ATRCacheDropAllowed()` (portao por simbolo de 60 s,
+`ATR_DROP_GATE_SEC`, sobre `g_atrDropSymbol`/`g_atrDropStamp`) e
+`ATRCacheDrop(symbol)` chamado no ramo de leitura suspeita antes do
+`return 0.0`. O portao existe para nao repetir o P1.108: sem ele, um par
+cronicamente mal servido entraria em ciclo criar/libertar e o indicador nunca
+aqueceria. A linha `[ATR] LEITURA SUSPEITA` passa tambem a publicar
+`barsCalc`, `barrasSerie` e `barrasGrafico`, para a proxima medicao PROVAR a
+troca de serie pelo numero de barras em vez de a inferir pela magnitude.
+FALTA medir: reload dos 13 graficos e `filter=[ATR]` — o que se espera ver e
+a suspeita a desaparecer depois de uma queda por simbolo, e nao a repetir-se.
+ABERTO e nao explicado: `[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 |
+preco=5.5123 | ATR%=70911.39` (13:53:26.183). A magnitude nao e o ouro nem o
+proprio par; fica a espera de medicao com `barsCalc`/`barrasSerie`.
+
 ## Herdadas, ainda abertas
 - P1.110: a contaminacao por simbolo reapareceu intermitente e por INSTANCIA
   (rajadas de `ATR=0.000000` as 20:19:24/USDCHF, 21:27:47 e 22:39:42/AUDUSD).

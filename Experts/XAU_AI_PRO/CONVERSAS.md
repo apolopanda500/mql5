@@ -1126,3 +1126,40 @@ Compilacao final: 0 errors, 0 warnings (build 6296, X64 Regular, 18979 ms),
 `EA_VERSION_STRING "1.2.155"` (HG-01). Detalhe completo em
 `Docs/CONVERSA_20261105_P1112_P1116_V1151_V1155.md`.
 
+### Ciclo 110 - P1.117 (v1.2.156)
+O ciclo que fechou o P1.116 por medição e corrigiu a causa que a medição nomeou.
+Nenhum limite, lote, alvo, stop, spread, preço, regra de entrada/saída ou
+parâmetro de risco foi alterado.
+**A medição** (reload do perfil `XAI_P216_LIVE`, 05/11 pelas 13:53:25.943, build
+v1.2.155): treze linhas em 240 ms, uma por gráfico, todas com a mesma assinatura
+`[ATR] SEM LEITURA | <par> | CopyBuffer sem barras | barsCalc=-1 | erro=4807`.
+Os outros dois ramos silenciosos de `GetATR(string)` - `serie do símbolo não
+provada` e `handle inválido` - não aparecem uma única vez em todo o dia. A
+causa deixou de ser inferência: é o terceiro ramo.
+**A seguir** vieram doze linhas `[ATR] LEITURA SUSPEITA | <par> | ATR=22.068570 |
+gráfico=<par> | devolvido=0.0`, o mesmo valor em todos os pares e a subir 0.107
+em 32 segundos: uma única série a evoluir, a do gráfico mestre, lida por todos.
+E às 13:55:06.580 o `[CENARIO] USDCNH` ainda publicava `ATR%=sem leitura`, ou
+seja, o par não sarava sozinho.
+**A causa**: `void ATRCacheDrop(string symbol)` estava escrito em
+`Indicators/VolatilityFilter.mqh` desde o P1.113 e tinha ZERO chamadas no
+projecto; o comentário que prometia a chamada estava cortado a meio da frase,
+em «o símbolo sara na». A guarda de plausibilidade do P1.112 detectava a troca
+de série, escrevia a linha e devolvia `0.0` sem deitar a entrada fora - o handle
+envenenado ficava na cache para sempre. É a mesma classe do P1.46/P1.47: uma
+frase que mente sobre o seu próprio mecanismo.
+**A correção**, mínima e fora da lógica de risco: nasce `ATRCacheDropAllowed()`,
+um portão por símbolo de 60 s (`ATR_DROP_GATE_SEC`, `g_atrDropSymbol` /
+`g_atrDropStamp`), e o ramo de leitura suspeita passa a chamar
+`ATRCacheDrop(symbol)` antes do `return 0.0`. O portão existe para não repetir o
+P1.108: sem ele, um par cronicamente mal servido entraria num ciclo
+criar/libertar e o indicador nunca aqueceria. A linha `[ATR] LEITURA SUSPEITA`
+passa também a publicar `barsCalc`, `barrasSerie` e `barrasGrafico`, para a
+próxima medição PROVAR a troca de série pelo número de barras (XAUUSD H1 e
+GBPUSD H1 não têm o mesmo número de barras) em vez de a inferir pela magnitude.
+Compilação: 0 errors, 0 warnings (build 6296, X64 Regular, 25726 ms),
+`#property version "1.356"` alinhado com `EA_VERSION_STRING "1.2.156"` (HG-01).
+**Por explicar**: `[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 |
+preco=5.5123 | ATR%=70911.39` (13:53:26.183) - a magnitude não é o ouro nem o
+próprio par; fica à espera de medição com os campos novos.
+

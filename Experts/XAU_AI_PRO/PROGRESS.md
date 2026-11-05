@@ -4709,7 +4709,7 @@ Compilacao: 0 errors, 0 warnings (build 6296, X64 Regular). Reattach: Default ->
 | P1.113 sete pares liam ADX/RSI/ATR do ouro | v1.2.152 | FECHADO | 10 `[ATR] LEITURA SUSPEITA` as 23:16:40-23:17:31; depois: sonda XAI_AtrDiag 23:50:44 le o ATR proprio de cada par |
 | P1.114 DiagGate desligava-se com a tabela cheia | v1.2.153 | FECHADO | auto-teste no terminal 23:43:57: chaves=256 suprimidas=3009 evacuacoes=55 falhas=0 APROVADO |
 | P1.115 guarda da EMA descartava a leitura certa | v1.2.154 | FECHADO | `[TREND] ... AUDUSD EMA=0.70084 grafico=USDCNH` as 23:40:51 (0.70084 = EMA200 H1 real do AUDUSD); guarda local ao simbolo + gate ADX 3x |
-| P1.116 `[CENARIO] ATR%=sem leitura` sem motivo | v1.2.155 | INSTRUMENTADO | XAUUSD/USDCNH as 23:45:11 e 23:51:42 com ATR% real nos outros pares; `[ATR] SEM LEITURA` passa a nomear o ramo |
+| P1.116 `[CENARIO] ATR%=sem leitura` sem motivo | v1.2.155 | FECHADO (medido) | reload de 05/11 as 13:53:25.943: 13 linhas em 240 ms, uma por grafico, todas com `CopyBuffer sem barras | barsCalc=-1 | erro=4807`; os outros dois ramos nunca dispararam |
 HG-01: `#property version` estava em `1.353` (=1.2.153) com `EA_VERSION_STRING`
 `1.2.154`; passou a `1.354` e depois a `1.355` (=1.2.155). Regra:
 `minor*100+patch` tem de coincidir com `EA_VERSION_STRING`
@@ -4717,6 +4717,25 @@ HG-01: `#property version` estava em `1.353` (=1.2.153) com `EA_VERSION_STRING`
 Compilacao: 0 errors, 0 warnings (build 6296, X64 Regular, 18979 ms);
 `XAU_AI_PRO.ex5` 897.702 bytes. Documentacao do ciclo em
 `Docs/CONVERSA_20261105_P1112_P1116_V1151_V1155.md`.
-O P1.116 nao fecha neste ciclo: os tres ramos silenciosos de `GetATR(string)`
-foram instrumentados ANTES de se tocar na causa, para o journal a nomear. Falta
-o reload e a leitura de `[ATR] SEM LEITURA`.
+O P1.116 fechou por medicao no ciclo 110: o reload foi feito e o ramo ficou
+nomeado. Nao se infere mais a causa a partir da magnitude do ATR.
+
+### Ciclo 110 - P1.117 (v1.2.156)
+| item | versao | estado | prova |
+|---|---|---|---|
+| P1.116 qual dos tres ramos silenciosos dispara | - | FECHADO (medido) | reload 05/11 13:53:25.943-13:53:26.183: 13 `[ATR] SEM LEITURA`, todas `CopyBuffer sem barras | barsCalc=-1 | erro=4807`; zero ocorrencias dos ramos `serie nao provada` e `handle invalido` em todo o dia |
+| P1.117 `ATRCacheDrop()` escrito e nunca chamado | v1.2.156 | FECHADO no codigo | `ATRCacheDrop` em `Indicators/VolatilityFilter.mqh` tinha 0 chamadas no projecto e o comentario do P1.113 estava cortado a meio; `[CENARIO] USDCNH | ATR%=sem leitura` as 13:55:06.580 = par que nunca sara |
+| P1.117 portao de queda | v1.2.156 | NOVO | `ATRCacheDropAllowed()` + `ATR_DROP_GATE_SEC` 60 s por simbolo: uma queda por minuto, para nao repetir o P1.108 (libertar durante o aquecimento) |
+| P1.117 diagnostico da troca de serie | v1.2.156 | NOVO | `[ATR] LEITURA SUSPEITA` passa a publicar `barsCalc`, `barrasSerie` e `barrasGrafico`, para a proxima medicao provar a troca de serie pelo numero de barras |
+HG-01: `EA_VERSION_STRING` passou a `1.2.156` e `#property version` a `1.356`
+(=1.2.156). Regra `minor*100+patch` mantida nos dois sitios;
+`Enterprise/VersionManager.mqh` continua a ser a fonte unica e o changelog
+`m_current.changes` leva a entrada v1.2.156 a frente.
+Compilacao: 0 errors, 0 warnings (build 6296, X64 Regular, 25726 ms).
+Nota de metodo: o P1.116 foi instrumentado e MEDIDO antes de se tocar na causa.
+O P1.117 e a primeira correcao do ciclo que nasce de um ramo nomeado no journal
+e nao de uma inferencia.
+
+Aberto e nao explicado: `[ATR] LEITURA SUSPEITA | USDBRL | ATR=3908.848300 |
+preco=5.5123 | ATR%=70911.39` (13:53:26.183). A magnitude nao e o ouro nem o
+proprio par; fica a espera de medicao com `barsCalc`/`barrasSerie`.

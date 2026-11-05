@@ -55,6 +55,61 @@ string g_atrCacheSymbol[ATR_SYMBOL_CACHE];
 int    g_atrCacheHandle[ATR_SYMBOL_CACHE];
 int    g_atrCacheCount = 0;
 
+//==================================================
+// v1.2.156 (05/11/2026) - P1.117: A QUEDA DA ENTRADA ENVENENADA
+//
+// MEDIDO no reload do perfil XAI_P216_LIVE as 13:53:25.943 de 05/11, uma
+// linha por grafico em 240 ms:
+//   [ATR] SEM LEITURA | XAUUSD | CopyBuffer sem barras | barsCalc=-1 | erro=4807
+//   [ATR] SEM LEITURA | USDSEK | CopyBuffer sem barras | barsCalc=-1 | erro=4807
+//   (idem USDJPY, USDCHF, NZDUSD, USDCNH, AUDUSD, GBPUSD, USDSGD, USDCAD,
+//    USDCZK, USDBRL, USDRUB)
+// Seguidamente, 12 linhas
+//   [ATR] LEITURA SUSPEITA | <par> | ATR=22.068570 | grafico=<par> | devolvido=0.0
+// com o ATR do OURO a subir 0.107 em 32 s: uma unica serie a evoluir, lida
+// por todos os graficos.
+//
+// Causa: o ATRCacheDrop() do P1.113 foi escrito e NUNCA chamado. O handle
+// envenenado ficava na cache para sempre, a guarda de plausibilidade
+// devolvia 0.0 em cada leitura e o simbolo nunca sarava.
+//
+// A correcao nao pode ser "chamar sempre que a leitura e suspeita": um par
+// cronicamente mal servido entraria num ciclo criar/libertar e voltaria ao
+// defeito do P1.108 (handle deitado fora antes de aquecer, ATR a zero e
+// candle fora do dataset). A queda leva um portao por simbolo de 60 s: a
+// primeira suspeita deita a entrada fora, as seguintes dentro dessa janela
+// apenas devolvem 0.0 e deixam o handle novo aquecer.
+//==================================================
+#define ATR_DROP_GATE_SEC 60
+
+string   g_atrDropSymbol[ATR_SYMBOL_CACHE];
+datetime g_atrDropStamp[ATR_SYMBOL_CACHE];
+int      g_atrDropCount = 0;
+
+bool ATRCacheDropAllowed(string symbol)
+{
+   datetime agora = TimeCurrent();
+
+   for(int i = 0; i < g_atrDropCount; i++)
+      if(g_atrDropSymbol[i] == symbol)
+        {
+         if(agora - g_atrDropStamp[i] < ATR_DROP_GATE_SEC)
+            return false;
+
+         g_atrDropStamp[i] = agora;
+         return true;
+        }
+
+   if(g_atrDropCount >= ATR_SYMBOL_CACHE)
+      return false;
+
+   g_atrDropSymbol[g_atrDropCount] = symbol;
+   g_atrDropStamp[g_atrDropCount] = agora;
+   g_atrDropCount++;
+
+   return true;
+}
+
 int ATRSymbolHandle(string symbol)
 {
    for(int i = 0; i < g_atrCacheCount; i++)
@@ -311,10 +366,19 @@ double GetATR(string symbol)
                   " | preco=", DoubleToString(precoAtual, symbolDigits),
                   " | ATR%=", DoubleToString((result / precoAtual) * 100.0, 2),
                   " | grafico=", _Symbol,
+                  " | barsCalc=", IntegerToString(BarsCalculated(handle)),
+                  " | barrasSerie=", IntegerToString(Bars(symbol, (ENUM_TIMEFRAMES)Period())),
+                  " | barrasGrafico=", IntegerToString(Bars(_Symbol, (ENUM_TIMEFRAMES)Period())),
                   " | devolvido=0.0");
 
          // v1.2.152 - P1.113: valor impossivel = handle preso a serie de
          // outro instrumento. A entrada sai da cache e o simbolo sara na
+         // leitura seguinte, com um handle novo (v1.2.156 - P1.117).
+         // A queda e limitada a uma por simbolo a cada ATR_DROP_GATE_SEC
+         // segundos, para nao repetir o defeito do P1.108 (handle libertado
+         // antes de aquecer).
+         if(ATRCacheDropAllowed(symbol))
+            ATRCacheDrop(symbol);
 
          return 0.0;
         }
