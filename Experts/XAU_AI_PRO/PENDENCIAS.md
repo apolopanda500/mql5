@@ -642,3 +642,17 @@ comentarios do `AIConnector.mqh` como `sÃƒÆ’Ã‚Â­mbolo`); duplo trackin
 - **Candidato P1.104:** o `[RESUMO]` mostra o estado de IA do simbolo dono do
   grafico master (USDJPY -> `IA=UNAVAILABLE 0.0%`) e nao o do par negociado
   (XAUUSD -> SELL 79.30%). Texto, sem efeito de trading, mas le-se como alarme.
+
+### P1.101 FECHADO - prova de campo 21:16:29-21:17:01 (v1.2.144) `AGENTE`
+- **Antes da correcao:** `[AI] GATEWAY | XAUUSD | 1122 bytes` +
+  `[AI] PYTHON | XAUUSD | SELL` seguidos de `IA=UNAVAILABLE 0.0%` no `[RESUMO]`,
+  porque a leitura vencida de OUTRO simbolo chamava `ResetAIState()` (slot unico).
+- **Agora, medido no journal:** `21:16:29.446 [AI] PREDICAO VENCIDA | USDCNH |
+  AGE=154128s > LIMIT=900s` (simbolo sem modelo, ficheiro local obsoleto) e, na
+  MESMA instancia `(USDJPY,H1)`, `21:16:36.648 [AI] GATEWAY | XAUUSD | 1123
+  bytes` + `[AI] PYTHON | XAUUSD | SELL | PRICE=4066.850 | CONF=73.60%` e
+  `21:17:01.601 [AI] PYTHON | XAUUSD | SELL | PRICE=4068.45 | CONF=79.30%`.
+- Ou seja: a leitura vencida de USDCNH deixou de apagar a previsao fresca de
+  XAUUSD. Zero `PRICE=0.00000` e zero `IA=UNAVAILABLE` na janela.
+- **Criterio cumprido.** O simbolo pedido continua bloqueado quando a SUA
+  leitura esta vencida (`return false` fora da guarda), como antes.
