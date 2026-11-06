@@ -147,6 +147,23 @@ Sim quanto a fontes: **110/110, 0 divergentes** antes do commit `1bb5122`.
 Não quanto a `backend` (3 `M`) e `Docs` (3 `??`) — continuam por versionar no
 repo aninhado, fora do escopo "espelho".
 
+### 05/11/2026 22:20 — duplicação estrutural removida (só do índice)
+
+Diagnóstico medido: o repo pai rastreava **2 554** ficheiros sob
+`Files/XAU_AI_PRO/`, contra **1 207** no repo aninhado que é o dono legítimo
+dessa árvore. Só `frontend` eram 1 749. A subárvore `MQL5/**` sozinha tinha
+**264** ficheiros — cópia integral do que o aninhado já versiona — e é a causa
+do status sujo permanente (81 `M`, 22 ignorados que nunca entrariam).
+
+**Feito:** `git rm -r --cached Files/XAU_AI_PRO/MQL5` (só índice — os ficheiros
+continuam no disco, o terminal e a app não sentem nada; o repo aninhado
+mantém tudo). Isso torna o repo pai honesto: ele não finge versionar um espelho
+que o `.gitignore` já mandava ignorar.
+
+**Não feito, de propósito:** as outras 2 290 entradas duplicadas (`frontend`,
+`Docs`, `tests`, ...). É dívida maior e não é espelho do EA; mexer nela exige
+decisão própria.
+
 ---
 
 ## 4. Pedidos abertos meus
