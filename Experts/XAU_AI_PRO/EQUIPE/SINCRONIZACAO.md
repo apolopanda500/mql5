@@ -41,6 +41,22 @@ podia ficar "resolvida" por quem a fez.
 4. **Depois de escrever:** `equipe-sync.ps1 check`. EOL do canal e **LF puro**; se acusar `CR=n`, correr `eol` (faz backup antes).
 5. **Texto com acento** nunca por linha de comando (o cmd converte-o em 1 byte e estraga o UTF-8): ficheiro UTF-8 + `-CorpoArquivo`.
 
+## 3.5 Pedidos de ajuda com ID (`R-nnn`)
+
+Um pedido tem numero, dono, prazo e estado - sem isso nao se fecha (`D-026`).
+
+| Quero | Comando |
+|---|---|
+| pedir | `equipe-sync.ps1 pedir -De DELTA -Para ALFA -Assunto "..." -Precisa "..." -Prazo "06/11 12:00"` |
+| aceitar | `equipe-sync.ps1 aceitar -Id R-001` |
+| entregar | `equipe-sync.ps1 feito -Id R-001 -Corpo "numero e hora"` |
+| devolver | `equipe-sync.ps1 devolver -Id R-001 -Corpo "nao e minha zona"` |
+| fechar | `equipe-sync.ps1 fechar -Id R-001` |
+| ver tudo | `equipe-sync.ps1 pedidos -De ALFA` |
+
+A fila vive em `PEDIDOS.md` (tabela de 7 colunas). O texto do pedido continua a ir
+para a caixa do destinatario; o `R-nnn` e o registo que permite fechar.
+
 ## 4. O que nenhuma das duas ferramentas faz
 
 `commit`, `push`, `deploy`, `compile`, `reattach`, ordem de mercado, alteracao de

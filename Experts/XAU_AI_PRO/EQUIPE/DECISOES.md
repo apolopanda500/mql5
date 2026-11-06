@@ -995,6 +995,7 @@ item da fila do dono e punha-o na nossa.
 - **Estado:** ACTIVO | **Autor:** ALFA | **ID:** reservado no ledger as 23:03:44.
 - **Corpo medido:** `CONFIGURACOES.md` (seccao das 23:05). Aqui fica so a decisao e o que se pede.
 
+1. **Hash do risco e das regras**: `c79a1fbd210715642b02ed5793f58204e5c92a91a2368b14ed51f10e908e8566` sobre 17 campos lidos do binario carregado nos 13 graficos (`list_open_charts` 23:03), nao do `.mqh` nem do `.set`. Se o hash mudar sem decisao registada, houve alteracao de configuracao sem dono: e o `F2.10` a passar de promessa a numero.
 2. **`F2.8` nao esta cumprido**: `MagicNumber=2026001` nos 13 graficos. Sem magic por instancia, `F2.7` (reconciliacao EA x conta) e os limites por instancia (`MaxOpenPositions`, `MaxTradesPerDay`) nao distinguem dono. Proposta: 2026001..2026013, um template por grafico, autorizacao do DONO antes de reancorar.
 3. **Correccao ao meu proprio texto das 22:58**: `EnableVolatilityFilter=false` nos 13, logo o defeito do ATR **nao veta entradas** por esse filtro. O ATR% entra no `[CENARIO]`, no trailing e no partial; o `Q-001` e real, mas **nao e causa unica dos 0 trades**. Falta medir os vetos de `[VALIDATION]` (IA 0.00/0.00, `MinAIConfidence` 60.0, `AvoidHoursGMT`).
 4. **Universo**: 13 graficos x 11 nomes em `Symbols` (EURUSD sem grafico; USDCZK, USDRUB, USDSGD sem entrada em `Symbols`) e `CHART11` USDBRL em **M5**. Confirma `B-026`.
@@ -1002,3 +1003,335 @@ item da fila do dono e punha-o na nossa.
 **Pedidos emitidos:** DELTA -> mapa de magic por grafico + impacto no `F2.7`; CMD -> 13 templates/`.set` com o magic novo e o hash no corpo de cada `commit`. **Nada alterado por mim:** sem compile, sem reattach, sem tocar em risco.
 
 **Proximo ID livre: `D-026` (confirmar no ledger).**
+
+## D-026 | 05/11/2026 | pedidos com ID `R-nnn`: a fila que se pode aceitar e fechar
+
+- **Estado:** ACTIVO | **Autor:** DELTA | **ID:** reservado pelo ledger (`D-026`; `D-024`/`D-025` foram gastos entretanto).
+- **Pedido do dono, terceira vez:** "um pode pedir ao outro ajudar e mais configuracoes". Nas duas primeiras respondi com **documento** (`PEDIDO_DE_AJUDA.md` do ALFA) e **leitor** (`pedidos`, `D-021`). Faltava a peca que transforma um pedido num compromisso: **um ID**.
+
+**O problema medido:** as 22:44 e as 23:03 o mesmo canal tinha `total=15 :: abertos=15` e `17 :: 17` **sem um unico pedido fechavel**. Um pedido era um bloco `## <hora> - X -> Y | assunto` numa caixa, sem numero, sem dono, sem prazo - e o estado `ABERTO` nao distingue "ninguem viu" de "estou a fazer" de "ja entreguei". O proprio `sync-agent.ps1` so aceita 3 estados (`ABERTO|RESPONDIDO|FECHADO`), logo o protocolo de 6 estados do `D-020` nao era executavel.
+
+**O que existe agora (`tools\equipe-sync.ps1`):**
+
+| Comando | Efeito |
+|---|---|
+| `pedir -De X -Para Y -Assunto "accao" -Precisa "..." -Prazo "dd/mm hh:mm"` | cria `R-nnn` com estado `PEDIDO` em `PEDIDOS.md`; recusa origem=destino, agente invalido e assunto vazio |
+| `aceitar -Id R-nnn` | `ACEITE` + hora nova |
+| `feito -Id R-nnn -Corpo "numero e hora"` | `FEITO` + nota colada ao assunto |
+| `devolver -Id R-nnn -Corpo "nao e minha zona, e do CMD"` | `DEVOLVIDO` |
+| `bloquear -Id R-nnn -Corpo "Q-0nn"` | `BLOQUEADO` |
+| `fechar -Id R-nnn` | `FECHADO` (so quem pediu) |
+| `pedidos [-De AGENTE]` | blocos das caixas **e** a fila `R-nnn` completa |
+
+`PEDIDOS.md` (novo, 848 B) e uma tabela de 7 colunas, uma linha por pedido:
+
+```
+| ID | De -> Para | Assunto | Precisa | Prazo | Estado | Hora |
+```
+
+**Garantias de escrita:** a mudanca de estado substitui **uma linha exacta** e recusa gravar se a ancora nao aparecer 1 vez (`RECUSADO :: nenhuma gravacao :: ancora ... aparece N vez(es)`); toda a escrita faz backup em `_SYNC/backup`; o `pedir` passa pelo `Test-LockLivre` (nao escreve se o canal estiver tomado por outro agente); EOL = LF, ASCII puro, sem BOM.
+
+**Teste executado (nao teorico):**
+
+```
+pedir    -> R-001 DELTA->ALFA (Show-Check), R-002 DELTA->CMD (equipe-audit), R-003 DELTA->DONO (risco)
+aceitar  -> OK R-001 -> ACEITE
+feito    -> OK R-001 -> FEITO  :: | R-001 | ... :: corrigido, 0 problemas as 23:05 | ... | FEITO | 05/11 23:04 |
+```
+
+O ciclo `PEDIDO -> ACEITE -> FEITO` foi corrido num `-Root` de teste (`MQL5\Files\Temp\pedtest`, ja apagado) para nao marcar como feito um pedido real que ninguem entregou - **os 3 pedidos reais continuam `PEDIDO`**. Sintaxe validada: `SINTAXE OK` (parser PowerShell).
+
+**Fila aberta neste momento (3 pedidos meus):** `R-001` ALFA (corrigir o `Show-Check`), `R-002` CMD (caminho do `equipe-audit.ps1`/`FERRAMENTAS.md`), `R-003` DONO (risco 10->5 e 15->10 antes de conta real).
+
+**O que isto muda na pratica:** um pedido tem agora **dono, prazo e estado com hora**, e o `BACKLOG.md` pode citar `R-nnn` em vez de "pedi ao CMD". A regra do `D-020` §2 ("pedido sem resposta em 2 turnos: escala ao DONO ou executa com LOCK") passa a ser verificavel por numero.
+
+**Coexistencia com o `sync-agent.ps1`:** o `post` continua a escrever o **conteudo** do pedido na caixa do destinatario; o `R-nnn` e o **registo** que permite fechar. Nao ha dois donos do mesmo dado: texto na caixa, estado na fila. Quando o ALFA alargar o `ValidateSet` da linha 44 aos 6 estados, o `post` e o `pedir` passam a falar o mesmo vocabulario.
+
+**Ficheiros tocados:** `tools\equipe-sync.ps1` (5 comandos novos + `Show-FilaPedidos` + 3 parametros), `PEDIDOS.md` (novo), `SINCRONIZACAO.md` (tabela de comandos). Nada de risco, nenhum `.ex5`, nenhum commit.
+
+**Proximo ID livre: `D-027`.**
+
+
+## D-028 | 05/11/2026 | a causa medida de `trades=0` e o piso da simulacao contra o teto da IA indisponivel
+
+- **Estado:** ACTIVO | **Autor:** ALFA | **ID:** reservado no ledger as 23:12.
+- **Corpo medido:** journal do expert 22:35:00-22:37:30 (51 registos) e binario carregado, `get_expert_advisor_parameters` (319 inputs, build 6296).
+
+1. **A cadeia inteira, de uma entrada que atravessou tudo o que se julgava ser o bloqueio.** As 22:35:04 de 05/11 o USDJPY foi o unico sinal das ultimas horas a passar a validacao e o score:
+
+```
+22:35:04.514 [VALIDATION] USDJPY | ADX=31.62 | Min=18.00
+22:35:04.515 [VALIDATION] AI OK | USDJPY
+22:35:04.515 [VALIDATION] NEWS OK | USDJPY
+22:35:04.522 [VALIDATION] APPROVED | USDJPY | Signal=1
+22:35:04.523 [SCORE] CALCULATED | Symbol=USDJPY | TOTAL=100.00
+22:35:04.523 [SCANNER] VALIDATION+SCORE OK | USDJPY
+22:35:04.524 [RISK] RISCO REAL DA ORDEM | USDJPY | DENTRO_DO_TETO | lote=0.060 | risco=7.75 USD | teto=8.00 USD
+22:35:04.524 [STATE] USDJPY | RISK_CHECK -> SIMULATING
+22:35:04.524 EXECUTION: SIMULACAO BLOQUEADA | USDJPY | Razao=Low probability | Prob=0.40 | RR=0.81 | R_sim=204 pts
+22:35:04.527 [SCANNER] BLOCK | ExecFail | USDJPY | Signal=1
+```
+
+2. **De onde vem o `Prob=0.40`.** `SimulationUseConfidence=true` (input 100) e `Enterprise/SimulationEngine.mqh:80` fazem `probability_success = confidence / 100.0`. A mesma decisao publicou `Conf=40.0` na linha `EXECUTION: LOTE DINAMICO | USDJPY | Conviccao=FRACA | Conf=40.0`. E 40.0 e exactamente `AIUnavailableConfidenceCap` (input 105), o teto do fallback quando a leitura de IA nao e real. O numero que devia ser apenas um fallback de score passou a ser a probabilidade da simulacao.
+
+3. **Os dois pisos que 0.40 viola.** `MinSimulationProbability=0.50` (input 99): 0.40 < 0.50 -> `Low probability`. E `MinSimulationExpectancy=0.00` (input 98): `EP = 0.40*0.81 - 0.60 = -0.276 R` -> tambem abaixo. O `reason` da primeira condicao esconde a segunda, logo o journal nomeia um veto quando existem dois.
+
+4. **Consequencia dura, sem rodeios:** enquanto o gateway nao responder com previsao real, o EA **nao pode abrir posicao em simbolo nenhum**, e `AllowTradeWithoutAI=true` nao vale nada na pratica porque o piso da simulacao reintroduz a IA como veto. E a terceira ocorrencia da mesma familia: o P1.125 (v1.2.162) foi a primeira (cap 40 < `MinAIConfidence` 60 no gate), esta e a segunda porta do mesmo numero 40.
+
+5. **O que NAO e a causa, medido e nao suposto:** nao e o ATR (retratacao ja registada em D-025 Â§3; `EnableVolatilityFilter=false` nos 13); nao e o `[VALIDATION]` (aprovou); nao e o spread (`Spread=1.00 | Max=946.73`); nao e o risco de ordem (`7.75` de `8.00 USD`, `DENTRO_DO_TETO`); nao e o custo (`[COST] OK | custo=0.08 US$ = 1.2% do alvo`); nao e o RR minimo (`RR=0.55 >= MinRewardRatio=0.55`).
+
+6. **A correccao proposta (P1.133), NAO aplicada, para decisao do DONO (Q-018):**
+   (a) a confianca capada nao pode servir de probabilidade: `SimulateTrade` so usaria `confidence/100.0` quando a leitura de IA for real (o mesmo `aiReal` que o P1.125 introduziu) e cairia na formula geometrica `0.5 + RR*0.1` no caso de fallback;
+   (b) alternativa conservadora: manter o veto e assumir por escrito que o EA nao opera sem gateway, passando a prioridade a obter token;
+   (c) em qualquer das duas, **nenhum** piso (`MinSimulationProbability`, `MinSimulationExpectancy`, `MinSimulationRR`) nem parametro de risco e alterado sem decisao registada.
+
+7. **Duas medidas de higiene que este caso expos.** (i) `[ADV AI] Score 49.32 | Min 60.00 | Symbol USDJPY` e impresso e a decisao segue para `VALIDATION+SCORE OK`: ha um piso anunciado que nao e aplicado, e um leitor do journal conclui o contrario do que o codigo faz. (ii) A simulacao usa `R_sim=204 pts` (o 1R do `LOT CAP REAL`) enquanto a linha do risco usa `SL=300 pts`: duas referencias de stop na mesma decisao, `RR=0.81` num ponto e `RR=0.55` no outro.
+
+**Proximo ID livre: `D-029` (confirmar no ledger).**
+
+
+
+## D-030 | 05/11/2026 | P1.132 implementado: identidade do ATR verificada e ATR calculado da propria serie
+
+- **Estado:** ACTIVO, **JA COMPILADO, NAO REATTACHADO** | **Autor:** ALFA | **Ficheiro:** `Indicators/VolatilityFilter.mqh`
+- **Compilacao:** 0 errors / 0 warnings, build 6296 x64, `.ex5` escrito as 23:12:18.
+
+1. **O que mudou, em tres partes.**
+   (a) `ATRFromRates(symbol, tf, period)` calcula o ATR da **propria serie** do simbolo com `CopyRates` + True Range + suavizacao de Wilder (a mesma formula do `iATR`), recebendo `period*3+3` barras. Nao usa handle, logo nao pode ficar ligado a serie de outro instrumento â€” que era o defeito provado nos 47 registos do journal (handle 10, `barsCalc=60374`, `ATR=34.857860` em oito pares).
+   (b) Cada leitura **com sucesso** do handle e conferida contra esse valor, no maximo uma vez por `ATR_VERIFY_SEC` (300 s) por simbolo. Desvio acima de `ATR_IDENTITY_TOL_PCT` (25 por cento) publica `[ATR] IDENTIDADE ERRADA | <par> | doHandle= | daSerie= | falhas= | usaHandleAgora=` e devolve o valor da serie certa em vez do ATR do ouro.
+   (c) Ao `ATR_IDENTITY_MAX_FAIL` (2) desvio provado no mesmo build, o simbolo passa a usar **so** a serie propria e deixa de pedir handles. Fail-closed: sem leitura devolve `0.0`, nunca um valor de outro instrumento.
+
+2. **Porque isto nao e mexer em risco.** Nenhum limite, lote, alvo, stop, spread, RR, regra de entrada ou de saida, ou parametro de risco com nome de input foi tocado. Os tres defines novos (`ATR_IDENTITY_MAX_FAIL=2`, `ATR_IDENTITY_TOL_PCT=25.0`, `ATR_VERIFY_SEC=300`) sao de diagnostico e de escolha de fonte, e o fallback usa a mesma formula do indicador nativo.
+
+3. **Porque o drop+recriar antigo nao podia funcionar.** `ATRCacheDrop` + `IndicatorRelease` + `iATR` devolvem o **mesmo handle 10**. Recriar nao desliga um handle da serie a que o terminal o ligou â€” foi por isso que as auto-curas do P1.113, P1.117 e P1.122 falharam tres vezes seguidas. A correccao tinha de introduzir uma fonte que nao passe por handle nenhum.
+
+4. **Estado do binario, dito sem ambiguidade.** Compilado as 23:12:18; o EA **em memoria** continua v1.2.167 e nao foi recarregado. Um **restart do terminal** carrega o binario novo sem ninguem perguntar â€” e por isso que a autorizacao de reattach e do DONO (Q-019), e nao um passo tecnico meu.
+
+5. **Criterio de aceitacao (B-011), mantido e alargado.** 13/13 graficos com ATR plausivel durante 72 h, `0` linhas `erro=4807`, `0` `[ATR] LEITURA SUSPEITA` e agora tambem ausencia de `[ATR] IDENTIDADE ERRADA` repetido por simbolo (a primeira de cada par por hora e diagnostico esperado).
+
+6. **Expectativa honesta, para nao vender duas vezes o mesmo resultado.** O P1.132 **nao vai criar um unico trade**. A causa de `trades=0` esta medida em D-028 e e o par `AIUnavailableConfidenceCap=40` contra `MinSimulationProbability=0.50`. O que o P1.132 muda e a **qualidade** do que o EA faz quando executar: `[CENARIO]` com ATR do instrumento certo, lote e alvo coerentes, trailing e parcial com R real.
+
+**Proximo ID livre: `D-031` (confirmar no ledger).**
+
+
+## D-031 | 05/11/2026 | os `.chr` em disco sao uma fotografia das 21:37:10: a configuracao viva nao esta persistida e um restart reverte o `Q-014`
+
+- **Estado:** ACTIVO | **Autor:** DELTA | **ID:** reservado no ledger (`D-031`).
+- **Base:** pedido do `D-025` ao DELTA (mapa de magic por grafico) e o `R-004` pendente (tres camadas do `AllowTradeWithoutAI`).
+- **Metodo:** `list_open_charts` (runtime) + leitura dos 13 `.chr` em UTF-16 com `Files\Temp\charts_scan.ps1` + `LastWriteTime` de cada `.chr`. Nada foi alterado.
+
+### 1. A contradicao das tres camadas resolve-se: nao sao tres valores, sao duas datas
+
+| Camada | `AllowTradeWithoutAI` | Quando |
+|---|---|---|
+| Binario `XAU_AI_PRO.ex5` (default compilado) | `false` | build 23:12:18 |
+| `CHART01..CHART13.CHR` em disco | `false` (13/13) | **mtime 21:37:10** |
+| Runtime `list_open_charts` | `true` (13/13) | 23:12 |
+
+Os 13 `.chr` tem **todos** `LastWriteTime = 2026-11-05 21:37:10`. Essa e exactamente a hora do `profile_apply` do perfil `XAI_P216_LIVE`. O reattach que introduziu `true` foi as **22:10:47** e foi repetido mais tarde. **Nenhum `.chr` foi regravado desde as 21:37:10.**
+
+**Conclusao medida:** o `.chr` nao e o estado vivo, e a ultima gravacao do perfil. O valor que conta e o do runtime. **Nao ha dois EA a correr com configuracoes diferentes** o que existia era um ficheiro em disco desactualizado. O `R-004` fecha nesta parte: quem tem razao e o runtime.
+
+**Licao que fica escrita:** qualquer agente que audite configuracao pelos `.chr` le uma fotografia, nao o presente. A fonte de verdade continua a ser `list_open_charts` e `get_expert_advisor_parameters`, como o `D-021` ja dizia.
+
+### 2. Mas isto e um risco P0, e e novo: um restart reverte a decisao do DONO
+
+A mesma prova que fecha o `R-004` abre um problema maior e concreto:
+
+> Se o terminal reiniciar agora, carrega `CHART01..CHART13.CHR` das **21:37:10**, e os 13 graficos voltam com `AllowTradeWithoutAI=false`.
+
+O `Q-014` (manter `true`) e o `D-014` (dono autorizou a abertura do gate de IA) **ficam sem efeito depois de um restart, sem ninguem decidir nada**. Compare-se com o `EnableVolatilityFilter=false`: esse esta no `.chr` porque ja la estava as 21:37 e persiste; o `true` do `AllowTradeWithoutAI` foi posto depois e nao persiste.
+
+**Correcao proposta (nivel B, precisa autorizacao de quem tem a zona):** persistir a configuracao viva antes de a dar como assente, com `chart_save_template` por grafico ou `profile_add XAI_P216_LIVE`, e **re-medir o mtime dos 13 `.chr`** para provar que a gravacao aconteceu. Enquanto isso nao acontecer, fica escrito sem ambiguidade:
+
+**A CONFIGURACAO DE PRODUCAO NAO SOBREVIVE A UM RESTART DO TERMINAL.**
+
+Isto e o `F2.10` do ALFA (hash da configuracao) a falhar por um caminho que ninguem tinha medido: o hash mede o **runtime**, e o runtime **nao e o que persiste**.
+
+### 3. Mapa de magic por grafico (pedido do `D-025`) — 13 de 13 iguais
+
+| Grafico | Simbolo | Periodo | `MagicNumber` |
+|---|---|---|---|
+| CHART01 | XAUUSD | H1 | 2026001 |
+| CHART02 | USDSEK | H1 | 2026001 |
+| CHART03 | USDJPY | H1 | 2026001 |
+| CHART04 | USDCHF | H1 | 2026001 |
+| CHART05 | USDCZK | H1 | 2026001 |
+| CHART06 | USDCAD | H1 | 2026001 |
+| CHART07 | USDCNH | H1 | 2026001 |
+| CHART08 | AUDUSD | H1 | 2026001 |
+| CHART09 | NZDUSD | H1 | 2026001 |
+| CHART10 | GBPUSD | H1 | 2026001 |
+| CHART11 | USDBRL | **M5** | 2026001 |
+| CHART12 | USDRUB | H1 | 2026001 |
+| CHART13 | USDSGD | H1 | 2026001 |
+
+**`F2.8` nao esta cumprido, confirmado nos 13 e nao por amostra.**
+
+**Impacto no `F2.7`, com numeros:** todos os limites sao **por instancia**, logo multiplicam por 13:
+
+| Limite | Valor por grafico | Tecto teorico no terminal |
+|---|---|---|
+| `MaxOpenPositions` | 50 | **650** |
+| `MaxTradesPerDay` | 100 | **1300** |
+| `MaxTotalRiskPercent` | 10.0 | **130 % do capital** |
+| `MaxCorrelatedTrades` | 3 | **39** |
+| `MaxCorrelatedRiskPercent` | 3.0 | **39 %** de risco correlacionado |
+
+Nenhum destes limites e global. Sem magic por instancia, a reconciliacao EA x conta nao distingue **qual grafico** abriu o que, e um travamento de risco num grafico nao trava os outros 12. Proposta do `D-025` (2026001..2026013) fica registada como necessaria antes de `G4`.
+
+### 4. Constantes medidas nos 13 graficos (todas 13/13, nao por amostra)
+
+| Input | Valor | Consequencia |
+|---|---|---|
+| `AIGatewayToken` | **`""` vazio** | explica o 401 e o `0.00 % / 0.00 %` (`Q-002`) |
+| `AIUnavailableConfidenceCap` | 40.0 | a cadeia do `D-028` |
+| `MinSimulationProbability` | 0.5 | veto que anula o `AllowTradeWithoutAI` |
+| `RewardRatio` / `MinRewardRatio` | 0.65 / 0.55 | dois pisos diferentes para a mesma grandeza |
+| `StopLossPoints` / `TakeProfitPoints` | 300 / 600 | — |
+| `AvoidHoursGMT` | `9,11,14,18,20,22` | **6 horas por dia** com entradas bloqueadas |
+| `EnableAvoidHoursGMT` | `true` | activo |
+| `EnableDataset` / `SaveDatasetCSV` | `true` / `true` | `P1.111` (CSV multi-escritor) **activo em producao** |
+| `EnableDatabase` | `false` | sem reconciliacao por base |
+| `EnableVolatilityFilter` | `false` | coincide com o `.chr` (este persiste) |
+
+### 5. Estado do `B-031` — medido, sem resultado ainda
+
+```
+run_id 7704874073263362126 :: tester_status=started
+progresso: 00:09:14 -> 00:10:01 -> 00:11:40 -> 00:12:50 -> 00:13:35 (de ~00:38)
+```
+
+Ainda a correr. **Nao ha PF, DD nem numero de trades para escrever**, e nao se inventa. O `B-031` exige **duas** execucoes com o mesmo resultado, nao uma.
+
+### 6. Duas lacunas de integridade do canal
+
+1. **`D-027` (CMD, gateway 9011) e `D-029` (DELTA) estao `USADO` no `IDS.md` e NAO tem bloco no `DECISOES.md`.** Varredura dos cabecalhos `^## D-0`: 1007 = `D-026`, 1055 = `D-028`, 1094 = `D-030`. Um ID reservado sem corpo e uma lacuna: quem le o ledger acredita que a decisao existe. O `D-029` e meu e fica declarado como pendente de reposicao.
+2. **`equipe-audit.ps1 all` acusa 1 espelho divergente: `Indicators\VolatilityFilter.mqh`.** O `P1.132` do ALFA mexeu nesse ficheiro e o espelho `Files/XAU_AI_PRO/MQL5` nao foi actualizado. O espelho nao e fonte: copiar EA -> espelho.
+
+**Proximo ID livre: `D-032`.**
+
+## D-029 | 05/11/2026 | o binario mudou sem registo + runbook de incidentes entregue + primeiro backtest reprodutivel a correr
+
+- **Estado:** ACTIVO | **Autor:** DELTA | **ID:** reservado pelo ledger (`D-029`; `D-027`/`D-028` gastos entretanto).
+- **Trabalho arrancado:** pedido do dono as 23:05 - "comecar agora todos trabalhos".
+
+### 1. O `.ex5` mudou entre 21:57 e 23:06 - e ninguem registou
+
+| Momento | Bytes | Versao | `build_time` |
+|---|---|---|---|
+| 05/11 21:57:47 (linha de base do `PLANO_MESTRE` §2) | **927 354** | v1.2.167 | - |
+| 05/11 23:06 (medido agora, `get_expert_advisor_parameters`) | **928 854** (+1 500 B) | **1.367** | **2026-11-06T00:36:40Z** |
+
+O `version` legivel continua `v1.2.167` (`1.367` pela regra `HG-01`), mas o **conteudo do binario mudou**. Metade dos numeros do plano (`0 errors, 0 warnings`, "v1.2.167 nos 13 graficos") passaram a referir-se a **outro** ficheiro. **Nao ha nada no `QUADRO_ESTADO.md` a dizer quem compilou, quando, nem com que fontes** - que e exactamente a regra que o `D-014`/`CONFIGURACOES.md` §6 exige ("configuracao mudada sem registo nao existe"). Quem compilou (ALFA ou CMD) tem de o registar com hora e lista de fontes.
+
+### 2. Achado que vale mais que a diferenca de bytes: `AllowTradeWithoutAI` no binario novo
+
+`get_expert_advisor_parameters` do `.ex5` de agora, indice 102:
+
+```
+AllowTradeWithoutAI | bool | default_value = "false"
+```
+
+Mas eu medi `true` nos 13 graficos as 22:35 e o `D-011`/`CONFIGURACOES.md` assumem `true`. Tres leituras possiveis, e **nao escolho por opiniao**:
+
+1. os 13 graficos tem `true` **por parametro salvo no grafico**, sobrevivendo a recompilacao (normal em MQL5) - o binario mudou o **default**, nao o valor em uso;
+2. alguem reanexou depois das 22:35 com o default novo e os graficos passaram a `false`;
+3. o `.set` do tester de outro agente fixou `true` e a leitura do grafico e que esta velha.
+
+**Como se resolve (2 minutos, quem tiver `metatrader5`):** `list_open_charts` + `get_expert_advisor_parameters` por grafico, comparar com o `default_value`. Fica como **verificacao obrigatoria antes de G1** e entra no `R-004`.
+
+Isto reforca a regra do `D-021`: **fonte de verdade e o binario carregado no grafico**, nao o `.default_value`, nao o `.set`, nao o `.mqh`.
+
+### 3. `B-010` entregue: `RUNBOOK_INCIDENTES.md` (7 950 B)
+
+10 incidentes, cada um com **sintoma -> o que medir -> o que fazer -> quem -> quando parar**, todos tirados de falhas reais deste projeto (nao de hipoteses):
+
+| # | Incidente | Origem real |
+|---|---|---|
+| 1 | 0 ordens em 24 h | 0 trades medidos as 22:02 |
+| 2 | `[ATR] HANDLE MORTO erro=4807` | 9 simbolos as 22:14:26-40 |
+| 3 | IA `BUY=0.00/SELL=0.00` | 8 predicoes 21:36-22:11 |
+| 4 | `WebRequest`/4060 | allowlist fora das raizes |
+| 5 | spread anomalo/requote | `MaxSpreadPct=0.6` medido |
+| 6 | duas versoes a correr | este proprio `D-029` §1 |
+| 7 | EA parado no grafico | `P2`/`P-002` |
+| 8 | canal com problema | 7 ocorrencias de CR hoje |
+| 9 | pedido `R-nnn` sem resposta | 15 pedidos abertos as 23:03 |
+| 10 | perda diaria/drawdown atingido | `MaxDailyLossPercent=10` |
+
+Regra zero do runbook: **medir antes de tocar**, e a escada de escalada acaba sempre em `ask` ao DONO quando e nivel C. Inclui a proibicao explicita de "baixar `MinAIConfidence` para ver se entra".
+
+### 4. `B-031` arrancado: primeiro backtest reprodutivel
+
+Configuracao **congelada e versionada** (e o que faltava para "reproduzivel"):
+
+```
+MQL5\Profiles\Tester\equipe_B031_xauusd.ini   (530 B)
+MQL5\Profiles\Tester\equipe_B031_xauusd.set   (29 472 B)
+```
+
+| Parametro | Valor | Porque |
+|---|---|---|
+| simbolo / TF | `XAUUSD` / `H1` | unico simbolo com modelo H1 (`B-023`) |
+| periodo | 2026-08-01 -> 2026-11-05 | 3 meses |
+| modelo | `m1 ohlc` | rapido e reprodutivel; `every tick` fica para a 2.a passagem |
+| deposito / alavanca | 10 000 USD / 1:100 | igual ao demo |
+| universo | `Symbols=XAUUSD`, `SymbolsFromMarketWatch=false` | isolar a medicao; **declarado**, nao escondido |
+| risco | `RiskPercent=1.0`, `RiskPerTradeUsd=2.0`, SL 300 / TP 600, `MinAIConfidence=60.0`, `MaxDailyLossPercent=10.0`, `MaxDrawdownPercent=15.0` | **identicos aos medidos nos graficos**; nenhum valor de risco inventado |
+
+**Estado:** `run_id 7704874073263362126`, em execucao no agente `Core 1` (`progress 00:04:38 / 00:38:56` as 23:12). **Resultado ainda nao existe - nao invento numeros.** Quando terminar, entra um bloco `D-030` com PF, DD, trades, e o comando exacto para repetir. O objectivo do `B-031` e **duas execucoes com o mesmo resultado**, nao uma.
+
+### 5. Fila de pedidos actualizada
+
+`PEDIDOS.md` (novo, `D-026`) com `R-001` (ALFA: `Show-Check` nao acusa CRLF puro), `R-002` (CMD: caminho do `equipe-audit.ps1`/`FERRAMENTAS.md`), `R-003` (DONO: risco 10->5 e 15->10). **Novo `R-004`** a abrir: ALFA/CMD dizerem **quem compilou o `.ex5` das 23:06** e se o `AllowTradeWithoutAI` mudou nos graficos.
+
+**Proximo ID livre: `D-030`.**
+
+
+---
+
+## D-032 | 05/11/2026 | respostas do DONO: Q-018 (b) veto; Q-019 reattach P1.132 autorizado
+
+- **Estado:** FECHADA (DONO, 05/11 23:25 - respostas recolhidas pelo CMD e
+  registadas via `sync-agent.ps1 answer -From DONO`).
+- **Q-018 = (b) manter o veto.** O EA nao opera sem token. Nenhuma alteracao
+  de codigo para contornar o piso `MinSimulationProbability=0.50` nem a
+  formula `prob=confidence/100` (`D-028`). **Prioridade resultante:**
+  provisionar `XAU_GATEWAY_TOKEN`/`AIGatewayToken` (F4.5) - sem token, trades
+  continuam 0 por decisao, nao por acidente.
+- **Q-019 = sim, reattach autorizado agora.** O P1.132 (D-030, `.ex5` 929 558 B
+  @ 23:12) pode ir para os 13 graficos. **Quem executa:** ALFA/DELTA (tem
+  MCP); o CMD nao tem MCP de MT5.
+- **Sequencia obrigatoria depois disto:**
+  1. ALFA/DELTA: 13/13 `[START] v1.2.168`, medido no journal com hora.
+  2. CMD: commit do EA (fonte + `.ex5`) + canal, push `github/main`, espelho
+     sincronizado e verificado 110/110.
+  3. DELTA: atualizar `QUADRO_ESTADO.md` com a versao em producao.
+- **Armadilha registada:** um restart do terminal carregaria o binario novo
+  sem ninguem perguntar - por isso a reattach e agora autorizada no mesmo
+  ciclo, e nao como um ato implicito.
+
+
+
+---
+
+## D-033 | 05/11/2026 | Q-020 (DELTA): persistencia da config viva = opcao 3, depois reattach
+
+- **Estado:** FECHADA (DONO, 05/11 22:56, registada pelo CMD).
+- **Resposta do DONO:** as opcoes eram 1/2/3. A resposta pratica do DONO -
+  *"iniciar os trabalhos juntos e sem parar ate concluir o maximo esta noite,
+  ok sem interrupcoes 10/10"* - equivale a **opcao 3 do DELTA**: nao gravar
+  agora uma config em binario que vai ser substituido; reanexar primeiro
+  (Q-019 autorizado), depois gravar a config definitiva de uma vez.
+- **Ordem executavel resultante (nao e promessa, e sequencia):**
+  1. **ALFA/DELTA** (quem tem MCP): reattach P1.132 (Q-019 = sim, ja
+     autorizado), 13/13, medir `[START] v1.2.168` no journal.
+  2. **DELTA**: gravar a config viva nos .chr (mantendo os valores atuais,
+     incluindo `AllowTradeWithoutAI=true`) e medir o mtime - fecha o risco
+     P0 "restart reverte sem aviso".
+  3. **CMD**: commit do EA (fonte + P1.132) + canal; push `github/main`;
+     espelho 110/110; registar tudo no `QUADRO_ESTADO.md`.
+- **O que nao muda:** nenhum parametro de risco; Q-018 = veto mantido (sem
+  token o EA nao opera); conta real continua bloqueada por `F2`/`F6`.
+

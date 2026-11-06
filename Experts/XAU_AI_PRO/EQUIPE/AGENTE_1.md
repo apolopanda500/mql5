@@ -475,3 +475,33 @@ defeito.
 **Nao compilei, nao reanexei, nao mexi em parametro nenhum.** Compilar e
 reancorar precisam de `LOCK` e de autorizacao do DONO na hora (`D-014`).
 
+
+
+## 05/11/2026 23:14 | a causa de `trades=0` estava tres portoes a frente do ATR
+
+Entrada de diario. Medido, nao deduzido.
+
+**O que eu pensava estar a bloquear:** ATR (Q-001) e depois o vector `[VALIDATION]` (IA 0.00/0.00, `MinAIConfidence=60.0` contra `CONF` 53.9-63.3, `AvoidHoursGMT`). As duas hipoteses ficaram refutadas hoje por medida directa.
+
+**O que mediu o journal.** Entre as 22:00 e as 23:10 de 05/11 ha **exactamente um** sinal que atravessou a validacao e o score: USDJPY as 22:35:04. Sequencia completa em `DECISOES.md` D-028. O que interessa:
+
+```
+[VALIDATION] APPROVED | USDJPY | Signal=1
+[SCANNER] VALIDATION+SCORE OK | USDJPY
+[RISK] RISCO REAL DA ORDEM | DENTRO_DO_TETO | lote=0.060 | risco=7.75 USD | teto=8.00 USD
+EXECUTION: SIMULACAO BLOQUEADA | Razao=Low probability | Prob=0.40 | RR=0.81 | R_sim=204 pts
+[SCANNER] BLOCK | ExecFail | USDJPY
+```
+
+**A aritmetica, fechada.** `SimulationUseConfidence=true` e `SimulationEngine.mqh:80` fazem `prob = confidence/100`. A propria decisao publicou `Conf=40.0`. 40.0 e `AIUnavailableConfidenceCap`. Piso `MinSimulationProbability=0.50`. `0.40 < 0.50`. E `EP = 0.40*0.81 - 0.60 = -0.276 R < MinSimulationExpectancy=0.00`.
+
+**O que isto obriga a mudar no discurso do projecto.** `AllowTradeWithoutAI=true` nos 13 graficos nao produz o efeito que o nome promete: o piso da simulacao reintroduz a IA indisponivel como veto. O projecto nao tem um problema de filtros demasiado apertados; tem **dois consumidores do mesmo numero 40** â€” o gate do P1.125 e agora a simulacao. Corrigir um sem olhar para o outro ja falhou uma vez.
+
+**Correccao a mim proprio, outra vez.** Em D-025 Â§3 retirei o ATR como explicacao unica e apontei o vector `[VALIDATION]`. Estava meio certo: o vector nao e o bloqueio final, e o numero 40 que vem da mesma IA. A regra que fica: **um sinal aprovado vale mais do que mil linhas de BLOCK** â€” foi seguir o unico APPROVED do dia que revelou a cadeia.
+
+**Discrepancia de instrumento, registada para nao virar mito.** `get_expert_advisor_parameters` sobre `XAU_AI_PRO.ex5` reporta `size=928854`, `build_time=2026-11-06T00:36:40Z`. `Get-Item` no disco diz **927354 B @ 05/11 21:57:47**. O ficheiro nao mudou; a ferramenta mede outra coisa (provavelmente metadados do binario em memoria, ou soma o manifest). Enquanto isto nao for explicado, **a fonte de verdade do tamanho e o disco**, e qualquer auditoria que compare tamanho do `.ex5` tem de dizer qual dos dois numeros usa â€” senao o DELTA e o CMD chegam a conclusoes opostas sobre o mesmo ficheiro (foi o que ja aconteceu com `F0.4`).
+
+**Correccao de ferramenta feita hoje:** o writer do `LOCK.md` no `sync-agent.ps1` escrevia CRLF e o proprio `check` acusava `LOCK.md: 13 CR` logo apos cada `lock pegar`. Passou a LF nos dois ramos (`pegar` e `liberar`). Terceiro defeito da mesma familia (IDS.md foi o primeiro, o `Show-Check` foi o segundo).
+
+**Proximo:** P1.132 (identidade do handle do ATR + fallback por `CopyRates`) continua a ser trabalho real, mas deixou de ser urgente por causa dos trades: o `EnableVolatilityFilter=false` impede o ATR de vetar entradas. O que o ATR contamina e o `[CENARIO]` (lote e alvo), o trailing e o parcial â€” ou seja, **qualidade da execucao**, nao a existir ou nao existir execucao. E P1.133 (o 40 usado como probabilidade) precisa de decisao do DONO, Q-018.
+

@@ -1,6 +1,6 @@
 # SYNC STATUS - retrato medido do canal EQUIPE/
 
-Gerado por `EQUIPE/tools/equipe-sync.ps1 snapshot` as **05/11/2026 22:52**.
+Gerado por `EQUIPE/tools/equipe-sync.ps1 snapshot` as **05/11/2026 23:05**.
 Este ficheiro e **gerado** - nao escrever a mao. Fonte: os `.md` de `EQUIPE/`.
 
 **LOCK:** livre
@@ -9,31 +9,33 @@ Este ficheiro e **gerado** - nao escrever a mao. Fonte: os `.md` de `EQUIPE/`.
 
 | Arquivo | Bytes | Linhas | CR | ABERTO | RESP | FECH | UTF-8 | Ultima escrita |
 |---|---|---|---|---|---|---|---|---|
-| `AGENTE_1.md` | 21591 | 419 | 0 | 0 | 0 | 0 | True | 05/11 22:20:58 |
+| `AGENTE_1.md` | 24802 | 477 | 0 | 0 | 0 | 0 | True | 05/11 22:57:03 |
 | `AGENTE_2.md` | 10269 | 168 | 0 | 0 | 0 | 0 | True | 05/11 22:47:17 |
 | `AGENTE_3.md` | 8756 | 187 | 0 | 0 | 0 | 0 | True | 05/11 22:16:24 |
 | `AUTORIZACOES.md` | 4134 | 64 | 0 | 0 | 0 | 0 | True | 05/11 22:38:55 |
-| `BACKLOG.md` | 4274 | 74 | 0 | 0 | 0 | 0 | True | 05/11 22:49:08 |
+| `BACKLOG.md` | 4274 | 74 | 0 | 0 | 0 | 0 | True | 05/11 22:53:06 |
 | `CONFIG_AGENTES.md` | 6731 | 129 | 0 | 0 | 0 | 0 | True | 05/11 22:44:18 |
-| `CONFIGURACOES.md` | 4348 | 76 | 0 | 0 | 0 | 0 | True | 05/11 22:40:50 |
+| `CONFIGURACOES.md` | 7467 | 126 | 0 | 0 | 0 | 0 | True | 05/11 23:03:44 |
 | `CONSOLIDACAO.md` | 4605 | 110 | 0 | 0 | 0 | 0 | True | 05/11 21:47:24 |
-| `DECISOES.md` | 52558 | 789 | 0 | 0 | 0 | 0 | True | 05/11 22:52:02 |
+| `DECISOES.md` | 69335 | 1052 | 0 | 0 | 0 | 0 | True | 05/11 23:05:22 |
 | `FERRAMENTAS.md` | 4719 | 109 | 0 | 0 | 0 | 0 | True | 05/11 22:50:03 |
-| `IDS.md` | 824 | 13 | 0 | 0 | 0 | 0 | True | 05/11 22:52:03 |
-| `INBOX_AGENTE_1.md` | 25341 | 334 | 0 | 7 | 2 | 7 | True | 05/11 22:51:54 |
-| `INBOX_AGENTE_2.md` | 16805 | 269 | 0 | 4 | 2 | 6 | True | 05/11 22:46:02 |
-| `INBOX_AGENTE_3.md` | 28025 | 481 | 0 | 5 | 2 | 1 | True | 05/11 22:51:43 |
-| `INBOX_DONO.md` | 13450 | 254 | 0 | 15 | 0 | 0 | True | 05/11 22:46:02 |
-| `LOCK.md` | 111 | 5 | 0 | 0 | 0 | 0 | True | 05/11 22:52:04 |
+| `IDS.md` | 1130 | 16 | 0 | 0 | 0 | 0 | True | 05/11 23:04:56 |
+| `INBOX_AGENTE_1.md` | 25635 | 341 | 0 | 8 | 2 | 7 | True | 05/11 22:52:18 |
+| `INBOX_AGENTE_2.md` | 17870 | 289 | 0 | 5 | 2 | 6 | True | 05/11 23:04:05 |
+| `INBOX_AGENTE_3.md` | 28780 | 494 | 0 | 5 | 2 | 1 | True | 05/11 23:04:05 |
+| `INBOX_DONO.md` | 15383 | 310 | 0 | 15 | 0 | 0 | True | 05/11 22:58:14 |
+| `INDICE.md` | 3281 | 61 | 0 | 0 | 0 | 0 | True | 05/11 23:04:03 |
+| `LOCK.md` | 111 | 5 | 0 | 0 | 0 | 0 | True | 05/11 23:05:55 |
 | `MCP_E_MOTORES.md` | 4566 | 80 | 0 | 0 | 0 | 0 | True | 05/11 22:39:49 |
 | `PEDIDO_DE_AJUDA.md` | 4034 | 75 | 0 | 0 | 0 | 0 | True | 05/11 22:40:50 |
+| `PEDIDOS.md` | 848 | 12 | 0 | 0 | 0 | 0 | True | 05/11 23:04:40 |
 | `PLANO_10_10.md` | 9963 | 220 | 0 | 0 | 0 | 0 | True | 05/11 22:48:20 |
 | `PLANO_MESTRE.md` | 8067 | 126 | 0 | 0 | 0 | 0 | True | 05/11 22:49:46 |
-| `PROTOCOLO.md` | 12572 | 251 | 0 | 1 | 0 | 1 | True | 05/11 22:34:34 |
-| `QUADRO_ESTADO.md` | 11324 | 195 | 0 | 0 | 0 | 0 | True | 05/11 22:21:29 |
+| `PROTOCOLO.md` | 14882 | 310 | 0 | 1 | 0 | 1 | True | 05/11 22:53:51 |
+| `QUADRO_ESTADO.md` | 12224 | 217 | 0 | 0 | 0 | 0 | True | 05/11 22:54:34 |
 | `ROTINA_E_PASSAGEM.md` | 5178 | 104 | 0 | 0 | 0 | 0 | True | 05/11 22:39:07 |
-| `SINCRONIZACAO.md` | 3938 | 69 | 0 | 0 | 0 | 0 | True | 05/11 22:45:52 |
-| `SYNC_LOG.md` | 1451 | 17 | 0 | 0 | 0 | 0 | True | 05/11 22:52:02 |
+| `SINCRONIZACAO.md` | 4652 | 85 | 0 | 0 | 0 | 0 | True | 05/11 23:05:47 |
+| `SYNC_LOG.md` | 3447 | 36 | 0 | 0 | 0 | 0 | True | 05/11 23:04:05 |
 
 ## 2. Ultimo rodape de cada ficheiro
 
@@ -52,9 +54,11 @@ Este ficheiro e **gerado** - nao escrever a mao. Fonte: os `.md` de `EQUIPE/`.
 - `INBOX_AGENTE_2.md` (1): 05/11/2026 22:20 - DELTA. **Nota honesta:** as 22:12 este ficheiro perdeu o cabecalho `## RESPONDIDOS / FECHADOS` numa escrita minha que falhou pela metade - o cabecalho foi reposto as 22:20 e nenhuma resposta de outro agente foi apagada.
 - `INBOX_AGENTE_3.md` (0): 
 - `INBOX_DONO.md` (1): 05/11/2026 22:23 - DELTA (criacao do canal do DONO).
+- `INDICE.md` (0): 
 - `LOCK.md` (0): 
 - `MCP_E_MOTORES.md` (0): 
 - `PEDIDO_DE_AJUDA.md` (0): 
+- `PEDIDOS.md` (0): 
 - `PLANO_10_10.md` (0): 
 - `PLANO_MESTRE.md` (0): 
 - `PROTOCOLO.md` (2): 05/11/2026 22:36 - DELTA (`8.5`: consolidacao de locks; `D-017`).

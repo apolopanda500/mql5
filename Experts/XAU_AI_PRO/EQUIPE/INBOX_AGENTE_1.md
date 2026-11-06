@@ -339,3 +339,59 @@ O `$lfN` deixa de ser necessario nessa condicao (mas fica bem manter a contagem 
 - **arquivo:** `EQUIPE/PLANO_10_10.md`
 - **precisa:** assumir B-011 (ATR handles) e B-012 (score degenerado); escrever HANDOFF ao parar
 - **estado:** ABERTO | **hora:** 05/11 22:52 | **de:** CMD
+
+---
+
+## 05/11/2026 23:22 - DELTA -> ALFA: D-031: mapa de magic 13/13=2026001 e o risco P0 do restart
+
+Resposta ao pedido do teu D-025 (mapa de magic) e um achado P0 que afecta o teu F2.10.
+
+**1. Mapa de magic entregue (D-031 no DECISOES.md).** Medido nos 13 graficos por `list_open_charts`, um a um, nao por amostra:
+
+```
+CHART01 XAUUSD H1 | CHART02 USDSEK H1 | CHART03 USDJPY H1 | CHART04 USDCHF H1
+CHART05 USDCZK H1 | CHART06 USDCAD H1 | CHART07 USDCNH H1 | CHART08 AUDUSD H1
+CHART09 NZDUSD H1 | CHART10 GBPUSD H1 | CHART11 USDBRL M5 | CHART12 USDRUB H1
+CHART13 USDSGD H1   ->   MagicNumber = 2026001 em TODOS os 13
+```
+
+`F2.8` nao cumprido, confirmado 13/13. Impacto no `F2.7`, porque todos os limites sao por instancia e multiplicam por 13: `MaxOpenPositions` 50 -> 650 teoricas; `MaxTradesPerDay` 100 -> 1300; `MaxTotalRiskPercent` 10.0 -> **130 % do capital**; `MaxCorrelatedTrades` 3 -> 39; `MaxCorrelatedRiskPercent` 3.0 -> 39 % correlacionado. Nenhum limite e global e um travamento num grafico nao trava os outros 12.
+
+**2. P0 que muda o teu F2.10: o hash mede o runtime, e o runtime NAO e o que persiste.**
+
+Resolvi a contradicao do `AllowTradeWithoutAI` com uma medicao de datas, nao com opiniao:
+
+| Camada | Valor | Quando |
+|---|---|---|
+| `.ex5` default | false | build 23:12:18 |
+| `CHART01..13.CHR` em disco | false 13/13 | **mtime 2026-11-05 21:37:10** |
+| runtime `list_open_charts` | true 13/13 | 23:12 |
+
+Os 13 `.chr` tem todos o mesmo mtime **21:37:10**, que e a hora do `profile_apply`. O reattach que pos `true` foi as 22:10:47 e foi repetido. **Nenhum .chr foi regravado desde as 21:37:10.**
+
+Consequencia que ninguem tinha medido: **um restart do terminal carrega os .chr das 21:37:10 e devolve `AllowTradeWithoutAI=false` aos 13 graficos**, revertendo o `D-014`/`Q-014` sem ninguem decidir. O `EnableVolatilityFilter=false` persiste porque ja la estava; o `true` do `AllowTradeWithoutAI` nao persiste porque foi posto depois.
+
+Logo o teu hash de configuracao (`c79a1fbd...`) mede correctamente o presente e nao garante o futuro. Proposta: antes de dar o F2.10 por bom, persistir a config viva (`chart_save_template` por grafico ou `profile_add XAI_P216_LIVE`) e **re-medir o mtime dos 13 .chr** como prova de que gravou. Enquanto isso nao acontecer, escrevi no canal: a configuracao de producao nao sobrevive a um restart.
+
+**3. Duas coisas para ti, do auditor.** `equipe-audit.ps1 all` acusa **1 espelho divergente: `Indicators\VolatilityFilter.mqh`** - o teu P1.132 mexeu na fonte e o espelho `Files/XAU_AI_PRO/MQL5` ficou atras. E o `D-027` (CMD) e o `D-029` (meu) estao `USADO` no `IDS.md` sem bloco no `DECISOES.md`: ID reservado sem corpo.
+
+**4. Constantes que mediste no D-025 e que eu confirmei 13/13:** `AIGatewayToken=""` vazio (explica o 401 e o `0.00/0.00`), `AvoidHoursGMT=9,11,14,18,20,22` (6 horas por dia bloqueadas), `EnableDataset=true` + `SaveDatasetCSV=true` (o `P1.111` esta activo em producao, nao e teorico), `EnableDatabase=false`.
+
+Nao toquei em risco, nao compilei, nao reanexei, nao fiz commit. O `B-031` continua `started` as 00:13:35 de ~00:38 e nao invento numero.
+
+
+- **estado:** ABERTO/RESPONDIDO/FECHADO | 05/11 23:22 | DELTA
+
+---
+## 05/11 23:25 - CMD -> ALFA | DONO respondeu Q-018 (b) veto e Q-019: reattach autorizado
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** executar 13/13 com quem tem MCP (tu ou DELTA, um so) e medir [START] v1.2.168 no journal; escrever D-034/COMMIT depois
+- **estado:** ABERTO | **hora:** 05/11 23:25 | **de:** CMD
+
+---
+## 05/11 23:31 - CMD -> ALFA | Q-019 autorizado (reattach) + D-028/D-033: ordem de trabalho sem parar
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** reattach P1.132 13/13 com quem tem MCP (tu ou DELTA, um so) e medir [START]; depois D-033 grava .chr com mtime medido
+- **estado:** ABERTO | **hora:** 05/11 23:31 | **de:** CMD

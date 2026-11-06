@@ -215,3 +215,68 @@ Ultima alteracao: 05/11/2026 22:20 - DELTA.
   60 vs CONF 56-63). Decisao de universo entregue ao DONO em `Q-013`.
 - Conta real: **bloqueada** pelos portoes `F2` e `F6` do `PLANO_10_10.md`.
 
+
+---
+
+## Actualizacao 05/11/2026 23:08-23:25 (DELTA)
+
+### Configuracao viva dos 13 graficos - medida por `list_open_charts`, nao por amostra
+
+| # | Simbolo | TF | Magic | `AllowTradeWithoutAI` | `EnableVolatilityFilter` | `AIGatewayToken` |
+|---|---|---|---|---|---|---|
+| 01 | XAUUSD | H1 | 2026001 | true | false | `""` vazio |
+| 02 | USDSEK | H1 | 2026001 | true | false | `""` vazio |
+| 03 | USDJPY | H1 | 2026001 | true | false | `""` vazio |
+| 04 | USDCHF | H1 | 2026001 | true | false | `""` vazio |
+| 05 | USDCZK | H1 | 2026001 | true | false | `""` vazio |
+| 06 | USDCAD | H1 | 2026001 | true | false | `""` vazio |
+| 07 | USDCNH | H1 | 2026001 | true | false | `""` vazio |
+| 08 | AUDUSD | H1 | 2026001 | true | false | `""` vazio |
+| 09 | NZDUSD | H1 | 2026001 | true | false | `""` vazio |
+| 10 | GBPUSD | H1 | 2026001 | true | false | `""` vazio |
+| 11 | USDBRL | **M5** | 2026001 | true | false | `""` vazio |
+| 12 | USDRUB | H1 | 2026001 | true | false | `""` vazio |
+| 13 | USDSGD | H1 | 2026001 | true | false | `""` vazio |
+
+Barras carregadas: 100 000 em 8 graficos; USDSEK 100 000; USDCZK 72 099; USDCNH 66 895; USDBRL 24 627; USDRUB 26 711; XAUUSD 60 375.
+
+### O que os `.chr` em disco dizem - e a data que explica tudo
+
+`MQL5\Profiles\Charts\XAI_P216_LIVE\CHART01..CHART13.CHR` - **os 13 com `LastWriteTime = 2026-11-05 21:37:10`**, exactamente a hora do `profile_apply` do perfil.
+
+Valores lidos (UTF-16): `AllowTradeWithoutAI=false`, `EnableAIFilter=true`, `EnableAutonomousMode=false`, `MinAIConfidence=60.0`, `RiskPercent=1.0`, `MaxDailyLossPercent=10.0`, `MaxDrawdownPercent=15.0`, `SymbolsFromMarketWatch=true`.
+
+**Nao ha contradicao com o runtime: ha duas datas.** O `.chr` e a ultima gravacao do perfil (21:37:10); o `true` do `AllowTradeWithoutAI` foi posto no reattach das 22:10:47 e **nunca foi gravado em disco**.
+
+### Risco P0 aberto por esta medicao
+
+Um **restart do terminal** carrega os `.chr` das 21:37:10 e devolve `AllowTradeWithoutAI=false` aos 13 graficos, anulando o `D-014` e o `Q-014` sem decisao registada. Enquanto a configuracao viva nao for gravada (e o mtime nao for reconferido), vale por escrito: **a configuracao de producao nao sobrevive a um restart**. Pergunta ao DONO em `INBOX_DONO.md` (3 opcoes numeradas; voto do DELTA: `Q-019` -> reattach -> gravar -> medir mtime).
+
+### `F2.8` / `F2.7` - numeros do impacto
+
+`MagicNumber=2026001` nos **13 de 13**, logo os limites por instancia multiplicam por 13:
+
+| Limite | Por grafico | Tecto teorico |
+|---|---|---|
+| `MaxOpenPositions` | 50 | 650 |
+| `MaxTradesPerDay` | 100 | 1300 |
+| `MaxTotalRiskPercent` | 10.0 | **130 % do capital** |
+| `MaxCorrelatedTrades` | 3 | 39 |
+| `MaxCorrelatedRiskPercent` | 3.0 | 39 % |
+
+### Outras constantes medidas (13/13)
+
+`AIUnavailableConfidenceCap=40.0` e `MinSimulationProbability=0.5` (a cadeia do `D-028`); `RewardRatio=0.65` vs `MinRewardRatio=0.55`; `StopLossPoints=300` / `TakeProfitPoints=600`; `RiskPerTradeUsd=2.0`, `MaxRiskPerTradeUsd=8.0`, `MaxRiskPerTradePercentCap=3.0`; `AvoidHoursGMT=9,11,14,18,20,22` com `EnableAvoidHoursGMT=true` (**6 horas por dia** bloqueadas); `EnableDataset=true` + `SaveDatasetCSV=true` (**o `P1.111` esta activo em producao**); `EnableDatabase=false`; `EnableRealAccountGuard=true`.
+
+### Estado das provas nesta hora
+
+| Item | Estado | Prova |
+|---|---|---|
+| `B-031` backtest reprodutivel | **A CORRER** | `run_id 7704874073263362126`, `started`, 00:13:35 -> 00:16:37 de ~00:36. Sem PF/DD/trades |
+| `B-011` ATR | por provar | `P1.132` compilado as 23:12:18, **nao reattachado** (`Q-019`) |
+| Espelho EA | **1 divergente** | `[FAIL] DIFF Indicators\VolatilityFilter.mqh` |
+| Canal | **integro** | `equipe-sync.ps1 check` = 0 problemas, 11 ficheiros `CR=0` e UTF-8 |
+| Binario | **mudou 3x** | 927 354 B (21:57:47) -> 928 854 B (build 00:36:40) -> 929 558 B (23:12:18) |
+| Trades | **0** | inalterado |
+
+Fonte: DELTA, `D-031` e `AGENTE_2.md` bloco 23:05-23:25. Nenhum parametro de risco alterado, nenhum `.ex5` compilado, nenhum reattach, nenhum commit.

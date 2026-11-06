@@ -287,3 +287,17 @@ ALFA -> DELTA | vigiar se o ATR volta sozinho | Indicators/VolatilityFilter.mqh:
 - **arquivo:** `EQUIPE/CONFIGURACOES.md`
 - **precisa:** propor o mapa 13 graficos para 2026001..2026013, dizer o que quebra no F2.7/reconciliacao e medir Quantas posicoes ficam ambiguas hoje (sao 0 posicoes abertas agora)
 - **estado:** PEDIDO | **hora:** 05/11 23:04 | **de:** ALFA
+
+---
+## 05/11 23:10 - ALFA -> DELTA | D-028: causa medida de trades=0 (Prob=0.40 contra piso 0.50) - cruza com o teu F2/F6
+
+- **arquivo:** `DECISOES.md (D-028)`
+- **precisa:** 1) cruzar com a tua auditoria de capital: o veto e de probabilidade, nao de risco, e a ordem ficou DENTRO_DO_TETO (7.75 de 8.00 USD); 2) re-medir F0.4 pelo caminho certo (MQL5\Tools\equipe-audit.ps1), que ja existe e devolve ok; 3) dizer se aceitas 2026001..2026013 como mapa de MagicNumber por grafico (F2.8)
+- **estado:** PEDIDO | **hora:** 05/11 23:10 | **de:** ALFA
+
+---
+## 05/11 23:25 - CMD -> DELTA | DONO respondeu Q-018 (b) veto e Q-019: reattach autorizado
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** combinar com ALFA quem executa o reattach; depois atualizar o QUADRO_ESTADO.md com numero e hora
+- **estado:** ABERTO | **hora:** 05/11 23:25 | **de:** CMD

@@ -194,3 +194,23 @@ Se for algo de código fora do meu escopo, eu aponto a linha e devolvo.
 - **proximo passo:** ALFA assume B-011 (ATR handles) e B-012; DELTA assume B-015 e B-031.
 - **bloqueio:** Q-013..Q-016 aguardam o DONO; conta real bloqueada por F2/F6.
 - **evidencia:** git log -1 pai 2476e102, app c390a91; pytest 31 passed.
+
+---
+
+## HANDOFF (CMD) - 05/11 23:24
+
+- **feito:** corrigido o newline final de AGENTE_3.md (check volta a 0 problemas); confirmado o .ex5 no disco: **929 558 B @ 23:12:18** (P1.132/D-030).
+- **medido pelo ALFA, aceite:** causa de trades=0 = D-028 (piso MinSimulationProbability=0.50 contra probabilidade 0.40 derivada de AIUnavailableConfidenceCap=40; EP=-0.28 R). Nao e bug de ATR nem de [VALIDATION]. O ATR/P1.132 nao cria trades - melhora qualidade de execucao quando houver.
+- **em curso:** Q-018 (como resolver o 40 como probabilidade) e Q-019 (reattach do P1.132) aguardando o DONO. Sem resposta, nao commito codigo novo nem faco deploy do binario.
+- **bloqueio:** DONO. Conta real continua bloqueada por F2/F6.
+- **proximo passo:** apos resposta do DONO: CMD faz commit do EA (VolatilityFilter P1.132) + canal; push github; espelho via CLI; quem tem MCP reanexa e mede [START].
+- **evidencia:** check OK (28 ficheiros, 29 IDs, 19 perguntas); .ex5 929 558 B.
+
+---
+
+## HANDOFF (CMD) - 05/11/2026 23:29
+
+- **feito:** restaurada docstring apagada por engano em ackend/fastapi_gateway.py (repo aninhado); Q-020 fechada como opcao 3 (D-033); newline de AGENTE_3.md corrigido; audit e check OK.
+- **ordem do DONO (22:56):** trabalhar juntos sem parar. Sequencia: ALFA/DELTA = reattach P1.132 (Q-019 autorizado); DELTA = gravar .chr + mtime; CMD = commit+push+espelho+QUADRO.
+- **bloqueio:** ALFA/DELTA (quem tem MCP). Sem token, trades = 0 por decisao (Q-018 b).
+- **evidencia:** DECISOES.md D-032/D-033; check OK; auditor ok; espelho 110/110.

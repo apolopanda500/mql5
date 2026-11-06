@@ -642,7 +642,9 @@ function Show-Lock {
             '> 1 reattach por vez (`PROTOCOLO.md` 5.5/5.6). Liberte ao terminar:'
             ('> `sync-agent.ps1 lock -Acao liberar -From ' + $who + '`')
             ''
-         ) -join "`r`n"
+         # Canal e LF puro (D-023): o LOCK.md escrevia CRLF e o proprio `check`
+         # passou a acusar "LOCK.md: 13 CR" logo apos cada `lock pegar`.
+         ) -join "`n"
          Invoke-Locked {
             Write-TextAtomic -Path $LockFile -Text $body
          }
@@ -656,10 +658,10 @@ function Show-Lock {
          }
          Invoke-Locked {
             Write-TextAtomic -Path $LockFile -Text (
-               "# LOCK DE OPERACAO - EQUIPE`r`n`r`n" +
-               "- **ESTADO:** LIVRE`r`n" +
-               "- **Ultimo dono:** {0}`r`n" -f $who +
-               "- **Libertado:** {0}`r`n" -f (Now-Stamp)
+               "# LOCK DE OPERACAO - EQUIPE`n`n" +
+               "- **ESTADO:** LIVRE`n" +
+               "- **Ultimo dono:** {0}`n" -f $who +
+               "- **Libertado:** {0}`n" -f (Now-Stamp)
             )
          }
          Add-Audit -Who $who -What 'lock liberar'

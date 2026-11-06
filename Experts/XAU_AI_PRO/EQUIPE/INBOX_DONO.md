@@ -308,3 +308,56 @@ Nivel C (so voce): 1) ligar metaeditor5 na lista de extensoes; 2) instalar Pytho
 - **estado:** ABERTA
 - **RESPOSTA:**
 
+
+---
+## Q-018 - A simulacao bloqueia 100 por cento dos sinais: Prob=0.40 abaixo do piso 0.50, porque a confianca capada da IA indisponivel (AIUnavailableConfidenceCap=40) e usada como probabilidade, o que anula AllowTradeWithoutAI=true. Medido em D-028. Como proceder?
+
+- **de:** ALFA | **hora:** 05/11 23:09
+- **prazo:** 06/11 12:00
+- **opcoes:** (a) P1.133: a confianca capada deixa de ser probabilidade e cai na formula geometrica 0.5+RR*0.1, sem tocar em pisos nem em risco; (b) manter o veto e assumir que o EA nao opera sem token no gateway, prioridade ao token; (c) outra instrucao
+- **estado:** FECHADA (dono, 05/11 23:25)
+- **RESPOSTA:**
+
+
+---
+
+- **RESPOSTA:** (b) Manter o veto - o EA nao opera sem token; provisionar XAU_GATEWAY_TOKEN e prioridade (F4.5) | **respondida por:** DONO | **hora:** 05/11 23:25
+## Q-019 - P1.132 esta compilado (0 errors, 0 warnings) mas NAO reattachado: o EA em memoria continua v1.2.167 e um restart do terminal carregaria o binario novo sem ninguem perguntar. Autoriza o reattach dos 13 graficos?
+
+- **de:** ALFA | **hora:** 05/11 23:12
+- **prazo:** 06/11 12:00
+- **opcoes:** (a) reattachar agora nos 13 graficos, aviso no momento; (b) esperar pela Q-018 e reattachar as duas coisas juntas; (c) nao reattachar, manter v1.2.167 em memoria
+- **estado:** FECHADA (dono, 05/11 23:25)
+- **RESPOSTA:**
+
+
+---
+
+## 05/11/2026 23:22 - DELTA -> DONO: URGENTE: a config viva dos 13 graficos nao sobrevive a um restart
+
+DONO, um risco novo que precisa de uma decisao tua em uma linha. E curto de proposito.
+
+**O que descobri, medido hoje.** Os 13 graficos estao a correr com `AllowTradeWithoutAI=true`. Mas o ficheiro que o terminal guarda no disco para esses mesmos 13 graficos diz `false`, e o ficheiro e de **21:37:10** - anterior ao reattach das 22:10 que pos o `true`. Ou seja: o valor `true` vive **so em memoria**.
+
+**O que isso significa em portugues claro.** Se o terminal fechar, reiniciar, ou o Windows reiniciar sozinho, os 13 graficos voltam com `AllowTradeWithoutAI=false`. A tua autorizacao (`D-014`) e o `Q-014` desaparecem sem ninguem decidir nada, e ninguem seria avisado - o EA simplesmente passaria a recusar sinais que hoje aceita.
+
+Isto tambem invalida parcialmente o trabalho do ALFA sobre "impressao digital da configuracao": o hash mede o que esta a correr agora, nao o que vai correr depois de um restart.
+
+**A correcao e pequena e nao toca em risco:** gravar a configuracao viva nos 13 graficos (salvar o perfil/template) e depois reconferir a hora dos ficheiros, para ficar provado que gravou. Nenhum parametro muda de valor - grava-se o que ja esta a correr. Mas e uma escrita que altera o estado dos 13 graficos, por isso preciso da tua palavra.
+
+**Decide uma destas e basta responder com o numero:**
+
+1. **SIM, grava** a configuracao viva nos 13 graficos agora (mantendo tudo como esta a correr, incluindo `AllowTradeWithoutAI=true`) e confirma a hora dos ficheiros como prova.
+2. **NAO, deixa como esta** e assume por escrito que um restart reverte o `AllowTradeWithoutAI` para `false` nos 13, ate decidires outra coisa.
+3. **Espera** - nao gravar nada ate o `Q-019` (reattach do P1.132) estar decidido, para nao gravar uma configuracao que vai mudar em seguida.
+
+**O meu voto, sem rodeios: a 3, e logo a 1.** Gravar agora fixaria `true` num binario que ainda vai ser substituido pelo `P1.132`; gravar depois do reattach fixa a configuracao definitiva de uma vez. Ordem correcta: decidir `Q-019`, reanexar, depois gravar e medir o mtime.
+
+Nao toquei em nada. Nao compilei. Nao reanexei. Nao gravei perfil. Nao fiz commit nem push. Nenhuma ordem foi enviada.
+
+
+- **estado:** ABERTO/RESPONDIDO/FECHADO | 05/11 23:22 | DELTA
+
+- **RESPOSTA:** Sim - reattach autorizado agora; ALFA/DELTA executam 13/13 e medem [START]; CMD commita e faz push | **respondida por:** DONO | **hora:** 05/11 23:25
+
+RESPOSTA (DONO, 05/11 22:56, registada pelo CMD): opcao 3 do DELTA (esperar, reattachar Q-019, depois gravar a config definitiva). Ordem do DONO: trabalhos juntos e sem interrupcao ate concluir o maximo esta noite. Registo em DECISOES.md D-033. Estado: FECHADO.

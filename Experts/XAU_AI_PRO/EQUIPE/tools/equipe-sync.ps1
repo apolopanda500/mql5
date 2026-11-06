@@ -556,6 +556,7 @@ switch($Cmd.ToLower()){
     }
     Write-Output ''
     Write-Output ('PEDIDOS :: total=' + $total + ' :: abertos=' + $abertos)
+    Show-FilaPedidos
   }
 
   'pedir' {
@@ -592,7 +593,7 @@ switch($Cmd.ToLower()){
 
   default {
     Write-Output ('COMANDO DESCONHECIDO :: ' + $Cmd)
-    Write-Output 'validos: status | check | dono | quem | pedidos | snapshot | append | substituir | aviso | eol | lock | unlock | lockstatus'
+    Write-Output 'validos: status | check | dono | quem | pedidos | pedir | aceitar | feito | devolver | bloquear | fechar | snapshot | append | substituir | aviso | eol | lock | unlock | lockstatus'
     exit 1
   }
 }
