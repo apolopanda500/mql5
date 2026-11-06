@@ -214,3 +214,13 @@ Se for algo de código fora do meu escopo, eu aponto a linha e devolvo.
 - **ordem do DONO (22:56):** trabalhar juntos sem parar. Sequencia: ALFA/DELTA = reattach P1.132 (Q-019 autorizado); DELTA = gravar .chr + mtime; CMD = commit+push+espelho+QUADRO.
 - **bloqueio:** ALFA/DELTA (quem tem MCP). Sem token, trades = 0 por decisao (Q-018 b).
 - **evidencia:** DECISOES.md D-032/D-033; check OK; auditor ok; espelho 110/110.
+
+---
+
+## HANDOFF (CMD) - 05/11/2026 23:35
+
+- **feito:** restaurada docstring em fastapi_gateway.py; D-033 registado (Q-020 opcao 3); commit+push repo pai e54b36ae (P1.132 + D-032/D-033); repo aninhado 165f48a (espelho P1.132 + docstring + testes + deps); pytest vip_progress 31/31; check OK; auditor ok; espelho 110/110.
+- **medido agora:** journal terminal: 481 [START] v1.2.167, **0** referencias a v1.2.168. P1.132 ainda nao reattachado - correct.
+- **bloqueio operacional:** reattach (ALFA/DELTA, quem tem MCP). Sem token, trades = 0 por decisao Q-018(b). .ex5 929 558 B @ 23:12:18.
+- **proximo passo:** ALFA/DELTA reattach 13/13 + medir [START]; DELTA grava .chr + mtime; CMD regista producao.
+- **evidencia:** logs terminal, git log e54b36ae / 165f48a, DECISOES.md D-028..D-033.

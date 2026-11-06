@@ -21,3 +21,4 @@ USADO | D | D-030 | ALFA | 05/11/2026 23:12:36 | P1.132 implementado: identidade
 USADO | D | D-031 | DELTA | 05/11/2026 23:20:46 | 
 USADO | D | D-032 | CMD | 05/11/2026 23:25:29 | resposta DONO Q-018 (b) veto e Q-019 reattach P1.132
 USADO | D | D-033 | CMD | 05/11/2026 23:31:15 | resposta DONO Q-020 (opcao 3, ordem de 22:56 mantida: trabalhos sem interrupcao)
+USADO | D | D-034 | ALFA | 05/11/2026 23:31:38 | fail-open: ATR errado encolhe a armadura e fabrica o RR da simulacao

@@ -1335,3 +1335,37 @@ MQL5\Profiles\Tester\equipe_B031_xauusd.set   (29 472 B)
 - **O que nao muda:** nenhum parametro de risco; Q-018 = veto mantido (sem
   token o EA nao opera); conta real continua bloqueada por `F2`/`F6`.
 
+
+
+## D-034 | 05/11/2026 | fail-open medido: o ATR errado encolhe a armadura e fabrica o RR da simulacao
+
+- **Estado:** ACTIVO | **Autor:** ALFA | **Ficheiros lidos:** `Core/ExecutionEngine.mqh:928-960`, `AI/AIEngine.mqh:520-590`, `Enterprise/SimulationEngine.mqh:80-115`.
+- **Ordem de leitura:** este achado so existe porque o D-028 foi medido primeiro. Sem saber que o veto real e a probabilidade, nao se via que o RR tambem estava a ser calculado sobre um R falso.
+
+1. **A cadeia, com as linhas do codigo.** Numa entrada sem stop, o R da simulacao nao e `StopLossPoints` (300): e a **armadura**, isto e, onde a operacao vira zero a zero:
+
+```
+double slRefSim = slRefPontos;                                  // ExecutionEngine
+if(EnableStoplessEntry && slRefPontos > 0.0)
+  {
+   double atrArm = GetATR(symbol);                              // <-- o ATR do P1.132
+   double armPts = (atrArm > 0.0) ? (atrArm * StoplessArmATRMult / point) : 0.0;
+   if(armPts < (double)StoplessArmMinPoints) armPts = 30.0;
+   if(armPts > 0.0 && armPts < slRefSim) slRefSim = armPts;
+  }
+```
+
+2. **O que acontece quando o ATR responde pela serie errada.** Os dois sentidos, medidos:
+   - ATR **grande** (o do ouro, `34.857860`, lido em oito pares): `armPts = 34.86*0.8/0.01 = 2788 pts`, que nao e menor que `slRefSim`, logo **nao entra** â€” o envelope de 204/300 pts segura o dano. Foi o caso do USDJPY as 22:35.
+   - ATR **pequeno** (o do USDCNH, `0.002087`, ou qualquer par de 5 casas lido num par de 2): `armPts` cai no piso de **30 pts**, `slRefSim = 30`, e a simulacao passa a julgar `RR = 165/30 = 5.5` com risco que **nao existe**. A armadura real arma depois a 0.8xATR = 30 pts, portanto o stop morre no primeiro ruido normal.
+
+3. **Porque isto ainda nao fez estrago, e porque isto e uma armadilha.** Hoje o `Prob=0.40` do D-028 bloqueia antes de o RR falso ser decisivo â€” os dois defeitos cancelam-se por acidente. **Se a Q-018 for respondida em (a)**, a probabilidade passa a vir da formula geometrica (`0.5 + RR*0.1`), que com `RR=5.5` da `1.05` e satura em `0.95`: **o portao abre e o RR fabricado pelo ATR passa a ser a unica coisa que decide**. Conclusao operacional: **Q-018 e P1.132 tem de entrar no mesmo build.** Uma sem a outra troca "nao opera" por "opera sobre um risco inventado", que num conta real e pior.
+
+4. **O `[ADV AI] Score 49.32 | Min 60.00` NAO e defeito de logica â€” e texto enganador.** `AI/AIEngine.mqh` imprime o par `score`/`MinAIConfidence` e so depois faz `if(!AIGateRequired()) return(true);`. Com `AllowTradeWithoutAI=true` o piso **nao e avaliado**, por desenho e com comentario no proprio codigo. O defeito e a linha anunciar um numero que parece veto e nao e: um leitor do journal conclui o inverso do que o codigo faz, e foi exactamente o que me levou a suspeitar do vector `[VALIDATION]` em vez do `40`. **Correccao proposta (P1.134), de texto apenas:** imprimir `Min` quando `AIGateRequired()` e verdadeiro e `Consultivo(Min)` quando e falso. Nao aplicada nesta entrada (o `edit` falhou por diferenca de espacos e nao vale gastar um ciclo de compilacao so por texto) â€” fica como B-035.
+
+5. **O que fica medido e nao muda com discussao:** (a) `RealGuardMaxUnarmedPositions=1` limita a UMA posicao sem stop armado, o que impede a catastrofe de grelha sem stop; (b) `RequireStopLoss=true` esta ligado; (c) o R de 204 pts publicado na linha `RISCO REAL DA ORDEM` e o mesmo que a simulacao usa, portanto **lote e simulacao sao coerentes entre si** â€” a incoerencia nao esta entre eles, esta entre os dois e o ATR que alimenta a armadura.
+
+6. **Criterio de aceitacao do conjunto:** depois de P1.132 + Q-018 no mesmo build, `[ATR] IDENTIDADE ERRADA` deve aparecer no maximo uma vez por par por hora (diagnostico), nunca repetido; `R_sim` nunca pode valer 30 pts por causa de ATR de outro simbolo; e `[CENARIO]` de cada par tem de publicar um ATR% coerente com o preco do proprio par (FX 0.01-0.5%, ouro 0.3-1.5%).
+
+**Proximo ID livre: `D-035` (confirmar no ledger).**
+
