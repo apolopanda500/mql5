@@ -1,0 +1,186 @@
+# QUADRO DE ESTADO - XAU_AI_PRO (medido, nao opinado)
+
+Regra: toda linha tem **numero** e **hora**. Linha sem medida nao entra aqui -
+entra no diario do agente.
+
+Ultima medicao global: **05/11/2026 21:41** (DELTA).
+
+---
+
+## 1. Versao e binario
+
+| Item | Valor | Como foi medido |
+|---|---|---|
+| Fonte no disco | **v1.2.167** | `XAU_AI_PRO.mq5:2` = `// XAU_AI_PRO v1.2.167`; `:22` = `#property version   "1.367"` |
+| `EA_VERSION_STRING` | `"1.2.167"` | `Enterprise/VersionManager.mqh:1` |
+| Ultimo compile | **0 errors, 0 warnings** | 05/11 21:33, 22 579 ms, cpu X64 Regular (DELTA) |
+| `XAU_AI_PRO.ex5` | **928 854 bytes**, 05/11 **21:36** | `dir` na pasta do EA |
+| Versao rodando | **build de 21:36** nos **13 graficos** | journal 21:36:40-41 (13x), 21:37:13 (15x), 21:39:31 (13x); **0 `[START]` entre 21:55 e 22:08** (ALFA, `D-011`) |
+| Binario em disco | **927 354 B**, 05/11 **21:57:47** (compile CMD, 0/0) | ainda **nao** carregado — ver `P-002`/`D-012` |
+| Perfil ativo | `XAI_P216_LIVE` | `profile_apply` 21:37 -> `ok:true` |
+| Ultimo commit local | `d23b42c6` = v1.2.167 (05/11 21:59) | `git log -1`; **push para `github/main` feito: `dc1db5e5..d23b42c6`** |
+| Compile de 05/11 21:57 | **0 errors, 0 warnings**, 20 825 ms, `.ex5` **927 354 B** 21:57:47 | `metaeditor64.exe /compile` (CMD) |
+| Espelho | **110/110 fontes, 0 divergentes** (21:57) | SHA-256, CMD |
+
+> Correcao de fato: o `AGENTE_1.md` §4.1 diz "versao rodando = v1.2.159".
+> Isso estava certo as 21:36:00 e ficou **errado as 21:36:40**. Medido agora:
+> producao roda **v1.2.167**. O reload aconteceu por compilacao (o terminal
+> reanexa sozinho o `.ex5` recompilado) e foi reforcado pelo `profile_apply`.
+
+---
+
+## 2. Conta e graficos
+
+| Item | Valor |
+|---|---|
+| Conta | demo **113568614**, MetaQuotes Ltd./MetaQuotes-Demo |
+| Saldo / equity | 12 636.32 / 12 636.32 |
+| Graficos abertos | **13**: XAUUSD H1, USDSEK, USDJPY, USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD (H1), USDBRL **M5**, USDRUB, USDSGD (H1) |
+| `USDCOP` / `USDCLP` | estavam no perfil as 21:37 (15 graficos) e **nao estao** as 21:39 |
+| Posicoes abertas | **0** (`[RESUMO]` 21:39:36: `posicoes: 0 EA (+0.00 USD) + 0 manual`) |
+| Trades do dia | **0** |
+
+---
+
+## 3. Posse (ver PROTOCOLO §4)
+
+| Zona | Dono |
+|---|---|
+| `AI/**`, `Core/SymbolManager.mqh`, `Core/Config.mqh`, `Indicators/**` | ALFA |
+| `Monitoring/**`, `Enterprise/NotificationCenter.mqh`, `Monitoring/AccountLogGate.mqh`, build/deploy/terminal | DELTA |
+| app `MQL5/Files/XAU_AI_PRO/**`, `backend/**`, espelho | CMD |
+| `XAU_AI_PRO.mq5`, `Enterprise/VersionManager.mqh` | compartilhado, 1 por vez |
+| `PENDENCIAS.md`, `PROGRESS.md`, `Tools/HANDOFF.md` | append-only, cada um no seu bloco |
+| **`git`: commit, push e deploy** | **CMD** (decisao do dono, 05/11 21:56) |
+
+> **Build x commit x deploy (dono, 05/11 21:56).** O dono atribuiu ao **CMD**
+> as tres operacoes de publicacao: `commit`, `push` e `deploy`. Isso **nao**
+> autoriza `git add -A`: 91 entradas no working tree, das quais 81 sao a arvore
+> espelhada `Files/XAU_AI_PRO/MQL5/**`. Commit e sempre por caminho explicito.
+> `push` para `origin` (Forge) continua **proibido** (credencial expirada,
+> `D-001` do legado); `push` para `github` exige o "vai" do dono por evento.
+> As outras camadas (codigo MQL5, app, docs) ficam em aberto ate o dono dizer.
+
+Arquivos **contaminados por dois agentes** (precisa de acordo antes da proxima
+edicao): `AI/AIConnector.mqh` (ALFA pos guarda `deBolsa` do GOLD-acao;
+DELTA pos `AIClockRelogio`), `XAU_AI_PRO.mq5`,
+`Enterprise/VersionManager.mqh`.
+
+---
+
+## 4. Provas fechadas (com evidencia)
+
+| Ciclo | Versao | O que ficou provado | Evidencia |
+|---|---|---|---|
+| P1.126 | v1.2.163 | EA reconecta sozinho ao gateway | `[AI] GATEWAY RECUPERADO` 20:35:04.522, `falhas=159 cego=357s resposta=357B sem intervencao` |
+| P1.127 | v1.2.164 | falha e recuperacao visiveis no journal | `[AI] GATEWAY \| HTTP 1001` 20:29:09.157 / 20:34:09.379; recuperacao 20:35:04.522 |
+| P1.128 | v1.2.165 | relogio do rasto de reconexao nao congela com o broker em baixo | `AccountLogGate` + gate com `TimeLocal()` |
+| P1.129 | v1.2.166 | notificacao deixou de sair 1x por GRAFICO | antes: `[RELATORIO]` 8x 20:28:21 e 12x 20:29:29; 13x `EA finalizado(reason=9)` 20:28:49. depois: **1x** `reason=9` 20:50:54.593 e **1x** `[RELATORIO]` 20:51:34.589 |
+| P1.131 (DELTA) | v1.2.167 | gates de notificacao continuam a segurar 13 graficos | 05/11 21:36:40 reload -> **1x** `EA finalizado(reason=2)`; 21:37:09 -> **1x** `reason=9`; 21:39:27 -> **1x** `reason=9`. Zero `[RELATORIO]` depois de 01:51:33 (servidor) |
+
+---
+
+## 5. Fila aberta (ID unico e dono)
+
+| ID | Resumo | Dono | Estado |
+|---|---|---|---|
+| P1.110 | contaminacao de simbolo por instancia | ALFA | aberto |
+| P1.111 | varias instancias escrevem `dataset.csv` sem sincronismo | CMD | aberto |
+| P1.119 | dedup de instancia de indicador por (nome, periodo, params) ignorando simbolo | ALFA | aberto |
+| P1.124 | gateway 401 + features 30F vs 25F | CMD | aberto |
+| **P1.130** | **COLISAO**: ALFA = universo `SymbolsFromMarketWatch` + guarda GOLD-acao; DELTA = os dois relogios `TimeCurrent` restantes | **FECHADA (a)** ALFA/DELTA 21:53 | **ABERTO** |
+| P1.131 | DELTA: relogios de `AIConnector`/`OperatorBrief` unificados em `AIClockRelogio()` | DELTA | **fechado, prova na §4** |
+| - | `[ATR] LEITURA SUSPEITA \| USDBRL \| ATR=3831.556600 \| ATR%=69424.83 \| barsCalc=2204 \| barrasSerie=24599` | ALFA | aberto |
+| - | PF 0.6206 a remedir (win rate 41.4%, 10-11 perdas seguidas) | CMD | aberto |
+| - | `EnableVolatilityFilter=false` nos 13 graficos | dono | aberto |
+| - | gateway Python **nao** e servico Windows: nao sobrevive a reboot | CMD | aberto |
+| - | 12 chamadas `POST /api/ai/predict` **sem credencial** vindas de outro processo | CMD | aberto |
+| - | espelho da app 158 versoes atras (agora sincronizado, nao commitado) | CMD | aberto |
+
+---
+
+## 6. Bloqueio de operacao (medido)
+
+Duas causas, encadeadas:
+
+1. **P1.125 (v1.2.162, commitado)** - `GetAIConfidence` aplicava
+   `AIUnavailableConfidenceCap` (40) quando `AIGateRequired()` era verdadeiro, e
+   40 < `MinAIConfidence` (60): o gate de IA era insatisfativel para **todos**
+   os simbolos. Journal 05/11 01:00-14:54: 25 `[VALIDATION] BLOCK | AI`, zero
+   `AI OK`.
+2. **Gateway sem autorizacao** - HTTP **401** na raiz, `/health` e
+   `/api/ai/predict` (XAUUSD, EURUSD, USDCNH, USDSGD).
+   `XAU_AI_GATEWAY_TOKEN`/`XAU_AI_API_TOKEN` nao existem no ambiente e
+   `AIGatewayToken` esta vazio nos 13 graficos.
+
+Com `AllowTradeWithoutAI=false` + `EnableAIFilter=true` +
+`EnableAutonomousMode=false`, nenhum simbolo passa. **Nao e bug** - e o
+comportamento documentado.
+
+Filtros corretos funcionando (nao sao defeito): `[VALIDATION] BLOCK | TREND SELL
+| USDCAD | contramao vetada | ADX=57.8 >= 22.0`; `GBPUSD | ADX=17.76 | Min=18.00`.
+
+**Decisao do dono, bloqueante:** (a) provisionar token no gateway **ou**
+(b) `EnableAutonomousMode=true` (IA vira consultora).
+
+> **FECHADO em 05/11 22:15 — `D-011` + `D-012`.** Nao ha bloqueio de
+> autenticacao: o EA autentica (journal `[AI] GATEWAY ... 1121 bytes |
+> disponivel=true`, zero 401 entre 21:36:45 e 21:39:59). A causa real de
+> `trades=0` e outra e esta medida: so o **XAUUSD** tem modelo publicado (H1);
+> os outros **20** devolvem `disponivel=false`; e `MinAIConfidence=60.0` contra
+> CONF **56.6-63.3**. `[SCANNER] RESUMO` 22:02:10: `visitas=1489 | sinais=142 |
+> trades=0 | bloqueios=1489`. **Nao e bug de codigo** — e configuracao de risco
+> e cobertura de modelo, decisao do dono.
+
+### 6.1 Correc&#807;ao medida (CMD, 05/11 21:51) — a causa 2 acima esta ERRADA
+
+Medido agora, sem imprimir o valor do segredo:
+
+| Prova | Resultado |
+|---|---|
+| `XAU_GATEWAY_TOKEN` no `.env` da raiz da app | **existe, 64 caracteres** |
+| `GET /api/ai/predict?symbol=XAUUSD&timeframe=H1` **com** `Authorization: Bearer` | **HTTP 200**, `available=true`, `signal=BUY`, `conf=57.2` ("inferencia real do modelo publicado") |
+| mesma rota **sem** cabecalho | HTTP 401 (fail-closed correto) |
+| `GET /` e `/health` com token | HTTP 404 — as rotas nao existem; a autenticacao passou |
+| `M15` / `M5` | 200 com `available=false`: o modelo so esta publicado em H1 |
+
+Portanto **nao falta token no gateway**. O que continua por provar e o outro
+lado: o `AI/AIConnector.mqh` monta `Authorization: Bearer <AIGatewayTokenEfetivo()>`
+(L1037-L1040) e o `AIGatewayTokenEfetivo()` le o `.env` (L793) — falta a linha
+de journal que prove que o EA **encontra** esse ficheiro a partir do terminal.
+Se o EA levar 401, a falha e de caminho/leitura do `.env`, nao de credencial.
+
+**Consequencia para `D-004`:** a opcao (a) nao exige provisionar nada; a
+opcao (b) (`EnableAutonomousMode=true`) e desnecessaria para destravar
+autenticacao e **nao deve** ser escolhida para esse fim.
+
+---
+
+Registro da colisao de ID (05/11 21:53, DELTA): `D-002` fechada em (a) -
+`P1.130` = universo do ALFA, `P1.131` = relogios do DELTA. Os comentarios dos
+fontes foram renomeados (5 pontos, comentario apenas) e o `.ex5` em producao
+continua o do compile de 21:36:40: **fonte e binario dessincronizados por
+comentario**, comportamento igual. Falta 1 compile, agora do CMD (`D-006`).
+
+Medido 22:07 (DELTA), depois do ciclo do CMD: compile **0 errors, 0 warnings**
+as 21:57:47 -> `.ex5` **927 354 B, 21:57**; **zero `[START]`** no journal entre
+21:55 e 22:12 e `Notifications.log` parado em **2188 linhas** -> o EA **nao**
+recarregou; producao corre o binario carregado as 21:39. Diferenca entre os dois
+binarios: **comentario apenas** (`P1.130` -> `P1.131`). Commits do CMD: EA
+`d23b42c6` (push `github/main` `dc1db5e5..d23b42c6`), espelho `1bb5122` em
+`develop` (**nao** pushed).
+
+Autorizacao total do dono aos 3 agentes (05/11 22:10, `D-012`): ALFA, DELTA e CMD
+operam sem pedir autorizacao passo-a-passo dentro das suas zonas - ler journal,
+compilar, commitar, `push` para `github`, publicar o espelho e **reanexar os
+graficos**. `D-003` (quem reanexa) e o push do espelho (`D-011`) ficam fechados
+por isso. **Limites que nao se movem:** conta real, parametros de risco/lote/
+stop/alvo/spread, remocao de guardas, `push` para `origin`/CodeBase.
+Serializacao continua: **1 compila por vez, 1 reanexa por vez**, anunciado antes.
+
+Medido 22:12 (DELTA): **0 posicoes** abertas em todos os simbolos; **13
+graficos** no perfil `XAI_P216_LIVE`; `.ex5` 927 354 B (21:57) em disco e
+**nao** carregado - producao corre o build das 21:36. `D-004` esta superado por
+medicao (`D-011`).
+
+Ultima alteracao: 05/11/2026 22:12 - DELTA.
