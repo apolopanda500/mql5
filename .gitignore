@@ -98,3 +98,7 @@ Profiles/Tester/*.opt
 Profiles/Tester/*.htm
 Profiles/Tester/*.xml
 experts.dat  
+
+# canal EQUIPE - estado mutavel (nao versionar backups nem lock)
+Experts/XAU_AI_PRO/EQUIPE/_SYNC/backup/
+Experts/XAU_AI_PRO/EQUIPE/_SYNC/LOCK

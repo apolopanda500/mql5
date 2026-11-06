@@ -157,4 +157,154 @@ coordenacao fora de `EQUIPE/` e erro de processo.
 
 ---
 
-Ultima alteracao: 05/11/2026 21:46 - Agente 2.
+---
+
+## 8. Sincronizacao e o 4o participante: o DONO (D-015, 05/11 22:23)
+
+Ordem do dono: "crie e autorize scripts ou modulos de sincronizacao entre 3
+agentes e o quarto eu o DONO". Autorizado, executado e registado em `D-015`.
+Este bloco e **acrescentado**: nada do que estava escrito acima foi alterado.
+
+### 8.1 O DONO no canal
+
+| Elemento | Regra |
+|---|---|
+| `EQUIPE/INBOX_DONO.md` | fila do dono, IDs `Q-0NN`. So o dono fecha; os agentes anexam. |
+| Quem escreve | qualquer agente, no formato da §3, com `-> DONO` |
+| Como o dono responde | no chat basta: o agente que recebeu a resposta escreve `RESPOSTA (DONO) ... estado: FECHADO` |
+| Precedencia | decisao do dono > `QUADRO_ESTADO.md` > diario de agente |
+
+Ler a fila do dono inteira num comando:
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File tools\equipe-sync.ps1 dono
+```
+
+### 8.2 `EQUIPE/tools/equipe-sync.ps1` - o que faz
+
+| Comando | Para que serve |
+|---|---|
+| `status` | tabela medida: bytes, linhas, CR, ABERTO/RESP/FECHADO, UTF-8, hora |
+| `check` | integridade: LF puro, UTF-8 valido, IDs `D-`/`P-`/`Q-` duplicados, ficheiros obrigatorios |
+| `dono` | imprime so os blocos ABERTOS da fila do dono |
+| `quem` | conta itens ABERTOS por destino (ALFA/DELTA/CMD/DONO) |
+| `snapshot` | escreve `_SYNC/SYNC_STATUS.md` + `_SYNC/status.json` (retrato unico) |
+| `append` | anexa texto, com backup previo em `_SYNC/backup/` |
+| `substituir` | substitui **uma** ancora; recusa o ficheiro inteiro se o count != 1 |
+| `aviso` | cria bloco `## <data> - X -> Y: assunto` na inbox do destino |
+| `lock` / `unlock` / `lockstatus` | serializa escritas: um agente de cada vez |
+
+Regras que a ferramenta aplica:
+
+1. **Escrita byte-a-byte** com ISO-8859-1 (28591): preserva BOM e bytes UTF-8
+   quebrados. Nunca reescreve o ficheiro inteiro.
+2. **Backup antes de escrever**: `_SYNC/backup/<nome>.<AAAAMMDD_HHMMSS>.bak`.
+3. **Lock**: quem vai escrever cria `_SYNC/LOCK` com `-De ALFA|DELTA|CMD|DONO`;
+   se ja existir, a ferramenta **recusa** e diz de quem e. Substitui o "a
+   ultima escrita ganha", que ja custou dois rodapes e um cabecalho.
+4. **Ancora unica**: `substituir` so grava se a ancora aparecer
+   **exactamente uma vez**; caso contrario nao grava e imprime `count=N`.
+5. **Texto com acento nunca por linha de comando.** O `cmd` converte-o para 1
+   byte e estraga o UTF-8 do canal (aconteceu as 22:25 com `§`, corrigido as
+   22:27). Corpo com acento vai num ficheiro UTF-8, passado com
+   `-CorpoArquivo <caminho>`; a ferramenta **recusa** corpo nao-ASCII inline.
+
+### 8.3 O que a ferramenta NUNCA faz
+
+Compilar, reanexar, commitar, fazer push, mexer em parametro de risco, apagar
+ficheiro de outro agente. Nao escreve fora de `EQUIPE/*.md` e `EQUIPE/_SYNC/`.
+
+### 8.4 Ciclo recomendado
+
+1. `equipe-sync.ps1 status` - ver o canal antes de tocar em nada.
+2. `equipe-sync.ps1 lock -De <EU> -Motivo "..."` antes de editar.
+3. Editar com `append` ou `substituir` (backup automatico).
+4. `equipe-sync.ps1 unlock -De <EU>`.
+5. `equipe-sync.ps1 check` - 0 problemas = canal integro.
+6. No fecho de ciclo: `equipe-sync.ps1 snapshot` - o dono le **um** ficheiro.
+
+---
+
+Ultima alteracao: 05/11/2026 22:25 - DELTA (`§8`: sincronizacao + DONO como 4o participante; `D-015`).
+
+---
+
+## 8.5 Consolidacao (D-017, 05/11 22:36) - um lock, um caminho de escrita
+
+As 22:29 existiam **dois** modulos e **dois** locks. Nenhum agente via o lock do outro. Fica assim:
+
+| Camada | Ferramenta |
+|---|---|
+| escrever no canal | `tools\sync-agent.ps1` (Mutex + escrita atomica + ledger `IDS.md`) |
+| ler / verificar / reparar | `tools\equipe-sync.ps1` (`status`, `check`, `dono`, `snapshot`, `eol`) |
+| lock | **`LOCK.md`** - unico; os dois modulos leem e escrevem o mesmo ficheiro |
+
+Regras que passam a valer para os quatro (ALFA, DELTA, CMD, DONO):
+
+1. Antes de escrever: `tools\equipe-sync.ps1 lock -De <AGENTE> -Motivo "<o que vais fazer>"`. Se recusar, o canal e de outro.
+2. Depois de escrever: `unlock -De <AGENTE>`.
+3. O EOL do canal e **LF puro**. Depois de qualquer escrita: `tools\equipe-sync.ps1 check`. Se acusar `CR=n`, correr `eol` (faz backup antes).
+4. Um ID novo so se reserva com `tools\sync-agent.ps1 id -Tipo D|P -From <AGENTE>`. Nunca "o proximo numero" a mao - foi isso que criou tres `D-012` e dois `D-013`.
+5. Texto com acento nunca por linha de comando (o cmd converte-o em 1 byte e estraga o UTF-8 do canal): escreve-se num ficheiro UTF-8 e passa-se por `-CorpoArquivo`.
+6. O DONO fecha so as suas: `tools\sync-agent.ps1 answer -From DONO -Q Q-nnn -Resposta "..."`. Nenhum agente fecha uma pergunta do dono.
+
+Ultima alteracao: 05/11/2026 22:36 - DELTA (`8.5`: consolidacao de locks; `D-017`).
+
+
+---
+
+## 9. Equipe de 4 em regime de producao (D-018, 05/11 22:55)
+
+Autorizacao do DONO (22:43): ferramentas novas, pesquisa, git, limpeza de
+lixo regeneravel, trabalho sem interrupcao - para concluir o projeto
+**10/10 em uso real**. Este bloco e **acrescentado**; nada acima foi alterado.
+
+### 9.1 Documentos de comando
+
+| Ficheiro | Para que serve | Quem mantem |
+|---|---|---|
+| `PLANO_10_10.md` | fases `F0`..`F9`, portoes numericos, definicao de 10/10 | CMD |
+| `BACKLOG.md` | `B-001`..`B-034` com dono, criterio e estado | todos |
+| `FERRAMENTAS.md` | runtimes, MCP, scripts, contrato de limpeza | CMD |
+| `QUADRO_ESTADO.md` | ecra unico do estado medido | CMD antes de cada commit |
+
+**Precedencia:** decisao do DONO > `DECISOES.md` > `PLANO_10_10.md` >
+`QUADRO_ESTADO.md` > `BACKLOG.md` > diario de agente.
+
+### 9.2 Continuidade (pode haver dias com so 2 agentes)
+
+1. Quem para escreve `## HANDOFF` no seu diario:
+   `feito | em curso | proximo passo | bloqueio | evidencia`.
+2. Quem assume le **dois** ficheiros: `QUADRO_ESTADO.md` e o HANDOFF mais
+   recente. Se discordarem, ganha o medido mais recente.
+3. Nenhum agente espera por outro para **medir**; so para **decidir** o que
+   nao e seu.
+
+### 9.3 Regra de evidencia
+
+- Todo item do `BACKLOG.md` fecha com **numero + comando + hora**.
+- "Funciona" nao e evidencia. "13/13 `[START] v1.2.167` as 22:11" e.
+- Quem nao mediu nao assina.
+
+### 9.4 Conta real - portoes intransponiveis
+
+`F2` (seguranca de capital) e `F6` (30 dias demo, PF >= 1.2, DD <= 8%)
+fechados **antes** de qualquer ordem em conta real. O DONO aprova por escrito.
+Parametros de risco continuam exclusivos do DONO, mesmo com autorizacao total
+de execucao.
+
+### 9.5 Limpeza (lixo regeneravel)
+
+- `-DryRun` por omissao; lista antes de apagar; relatorio em `_SYNC/`.
+- Permitido: `%TEMP%\opencode`, `__pycache__`, `.pytest_cache`,
+  `_SYNC/backup` > 14 dias, logs > 30 dias, `dist/`, `build/`, `.mypy_cache`.
+- Proibido: `Data/*.csv`, `.ex5` em uso, `Profiles/` do terminal, `.git`,
+  `.env`, `.venv`, `node_modules` da app, e fora da arvore `MQL5\` sem lista
+  aprovada pelo DONO.
+
+### 9.6 Pesquisa e melhoria
+
+Web, GitHub e documentacao autorizados. Toda ideia entra no `BACKLOG.md` com
+**fonte, custo e risco** antes de virar codigo. Revisao de backlog a cada dia
+de trabalho.
+

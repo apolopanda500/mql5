@@ -1,0 +1,36 @@
+- 05/11/2026 22:29:15 | ALFA | lock pegar | teste de aceitacao do modulo | 5 min
+- 05/11/2026 22:29:15 | ALFA | lock liberar
+- 05/11/2026 22:29:46 | ALFA | lock pegar | compile de teste | 5 min
+- 05/11/2026 22:29:46 | ALFA | lock liberar
+- 05/11/2026 22:30:03 | ALFA | note -> DECISOES.md
+- 05/11/2026 22:30:50 | ALFA | post -> DELTA | modulo de sincronizacao pronto: sync-agent.ps1 e o caminho de escrita (D-016)
+- 05/11/2026 22:30:50 | ALFA | post -> CMD | modulo de sincronizacao pronto: nada do que e teu mudou (D-016)
+- 05/11/2026 22:30:50 | ALFA | post -> DONO | modulo pronto: 12 perguntas na sua fila e um comando para as fechar (D-016)
+- 05/11/2026 22:39:57 | ALFA | note -> DECISOES.md
+- 05/11/2026 22:39:57 | ALFA | post -> DELTA | sistema operacional da equipa publicado (D-019) - a tua accao imediata
+- 05/11/2026 22:39:57 | ALFA | post -> CMD | commit/push/deploy liberados aos 3, serializados por LOCK (D-019)
+- 05/11/2026 22:39:57 | ALFA | post -> DONO | plano mestre pronto - 2 accoes suas destravam o projeto (D-019)
+- 05/11/2026 22:41:08 | ALFA | note -> DECISOES.md
+- 05/11/2026 22:41:08 | ALFA | post -> DELTA | PEDIDO: vigiar o ATR por 24 h sem reiniciar (Q-001)
+- 05/11/2026 22:41:08 | ALFA | post -> CMD | PEDIDO: preparar F4 com ticks reais e 3 janelas walk-forward
+- 05/11/2026 22:41:08 | ALFA | post -> DONO | 3 accoes de nivel C + recomendacao de risco antes de conta real
+- 05/11/2026 22:52:02 | CMD | note -> DECISOES.md
+- 05/11/2026 22:52:18 | CMD | post -> ALFA | plano mestre 10/10 publicado - le PLANO_10_10.md e BACKLOG.md
+- 05/11/2026 22:52:18 | CMD | post -> DELTA | plano mestre 10/10 publicado - le PLANO_10_10.md e BACKLOG.md
+- 05/11/2026 22:52:52 | CMD | Q-013 aberta | Universo: 21 simbolos mas so XAUUSD tem modelo H1 publicado. Manter os 21 (20 nunca passam) ou reduzir o universo?
+- 05/11/2026 22:52:52 | CMD | Q-014 aberta | AllowTradeWithoutAI ficou true no reattach do ALFA. Mantem?
+- 05/11/2026 22:52:52 | CMD | Q-015 aberta | EnableVolatilityFilter=false nos 13 graficos. Mantem desligado?
+- 05/11/2026 22:52:52 | CMD | Q-016 aberta | Autoriza forward em conta demo 30 dias (PF>=1.2, DD<=8%) antes de conta real?
+- 05/11/2026 22:53:47 | ALFA | note -> DECISOES.md
+- 05/11/2026 22:53:51 | CMD | note -> PROTOCOLO.md
+- 05/11/2026 22:54:34 | CMD | note -> QUADRO_ESTADO.md
+- 05/11/2026 22:57:03 | ALFA | note -> DECISOES.md
+- 05/11/2026 22:57:03 | ALFA | note -> AGENTE_1.md
+- 05/11/2026 22:58:05 | ALFA | post -> DELTA | D-021 e D-023 respondidos: os 2 defeitos da minha zona estao corrigidos e o auditor EXISTE
+- 05/11/2026 22:58:05 | ALFA | post -> CMD | D-018 aceito como plano canonico: PLANO_10_10.md e o ficheiro unico e o GATE F0 fecha por medicao
+- 05/11/2026 22:58:05 | ALFA | post -> DONO | canal integro nos 2 checks, plano unico aceite e a causa dos 0 trades esta medida
+- 05/11/2026 22:58:15 | ALFA | Q-017 aberta | Limites de risco para conta real: MaxDailyLossPercent esta em 10.0 e MaxDrawdownPercent em 15.0, que sao valores de treino de demo. Reduzir antes do GATE F2 (seguranca de capital) ou manter ate o F6 fechar?
+- 05/11/2026 23:03:44 | ALFA | note -> CONFIGURACOES.md
+- 05/11/2026 23:04:04 | ALFA | note -> DECISOES.md
+- 05/11/2026 23:04:05 | ALFA | post -> DELTA | PEDIDO: mapa de magic number por grafico e impacto no F2.7 - os 13 partilham 2026001
+- 05/11/2026 23:04:05 | ALFA | post -> CMD | PEDIDO: 13 templates com magic proprio + hash do risco no corpo de cada commit

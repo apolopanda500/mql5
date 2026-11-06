@@ -125,3 +125,44 @@ algum par nao casar exatamente 1 vez, gravar com `UTF8Encoding($hasBom)`.
 ---
 
 Ultima alteracao: 05/11/2026 21:52 - DELTA.
+## 05/11/2026 22:23-22:25 - modulo de sincronizacao do canal (`D-015`)
+
+Ordem do dono: "crie e autorize scripts ou modulos de sincronizacao entre 3
+agentes e o quarto eu o DONO". Feito:
+
+- `EQUIPE/tools/equipe-sync.ps1` - 11 subcomandos; escrita byte-a-byte
+  (ISO-8859-1), backup automatico em `_SYNC/backup/`, **lock** para serializar
+  escritas (acabou o "a ultima escrita ganha") e `substituir` que recusa o
+  ficheiro inteiro quando a ancora nao aparece exactamente uma vez - foi o
+  defeito do `canal_atr_2226.ps1` (`count=0`).
+- `EQUIPE/INBOX_DONO.md` - fila `Q-001..Q-012`: o DONO como 4o participante.
+- `PROTOCOLO.md` §8 novo (acrescentado, nada apagado) e `DECISOES.md` `D-015`.
+- `_SYNC/SYNC_STATUS.md` + `_SYNC/status.json` gerados por `snapshot`.
+
+**Correcao de rigor do mesmo ciclo:** escrevi `22:26` em tres linhas da
+`INBOX_AGENTE_1.md` quando o relogio local marcava 22:20 - horas no futuro.
+Trocado para 22:20. `findstr "22:26" EQUIPE\*.md` = **0 linhas**.
+
+**Medido:** `check` = `CANAL INTEGRO :: 0 problemas`; 11 ficheiros de canal,
+CR=0 e UTF-8 valido em todos. Nenhum parametro de risco tocado, nada
+compilado, nada commitado, nada pushed.
+
+## 05/11/2026 22:30-22:36 - consolidacao dos dois modulos de sync (`D-017`)
+
+- O ALFA entregou o `tools\sync-agent.ps1` (`D-016`) com Mutex + ledger `IDS.md` + `LOCK.md` e deixou escrito que a consolidacao era decisao minha. Decidi.
+- **Um lock:** o `equipe-sync.ps1` passou a usar `LOCK.md` (formato do ALFA) em vez de `_SYNC\LOCK`. `Test-Lock` -> `Get-LockMd` (le negrito, `ESTADO`, `Expira`), `Set-Lock` e `Remove-Lock` reescritos; um segundo agente e recusado e a validade e honrada.
+- **`eol` novo:** normaliza CRLF -> LF com backup. Correu em 7 ficheiros (`DECISOES`, `IDS`, `INBOX_AGENTE_2`, `INBOX_AGENTE_3`, `INBOX_DONO`, `LOCK`, `SYNC_LOG`) e o `check` voltou a `CANAL INTEGRO :: 0 problemas` (antes: 4 problemas, todos CR).
+- **`dono` corrigido:** conta so blocos `## Q-`; o aviso do ALFA das 22:30 inflava a fila para 13 (a fila real e 12).
+- **`D-017` reservado pelo ledger do ALFA** (`sync-agent.ps1 id -Tipo D -From DELTA`), nao escrito a mao - e a primeira prova de que o ledger serve para os dois modulos.
+- Nada compilado, nada commitado, nada pushed; nenhum parametro de risco tocado; nenhuma posicao aberta ou modificada.
+
+## 05/11/2026 22:40-22:48 - "um pode pedir ao outro ajudar e mais configuracoes" (`D-021`)
+
+- **O que o ALFA ja tinha feito (aceite, nao reescrito):** `PEDIDO_DE_AJUDA.md` (formato de 8 linhas, 6 estados, 7 regras, matriz de ajuda) e `CONFIGURACOES.md` (niveis A/B/C, 11 inputs do EA medidos, recomendacao 5%/10% antes de G5). Ambos do `D-020`.
+- **O que faltava e fechei:** (1) **leitor de pedidos** - `equipe-sync.ps1 pedidos [-De ALFA|DELTA|CMD|DONO]`; primeira medicao `total=9 :: abertos=9` (o ALFA tinha pedido aos tres e nada estava fechado, porque nao havia comando para ver); (2) **mapa de configuracao do lado dos agentes** - `CONFIG_AGENTES.md` novo, com as raizes e capacidades que o pre-flight devolveu agora; (3) **defeito medido no protocolo** - `sync-agent.ps1` linha 44 so aceita `ABERTO|RESPONDIDO|FECHADO` e o protocolo define 6 estados, logo `-Estado ACEITE` falha antes de escrever.
+- **Medido no pre-flight (22:42, os 3 servidores iguais):** `compiler_mql5=true` build 6296 x64; **`compiler_python=false`** nos tres; `can_run_backtest`/`optimization` = true; `can_read_*_journal` = true; leitura 256 MB; raizes `MQL5/Tester/Logs/Common` (leitura) e `MQL5/Common` (escrita/execucao).
+- **Duas conclusoes que mudam a fila:** o `Q-002` (IA `0.00%/0.00%`) tem **duas causas em serie** - primeiro falta o motor Python, so depois o token; e o **F4 nao depende de instalar nada** (`can_run_backtest=true`), ao contrario do que o `MCP_E_MOTORES.md` sugeria.
+- **Correccao registada:** o `MCP_E_MOTORES.md` diz `metaeditor5` "instalado, desligado" - esta **ligado e operacional** (leu, escreveu, apagou e validou sintaxe nesta sessao).
+- **IDs:** `D-021` reservado pelo ledger; **proximo livre `D-022`**. Contradicao registada: `PLANO_MESTRE`/`AUTORIZACOES`/`ROTINA` citam `D-017`/`D-019` para assuntos que o `DECISOES.md` atribui a outra coisa - o ledger e a fonte de verdade.
+- **Canal no fim:** `check` -> `CANAL INTEGRO :: 0 problemas` (depois de `eol` em 6 ficheiros, CR 4/4/18/18/18/8 -> 0, todos do `sync-agent.ps1`); snapshot `SYNC_STATUS.md` 3755 B, `status.json` 12379 B; `pedidos` total=15 abertos=15; LOCK livre.
+- **Nada de risco:** nenhum parametro de risco, nenhum `.ex5`, nenhum commit/push, nenhuma ordem, nenhuma escrita fora de `EQUIPE/` e `MQL5/Files/Temp`.

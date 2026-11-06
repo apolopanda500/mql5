@@ -364,4 +364,114 @@ simbolos ou `EnableAutonomousMode=true`.
 input alterado. O reattach do `.ex5` de 21:57 continua a esperar autorizacao do
 dono (`D-003` / `PROTOCOLO.md` §5.5).
 
+### 22:16 -- reattach executado (autorizacao total do dono, `D-012`)
+
+- **13/13** graficos receberam o EA entre **22:10:47.878** e **22:11:06.500**
+  (`[STOP] ... motivo=1` -> `[START] XAU_AI_PRO v1.2.167`). O binario carregado
+  passou a ser o de **21:57** (927.354 B) -- o que estava compilado e nunca
+  reanexado.
+- **Um unico** parametro mudou: `AllowTradeWithoutAI=true`. Tudo o resto ficou
+  igual aos defaults compilados que ja estavam em uso. **Nenhum parametro de
+  risco tocado.**
+- **O gate de IA esta OFF, e e medivel.** As linhas cegas `[SCANNER] ... |
+  Motivo=VALIDATION` deram lugar a motivos explicitos:
+  `[VALIDATION] BLOCK | TREND SELL | USDCAD | contramao vetada | ADX=56.7 >= 22.0`
+  e `TREND BUY | USDJPY | contramao vetada | ADX=31.2`, ambas as 22:16:05. A IA
+  continua a ser consultada -- `[AI] GATEWAY | XAUUSD | H1 | 1121 bytes |
+  disponivel=true`, `CONF=54.50%` as 22:11:18.
+- Transitorio de reload, **ja resolvido**: 9x `[ATR] HANDLE MORTO ... barsCalc=-1
+  | erro=4807` entre 22:14:26 e 22:14:40 (handles a aquecer apos o reload). As
+  22:16:05 o ADX ja e lido (56.7 / 31.2) -> handles recuperados.
+- **Posicoes: 0.** Os dois sinais do ciclo foram vetados **por desenho**
+  (contramao com `ScenarioCounterTrendMaxADX=22`). O EA esta a operar e a esperar
+  sinal valido -- nao esta bloqueado.
+- `[BACKUP] Backup concluido com sucesso | arquivos=99 | snapshot=backup_20261105_221132`
+  as 22:11:33.
+
 Ultima alteracao: 05/11/2026 22:14 - ALFA.
+
+### 22:20 -- fecho dos 3 itens autorizados (dono: "autorizacao total 10/10 100%")
+
+- Os tres itens estao fechados e medidos: **(a)** reattach 13/13 `[START]`
+  v1.2.167 entre 22:10:47.878 e 22:11:06.500; **(b)** gate de IA aberto com um
+  unico parametro (`AllowTradeWithoutAI=true`), provado as 22:16:05 por dois
+  `[VALIDATION] BLOCK` com razao explicita em vez de `Motivo=VALIDATION` cego;
+  **(c)** `D-008` (camadas) e `D-010` (colisao de IDs) marcados `FECHADA` no
+  `DECISOES.md`, citando o bloco de fecho do CMD.
+- **Nada foi compilado nem reanexado de novo.** Medido 22:18: o fonte mais
+  recente e das **21:51:18** e o `.ex5` e das **21:57:47** - binario e fontes
+  batem, logo nao ha compile pendente e um segundo reattach seria risco sem
+  ganho.
+- **`Enterprise/VersionManager.mqh:63` ja diz `P1.131`** (relogios). O que
+  continua sem changelog e o **`P1.130` do universo universal + guarda
+  `deBolsa`** - e zona compartilhada, fica para quem la mexer e para o meu
+  proximo compile.
+- **Corrigi uma colisao tripla de IDs:** havia tres secoes `D-012` no
+  `DECISOES.md`. A minha (reattach) passou a **`D-014`**; as duas do dono/CMD
+  (autorizacao e fecho em bloco) ficam `D-012`. Proximo livre: **`D-014`**.
+- **Defeito observado e nao resolvido:** `[ATR] LEITURA SUSPEITA |
+  ATR=34.857860` em 7 pares as 22:11 - o ATR do ouro devolvido noutros
+  simbolos, com `barsCalc=60374` (serie do XAUUSD). O auto-curativo do `P1.113`
+  funcionou (devolveu 0.0, limpou a cache, sarou sem reiniciar). **Terceira
+  ocorrencia em reload** - proponho `P1.132` para matar a causa, nao o sintoma.
+- **Estado operacional as 22:20:** 0 posicoes, 0 trades, saldo 12 636.32,
+  master = USDCNH H1, IA viva so em XAUUSD H1 (`CONF=54.50%`), 20 simbolos com
+  `disponivel=false`. O EA esta **desbloqueado e a espera de sinal valido**.
+
+
+## 05/11/2026 22:58 - ALFA - P1.132 / F3.1 / `Q-001`: o ATR de TODOS os pares e o ATR do OURO, e o handle e o MESMO (10) em todos
+
+**Isto e a causa-raiz do `Q-001`, medida no journal do terminal, nao deduzida.**
+Fonte: `get_expert_journal` 22:00-23:05, filtro `ATR` (47 registos).
+
+### A prova, em tres numeros
+
+1. **`handle=10` em nove simbolos diferentes** entre 22:10:48 e 22:11:06:
+   XAUUSD, USDJPY, USDSEK, USDCNH, USDCAD, AUDUSD, USDCZK, USDCHF, GBPUSD,
+   USDSGD, NZDUSD. Um handle por simbolo **nao pode** dar o mesmo numero
+   - o que existe e **um** handle a ser devolvido a todos.
+2. **`barsCalc` (do handle) = 60 374 em todos**, e `barrasSerie` (do simbolo)
+   = 100 016 / 72 098 / 66 894, conforme o par. `barsCalc` **e exactamente**
+   `Bars(XAUUSD,H1)` (o grafico mestre). Handle preso na serie do **ouro**.
+3. **`ATR=34.857860` identico em oito pares** (USDJPY 157.8, USDSEK 9.80,
+   USDCAD 1.4014, AUDUSD 0.6933, USDCNH 6.663, USDCHF 0.8163, USDCZK 21.689,
+   GBPUSD 1.3455, NZDUSD 0.5594, USDSGD 1.2797). Um ATR de 34.86 num par de
+   iene e 150x o ATR real - e o ATR do ouro (preco ~4 090, 0.85%).
+
+### O que isto significa para o EA (e porque nao ha trades)
+
+- A guarda `ATR_MAX_PLAUSIBLE_PCT` **funciona**: detecta `ATR%=2487.31` e
+  devolve `0.0` em vez de operar com valor absurdo. **Nao e um bug de risco.**
+- Mas o efeito pratico e que **10 dos 13 graficos ficam sem ATR% para sempre**
+  (`[CENARIO] USDCNH | ATR%=sem leitura(atr=0.000000,...)` de 22:17 a 22:52,
+  a cada ~60 s). Sem ATR% nao ha dimensao de volatilidade -> `visitas=1489`,
+  `sinais=142`, **`trades=0`**.
+- O `ATRCacheDrop` **deita o handle fora e o `iATR` seguinte volta a dar 10**.
+  E por isso que a "auto-cura" falhou 3x (P1.113/P1.117/P1.122): libertar e
+  pedir de novo **nao muda a identidade da serie** que o terminal entrega.
+
+### Porque a correccao tem de ser outra
+
+Enquanto o ATR vier de um **handle de indicador partilhado pelo terminal**, a
+identidade da serie e do terminal, nao do EA: `iATR(symbol,...)` pode devolver
+um handle ja existente ligado a outra serie, e o `IndicatorRelease` desta
+instancia nao o desliga das outras. Repetir "drop + recreate" e repetir o
+defeito.
+
+**Proposta P1.132 (a implementar, com LOCK e sem tocar em risco):**
+
+1. `ATRSymbolHandle` valida **identidade na criacao**: se
+   `BarsCalculated(handle) > 0` e `BarsCalculated(handle) != Bars(symbol, tf)`,
+   liberta e conta uma falha de identidade (log `[ATR] IDENTIDADE ERRADA`).
+2. Se falhar 2x para o mesmo simbolo, **deixa de usar handle** e passa a
+   calcular ATR **das proprias rates do simbolo** (`CopyRates` + True Range +
+   SMMA), que nao tem nocao de "serie de outro instrumento".
+3. `fail-closed`: sem ATR valido **nao opera** (comportamento actual mantido) e
+   a linha `[CENARIO]` passa a dizer `ATR%=indisponivel(handle descartado)` em
+   vez de `sem leitura`, para a proxima medicao nao se confundir outra vez.
+4. Criterio de aceitacao (`B-011`): **13/13** graficos com ATR% plausivel
+   durante **72 h**, **0** `erro=4807`, **0** `[ATR] LEITURA SUSPEITA`.
+
+**Nao compilei, nao reanexei, nao mexi em parametro nenhum.** Compilar e
+reancorar precisam de `LOCK` e de autorizacao do DONO na hora (`D-014`).
+

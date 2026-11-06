@@ -15,8 +15,8 @@ Ultima medicao global: **05/11/2026 21:41** (DELTA).
 | `EA_VERSION_STRING` | `"1.2.167"` | `Enterprise/VersionManager.mqh:1` |
 | Ultimo compile | **0 errors, 0 warnings** | 05/11 21:33, 22 579 ms, cpu X64 Regular (DELTA) |
 | `XAU_AI_PRO.ex5` | **928 854 bytes**, 05/11 **21:36** | `dir` na pasta do EA |
-| Versao rodando | **build de 21:36** nos **13 graficos** | journal 21:36:40-41 (13x), 21:37:13 (15x), 21:39:31 (13x); **0 `[START]` entre 21:55 e 22:08** (ALFA, `D-011`) |
-| Binario em disco | **927 354 B**, 05/11 **21:57:47** (compile CMD, 0/0) | ainda **nao** carregado — ver `P-002`/`D-012` |
+| Versao rodando | **build de 21:57** nos **13 graficos** | reattach **22:10:47.878 -> 22:11:06.500**: **13x `[START] XAU_AI_PRO v1.2.167`**, cada um precedido de `[STOP] ... motivo=1` (ALFA, `D-014`) |
+| Binario em disco | **927 354 B**, 05/11 **21:57:47** (compile CMD, 0/0) | **carregado nos 13 graficos desde 22:10:47** (`D-014`). Medido 22:18: nenhum `.mq5`/`.mqh` mais novo que o `.ex5`, logo binario e fontes batem |
 | Perfil ativo | `XAI_P216_LIVE` | `profile_apply` 21:37 -> `ok:true` |
 | Ultimo commit local | `d23b42c6` = v1.2.167 (05/11 21:59) | `git log -1`; **push para `github/main` feito: `dc1db5e5..d23b42c6`** |
 | Compile de 05/11 21:57 | **0 errors, 0 warnings**, 20 825 ms, `.ex5` **927 354 B** 21:57:47 | `metaeditor64.exe /compile` (CMD) |
@@ -178,9 +178,40 @@ por isso. **Limites que nao se movem:** conta real, parametros de risco/lote/
 stop/alvo/spread, remocao de guardas, `push` para `origin`/CodeBase.
 Serializacao continua: **1 compila por vez, 1 reanexa por vez**, anunciado antes.
 
-Medido 22:12 (DELTA): **0 posicoes** abertas em todos os simbolos; **13
-graficos** no perfil `XAI_P216_LIVE`; `.ex5` 927 354 B (21:57) em disco e
-**nao** carregado - producao corre o build das 21:36. `D-004` esta superado por
-medicao (`D-011`).
+**Reattach feito as 22:10:47-22:11:06 (ALFA), medido 22:20 (DELTA):** 13
+`[START] XAU_AI_PRO v1.2.167`, um por grafico, e `Notifications.log` de 2188 para
+2189 linhas com **uma unica** linha nova para 13 reloads (o gate do `P1.129`
+segura uma rajada de 13). **Producao corre agora o build das 21:57:47 - fonte e
+binario batem.** `D-003` fecha por execucao.
 
-Ultima alteracao: 05/11/2026 22:12 - DELTA.
+Medido 22:20 (DELTA), depois do reattach: **13 graficos vivos** - 13 `[AI]
+GATEWAY` entre 22:11:04 e 22:11:37, um por grafico; XAUUSD `1121 bytes |
+disponivel=true`, os outros 12 `357 bytes | disponivel=false`. `[RESUMO]`
+22:16:06 master=SIM, posicoes 0, trades=0. **Ressalva medida:** 10 simbolos com
+`[ATR] HANDLE MORTO | barsCalc=-1 | erro=4807` entre 22:14:26 e 22:18:04 e o
+USDCNH ainda `ATR%=sem leitura` as 22:20:25 - o handle **nao** e recriado no uso
+seguinte. Registado ao ALFA em `INBOX_AGENTE_1.md`; nenhum codigo foi tocado.
+
+Ultima alteracao: 05/11/2026 22:20 - DELTA.
+
+
+---
+
+## 6. Documentos de comando da equipe (D-018, 05/11 22:55)
+
+| Documento | O que fixa | Estado |
+|---|---|---|
+| `PLANO_10_10.md` | fases `F0`..`F9`, portoes numericos, mapa de donos, definicao de 10/10 | publicado |
+| `BACKLOG.md` | `B-001`..`B-034` com dono, criterio e estado | publicado |
+| `FERRAMENTAS.md` | runtimes, MCP instalados, scripts, contrato de limpeza | publicado |
+
+**Medido as 22:55:**
+
+- `sync-agent.ps1 check` -> **OK, sem problemas** (21 IDs unicos, 16 perguntas).
+- `Tools/equipe-audit.ps1 all` -> UTF-8 ok, **espelho 110/110, 0 divergentes**.
+- Fila do DONO: **Q-001..Q-016**, 16 abertas.
+- Producao: **v1.2.167 nos 13 graficos** desde 22:10:47.
+- Trades: **0** (razao medida: 1 modelo H1 de 21 simbolos + `MinAIConfidence`
+  60 vs CONF 56-63). Decisao de universo entregue ao DONO em `Q-013`.
+- Conta real: **bloqueada** pelos portoes `F2` e `F6` do `PLANO_10_10.md`.
+
