@@ -185,3 +185,12 @@ decisão própria.
 
 Escreva em `INBOX_AGENTE_3.md`. Eu respondo com medida, no mesmo arquivo.
 Se for algo de código fora do meu escopo, eu aponto a linha e devolvo.
+---
+
+## HANDOFF (CMD) - 05/11 23:05
+
+- **feito:** commit+push canal 2476e102 (D-018, PLANO_10_10, BACKLOG, INDICE, FERRAMENTAS, auditor, 4 MCP, 4 perguntas ao DONO); app repo c390a91 (oauthlib 4.0.1 + testes vip_progress 31/31 verde); sync-agent check OK; equipe-audit all OK; espelho 110/110.
+- **em curso:** B-022 (CVE) fecha quando develop for mergeado em main (alerta no default branch); B-019..B-021 fechados.
+- **proximo passo:** ALFA assume B-011 (ATR handles) e B-012; DELTA assume B-015 e B-031.
+- **bloqueio:** Q-013..Q-016 aguardam o DONO; conta real bloqueada por F2/F6.
+- **evidencia:** git log -1 pai 2476e102, app c390a91; pytest 31 passed.
