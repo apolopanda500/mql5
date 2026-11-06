@@ -1395,3 +1395,32 @@ Nenhum limite, lote, alvo, stop, spread, preco, regra de entrada/saida ou parame
 
 ### Porque o EA continua sem abrir operacoes (diagnostico anterior, ainda valido)
 O gateway responde 200 mas devolve `available=false` em 12 de 13 simbolos com `edge ... abaixo do minimo +0.0500` (EURUSD -0.0161, GBPUSD -0.0207, USDJPY +0.0248, AUDUSD -0.0184, USDCAD +0.0317, NZDUSD +0.0225, USDCHF +0.0253, USDSEK -0.0403, USDCNH -0.1256, USDCZK -0.0072, USDSGD +0.0193, USDRUB +0.0166, USDBRL M5 +0.0240). So XAUUSD/H1 devolve `available=true`, e XAUUSD nao esta na lista de pares negociados. O bloqueio e de MODELO (edge), nao de infraestrutura.
+
+## Ciclo 114 - P1.129 / v1.2.166 - a notificacao push repetida por GRAFICO (corrigida e medida)
+
+Pergunta do dono: `2026.11.05 20:29:32.969 Notifications notification '[RELATORIO] Profit=0.00 | Trades=0 | WinRate=0.00%' sent to '7AC1F3B4'`.
+Resposta medida: nao era reenvio da mesma instancia, eram as 14 instancias a enviar a MESMA mensagem.
+
+| Passo | Hora local | Evidencia medida |
+|---|---|---|
+| Antes (v1.2.165) - relatorio | 20:28:21 e 20:29:29-30 (Common/Files/Notifications.log) | 8 + 12 linhas `[RELATORIO]` identicas |
+| Antes (v1.2.165) - encerramento | 20:28:49 e 20:28:54 | 13 + 13 linhas `[SISTEMA] EA finalizado (reason=9)` |
+| Antes (v1.2.165) - encerramento | 20:50:32.598 - 20:50:35.051 (journal do terminal) | 13 pushes `EA finalizado (reason=2)`, um a cada ~200 ms |
+| Depois (v1.2.166) - encerramento | 20:50:54.593 | **1** push `EA finalizado (reason=9)` |
+| Depois (v1.2.166) - relatorio | 20:51:34.589 | **1** push `[RELATORIO]`, igual ao que o dono citou |
+| Duas recargas seguidas (Default e XAI_P216_LIVE) | 20:50:57 e 20:51:03 | 14 `[START] XAU_AI_PRO v1.2.166` em cada, e o relatorio saiu UMA vez pelas duas |
+
+Causa raiz, medida por leitura de codigo (duas fontes independentes):
+
+1. `XAU_AI_PRO.mq5` bloqueava o relatorio diario com `TimeCurrent() - g_lastDailyReport >= 86400`, e `g_lastDailyReport` e uma variavel POR INSTANCIA que nasce a zero em cada carga. Consequencia: cada recarga de qualquer grafico satisfazia a condicao no primeiro tick e todas as instancias enviavam no mesmo segundo.
+2. `OnDeinit` chamava `CNotificationCenter::SendSystemAlert("EA finalizado ...")` sem portao nenhum, e os motivos REASON_RECOMPILE, REASON_TEMPLATE, REASON_ACCOUNT e REASON_CLOSE acordam TODAS as instancias no mesmo segundo.
+3. O `CNotificationCenter::Send` tem cooldown e deduplicacao, mas o estado (`m_last_send`, `m_last_message`) e POR INSTANCIA de proposito - logo nunca podia impedir 14 envios.
+
+Correcao (so notificacao, nenhuma regra de negociacao tocada):
+- relatorio: `AccountLogGatePodeImprimir("relatorio_diario", 82800)` - portao por CONTA em `Common/Files/XAU_AI_PRO/loggate_relatorio_diario.bin`, 1 por conta e por dia;
+- encerramento: nos motivos simultaneos, eleicao de dona do pipeline (`PipelineMasterFresh()` + `ChartID() == PipelineMasterChart()`, a mesma do `[STOP]` do P2.14) MAIS o portao `ea_finalizado_<motivo>` de 120 s; os outros motivos ficam so no portao;
+- cooldown/dedup do NotificationCenter continuam por instancia DE PROPOSITO, porque ABERTURA e FECHAMENTO sao eventos do grafico que executou e nao da conta.
+
+Residual honesto: (a) a primeira utilizacao de um ficheiro de portao pode deixar passar mais do que uma instancia no mesmo segundo (licao do P2.14) - nao aconteceu nesta medicao, o relatorio saiu uma unica vez; (b) o conteudo do relatorio (DailyProfit, TradesToday) e o da instancia que o envia; (c) o segundo reload seguido de 20:51:03 nao gerou o seu `EA finalizado` porque caiu dentro dos 120 s do portao - um encerramento isolado continua a sair.
+
+Compilacao: 0 errors, 0 warnings (`XAU_AI_PRO.ex5`, 926.192 B, 05/11/2026 20:50). 14 graficos com v1.2.166. Sem push, sem commit (380 commits locais). Conta real continua PROIBIDA.

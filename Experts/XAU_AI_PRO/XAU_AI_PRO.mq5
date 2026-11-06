@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.162
+// XAU_AI_PRO v1.2.166
 //==================================================
 
 #property strict
@@ -19,7 +19,7 @@
 // A versao legivel ("1.2.27") vai na descricao do projeto (XAU_AI_PRO.mqproj),
 // tambem exibida na aba de propriedades. O build do projeto ja injeta essa
 // propriedade; repetir com `#property description` gera `warning 90`.
-#property version   "1.362"
+#property version   "1.366"
 
 #include <Trade/Trade.mqh>
 
@@ -2369,11 +2369,18 @@ void OnTimer()
            }
         }
 
-      // Relatorio diario (1x/dia)
+      // Relatorio diario (1x/dia) - v1.2.166 (P1.129): 1x por CONTA.
+      // MEDIDO em Common\Files\Notifications.log: o mesmo [RELATORIO] saiu 14
+      // vezes por recarga, uma por grafico, porque a ancora g_lastDailyReport
+      // e por INSTANCIA e nasce a zero em cada carga. Passa a exigir o portao
+      // por conta de 23 h. A primeira utilizacao do ficheiro do portao ainda
+      // pode deixar passar mais do que uma instancia no mesmo segundo (a
+      // licao do P2.14); a partir dai e 1 por conta e por dia.
       if(TimeCurrent() - g_lastDailyReport >= 86400)
         {
          g_lastDailyReport = TimeCurrent();
-         CNotificationCenter::SendDailyReport(DailyProfit, TradesToday, 0.0);
+         if(AccountLogGatePodeImprimir("relatorio_diario", 82800))
+            CNotificationCenter::SendDailyReport(DailyProfit, TradesToday, 0.0);
         }
      }
 
@@ -2590,7 +2597,29 @@ void OnDeinit(
       if(reason == REASON_INITFAILED)
          CNotificationCenter::SendError("EA", "falha na inicializacao");
 
-      CNotificationCenter::SendSystemAlert("EA finalizado (reason=" + IntegerToString(reason) + ")");
+      // v1.2.166 (P1.129): 14 graficos enviavam 14 notificacoes do MESMO
+      // encerramento. MEDIDO em Common\Files\Notifications.log: [SISTEMA] EA
+      // finalizado (reason=9) saiu 14 vezes as 20:26:51, 13 as 20:40:11 e
+      // (reason=2) 14 vezes na recarga das 20:05:05. Os motivos que acordam
+      // TODAS as instancias no mesmo segundo (recompilacao, conta, template e
+      // fecho do terminal) passam a sair so da dona do pipeline, com o portao
+      // por conta de 120 s por cima; os restantes continuam no portao.
+      bool finalizadoPermitido = true;
+
+      if(!MQLInfoInteger(MQL_TESTER))
+        {
+         bool simultaneo = (reason == REASON_RECOMPILE || reason == REASON_ACCOUNT ||
+                            reason == REASON_TEMPLATE || reason == REASON_CLOSE);
+
+         if(simultaneo && PipelineMasterFresh())
+            finalizadoPermitido = (ChartID() == PipelineMasterChart()) &&
+                                 AccountLogGatePodeImprimir("ea_finalizado_" + IntegerToString(reason), 120);
+         else
+            finalizadoPermitido = AccountLogGatePodeImprimir("ea_finalizado_" + IntegerToString(reason), 120);
+        }
+
+      if(finalizadoPermitido)
+         CNotificationCenter::SendSystemAlert("EA finalizado (reason=" + IntegerToString(reason) + ")");
       CNotificationCenter::LogStatus();
      }
 

@@ -76,7 +76,7 @@ bool AccountLogGatePodeImprimir(const string tag,const int janelaSeg)
       // mas deixa de ser invisivel: no maximo 1 linha por hora por
       // instancia, com a tag, a janela e o codigo do erro.
       static datetime s_ultimoAvisoFail=0;
-      datetime agoraFail=TimeCurrent();
+      datetime agoraFail=MQLInfoInteger(MQL_TESTER) ? TimeCurrent() : TimeLocal();
       int errFail=GetLastError();
       if(s_ultimoAvisoFail==0 || agoraFail>=s_ultimoAvisoFail+3600)
         {
@@ -86,7 +86,7 @@ bool AccountLogGatePodeImprimir(const string tag,const int janelaSeg)
       return(true);                     // falha de ficheiro NUNCA suprime
      }
 
-   datetime agora=TimeCurrent();
+   datetime agora = MQLInfoInteger(MQL_TESTER) ? TimeCurrent() : TimeLocal();
    datetime ultimo=0;
 
    if(FileSize(h)>=(int)sizeof(long))

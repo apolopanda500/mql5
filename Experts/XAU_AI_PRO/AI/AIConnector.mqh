@@ -893,6 +893,28 @@ string AIGatewayUrlEfetiva()
    return StringSubstr(alvo, 0, inicio) + autoridade + ":" + porta + StringSubstr(alvo, fim);
 }
 
+// v1.2.164 (05/11/2026) - P1.127: relogio que NAO congela quando o broker cai.
+// MEDIDO nesta sessao (05/11, 20:05-20:11): o TimeCurrent() e tempo do SERVIDOR
+// e so avanca quando chegam ticks. Com a ligacao ao broker em baixo ele fica
+// parado, e isso partiu tres coisas ao mesmo tempo:
+//   (a) o poll do gateway deixava de disparar - o EA ficava cego exactamente
+//       durante a avaria, que e quando mais precisa de sondar;
+//   (b) "TimeCurrent() - lastWrErrLog" dava 0 para sempre, logo a linha
+//       "[AI] GATEWAY falhou" NUNCA era publicada (foi por isso que a queda
+//       do gateway nao deixou rasto nenhum no journal);
+//   (c) o "cego=Ns" da linha de recuperacao media tempo que nao tinha passado.
+// TimeLocal() e o relogio do computador: avanca sempre, com ou sem ticks.
+// No Strategy Tester devolve TimeCurrent() para o backtest continuar a medir
+// tempo MODELADO, exactamente como antes - nada muda dentro do tester.
+datetime AIClockRelogio()
+{
+   if(MQLInfoInteger(MQL_TESTER))
+      return(TimeCurrent());
+
+   return(TimeLocal());
+}
+
+
 bool FetchPredictionFromGateway(
    string symbol,
    string timeframe,
@@ -931,15 +953,48 @@ bool FetchPredictionFromGateway(
    // mesmo caminho de quando o 401 acontecia a cada 30 s.
    static datetime s_gwAuthCooldownUntil = 0;
    static int      s_gwAuthFails         = 0;
-   const int       AI_GW_AUTH_COOLDOWN_SEC = 1800;
+   // v1.2.163: o cooldown FIXO de 1800 s da credencial deu lugar a escadaGw.
 
-   if(TimeCurrent() < s_gwAuthCooldownUntil)
+   // v1.2.163 (05/11/2026) - P1.126: RECONEXAO AUTONOMA DO GATEWAY.
+   // MEDIDO nesta sessao, com o gateway Python em 127.0.0.1:9011: com o
+   // processo no ar o EA recebia 200 e inferencia real; ao parar o processo o
+   // journal passou a "resposta NAO-HTTP" (1001/1003) e voltou a 200 assim que
+   // o processo subiu, sem ninguem tocar no grafico. Nesse caminho nenhum
+   // cooldown armava, portanto essa metade ja se curava sozinha no ciclo
+   // seguinte (AIPollSeconds = 15 s). O que NAO se curava era o resto, e sao
+   // esses tres pontos que mudam aqui:
+   //   (1) 5202 (TIMEOUT) estava na lista dos erros de CONFIGURACAO e armava
+   //       1800 s de cegueira ao terceiro timeout seguido. Um backend que
+   //       engasga (inferencia pesada, disco, primeira chamada a frio) produz
+   //       TIMEOUTS, nao recusas de ligacao: um unico engasgo custava 30 min
+   //       sem IA mesmo depois de o servidor voltar. Passa a ser TRANSITORIO,
+   //       com escada propria que volta a tentar.
+   //   (2) A credencial (401/403) esperava 1800 s fixos. Se o dono corrigir o
+   //       token, o EA tem de o apanhar em minutos, nao em meia hora. Passa a
+   //       usar a mesma escada.
+   //   (3) Um HTTP 200 nao limpava o estado de forma explicita e nao deixava
+   //       rasto nenhum de que a sessao tinha recuperado sozinha. Passa a
+   //       limpar tudo e a publicar [AI] GATEWAY RECUPERADO com o numero de
+   //       falhas e o tempo em que ficou cego.
+   // 4014/4060/5200 continuam nos 1800 s de proposito: sao configuracao do
+   // terminal (Ferramentas > Opcoes > Expert Advisors) e so o operador as
+   // cura. 5201/5203 continuam SEM cooldown: e o que um gateway MORTO devolve,
+   // e o EA tem de o apanhar no ciclo seguinte, nao dentro de meia hora.
+   static int      s_gwTransFails     = 0;   // timeouts seguidos (5202)
+   static datetime s_gwBlindSince     = 0;   // inicio da cegueira actual
+   static int      s_gwBlindFails     = 0;   // falhas desde o ultimo 200
+
+   int escadaGw[5] = {60, 120, 300, 600, 900};   // espera em segundos
+
+   if(AIClockRelogio() < s_gwAuthCooldownUntil)
       return false;
 
-   // Cooldowns: transporte (AI_GW_COOLDOWN_SEC, 4014/4060/5200/5202) e
-   // credencial (AI_GW_AUTH_COOLDOWN_SEC, 401/403).
+   // Cooldowns: configuracao (AI_GW_COOLDOWN_SEC, 4014/4060/5200), credencial
+   // (401/403, escadaGw) e transitorio (5202, escadaGw). Os tres EXPIRAM
+   // sozinhos: o temporizador e a sonda. Nenhum deles exige que o operador
+   // reanexe o EA ou reinicie o terminal.
 
-   if(TimeCurrent() < s_gwCooldownUntil)
+   if(AIClockRelogio() < s_gwCooldownUntil)
       return false;
 
    // Simbolo e timeframe no endereco: o gateway le por query string
@@ -982,6 +1037,18 @@ bool FetchPredictionFromGateway(
       result_headers
    );
 
+   // v1.2.163 (05/11/2026) - P1.126: relogio da cegueira. TODO resultado
+   // diferente de 200 conta como falha; a primeira arma o instante de inicio.
+   // Serve apenas para a linha de recuperacao poder publicar quantas falhas
+   // houve e por quanto tempo o EA esteve sem IA - sem esse numero, "voltou
+   // sozinho" e uma afirmacao nao verificavel.
+   if(status != 200)
+     {
+      if(s_gwBlindSince == 0)
+         s_gwBlindSince = AIClockRelogio();
+      s_gwBlindFails++;
+     }
+
    if(status == -1)
    {
       int err = GetLastError();
@@ -996,19 +1063,52 @@ bool FetchPredictionFromGateway(
 
       // v1.2.30: 4014/4060/5200/5202 = configuracao do terminal. Aviso 1x/30 min
       // (era 1x/min) e contador de falhas duras que arma o cooldown do topo.
-      bool hardErr   = (err == 4014 || err == 4060 || err == 5200 || err == 5202);
+      // v1.2.163 (05/11/2026) - P1.126: 5202 saiu da lista de CONFIGURACAO.
+      // 5202 e TIMEOUT (o servidor existe, nao respondeu no prazo), nao lista
+      // de URLs nem permissao: cura-se sozinho quando o backend desengasga,
+      // logo esperar 1800 s e tempo perdido. 4014/4060/5200 continuam a ser
+      // configuracao do terminal e mantem a espera longa. 5201 (ligacao
+      // recusada) e 5203 (pedido falhou) continuam SEM cooldown: e
+      // exactamente o que um gateway morto devolve.
+      bool hardErr   = (err == 4014 || err == 4060 || err == 5200);
+      bool transErr  = (err == 5202);
       int  errLogSec = (hardErr ? 14400 : 300);
+
+      // v1.2.164 (05/11/2026) - P1.127: o portao por CONTA era 21600 (1x/6h)
+      // para TODOS os codigos. MEDIDO nesta sessao: com o gateway parado, o
+      // 5201 ja tinha sido publicado antes e ficou mudo 6 horas, portanto a
+      // queda e a recuperacao passaram SEM UMA UNICA LINHA no journal. Erro de
+      // configuracao (4014/4060/5200) nao se cura sozinho e continua em 6 h,
+      // para nao fazer spam; erro de transporte (5201/5202/5203) passa a
+      // 300 s, para cada tentativa de reconexao deixar rasto verificavel.
+      int  gateErrSec = (hardErr ? 21600 : 300);
 
       if(hardErr)
         {
          s_gwHardFails++;
          if(s_gwHardFails >= 3)
-            s_gwCooldownUntil = TimeCurrent() + AI_GW_COOLDOWN_SEC;
+            s_gwCooldownUntil = AIClockRelogio() + AI_GW_COOLDOWN_SEC;
+        }
+      else if(transErr)
+        {
+         // Escada transitoria: o 1o e o 2o timeout continuam a tentar no ciclo
+         // normal (o poll de 15 s ja e barato); do 3o em diante espera
+         // 60/120/300/600/900 s. O tecto de 900 s e a diferenca pratica para
+         // os 1800 s anteriores: um gateway que volte e apanhado em 15 min no
+         // pior caso, sem ninguem tocar em nada.
+         s_gwTransFails++;
+         int idxEsc = s_gwTransFails - 3;
+         if(idxEsc >= 0)
+           {
+            if(idxEsc > 4)
+               idxEsc = 4;
+            s_gwCooldownUntil = AIClockRelogio() + escadaGw[idxEsc];
+           }
         }
 
-      if(TimeCurrent() - lastWrErrLog >= errLogSec && AccountLogGatePodeImprimir("aigw_" + IntegerToString(err), 21600))   // P1.90: 1x/6h por CONTA e por codigo
+      if(AIClockRelogio() - lastWrErrLog >= errLogSec && AccountLogGatePodeImprimir("aigw_" + IntegerToString(err), gateErrSec))   // P1.90: por CONTA e por codigo
         {
-         lastWrErrLog = TimeCurrent();
+         lastWrErrLog = AIClockRelogio();
          // v1.2.88 (02/11/2026) - P1.75: tag [AI] e texto curto. 4014/4060
          // continuam a ser WebRequest desabilitado em Opcoes > Expert Advisors;
          // 5200/5202 = URL nao autorizada.
@@ -1025,7 +1125,16 @@ bool FetchPredictionFromGateway(
          else if(err == 5200)
             motivoWr = "URL invalida para o WebRequest";
          else if(err == 5202)
-            motivoWr = "URL nao permitida pela lista";
+           {
+            // v1.2.163 - P1.126: 5202 e TIMEOUT, nao lista. 5201/5203 sao o
+            // que um gateway PARADO devolve - sem os nomear, a simulacao de
+            // queda aparecia no journal como "erro nao classificado".
+            motivoWr = "TIMEOUT (o servidor nao respondeu no prazo; transitorio, o EA volta a tentar sozinho)";
+           }
+         else if(err == 5201)
+            motivoWr = "LIGACAO RECUSADA (ninguem a escutar nessa porta - gateway parado?)";
+         else if(err == 5203)
+            motivoWr = "PEDIDO FALHOU (a ligacao caiu a meio)";
          Print("[AI] GATEWAY falhou | erro=", err, " | ", url, " | ", motivoWr);
         }
 
@@ -1049,6 +1158,7 @@ bool FetchPredictionFromGateway(
       // habilitado: zera o backoff de transporte para nao punir token/rota.
       s_gwHardFails     = 0;
       s_gwCooldownUntil = 0;
+      s_gwTransFails    = 0;   // P1.126: resposta HTTP = transporte vivo
 
       // P2.21: credencial recusada (401/403) nao se cura sozinha durante a
       // sessao. Tres recusas seguidas armam o cooldown de credencial; o
@@ -1057,13 +1167,22 @@ bool FetchPredictionFromGateway(
         {
          s_gwAuthFails++;
          if(s_gwAuthFails >= 3)
-            s_gwAuthCooldownUntil = TimeCurrent() + AI_GW_AUTH_COOLDOWN_SEC;
+           {
+            // v1.2.163 - P1.126: mesma escada da perna transitoria. Com o
+            // token errado isto vale 60/120/300/600/900 s entre sondas: se o
+            // dono corrigir o .env, o EA apanha-o em 15 min no pior caso, em
+            // vez dos 30 min fixos de antes.
+            int idxAuth = s_gwAuthFails - 3;
+            if(idxAuth > 4)
+               idxAuth = 4;
+            s_gwAuthCooldownUntil = AIClockRelogio() + escadaGw[idxAuth];
+           }
         }
       else
          s_gwAuthFails = 0;
 
       static datetime lastStatusLog = 0;
-      datetime statusNow = TimeCurrent();
+      datetime statusNow = AIClockRelogio();
 
       // v1.2.130 (03/11/2026) - P2.21: o aviso de HTTP != 200 tinha janela de 60 s
 // POR PROGRAMA. MEDIDO: 13 graficos x 1 linha/min = ~780 linhas/hora no journal
@@ -1072,7 +1191,7 @@ bool FetchPredictionFromGateway(
 // avisos): a mesma combinacao tag+status imprime 1x/30 min, venha de quantos
 // graficos vier. A janela local sobe para 300 s como segunda barreira.
       if(statusNow - lastStatusLog >= 300 &&
-         AccountLogGatePodeImprimir("aigw_http_" + IntegerToString(status), 1800))
+         AccountLogGatePodeImprimir("aigw_http_" + IntegerToString(status), (status > 599 ? 300 : 1800)))
       {
          lastStatusLog = statusNow;
          // v1.2.129 (03/11/2026) - P2.20: o transporte respondeu, logo o
@@ -1111,12 +1230,44 @@ bool FetchPredictionFromGateway(
    }
 
    string corpo = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
-   s_gwAuthFails = 0;   // P2.21: credencial aceite - o contador de recusas zera
+   // v1.2.163 - P1.126: a limpeza do estado e a linha de recuperacao passaram
+   // para DEPOIS do teste de corpo, para so existirem quando ha mesmo uma
+   // previsao utilizavel (ver abaixo).
 
    // Corpo vazio com HTTP 200 e o pior resultado possivel: o EA receberia uma
    // string sem sinal e acharia que a IA foi consultada. Recusa aqui.
    if(StringLen(corpo) < 10)
       return false;
+
+   // v1.2.163 (05/11/2026) - P1.126: HTTP 200 com corpo util e a PROVA de que
+   // o caminho esta bom, logo zera TODO o estado de falha de uma vez, em vez
+   // de depender de o ramo anterior ter limpado por efeito colateral. A linha
+   // [AI] GATEWAY RECUPERADO sai uma vez por recuperacao (portao por CONTA,
+   // 1800 s) com o numero de falhas e o tempo em que a instancia esteve cega:
+   // e a evidencia medivel no journal de que o EA voltou sozinho, sem
+   // reanexar, sem reiniciar o terminal e sem tocar no grafico.
+   if(s_gwBlindSince > 0)
+     {
+      int segCego = (int)(AIClockRelogio() - s_gwBlindSince);
+      if(segCego < 0)
+         segCego = 0;   // relogio do servidor recuou (mudanca de sessao)
+      // v1.2.164 - P1.127: 1800 s -> 300 s. A linha sai uma vez por recuperacao
+      // e o portao e por CONTA (13 graficos partilham o mesmo ficheiro), logo
+      // 300 s continua a ser uma linha de cada vez; so deixa de esconder uma
+      // segunda queda dentro da mesma meia hora, que era o caso ao testar.
+      if(AccountLogGatePodeImprimir("aigw_recuperado", 300))
+         Print("[AI] GATEWAY RECUPERADO | ", symbol, " | ", timeframe,
+               " | falhas=", s_gwBlindFails, " | cego=", segCego,
+               "s | resposta=", StringLen(corpo), "B | sem intervencao");
+     }
+
+   s_gwAuthFails         = 0;   // P2.21: credencial aceite
+   s_gwHardFails         = 0;
+   s_gwTransFails        = 0;
+   s_gwCooldownUntil     = 0;
+   s_gwAuthCooldownUntil = 0;
+   s_gwBlindSince        = 0;
+   s_gwBlindFails        = 0;
 
    json = corpo;
    return true;
@@ -1173,13 +1324,13 @@ bool LoadAIPrediction(string symbol="")
    if(AIUseGateway)
    {
       if(ultimoSimboloConsultado != normalized ||
-         (TimeCurrent() - ultimaConsulta) >= AIPollSeconds)
+         (AIClockRelogio() - ultimaConsulta) >= AIPollSeconds)
       {
          string jsonGateway = "";
          if(FetchPredictionFromGateway(normalized, PeriodLabel(), jsonGateway))
          {
             ultimoSimboloConsultado = normalized;
-            ultimaConsulta = TimeCurrent();
+            ultimaConsulta = AIClockRelogio();
 
             if(logOnce)
             {
@@ -1237,7 +1388,7 @@ bool LoadAIPrediction(string symbol="")
       AI_Price > 0.0 &&
       ultimaConsulta > 0 &&
       MaxPredictionAgeSec > 0 &&
-      (long)(TimeCurrent() - ultimaConsulta) <= (long)MaxPredictionAgeSec)
+      (long)(AIClockRelogio() - ultimaConsulta) <= (long)MaxPredictionAgeSec)
       return true;
    // FONTE 2: ARQUIVO (fallback e modo legado)
    //==================================================
