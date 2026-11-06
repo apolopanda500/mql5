@@ -107,3 +107,66 @@ git add <lista explicita> ; git commit ; git push github main
 Autorizada pelo DONO em 05/11 22:43: web, GitHub, documentacao, MCP novos.
 Regra: ideia -> `BACKLOG.md` com **fonte, custo e risco**. Nunca direto no
 codigo de producao.
+---
+
+## 6. `equipe-auto.ps1` (novo, DELTA, 05/11 23:38) - relatorio unico so leitura
+
+Mede num comando tudo o que se pode medir sem tocar em nada. **Nao escreve no
+canal, nao altera ficheiros do EA, nao compila, nao apaga.** A unica escrita
+possivel e o relatorio em `_SYNC\relatorios\` quando se passa `-Salvar`.
+
+```
+cd MQL5\Experts\XAU_AI_PRO\EQUIPE\tools
+
+powershell -NoProfile -ExecutionPolicy Bypass -File equipe-auto.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File equipe-auto.ps1 -Salvar
+powershell -NoProfile -ExecutionPolicy Bypass -File equipe-auto.ps1 -Silencioso
+```
+
+### O que mede, por ordem
+
+| Bloco | O que verifica | Falha se |
+|---|---|---|
+| `CANAL` | `equipe-sync.ps1 check` - EOL LF puro, UTF-8 valido, sem BOM | nao disser `INTEGRO` |
+| `AUDITOR` | `Tools\equipe-audit.ps1 all` (read-only) | exit != 0 |
+| `DISCO` | espaco livre na unidade do terminal | livre < 1000 MB (aviso entre 1000-2000) |
+| `CONSUMIDORES` | `Tester\logs`, `Files`, `Files\XAU_AI_PRO`, `Data`, `Temp`, `Backup` | aviso se `Tester\logs` > 1500 MB |
+| `FILA DO DONO` | contagem de blocos por responder no `INBOX_DONO.md` | aviso se > 0 |
+| `PEDIDOS` | contagem por estado em `PEDIDOS.md` | - |
+| `IDS / DECISOES` | blocos `D-xxx` vs linhas `USADO` no `IDS.md` | aviso se USADO > blocos |
+| `ESPELHO / CODIGO` | tamanho e mtime do `.ex5`, total de fontes `.mq5/.mqh` | - |
+| `GIT` | branch + ficheiros alterados/nao rastreados | - |
+| `VEREDICTO` | soma de falhas e avisos | codigo 1 se houver falha |
+
+### Codigo de saida
+
+- `0` = CONFORME (podem existir avisos)
+- `1` = pelo menos uma falha real (canal quebrado, auditor a sair mal, disco < 1000 MB)
+
+### Regra operacional ligada a este script (governada por DELTA)
+
+Se o disco livre descer de **800 MB**, o agente **para o backtest em curso**
+(`tester_stop`) antes que encha. Um teste perdido custa minutos; um disco cheio
+pode custar o terminal e os 13 graficos.
+
+### Primeira execucao (referencia medida)
+
+```
+EQUIPE-AUTO :: 2026-11-05 23:38:19
+CANAL        CANAL INTEGRO :: 0 problemas
+AUDITOR      RESULTADO: ok   (exit 0)
+DISCO        livre: 2283 MB   usado: 225636 MB
+CONSUMIDORES Tester\logs 2675.4 MB / 7 f ; Files 5621.9 MB / 63221 f
+FILA DONO    26 blocos :: ~26 por responder
+IDS          34 blocos D-xxx :: 21 IDs USADO
+ESPELHO      XAU_AI_PRO.ex5 :: 929558 B :: 2026-11-05 23:12:18
+GIT          branch main :: 45 alterados/nao rastreados
+VEREDICTO    CONFORME :: 0 falhas
+```
+
+### Limite honesto
+
+Este script mede **ficheiros e disco**. Nao mede conta, posicoes, graficos,
+runtime de EA, nem estado de backtest - isso exige ferramentas MCP
+(`get_trading_account_info`, `list_open_charts`, `tester_get_status`), que so o
+agente pode chamar. Nao substitui o agente: tira-lhe o trabalho repetitivo.

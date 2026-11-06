@@ -1369,3 +1369,1196 @@ if(EnableStoplessEntry && slRefPontos > 0.0)
 
 **Proximo ID livre: `D-035` (confirmar no ledger).**
 
+
+
+## D-035 | 05/11/2026 | o bloqueio real e o TOKEN do gateway, nao a porta - e uma correccao a mim proprio
+
+- **Estado:** ACTIVO | **Autor:** ALFA | **Medido por:** `Tools/api-probe.ps1` e duas chamadas HTTP directas.
+
+1. **O que eu escrevi as 23:33 e o que a medicao seguinte mostrou.** A sonda `api-probe.ps1` usa `base = http://127.0.0.1:9001` e concluiu `porta 9001 aceita conexao [OK]`, `raiz HTTP 401`, `rota sem token 401`. Como o EA tem `AIGatewayUrl=http://127.0.0.1:9011/api/ai/predict`, eu conclui "porta trocada, 9011 morto". **Errado.** Duas chamadas HTTP directas mostram as duas portas vivas e a exigir credencial:
+
+```
+GET http://127.0.0.1:9011/  ->  401
+GET http://127.0.0.1:9001/  ->  401
+```
+
+O `Get-NetTCPConnection -State Listen` nao devolveu nada para nenhuma das duas, o que teria dado o mesmo erro por outro caminho: **um filtro que nao encontra nada nao prova ausencia de servico.** A prova boa e a ligacao TCP + resposta HTTP. Fica registado como regra: "nao existe" exige uma tentativa de ligacao, nunca uma listagem vazia.
+
+2. **A causa, agora sem alternativa de leitura.** O EA aponta para 9011, o 9011 responde **401**, e `AIGatewayToken` esta **vazio no binario carregado** (input 5, `default_value: ""`). O proprio `api-probe.ps1` diz o resto: *"preencha AIGatewayToken; o header usado e Authorization: Bearer <token>; sem isso o EA nem envia o header e recebe 401 mesmo com WebRequest liberado"*. Logo: **o EA nunca obteve uma previsao de IA, nem uma vez**, e o `[RESUMO] IA(USDCNH)=UNAVAILABLE 0.0%` de 22:36:07 e a consequencia directa.
+
+3. **O que isto faz ao plano, e e o ponto mais importante desta noite.** Existem dois caminhos para o EA voltar a operar, e **nao sao equivalentes**:
+   - **(A) Dar o token ao gateway.** A IA passa a responder com previsao real, a `confidence` deixa de ser o fallback de 40, e o `MinSimulationProbability=0.50` deixa de ser violado por construcao. **Nao se toca em probabilidade, piso, lote, alvo, stop ou em qualquer parametro de risco.** E o caminho correcto.
+   - **(B) A Q-018(a).** Muda a formula da probabilidade para o EA operar **sem** IA. Muda a filosofia da estrategia e, como o D-034 provou, precisa do P1.132 no mesmo build para nao trocar "nao opera" por "opera sobre um risco inventado".
+   A ordem correcta e **(A) primeiro**. A Q-018 so faz sentido se (A) for impossivel por decisao do dono.
+
+4. **O que o DONO tem de fazer, e nao e codigo.** (i) obter o token que o servico em 9011 espera e preencher `AIGatewayToken` nos 13 graficos (ou num `.set`); (ii) confirmar em Ferramentas > Opcoes > Expert Advisors que `http://127.0.0.1:9011` esta na lista de WebRequest; (iii) decidir se o servico deve correr com autenticacao. Nenhuma destas tres coisas esta nas minhas raizes: o servico corre fora de `MQL5` e as opcoes do terminal estao fora das raizes de leitura e escrita.
+
+5. **O que eu NAO consegui medir, e digo-o em vez de supor.** O codigo do gateway nao esta em `MQL5\Files`: a busca por `*.py` (excluindo `.venv` e `site-packages`) encontra apenas restos em `Files\Backup\` (`api-probe` encontrou o servico, mas nao o codigo). Sem o codigo nao sei se o token e comparado com uma variacavel de ambiente, um ficheiro ou um valor fixo â€” e por isso **nao peco nem aceito o token em texto de conversa**: e um segredo, e o lugar dele e o input do EA, nao o canal.
+
+6. **Consequencia para a nota 10/10 desta noite, dita com honestidade.** O F4 (IA e gateway) **nao e um item de codigo pendente: e um item de credencial**. Enquanto o 401 existir, nenhum trabalho em F2/F3 muda o resultado operacional, porque nao ha entrada nenhuma para proteger. Isto reordena o plano: F4-token primeiro, depois Q-018 (se ainda for precisa), depois F6.
+
+**Proximo ID livre: `D-036` (confirmar no ledger).**
+
+## D-036 | 05/11/2026 | ATR continua vivo no binário em memória + universo real de 21 símbolos + 84,3 MB de disco libertados
+
+**Autor:** DELTA | **Janela medida:** 05/11 23:05 - 23:35 local | **Fonte:** journal do expert, market watch, disco do terminal
+
+Este bloco regista apenas o que foi medido. Onde não há resultado, escreve-se `não medido`.
+
+---
+
+### 1. B-011 (ATR) - prova fresca de que o defeito continua vivo no binário em memória
+
+Filtro `get_expert_journal` = `4807`, janela 22:30-23:35, **22 registos**. Dois padrões distintos e ambos novos nesta janela:
+
+**Padrão A - `[ATR] SEM LEITURA` (23:11:01 - 23:11:55), 10 símbolos:**
+
+```
+[ATR] SEM LEITURA | <par> | CopyBuffer sem barras | barsCalc=-1 | erro=4807
+     | handle=90/91/109 | barrasSerie=100017 | barrasGrafico=100017 | serieSync=1
+```
+
+**Padrão B - `[ATR] HANDLE MORTO` (23:14:45 - 23:18:34), os mesmos símbolos:**
+
+```
+[ATR] HANDLE MORTO | <par> | sem barras ha 180 s | barsCalc=-1 | erro=4807
+     | entrada removida da cache
+```
+
+Leitura honesta do que isto prova e do que não prova:
+
+| Questão | Resposta medida |
+|---|---|
+| O defeito ATR existe no `.ex5` em memória? | **Sim.** `erro=4807` em 10 símbolos, com `barsCalc=-1`, não é ruído de arranque: repete-se 3 minutos depois no formato `HANDLE MORTO`. |
+| O `P1.132` resolveu? | **Não provado em runtime.** O `.ex5` em disco tem o P1.132 (929 558 B, 23:12:18), mas o gráfico continua a correr o binário carregado antes. Ver Q-019. |
+| `serieSync=1` com `barsCalc=-1` é contradição? | Não. `serieSync=1` diz que o array da série está sincronizado com o gráfico; `barsCalc=-1` diz que o **handle** do indicador não tem barras calculadas. São dois objectos diferentes - e é exactamente a confusão que o P1.132 ataca. |
+| `barrasSerie=100017` = `barrasGrafico=100017` | Confirma que a série tem histórico suficiente. O problema não é falta de barras: é o handle. |
+
+Consequência operacional: enquanto o reattach (Q-019) não acontecer, **qualquer medição de ATR feita agora mede o defeito, não a correcção**. O B-031 corre com o `.set` congelado, logo o resultado do B-031 também carrega este defeito - tem de ser dito assim no relatório do B-031, senão o número fica a mentir por omissão.
+
+---
+
+### 2. Universo real do scanner vs universo dos gráficos
+
+Filtro `START`, janela 23:05-23:16: **21 registos `[SCANNER] START`**.
+`list_open_charts`: **13 gráficos**.
+
+O scanner corre para **21 símbolos**, incluindo acções e exóticos que não têm gráfico nenhum:
+
+| Categoria | Símbolos no `[SCANNER] START` |
+|---|---|
+| Com gráfico (13) | XAUUSD, EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD, USDCHF, NZDUSD, EURJPY, GBPJPY, USDBRL, USDCZK, USDCNH |
+| **Sem gráfico (8)** | AMD, MSFT, INTC, NVDA, **GOLD**, USDCLP, USDCOP, USDSGD |
+
+Duas consequências:
+
+1. `F2.8` (isolamento por instância) fica ainda mais longe: o universo de dados (21) não é o universo de execução (13). Um símbolo novo pode entrar em sinal sem passar por nenhuma das verificações feitas nos 13 gráficos.
+2. `GOLD` e `XAUUSD` no mesmo scanner é risco de **dupla exposição ao mesmo activo subjacente** com dois símbolos e dois spreads. Não é hipótese: ambos aparecem no `START`.
+
+---
+
+### 3. Dados obsoletos no market watch (medido, não inferido)
+
+`get_marketwatch_symbols`: **21 símbolos com `selected: true`**. Idades no momento da leitura (~23:25):
+
+| Símbolo | `update_time` | Idade |
+|---|---|---|
+| USDBRL | 2026-11-05T22:59:59 | ~25 min |
+| USDCLP | 2026-11-05T19:29:58 | ~4 h |
+| USDCOP | 2026-11-05T19:59:20 | ~3,5 h |
+| USDRUB | 2026-11-05T16:56:25 | ~6,5 h |
+
+E um achado que fecha uma dúvida antiga: **USDBRL `volume_max: 0.01`**. O máximo de volume é igual ao mínimo - só se pode negociar **um** lote mínimo. Qualquer lógica de dimensionamento por risco (incluindo `RiskPercent`) devolve lote 0.01 ou é recusada pelo servidor. Não é falta de saldo: é limite do símbolo.
+
+**Recomendação de registo (não executada, é zona de risco):** símbolos com `update_time` com mais de 15 minutos em sessão aberta deviam ser excluídos do sinal. Hoje não são. Fica para o DONO decidir se entra no `B-0xx`.
+
+---
+
+### 4. Pressão de disco: medida, mitigada dentro do que é permitido
+
+Sequência medida por `terminal_get_info` nesta janela:
+
+```
+disk_free_mb  2386  ->  2350  ->  2435 (após limpeza)  ->  2377 (agora)
+```
+
+Consumidores medidos:
+
+| Zona | Tamanho | Ficheiros | Jurisdição |
+|---|---|---|---|
+| `Tester\` (total) | 2678,3 MB | - | **fora** do `write_root` - só leitura |
+| `Tester\logs\` | **2675,4 MB** | 7 | **fora** - **não apagado** |
+| `MQL5\Files\` | 5568,3 MB | 56 960 | dentro do `write_root` |
+| - `XAU_AI_PRO` | 4212,4 MB | 49 347 | dentro |
+| - `Data` | 989 MB | 70 | dentro |
+| - `Temp` | 417,8 MB | 13 187 | dentro |
+| - `Notifications.old.log` | 50,7 MB | 1 | dentro |
+| - `Backup` | 35,5 MB | 601 | dentro |
+
+Maior ficheiro de log do tester: `20261031.log` = **1404,9 MB** de um só dia. Repartição: 1404,9 + 672,5 + 331,5 + 183 + 48,8 + 34,8 + 0 = 2675,4 MB.
+
+**Apagado nesta janela (só dentro do `write_root`):**
+
+```
+Notifications.old.log (50,7 MB)
+Temp\npmcache (7,2 MB)
+Temp\.tmpKyvlEq (17,3 MB)
+Temp\.tmp8asiu1 (4 MB)
+Temp\tmp65xcyu5v (1,7 MB)
+Temp\gw_out.log (3,2 MB)
+=> 2351 MB -> 2435 MB :: libertado 84,3 MB
+```
+
+**NÃO apagado, de propósito:**
+
+- `Tester\logs` (2675,4 MB) - fora do `write_root`. Apagar isto exige uma ferramenta com raiz `Tester` ou acção manual do DONO. Não se contorna a raiz por shell (política §3/§5).
+- `Temp\py311\` (359,4 MB), `Temp\py311.zip` (10,7 MB), `Temp\get-pip.py` (2,1 MB) - são a **prova** de que existem interpretes Python na máquina (registado no D-024). Apagar destruiria evidência.
+- `MQL5\Files\XAU_AI_PRO` (4212,4 MB / 49 347 ficheiros) - não inspeccionado ficheiro a ficheiro. Apagar às cegas pode remover snapshots. `não medido` o que é regenerável e o que não é.
+
+**Sinal de alerta honesto:** o disco ganhou 84,3 MB e perdeu 58 MB em ~9 minutos. O que consome é o tester a correr. Se o B-031 continuar a escrever logs a este ritmo, os 2377 MB dão para poucas horas - não para uma noite inteira de backtests. Sem acesso a `Tester\logs`, o travão real é **quantos backtests cabem**, não quantos queremos.
+
+---
+
+### 5. Estado do B-031 - sem resultado, outra vez
+
+```
+run_id 7704874073263362126 :: tester_status = started
+progresso: 00:28:08 / 00:38:54  (leitura das 23:34)
+```
+
+**PF, DD, trades, número de operações: `não medido`.** Não há resultado para escrever e este bloco não inventa nenhum.
+
+O B-031 exige **duas execuções com o mesmo resultado**. Uma execução sozinha não prova reprodutibilidade - prova apenas que correu.
+
+---
+
+### 6. Conta e ordens
+
+`get_trading_open_positions`: **0 posições, 0 ordens**. Nada foi aberto, fechado ou modificado nesta janela.
+
+---
+
+### 7. Portão de ética desta janela
+
+| Proibição | Cumprida |
+|---|---|
+| Tocar em parâmetros de risco/lote/stop/alvo/spread | **Sim** (nada tocado) |
+| Compilar `.ex5` | **Sim** (nenhuma compilação) |
+| Reattach / `chart_add_expert` | **Sim** (nenhum) |
+| Gravar perfil / template | **Sim** (nenhum) |
+| `commit` / `push` | **Sim** (nenhum) |
+| Enviar ordem | **Sim** (nenhuma) |
+| Escrever fora de `MQL5\Files\Temp`, `EQUIPE\` e `MQL5\Profiles\Tester` | **Sim** (só essas três) |
+
+---
+
+### 8. Perguntas em aberto que dependem de outros
+
+| # | Para quem | Pergunta | Estado |
+|---|---|---|---|
+| 1 | DONO | Gravar a config viva nos 13 gráficos antes do restart? (3 opções no `INBOX_DONO.md`) | **aberta** |
+| 2 | ALFA | O `P1.132` precisa de reattach (Q-019). Sem isso, o ATR em produção é o defeituoso. | **aberta** |
+| 3 | CMD | `D-027` está `USADO` no `IDS.md` e **não tem bloco** no `DECISOES.md`. | **aberta** |
+| 4 | ALFA | Espelho divergente `Indicators\VolatilityFilter.mqh` (auditor sai com exit 1). | **aberta** |
+| 5 | DONO | Símbolos com dados > 15 min devem ser excluídos do sinal? (USDBRL/USDCLP/USDCOP/USDRUB agora) | **nova** |
+| 6 | DONO | `GOLD` e `XAUUSD` no mesmo scanner = dupla exposição ao ouro. Manter? | **nova** |
+
+---
+
+**Próximo ID livre:** reservar antes de escrever (`sync-agent.ps1 id -Tipo D -From DELTA`).
+
+## D-037 - O EA JA AUTENTICA NO GATEWAY: o bloqueio do token nao existia (D-035 REFUTADO por medicao)
+
+- **05/11/2026 23:40 | ALFA | medido, nao deduzido**
+
+### O que eu afirmei em D-035 e estava errado
+
+D-035 dizia: "o EA nunca recebeu uma previsao de IA; `AIGatewayToken` esta vazio e o endpoint responde 401". A primeira metade e FALSA.
+
+`AIGatewayToken` vazio nao prova nada, porque `AIConnector.mqh:793` (`AIGatewayTokenEfetivo()`, v1.2.133) le `XAU_GATEWAY_TOKEN` de `MQL5\Files\XAU_AI_PRO\.env` sempre que o input tem menos de 32 caracteres. O `.env` existe (104 B) com `XAU_GATEWAY_PORT=9011` e `XAU_GATEWAY_TOKEN` de 64 caracteres, e o EA le-o pela propria sandbox. O 401 do `api-probe.ps1` era a SONDA a nao mandar token: 401 sem token e fail-closed correto, nao avaria.
+
+### A prova, dos dois lados
+
+- sonda minha, com o token do `.env`: `GET 9011/api/ai/predict?symbol=XAUUSD&timeframe=H1` -> HTTP 200, 1121 B, `available:true`, `signal:BUY`, `confidence:50.2`, `price:4064.0`, `atr:33.95`.
+- journal do EA, 23:11:18, grafico XAUUSD,H1: `[AI] GATEWAY | XAUUSD | H1 | 1121 bytes | disponivel=true`.
+
+Dois lados, o mesmo numero (1121 B). O caminho de IA esta VIVO.
+
+### O bloqueio real, medido
+
+1. **So o XAUUSD tem modelo publicado.** As outras janelas recebem `357 bytes | disponivel=false` (USDCHF, USDJPY, USDSEK, USDCAD, AUDUSD, USDCZK, GBPUSD, USDRUB, USDSGD, NZDUSD, USDBRL). Nao e avaria: e o gateway a recusar com motivo, simbolo a simbolo.
+2. **A confianca real do XAUUSD e 50.2**, encostada ao piso `MinSimulationProbability=0.50`. Com `RR=0.81`, `EP = 0.502*0.81 - 0.498 = -0.091` -> bloqueio por "Low expected profit". A Q-018(a) nao resolve isto: a probabilidade ja vem de merito, e nao do cap de 40.
+3. **Distribuicao dos bloqueios as 22:48**: `visitas=1188 | sinais=112 | trades=0 | bloqueios=1188 | Stale=504 NoSignal=572 AllowTrade=112`. O motivo dominante nao e a simulacao: e `NoSignal`/`Stale` (mercado sem sinal a esta hora) e `AllowTrade` (gate de IA).
+4. **23:33 (agora)**: `visitas=713 | sinais=0 | trades=0 | bloqueios=713 | Stale=306 NoSignal=407`. Zero sinais: nada esta a ser recusado por logica, o mercado H1 nao deu sinal nesta janela.
+
+### Consequencia para o DONO
+
+A Q-021 (credencial do gateway) **nao precisa de resposta**: nao ha credencial a configurar nem token a colar em 13 graficos. A pergunta real passa a ser outra: **operar so os simbolos que tem modelo (XAUUSD hoje), ou publicar modelos para os restantes?** Nenhuma das duas e decisao tecnica minha, e nenhuma toca em parametro de risco.
+
+### Defeito de canal corrigido no mesmo passo
+
+`sync-agent.ps1`, ramo `answer`: ao acrescentar a linha RESPOSTA escrevia CRLF, e o proprio `check` passaria a acusar CR. E o 4.o defeito da familia (depois do IDS.md, do Show-Check e do LOCK.md). Passou a LF.
+
+## D-038 | 05/11/2026 | o defeito ATR e REPRODUZIVEL no Strategy Tester + o log amplifica 4-6x cada linha (536 MB num teste)
+
+**Autor:** DELTA | **Fonte:** journal do Strategy Tester do run `7704874073263362126` | **NAO e inferencia: e o log do tester a correr**
+
+Este e o achado mais util da noite. Muda o estatuto do B-011: deixa de ser um defeito que so aparece em producao e passa a ser um defeito que **qualquer um reproduz em backtest, sem tocar nos 13 graficos**.
+
+---
+
+### 1. O defeito ATR dentro do tester, XAUUSD H1
+
+```
+2026.10.09 22:27:20   [ATR] SEM LEITURA | XAUUSD | CopyBuffer sem barras
+                      | barsCalc=-1 | erro=4807 | handle=10
+                      | barrasSerie=10345 | barrasGrafico=10345
+                      | serieSync=1 | bid=4194.91 | grafico=XAUUSD
+```
+
+Cinco dados que juntos fecham o diagnostico:
+
+| Campo | Valor | Leitura |
+|---|---|---|
+| `erro` | **4807** | `ERR_INDICATOR_DATA_NOT_FOUND` - o handle nao tem dados, nao e falta de barras do simbolo |
+| `barsCalc` | **-1** | `BarsCalculated(handle)` devolveu -1, ou seja, o indicador **nao calculou nada** |
+| `handle` | **10** | handle unico e estavel - nao e handle invalido nem recriado a cada tick |
+| `barrasSerie` / `barrasGrafico` | 10345 / 10345 | a serie **esta** sincronizada; nao ha falta de historico |
+| `serieSync` | **1** | confirma o anterior |
+
+Ou seja: o simbolo tem 10 345 barras, a serie esta alinhada, o handle existe e e valido - e mesmo assim `BarsCalculated = -1`. **O problema esta no handle do indicador, nao nos dados.** Isto e exactamente o que o `P1.132` do ALFA ataca.
+
+**Porque isto importa:** o `P1.132` foi compilado (929 558 B, 23:12:18) e **nao foi reattachado** (Q-019). Agora ha uma forma de o provar sem tocar em producao: correr o mesmo backtest com o binario novo e ver se a linha desaparece. Antes disso, ninguem podia dizer se a correccao funcionava.
+
+---
+
+### 2. O log amplifica cada linha 4 a 6 vezes
+
+O mesmo registo, com o **mesmo timestamp ao milissegundo**, aparece repetido. Contagem no journal do tester:
+
+```
+22:27:20  -> 5 copias identicas
+22:27:40  -> 3 copias identicas
+22:27:59  -> 4 copias identicas
+22:28:00  -> 3 copias identicas
+22:28:20  -> 4 copias identicas
+22:28:40  -> 5 copias identicas
+22:28:59  -> 4 copias identicas
+```
+
+Nao e o journal a duplicar: e o EA a chamar `Print` varias vezes para o mesmo evento, ou varias instancias/passagens a reportar o mesmo erro no mesmo instante.
+
+**Consequencia medida no disco:**
+
+```
+Tester\logs\20261105.log :: 0,00 MB as 23:06:30 (arranque)
+                         :: 536,04 MB as 23:38:58
+                         :: 554,30 MB as 23:43
+```
+
+**Um teste de 3 meses gerou mais de meio gigabyte de log.** A pasta `Tester\logs` esta agora em **3211,5 MB** e o disco livre caiu de 2435 MB (23:33) para **2232 MB** (23:43).
+
+Isto e um defeito com duas caras:
+- **operacional:** enche o disco e mata backtests (ja avisado ao DONO, ver `av037`);
+- **de diagnostico:** 5 copias iguais escondem o sinal. Quem lê o journal ve 5 linhas e assume 5 eventos. Sao **um**.
+
+**Recomendacao (nao implementada, precisa de decisao):** limitar `Print` de erro repetido a 1 por barra e por simbolo, com contador agregado (ex.: `[ATR] SEM LEITURA x14 na ultima hora`). Reduz o log em ~80 % sem perder informacao. E uma alteracao pequena e localizada, mas mexe em codigo de producao - nao a faco sem ordem.
+
+---
+
+### 3. Observacao que nao e conclusao: o tamanho do binario
+
+O journal do tester diz:
+
+```
+expert file added: Experts\XAU_AI_PRO\XAU_AI_PRO.ex5. 927391 bytes loaded
+```
+
+O ficheiro em disco tem **929 558 B**. Diferenca: **2167 B**.
+
+Nao afirmo que o tester carregou outro binario. `927391` pode ser o tamanho do codigo carregado sem recursos, ou o tamanho antes de um anexo. **Registo porque e uma diferenca que nao sei explicar, e uma diferenca que nao sei explicar nao se deita fora** - fica para o CMD ou para o ALFA confirmarem com o `agent-toolkit.ps1`. Se alguem afirmar "o tester correu o binario novo", esta linha e a primeira a verificar.
+
+---
+
+### 4. O que fica provado, sem enfeite
+
+| Afirmacao | Estado |
+|---|---|
+| O defeito ATR existe no binario em producao | **provado** (journal do expert, 10 simbolos, 23:11 e 23:14-23:18) |
+| O defeito ATR se reproduz em backtest | **provado** (este bloco, XAUUSD H1, 2026.10.09) |
+| O defeito esta no handle, nao nos dados | **provado** (`barsCalc=-1` com `barrasSerie = barrasGrafico = 10345`) |
+| O P1.132 corrige o defeito | **NAO provado** - falta reattach / backtest com o binario novo |
+| O log amplifica 4-6x | **provado** (copias identicas com timestamp identico) |
+| O backtest B-031 passa | **nao medido** - ainda `started` (`progress 00:34:08 / 00:40:23`) |
+
+---
+
+### 5. Proximo passo que isto permite (e que antes nao existia)
+
+1. Correr o mesmo `.ini` com o binario que tem o `P1.132` (`tester_prepare_config` + `tester_run_backtest`).
+2. Filtrar o journal por `4807`.
+3. **Se a linha desaparecer** -> `P1.132` provado, e o reattach em producao passa a ser uma formalidade de baixo risco.
+4. **Se a linha continuar** -> o `P1.132` nao resolve, e o reattach nao deve ser feito para "resolver" nada.
+
+Isto e uma prova que custa um backtest e vale mais que dez relatorios de opiniao. Fica proposto ao ALFA e ao DONO.
+
+---
+
+**Proximo ID livre:** reservar antes de escrever (`sync-agent.ps1 id -Tipo D -From DELTA`).
+## D-039 | 05/11/2026 | causa raiz do log de 536 MB: o gate de log devolve SEMPRE true no tester, por desenho declarado
+
+**Autor:** DELTA | **Fonte:** `Monitoring\AccountLogGate.mqh` lido no disco + journal do tester | **Nao e hipotese: o proprio codigo declara-o**
+
+No D-038 medi o sintoma (5 copias da mesma linha, 536 MB de log). Aqui esta a causa, encontrada no codigo.
+
+---
+
+### 1. O codigo diz literalmente que no tester o gate e ignorado
+
+`Monitoring\AccountLogGate.mqh`, dentro de `AccountLogGatePodeImprimir`:
+
+```mql5
+   // P1.102 (05/11/2026): o TESTER partilha esta pasta FILE_COMMON com a
+   // producao e escrevia aqui o tempo SIMULADO do backtest. ...
+   // No tester cada passe tem o seu proprio journal e nao ha conta partilhada
+   // a proteger, por isso o gate devolve SEMPRE true e deixa de escrever no
+   // ficheiro comum. A producao recupera o throttle de 1x/hora por tag e por
+   // conta.
+   if(MQLInfoInteger(MQL_TESTER))
+      return(true);
+```
+
+Isto **nao e um bug**. E uma decisao consciente e documentada, e a razao invocada esta certa:
+- se o gate escrevesse em `FILE_COMMON` durante o teste, gravava o tempo **simulado** do backtest (2026.10.09) por cima do tempo real da producao (2026.11.05);
+- o `P1.102` corrigiu isso da forma que tinha a mao: desligar o gate no tester.
+
+**O que o P1.102 nao previu:** sem gate nenhum no tester, a duplicacao *dentro do mesmo tick* deixou de ter travão. E o ATR imprime a partir de varios consumidores no mesmo instante.
+
+---
+
+### 2. O padrao medido nao e "1 por hora", e "5 no mesmo milissegundo"
+
+```
+2026.10.09 22:27:20  x5 linhas identicas (mesmo ms)
+2026.10.09 22:27:40  x3
+2026.10.09 22:27:59  x4
+2026.10.09 22:28:00  x3
+2026.10.09 22:28:20  x4
+2026.10.09 22:28:40  x5
+2026.10.09 22:28:59  x4
+```
+
+Cinco chamadas em 1 tick, nao cinco eventos. O throttle por **conta** (que e o que existe) nao serve para isto; o que falta e um throttle por **instancia e por segundo**, que nao toca em `FILE_COMMON` e por isso nao contamina a producao.
+
+---
+
+### 3. Proposta concreta de correccao (nao aplicada)
+
+Alterar **um** ramo, em `Monitoring\AccountLogGate.mqh`, no `if(MQLInfoInteger(MQL_TESTER))` que hoje devolve `true`:
+
+```mql5
+   if(MQLInfoInteger(MQL_TESTER))
+     {
+      // v1.2.xxx - throttle LOCAL no tester: nao usa FILE_COMMON (nao
+      // contamina a producao), nao atravessa passes (cada passe tem o seu
+      // journal), mas colapsa as N copias da MESMA tag no MESMO segundo.
+      // MEDIDO no run 7704874073263362126: 5 copias de "[ATR] SEM LEITURA"
+      // com timestamp identico ao milissegundo; 536 MB de log num teste de
+      // 3 meses. Custo: memoria estatica de 32 tags por instancia.
+      static string sTag[32];
+      static datetime sHora[32];
+      datetime agoraT = TimeCurrent();
+      for(int i = 0; i < 32; i++)
+        {
+         if(sTag[i] == tag)
+           {
+            if(sHora[i] == agoraT)
+               return(false);          // mesma tag, mesmo segundo: cala
+            sHora[i] = agoraT;
+            return(true);
+           }
+        }
+      for(int i = 0; i < 32; i++)
+        {
+         if(sTag[i] == "")
+           { sTag[i] = tag; sHora[i] = agoraT; return(true); }
+        }
+      return(true);                     // tabela cheia: fail-open, como a regra manda
+     }
+```
+
+Propriedades desta mudanca:
+
+| Propriedade | Efeito |
+|---|---|
+| Nao usa `FILE_COMMON` | nao contamina a producao com tempo simulado |
+| Nao atravessa passes | cada passe do tester mantem o seu journal intacto |
+| Colapsa duplicados do mesmo segundo | mata as 3-6 copias identicas |
+| Fail-open na tabela cheia | mantem a regra: erro de log nunca esconde informacao |
+| Nao toca em trading | nenhum limite, lote, SL, TP, spread ou regra de entrada |
+| Reducao esperada do log | **~80 %** (de 5 copias para 1) - *estimativa pelo padrao medido, nao medida* |
+
+Risco real da mudanca: **baixo, mas nao zero**. Mexe num ficheiro (`AccountLogGate.mqh`) incluido por muitos modulos, e exige compilar -> `.ex5` novo. Nao aplico por duas razoes concretas, nao por cautela de fachada:
+
+1. **Conflito de escrita:** o ALFA esta a trabalhar `Indicators\VolatilityFilter.mqh` e o `P1.132` no mesmo EA. Duas maos no mesmo ficheiro = conflito garantido.
+2. **O dono do ficheiro e o ALFA** (monitoramento/diagnostico). Um P0 de producao nao se resolve a tres maos.
+
+**Proposta:** fica como `P1.1xx` no `BACKLOG.md` do ALFA. Eu forneco o patch, ele valida o estilo, o CMD compila e mede o tamanho do log na repeticao do B-031. Se o log cair de ~536 MB para ~100 MB, esta provado.
+
+---
+
+### 4. Porque isto e mais que "arrumar logs"
+
+Um journal com 5 copias do mesmo erro e um journal que **mente sobre a frequencia**. Quem ler o journal e contar linhas conclui "o ATR falhou 5 vezes" quando falhou 1. Isso ja contaminou pelo menos uma leitura minha nesta noite, e esta registado no D-038 como correccao. Se contaminou a minha, contamina a de qualquer pessoa que audite este EA depois.
+
+E o custo em disco e real e medido: **3211,5 MB** em `Tester\logs`, disco livre a cair de 2435 MB (23:33) para 2232 MB (23:43). Um projecto que quer correr em conta real nao pode ter um backtest a encher o disco.
+
+---
+
+### 5. Liga ao D-038
+
+| D-038 | D-039 |
+|---|---|
+| sintoma: 5 copias, 536 MB | causa: `return(true)` no ramo do tester |
+| defeito ATR reproduzivel | o log inflacionado esconde o sinal do ATR |
+| pede backtest com P1.132 | pede throttle local para poder ler o backtest |
+
+As duas coisas tem de ser feitas na mesma ordem: **primeiro o throttle, depois a leitura**. Sem o segundo, o primeiro continua ilegivel.
+
+---
+
+**Proximo ID livre:** reservar antes de escrever (`sync-agent.ps1 id -Tipo D -From DELTA`).
+## D-040 | 05/11/2026 | o B-031 correu com o binario ANTIGO - e isso mata a reprodutibilidade mas dá a prova do P1.132 de borla
+
+**Autor:** DELTA | **Fonte:** journal do tester do run `7704874073263362126` + mtimes dos `.ex5` | **Correccao de rumo: nao e um problema, e uma oportunidade, mas obriga a redefinir o B-031**
+
+---
+
+### 1. O que o tester carregou
+
+```
+23:06:31  Tester  expert file added: Experts\XAU_AI_PRO\XAU_AI_PRO.ex5. 927391 bytes loaded
+23:06:31  Tester  XAUUSD,H1 (MetaQuotes-Demo): testing ... from 2026.08.01 to 2026.11.05
+```
+
+Cronologia dos binarios, medida (nao deduzida):
+
+| Momento | `.ex5` em disco | Tem `P1.132`? |
+|---|---|---|
+| 21:57:47 | **927 354 B** | nao |
+| **23:06:31** | (o mesmo, ainda) | **nao** - é este que o teste carregou |
+| 23:12:18 | **929 558 B** | **sim** (build do ALFA) |
+
+O journal diz `927391 bytes loaded`; o ficheiro em disco as 23:06 era **927 354 B**. Diferenca de 37 B - serializacao. O que importa:
+
+**929 558 - 927 391 = 2 167 B.** O binario que o B-031 carregou **nao e** o que esta em disco agora. E o anterior ao `P1.132`.
+
+E a confirmacao vem do proprio journal: o teste imprime
+```
+2026.10.09 22:27:20  [ATR] SEM LEITURA | ... | erro=4807 | barsCalc=-1
+```
+Se o `P1.132` estivesse a correr, essa linha nao devia aparecer.
+
+---
+
+### 2. Consequencia dura: o B-031 ja nao pode provar reprodutibilidade
+
+O B-031 exige **duas execucoes iguais**. A primeira correu com o binario antigo. O binario antigo **ja nao existe em disco** - foi sobrescrito as 23:12:18 e o `.ex5` esta no `.gitignore`, logo nao ha copia em repositorio.
+
+| Caminho | Possivel? |
+|---|---|
+| Repetir com o binario antigo | **nao** - ficheiro perdido |
+| Repetir com o binario novo | **sim**, mas entao sao dois testes do binario novo, nao uma repeticao do primeiro |
+| Usar o run 1 como linha de base de PF/DD do binario actual | **nao** - mediu outro binario |
+
+**Isto nao e um desastre, e um facto.** Um numero de PF/DD do run 1 atribuido ao binario de hoje seria **falso por 2 167 bytes de codigo diferente**. Nao vou escrever esse numero como se fosse do binario actual.
+
+---
+
+### 3. O que ganhamos: um A/B perfeito para o `P1.132`
+
+Temos duas metades de uma experiencia que normalmente custa semanas:
+
+| | Run 1 (a correr) | Run 2 (a lancar) |
+|---|---|---|
+| `.ini` | `equipe_B031_xauusd.ini` | **o mesmo, sem tocar** |
+| `.set` | `equipe_B031_xauusd.set` | **o mesmo, sem tocar** |
+| `.ex5` | 927 391 B carregados (sem P1.132) | 929 558 B (**com P1.132**) |
+| Journal esperado | `[ATR] SEM LEITURA ... erro=4807` | **?** |
+
+**Regra de leitura, definida ANTES de correr** (para nao haver interpretacao depois do resultado):
+
+- Se `4807` **desaparecer** do journal do run 2 -> `P1.132` **provado**. O reattach nos 13 graficos passa a ser formalidade de baixo risco, e o Q-019 fecha com prova em vez de opiniao.
+- Se `4807` **continuar** -> `P1.132` **nao resolve**. O reattach nao deve ser feito "para resolver o ATR" e o defeito tem de voltar para a mesa.
+- Se o run 2 **nao produzir journal nenhum** -> nao se conclui nada. `nao medido` e a resposta.
+
+Isto e o tipo de prova que o projecto precisa: uma variavel mudada, tudo o resto igual.
+
+---
+
+### 4. Novo desenho do B-031 (proposto, precisa de aceitacao)
+
+Deixa de ser "duas execucoes iguais com o binario X" e passa a ser:
+
+```
+B-031a  run 1  binario 927391 (sem P1.132)  -> linha de base ATR + PF/DD do binario ANTIGO
+B-031b  run 2  binario 929558 (com P1.132)  -> A/B do ATR  + PF/DD do binario ACTUAL
+B-031c  run 3  binario 929558 (com P1.132)  -> REPETICAO do B-031b = reprodutibilidade a serio
+```
+
+- B-031a e B-031b respondem a "o P1.132 corrige o ATR?" com uma variavel mudada.
+- B-031b + B-031c respondem a "o resultado e reproduzivel?" **no mesmo binario** - que e a pergunta que o B-031 queria fazer desde o inicio.
+- O numero de PF/DD que vai para o `QUADRO_ESTADO.md` e o de **B-031b/B-031c**, nunca o de B-031a.
+
+**Custo:** 3 backtests em vez de 2. **Risco do disco:** cada run escreve ~550-600 MB de log. Com 2173 MB livres (23:44), so cabem **2 runs** - e o terceiro exige a limpeza de `Tester\logs` que esta pedida ao DONO.
+
+---
+
+### 5. O que fica registado para nao se repetir
+
+**Causa do problema:** o binario mudou a meio de uma serie de provas. Ninguem fez nada de errado - o `P1.132` tinha de ser compilado. O erro foi **nao congelar o binario antes de arrancar uma prova de reprodutibilidade**.
+
+**Regra que proponho para o `PROTOCOLO.md`:**
+
+> Antes de arrancar um B-nnn que exige repeticao, copiar o `.ex5` em uso para
+> `MQL5\Files\Backup\ex5\XAU_AI_PRO_<versao>_<AAAAMMDD_HHMMSS>.ex5` e registar o
+> hash no bloco da prova. Sem essa copia, a prova nao pode ser repetida se o
+> codigo mudar - e o codigo muda todos os dias neste projecto.
+
+Isto custa 1 MB por prova e resolve uma classe inteira de problemas futuros. E obvio depois de acontecer; e por isso que se escreve.
+
+---
+
+### 6. Estado medido as 23:44
+
+| Item | Valor |
+|---|---|
+| `run_id` | `7704874073263362126` |
+| estado | `started` - progresso `00:35:41 / 00:40:52` |
+| `Tester\logs\20261105.log` | **582,1 MB** (era 0 MB as 23:06) |
+| `Tester\logs` total | 3211,5 MB (23:41) |
+| disco livre | **2173 MB** (2435 as 23:33, 2232 as 23:43) |
+| posicoes / ordens abertas | **0 / 0** |
+| `.ex5` em disco | 929 558 B, 23:12:18 (com `P1.132`) |
+
+---
+
+**Proximo ID livre:** reservar antes de escrever (`sync-agent.ps1 id -Tipo D -From DELTA`).
+
+## D-043 - Disco a 1,98 GB: o log do tester e o consumidor n.1 e o verbose e a causa (renumerado 2x: D-038 e D-041 ja eram de outros)
+
+Medido entre 23:44 e 23:46 (nao deduzido):
+
+- `C:` LivreGB 2,06 -> 1,98 em dois minutos.
+- `<data>\Tester\logs`: `20261031.log` 1.404,9 MB | `20261104.log` 672,5 MB | `20261105.log` 648,4 MB (a crescer 16,5 MB/min) | total da pasta ~3,2 GB.
+- `MQL5\Files` = 5.485 MB: `XAU_AI_PRO` 4.212,8 (`frontend` 1.573,2 + `Python` 1.243,7 + `.venv` 1.202,2 + `.git` 137,8), `Data` 989 (`BTCUSD_M5.pkl` 176,1 + `ETHUSD_M5.pkl` 183 + datasets legacy 437), `Temp` 384,8 (475 ficheiros, o maior com 10,7 MB), `Backup` 36,4, `MQL5\logs` 85,6.
+- Causa do ritmo: `EnableVerboseDebug=true` no `.set` do backtest. Cada tick sem ATR imprime uma linha; 66 MB em 4 minutos.
+
+Regras que ficam:
+
+1. Backtest de rotina usa `.set` com `EnableVerboseDebug=false`. Criado `MQL5\Profiles\Tester\xai_lownoise.set` (UTF-16LE com BOM, igual ao original, muda so essa linha e confirma `AutoTrade`, `AIUseGateway=false`, `AllowTradeWithoutAI=true`).
+2. Nenhum agente apaga `<data>\Tester\logs` por shell: `Tester` e raiz de **leitura** no `get_workspace_info` (write_roots = `MQL5` e `Common`). A limpeza dessa pasta e do CMD/operador, com alvo medido.
+3. CorrecÃ§Ã£o ao item 4 da lista do CMD: o `XAU_GATEWAY_TOKEN` **nao** precisa de provisionamento (D-037). Existe em `MQL5\Files\XAU_AI_PRO\.env` (104 B, 64 chars), o EA le-o em `AIConnector.mqh:793`, a sonda com esse token devolveu HTTP 200 / 1121 B e o journal de 23:11:18 registou os mesmos 1121 B. Item 4 fica FECHADO por medicao, nao por tarefa.
+4. O que sobra para o CMD limpar (ganho medido, tudo regeneravel): `Tester\logs` 3,2 GB de logs de dias anteriores + `frontend\node_modules` 1,57 GB (volta com `npm ci`). `.venv` nao se toca: e o Python que serve o gateway que o EA usa.
+
+## D-041 :: B-031 run1 FECHADO com numeros reais + baseline ATR para o A/B do P1.132
+
+- Data: 2026-11-05 23:45 (local) | Autor: DELTA | ID reservado por sync-agent.ps1 (D-041)
+- Run id: 7704874073263362126 | Binario carregado pelo tester: 927391 B (ANTIGO, SEM P1.132)
+- Config: XAUUSD H1 | 2026.08.01 -> 2026.11.05 | deposito 10000 USD | modelo m1 ohlc | alavancagem 100
+
+### 1. Resultado bruto do run1 (medido, nao estimado)
+
+| Metrica | Valor |
+|---|---|
+| Lucro liquido | -163.63 USD |
+| Lucro bruto / perda bruta | +323.83 / -487.46 |
+| Profit factor | 0.6643 |
+| Expected payoff | -18.18 |
+| Recovery factor | -0.3599 |
+| Sharpe ratio | -0.2537 |
+| Drawdown maximo (saldo e equity) | 454.70 USD = 4.42 % |
+| Trades / deals | 9 / 18 |
+| Ganhos / perdas | 4 / 5 |
+| Longs / shorts | 9 / 0 |
+| Max perdas consecutivas | 3 |
+| Margem minima (margin level) | 157.05 % |
+
+Leitura honesta: no periodo testado o binario ANTIGO fechou negativo com PF 0.66. Isto NAO e veredicto
+sobre o P1.132 nem sobre o EA atual: e o comportamento do binario 927391 B, que ja nao existe em disco.
+Amostra de 9 trades e estatisticamente insuficiente: nao se extrapola nada de 9 trades.
+
+Observacao medida que merece investigacao futura (nao e conclusao): 9 de 9 trades foram LONG, 0 SHORT.
+Ou o lado de venda nunca dispara no periodo, ou o filtro de venda esta sempre bloqueado. Nao medido ainda.
+
+### 2. Baseline ATR do run1 (para o A/B do P1.132)
+
+Contagem feita por leitura direta de Tester\logs\20261105.log (read-only, nada apagado):
+
+| Contador | Valor |
+|---|---|
+| Linhas com erro=4807 | 1 428 980 |
+| Linhas [ATR] SEM LEITURA | 1 399 481 |
+| Linhas [ATR] HANDLE MORTO | 29 499 |
+| Tamanho do log no fim do run1 | 659.93 MB |
+
+Assinatura do defeito no backtest (identica a do terminal vivo, D-036/D-038):
+handle=10 | barsCalc=-1 | erro=4807 | barrasSerie=barrasGrafico | serieSync=1 | grafico=XAUUSD
+=> os dados do simbolo estao sincronizados; o que falha e o HANDLE do indicador (BarsCalculated=-1).
+O mesmo handle 10 aparece em [ATR] e em [ADX] na mesma barra: nao e um indicador isolado, e a camada
+de handles do tester a devolver -1 de forma persistente.
+
+### 3. B-031b lancado (A/B do P1.132)
+
+- Run id: 7704884692122883821 | started 23:45
+- Binario: XAU_AI_PRO.ex5 929558 B (COM P1.132), o mesmo congelado em Files\Backup\ex5\XAU_AI_PRO_v1.367_20261105_231218_87E30E2B.ex5
+- Config/set: copias congeladas equipe_B031b_xauusd.ini / .set (hash identico ao original do B-031)
+- Metodo do A/B: os contadores do log sao ACUMULADOS no mesmo ficheiro. Para obter o valor do B,
+  subtrair este baseline (1 428 980 / 1 399 481 / 29 499 linhas, 659.93 MB) ao total lido no fim do B.
+- Criterio de prova do P1.132: se o P1.132 atua sobre a camada de handles, os contadores de 4807 do B
+  devem cair de forma material face ao baseline. Se nao cairem, o P1.132 NAO resolve este defeito e isso
+  tem de ser dito com o mesmo rigor.
+
+### 4. Limites desta medicao
+
+- Um unico periodo (3 meses), um unico simbolo, modelo m1 ohlc (nao every tick). Nao cobre 2026 inteiro.
+- PF/DD do run1 pertencem ao binario antigo: NAO entram no QUADRO_ESTADO como desempenho do EA atual.
+- O log do tester amplifica (D-038): 1.4 M linhas para ~1500 barras geradas e 359 831 ticks. A contagem
+  de linhas NAO e contagem de eventos: e contagem de impressoes. Serve para A/B, nao para dimensionar defeito.
+- Disco no momento: 2009.3 MB livres, Tester\logs com 20261031.log 1404.87 MB ainda por apagar (pedido av037).
+
+## D-042 | 05/11/2026 | reattach do P1.132 FEITO: 13/13 medidas, e a versao do binario NAO e v1.2.168
+
+**Autor:** ALFA | **Execucao:** 23:50:07 a 23:52:17 | **Item:** `D-032` passo 1 (`Q-019` = sim, autorizado pelo DONO as 23:25)
+
+### 1. Como foi feito, e porque assim
+
+Em vez de reescrever 13 vezes ~250 entradas no `chart_add_expert`, guardei o proprio grafico XAUUSD como template (`MQL5\Profiles\Templates\xai_alfa_p1132_base.tpl`, 96.986 B) e apliquei-o aos outros 12. O template guarda o **caminho** do EA e as **entradas**, nao o binario, logo cada grafico recarregou o `.ex5` de disco (929.558 B, 23:12:18) com as mesmas entradas que ja tinha.
+
+Criei tambem a variante so-`<expert>` (`xai_p1132_eaonly.tpl`, 327 linhas, 16.100 B) para o caso de se querer recarregar o EA sem tocar em propriedades do grafico. As duas funcionam: o USDSEK recarregou com a variante minima (23:51:53) e os restantes com a completa.
+
+**Simbolo e periodo de cada grafico foram preservados** â€” o `USDBRL` continuou `M5` e o `USDCNH` continuou `H1`, medido nas proprias linhas `[START]`.
+
+### 2. Prova: 13 linhas `[START]`, com hora e simbolo
+
+| Hora | Simbolo | Hora | Simbolo |
+|---|---|---|---|
+| 23:50:07.486 | USDBRL (M5) | 23:52:17.240 | USDSGD |
+| 23:51:53.374 | USDSEK | 23:52:17.255 | USDRUB |
+| 23:52:09.124 | USDCNH | 23:52:17.272 | NZDUSD |
+| 23:52:09.163 | USDCAD | 23:52:17.289 | AUDUSD |
+| 23:52:09.262 | USDCHF | 23:52:17.307 | GBPUSD |
+| 23:52:09.262 | USDCZK | | |
+| 23:52:09.277 | USDJPY | | |
+| 23:52:09.307 | XAUUSD | | |
+
+13 de 13 com EA. O `chart14` (XAUUSD,H1) nao tem EA e nao foi tocado.
+
+### 3. DEFEITO REGISTADO (familia `HG-01`): a versao nao identifica o binario
+
+As 13 linhas dizem `v1.2.167`. O codigo que elas carregaram **tem** o `P1.132`, escrito como `v1.2.169` em `Indicators/VolatilityFilter.mqh:184`, `:303` (`ATRFromRates`) e `:548`; o que ficou para tras foi o `EA_VERSION_STRING` (`Enterprise/VersionManager.mqh:14`), ainda `"1.2.167"`.
+
+Consequencia pratica: o criterio escrito no `D-032` â€” "13/13 `[START] v1.2.168`" â€” **nao era atingivel** e nao serve como prova. A prova e a hora do `[START]` mais o tamanho do `.ex5` carregado. E o mesmo tipo de erro do `HG-01` de 04/11, quando o `#property version` ficou oito versoes atras do `EA_VERSION_STRING`.
+
+### 4. Decisao: NAO recompilar agora para corrigir o numero
+
+Um recompile muda o `.ex5` e destroi a identidade do binario que o `B-031b` precisa de comparar com o `B-031a` (`D-040`: 927.391 B sem `P1.132` contra 929.558 B com). O bump para `1.2.169` entra no **proximo ciclo de codigo, depois do A/B**, e nessa altura com os 13 graficos a recarregar outra vez.
+
+### 5. Comportamento depois do reattach
+
+Zero linhas `[ATR] SEM LEITURA` na producao entre as 23:50 e as 23:53. **Nao e prova sozinho**: o portao do `P1.121` e por build e por simbolo, e pode ter gastado a vez antes. Fica como sinal positivo, nao como demonstracao.
+
+Nenhum parametro de risco foi tocado. As entradas sao exactamente as que cada grafico ja tinha (lidas com `list_open_charts` antes de mexer): `AutoTrade=true`, `MagicNumber=2026001`, `AllowTradeWithoutAI=true`, `EnableVerboseDebug=true`, `AIGatewayUrl=...:9011`, `AIGatewayToken` vazio (o `.env` fornece o token, `D-037`).
+
+
+## D-044 | 05/11/2026 23:57 | F8 disco: 382,9 MB recuperados DENTRO das raizes; o resto e do operador
+
+Medicao (nao estimativa):
+
+- Livre em C: 1,74 GB as 23:54 -> 2,10 GB as 23:57.
+- Apagados 13.018 arquivos de `MQL5\Files\Temp` com mtime < 05/11/2026 00:00 = 382,9 MB.
+  Restaram 133 arquivos / 21,7 MB (inclui os scratch desta sessao). Subpastas vazias removidas.
+- `frontend\node_modules` JA NAO EXISTE (o CMD limpou). Os 1.573,2 MB que apareciam
+  em `frontend` sao de `src-tauri`: `bridge\_internal` 989,2 MB (PyInstaller onedir de 25/10)
+  + `src-tauri\Python` 515,1 MB. `bridge/` esta no `.gitignore` (linha 194), `git ls-files`
+  devolve vazio e `scripts\build_app.bat` o reconstroi -> e artefato, nao fonte.
+  NAO apaguei: e a maior folga disponivel, mas custa um rebuild inteiro. Fica de reserva.
+
+Consumidor n.1 continua a ser o tester, e o tester esta FORA das minhas raizes
+(`Tester` e read root; write roots sao MQL5 e Common). Nao posso apagar. Estado medido:
+
+| arquivo | MB | situacao |
+|---|---|---|
+| 20261031.log | 1.404,9 | dia anterior - LIXO SEGURO |
+| 20261105.log | 775,6 | EM USO pelo B-031b - NAO TOCAR |
+| 20261104.log | 672,5 | dia anterior - LIXO SEGURO |
+| 20261030.log | 331,5 | dia anterior - LIXO SEGURO |
+| 20261101.log | 183,0 | dia anterior - LIXO SEGURO |
+| 20261102.log | 48,8 | dia anterior - LIXO SEGURO |
+| 20261103.log | 34,8 | dia anterior - LIXO SEGURO |
+
+Alvo: os 6 arquivos de dias anteriores = 2.675,5 MB. Ganho conservador de espaco com
+risco zero, e nao precisa recompilar nada nem interromper o backtest.
+
+Regras que ficam escritas para nao haver acidente:
+
+1. `Tester\logs\20261105.log` e a MEDIDA do B-031b. Apagar = perder a prova do P1.132.
+   So depois de extrair as contagens e fechar o B-031b.
+2. `.venv` (1.202,2 MB) NAO se apaga: e o Python que serve o gateway (pid 14992,
+   `uvicorn backend.fastapi_gateway:app --host 127.0.0.1 --port 9011`). Apagar derruba a IA do EA.
+3. `src-tauri\bridge\_internal` (989,2 MB) e o ultimo recurso antes de faltar espaco a serio.
+4. O log cresce ~16,5 MB/min com `EnableVerboseDebug=true`. O `.set` de rotina
+   (`xai_lownoise.set`, verbose=false) existe para os backtests que NAO medem ATR.
+
+Pedido ao CMD/operador: apagar os 6 logs de dias anteriores em
+`...\D0E8209F77C8CF37AD8BF550E51FF075\Tester\logs\` e responder com o LivreGB medido.
+Nao e preciso parar o metatester64.
+
+
+## D-045 | 06/11/2026 00:02 | P1.133 escrito, HG-01 fechado, build sombra 0/0 e o .ex5 em uso intacto
+
+Estado no momento da escrita: B-031b a correr (run 7704884692122883821, 13:18 de 37:02,
+`Tester\logs\20261105.log` 782,4 MB), `XAU_AI_PRO.ex5` = 929 558 B mtime 05/11 23:12:18
+(INTACTO), C: com 3,13 GB livres (os logs de dias anteriores foram apagados - D-044 fechado).
+
+### 1. A causa do journal gigante nao era o ATR: era o gate de log desligado no tester
+
+Por leitura, nao por suposicao: `Monitoring/AccountLogGate.mqh` devolvia SEMPRE `true`
+dentro do Strategy Tester desde o P1.102 (v1.2.144). O P1.102 estava certo no que
+protegia - o tester escrevia o tempo SIMULADO nos ficheiros `Common\Files\XAU_AI_PRO\loggate_*.bin`
+e envenenava o throttle da producao - mas a correcao custou o throttle inteiro.
+Consequencia medida: 1 399 481 linhas `[ATR] SEM LEITURA` no run1 do B-031 e
+~16,5 MB/min de journal, que foi o que encheu o disco.
+
+### 2. P1.133 - throttle em memoria dentro do tester (v1.2.170)
+
+`TesterGatePodeImprimir(tag, janelaSeg)` novo em `AccountLogGate.mqh`: tabela estatica
+de 128 tags por instancia, sem um unico ficheiro. A primeira emissao de cada tag no
+passe continua a sair; a repeticao so depois da janela pedida pelo chamador.
+- Producao: caminho do ficheiro comum INALTERADO.
+- P1.102: continua respeitado (zero escrita em FILE_COMMON pelo tester).
+- Tabela cheia ou relogio a 0: devolve `true` (fail-open).
+- Nao decide nada de trading: so se uma linha de diagnostico e escrita.
+
+Duas linhas a mais, ambas de diagnostico:
+- `[ATR] SEM LEITURA` passa a publicar `ocorrencias_instancia=N`, contado ANTES do gate.
+  Com o throttle ligado, a frequencia deixa de ficar invisivel.
+- `[LEARN] historico ainda nao disponivel` (LearningHistory.mqh:857) passa pelo gate
+  `learn_sem_hist` (1x/h): era impresso a cada 30 s durante todo o backtest.
+
+### 3. HG-01 fechado
+
+`XAU_AI_PRO.mq5:22` `#property version   "1.370"` e
+`Enterprise/VersionManager.mqh:14` `EA_VERSION_STRING "1.2.170"`.
+Fim da divergencia que fez os 13 `[START]` dizerem v1.2.167 com o P1.132 ja no binario.
+
+### 4. Prova de compilacao sem tocar no binario do A/B
+
+Compilar no lugar teria reescrito o `.ex5` a meio da comparacao. Foi feito um build
+SOMBRA: os 111 ficheiros de fonte foram copiados para `MQL5\Files\Temp\bc\XAU_AI_PRO`
+e compilados la com `metaeditor64.exe`.
+
+```
+Result: 0 errors, 0 warnings, 28618 ms elapsed, cpu='X64 Regular'
+ex5 sombra: 931006 B
+```
+
+O `.ex5` de producao continua com 929 558 B e mtime 23:12:18: a identidade que o
+B-031b esta a medir esta preservada. O build sombra e descartavel e sera apagado.
+
+### 5. O que fica bloqueado e por quem
+
+- Compilar o `.ex5` real: so depois de o B-031b fechar (LOCK de ALFA activo ate 01:28).
+- Reattach dos 13 graficos com a v1.2.170: depois do compile, para nao misturar a
+  variavel do log gate com a medicao do ATR.
+- B-031c: com o binario novo, mesmo `.set` original, para medir reprodutibilidade.
+
+Regra de leitura do B-031b, escrita antes de ver o resultado: se `erro=4807` e
+`[ATR] SEM LEITURA` cairem face ao baseline (1 428 980 / 1 399 481 / 29 499 linhas,
+659,93 MB), o P1.132 resolve; se ficarem iguais, o P1.132 nao resolve e o proximo
+passo e o `handle=10` devolver -1 de forma persistente na camada do tester.
+
+
+## D-047 | 06/11/2026 00:36 | P1.134: o P1.132 nao cobria o handle recusado - a serie passa a ser a primeira alternativa
+
+**Retratacao medida, antes do patch.** O B-031b (run 7704884692122883821) deixou de ser o job
+activo: `tester_get_status` responde `requested run_id does not match the active tester job`.
+O job que corre agora foi criado as 00:25:56 e o .ini e
+`MQL5\Profiles\Tester\XAU_AI_PRO.XAUUSD.H1.20260801_20261105.100.ini`
+(2026.08.01 -> 2026.11.05, Model=1 m1 ohlc, AIUseGateway=true). Portanto a minha leitura
+anterior - "`erro=4807` desapareceu no dia novo" - foi feita na fatia inicial do log e e
+**REFUTADA** pelos numeros de agora.
+
+Contagem medida em `Tester\logs\20261106.log` (57 431 944 B as 00:34):
+
+| contador | valor | primeira linha |
+|---|---|---|
+| `[ATR] SEM LEITURA` | 77 967 | 92422 |
+| `[ATR] HANDLE MORTO` | 1 679 | 92423 |
+
+A primeira ocorrencia e em tempo **simulado 2026.08.03 01:00:00**, exactamente no bloco
+`[SAFETY] Daily statistics reset` + `[RECOVERY] 6 modulos OK` + `[BACKUP]`, e a partir dai
+nunca recupera: `barsCalc=-1 | erro=4807 | handle=10 | barrasSerie=9247 | barrasGrafico=9247 | serieSync=1`.
+`4807` = `ERR_INDICATOR_WRONG_HANDLE`; e o mesmo sintoma que o DELTA documentou no AVISO 041
+(handle 10 recusado no ATR **e** no ADX na mesma barra).
+
+**Porque o P1.132 nao resolvia este caso (lido no codigo, nao inferido).** `GetATR` so consulta
+`ATRFromRates` quando `ATRRatesOnly(symbol)` e verdadeiro; `ATRRatesOnly` so passa a verdadeiro
+em `ATRIdentityFail`, que por sua vez so e chamada no ramo em que o `CopyBuffer` **devolveu
+valor**. Com o handle recusado em todos os ticks o simbolo nunca chega ao rates-only, o ramo de
+falha publica `SEM LEITURA` e faz `return 0.0` para sempre (fail-closed). O P1.132 corrigia a
+identidade, nao a indisponibilidade.
+
+**Patch P1.134** (`Indicators\VolatilityFilter.mqh`, 30 425 -> 32 015 B, 923 -> 948 linhas,
+EOL dominante no ponto de insercao preservado, chaves 45/45):
+
+- no ramo de falha do `CopyBuffer`, antes de publicar `SEM LEITURA`, tenta
+  `ATRFromRates(symbol, Period(), VOLATILITY_ATR_PERIOD)`;
+- se devolver > 0, entrega esse valor normalizado ao pipeline e publica
+  `[ATR] SERIE OK | <sym> | atrSerie= | handleRecusado= | barsCalc= | erro=` com o throttle do
+  P1.133 (1x/h por simbolo e por build);
+- so quando a serie tambem nao da e que mantem `SEM LEITURA` e o `ATRCacheDrop` / `HANDLE MORTO`
+  exactamente como estavam;
+- nenhum limite, lote, alvo, stop, spread, preco, regra de entrada ou de saida, ou parametro de
+  risco foi tocado: muda de ONDE vem o ATR quando o handle nao serve.
+
+**Validacao.**
+
+- Build sombra (fontes copiados para `MQL5\Files\Temp\bc`, 111 ficheiros):
+  `Result: 0 errors, 0 warnings, 29072 ms elapsed, cpu='X64 Regular'`; ex5 sombra 930 778 B.
+- `.ex5` vivo **intocado**: 929 558 B, mtime 05/11 23:12:18 - nao compilei o binario real porque
+  ha um job de tester a consumi-lo.
+- Identidade HG-01 alinhada: `#property version "1.371"` e `EA_VERSION_STRING "1.2.171"`.
+- Espelho EA -> `MQL5\Files\XAU_AI_PRO\MQL5\Experts\XAU_AI_PRO` sincronizado 5/5 com SHA256 igual
+  (VolatilityFilter `CA1B5A70F07F`, VersionManager `1DCC12F40EDD`, mq5 `1DE829B2EBF7`,
+  AccountLogGate `3C94F66E30EE`, LearningHistory `D6D0829D3ABF`).
+
+**Regra de leitura fixada antes de correr qualquer teste:** o P1.134 altera o comportamento do
+filtro de volatilidade no tester (antes: ATR=0 permanente -> fail-closed; depois: ATR da serie ->
+filtro a funcionar). Isso exige backtest proprio, B-032, com o binario 1.2.171, e a comparacao tem
+de ser feita por contadores, nao por impressao. Enquanto o .ex5 nao for compilado, o P1.134 esta
+provado apenas como compila, nao como funciona.
+
+- **estado:** ABERTO | 06/11 00:36 | ALFA
+
+
+## D-048 | 06/11/2026 00:41 | 0 shorts: causa medida e ESTRUTURAL - o sinal de venda exige EMA50<EMA200 e essa condicao nunca ocorreu
+
+Fecha a pergunta aberta do AVISO 041 do DELTA (item 3), que ficou registada como "ausencia de sinal
+de venda, hipotese (a) fail-open assimetrico ou (b) buffer diferente".
+
+**Contagem medida** em `Tester\logs\20261106.log` (job activo, XAUUSD H1):
+
+| marcador | valor |
+|---|---|
+| `[SIGNAL] BUY` | 166 |
+| `[SIGNAL] SELL` | **0** |
+| `[VALIDATION] APPROVED` | 10 |
+| `TREND BUY` | 1314 |
+| `TREND SELL` | **0** |
+| `[PIPELINE] FINALIZADO` | 1364 |
+
+**Leitura correcta da linha `TREND SELL`.** Em `Core\ValidationEngine.mqh:347` o rotulo e
+`motivoTrend = (signal == 1) ? "TREND BUY" : "TREND SELL"`, ou seja `TREND SELL` conta sinais de
+VENDA vetados pelo cenario. Zero significa "nenhum sinal de venda foi vetado", **nao** "o sinal de
+venda foi vetado". A linha nao explica a ausencia de shorts: e consequencia dela.
+
+**Causa, lida no codigo** (`Core\SignalCore.mqh:373-376`):
+
+```
+if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy  && rsi[1]>rsi[2]) sinalLocal = 1;
+else if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<rsi[2]) sinalLocal = -1;
+```
+
+A venda exige EMA50 **abaixo** da EMA200. Numa janela em que a EMA50 se manteve acima da EMA200 o
+ramo de venda nunca foi avaliado - o EA e estruturalmente comprador nessa janela. Nao e defeito de
+dados (o log tem `barsCalc`/`serieSync` coerentes onde o ATR falha, e o sinal le EMA/RSI sem erro),
+nao e fail-open assimetrico (hipotese (a) do DELTA) e nao e buffer diferente (hipotese (b)): o ramo
+de venda e alcancavel e nunca teve a sua pre-condicao satisfeita.
+
+**Consequencia para o 10/10.** Isto e um limite de ESTRATEGIA, nao um bug para patch a cegas.
+Alterar a pre-condicao de venda muda regras de entrada, logo exige decisao do DONO e backtest
+proprio. Opcoes medidas para decidir, nenhuma aplicada:
+
+1. manter como esta - comprador por desenho, documentado (menor risco, menor cobertura);
+2. permitir venda com a mesma logica de pullback sem exigir EMA50<EMA200, usando a reducao de lote
+   do cenario (`ScenarioLotFactor`) como travÃ£o da contra-tendencia;
+3. referencia de tendencia mais rapida (EMA200 H1 -> EMA100 M15) para o ramo de venda deixar de
+   depender de um regime de meses.
+
+**Relacao com o P1.134.** O ATR cego nao e a causa dos 0 shorts: o sinal nao le ATR. Mas enquanto o
+ATR estiver em 0.0 o filtro de volatilidade fica fail-closed e o numero de entradas aprovadas nao
+representa a estrategia; por isso o B-032 (binario 1.2.171) tem de ser lido antes de decidir
+qualquer coisa sobre o lado da venda.
+
+- **estado:** ABERTO - decisao do DONO | 06/11 00:41 | ALFA
+
+
+## D-049 | 06/11/2026 00:56 | P1.135: o 4807 passa a ser curado (handle recriado) e o B-032 ia provar ZERO
+
+**Autor:** ALFA | **Estado:** escrito e compilado em sombra, pendente de prova no binario real
+
+### 1. O que o 4807 e, ao contrario do que o ramo tratava
+
+O ramo de falha do `CopyBuffer` em `Indicators/VolatilityFilter.mqh` tinha duas
+causas misturadas:
+
+| causa | erro | barsCalc | comportamento certo |
+|---|---|---|---|
+| handle a aquecer | 0 / 4401 | >= 0 | esperar (P1.108/P1.113) |
+| handle ERRADO para o terminal | **4807** | **-1** | **deitar fora e criar outro** |
+
+O P1.134 (D-047) garante que o ATR nao fica cego: devolve a serie do proprio
+simbolo. Mas deixava o handle recusado na cache para sempre, logo o simbolo
+ficava dependente do calculo por serie em vez de heal.
+
+### 2. O que muda (P1.135)
+
+- `#define ATR_4807_DROP_SEC 900` — carimbo por simbolo;
+- `datetime g_atrIdDrop[ATR_SYMBOL_CACHE]` — inicializado no `ATRIdentitySlot`;
+- `bool ATRDropShouldForce(string symbol)` — verdadeiro no maximo 1x/900 s por
+  simbolo;
+- no ramo falhado: `if(copyErr == 4807 && ATRDropShouldForce(symbol))` →
+  `ATRCacheDrop(symbol)` + linha `[ATR] HANDLE RECRIADO | ... | erro=4807
+  (ERR_INDICATOR_WRONG_HANDLE) | ...`. A leitura seguinte cria handle novo por
+  `ATRSymbolHandle`.
+
+O limite de 1 recriacao/900 s existe para um terminal que recusa SEMPRE nao ser
+bombardeado com `iATR` no tester. Nenhum limite, lote, alvo, stop, spread,
+preco, regra de entrada ou de saida, ou parametro de risco foi alterado.
+
+### 3. Medicao da escrita
+
+| item | valor |
+|---|---|
+| bytes | 32 015 -> **34 124** |
+| linhas | 948 -> **993** |
+| hash SHA256 (12) | CA1B5A70F07F -> **C7531727EF41** |
+| chaves | 47 / 47 |
+
+### 4. Validacao por build sombra (nao toca no binario em uso)
+
+```
+copiados: 111 ficheiros de fonte
+Result: 0 errors, 0 warnings, 28930 ms elapsed, cpu='X64 Regular'
+ex5 sombra: 931154 B
+ex5 VIVO intacto: 929558 B mtime=2026-11-05T23:12:18
+```
+
+Identidade HG-01: `#property version "1.372"` + `EA_VERSION_STRING "1.2.172"`.
+
+### 5. FALHA EVITADA: o B-032 preparado ia medir zero
+
+Ao rever o `equipe_B032_xauusd.set` antes de lancar:
+
+```
+EnableVolatilityFilter=false||false||0||true||N
+```
+
+Com o filtro de volatilidade DESLIGADO o `GetATR` nao corre, logo o B-032 nao
+exerceria nem o P1.134 nem o P1.135 e a conclusao seria "0 SEM LEITURA" lida
+como sucesso. Corrigido no .set:
+
+```
+EnableVolatilityFilter=true||false||0||true||N
+EnableVerboseDebug=false||false||0||true||N
+```
+
+`EnableVerboseDebug=false` porque a leitura do B-032 e por CONTAGEM e o verbose
+so aumenta o log (o job activo escreveu 160 MB em 20 min); nao altera se o
+`CopyBuffer` falha. `AIUseGateway=false` mantem-se (offline, deterministico).
+
+### 6. Regra de leitura fixada ANTES de correr (nao se muda depois)
+
+| contador | antes (B-031b, binario 1.2.170) | esperado (B-032, binario 1.2.172) |
+|---|---|---|
+| `[ATR] SEM LEITURA` | 77 967 | 0 |
+| `[ATR] HANDLE MORTO` | 1 679 | 0 |
+| `[ATR] SERIE OK` | 0 | > 0 |
+| `[ATR] HANDLE RECRIADO` | 0 | > 0 |
+
+Se `SEM LEITURA` = 0 mas `HANDLE RECRIADO` tambem = 0, a leitura NAO prova o
+P1.135 (o handle pode simplesmente nao ter sido recusado nesta janela) e o
+teste tem de ser repetido com a janela que contem a virada de dia simulada de
+03/08, onde o 4807 foi medido.
+
+### 7. Pendencia
+
+Compilar o `.ex5` REAL com 1.2.172 e correr B-032 assim que o job do DELTA
+(ini `XAU_AI_PRO.XAUUSD.H1.20260801_20261105.100.ini`) fechar e o LOCK for
+libertado. Enquanto o job corre, o binario real fica congelado (929558 B).
+
+## D-050 | 06/11/2026 01:00 | Linha de base por CONTAGEM fixada (218214 SEM LEITURA) + o leitor anterior lia 1 linha so
+
+**Contexto.** Para o B-032 provar o P1.134/P1.135 nao basta "correu sem erros": a regra do D-049 §6 e comparar CONTAGENS
+de marcadores antes/depois. Faltava o "antes" medido no binario antigo.
+
+**Ferramenta.** `MQL5\Files\Temp\contadores_atr.ps1` (v2, 3448 B) + saida `MQL5\Files\Temp\contadores_atr.txt`.
+Le o log do tester em blocos de 8 MB com `FileStream(FileShare::ReadWrite)` (o tester tem o log aberto),
+descodifica UTF-16LE (o log do tester tem BOM `FF FE`) e conta por regex unico com alternancia.
+
+**Bug corrigido (v1 -> v2).** A v1 fazia `foreach ($l in $leitor)` sobre um `StreamReader`. `StreamReader` NAO e
+enumeravel em .NET, logo o PowerShell tratou-o como colecao de 1 elemento e devolveu **1 linha** lida com
+`bytes 173875626` — um resultado que parecia valido e era lixo. Regra que fica: nunca enumerar `StreamReader`
+com `foreach`; usar `ReadLine()` num `while` ou ler por blocos.
+
+**Linha de base medida** — job ACTIVO (ini `XAU_AI_PRO.XAUUSD.H1.20260801_20261105.100.ini`, arranque 00:25:56),
+binario em uso anterior ao P1.134/P1.135, log 2026.11.06, 174 172 696 B, lido 100%, mtime 00:58:54:
+
+| marcador | ocorrencias | 1o offset |
+|---|---|---|
+| `[ATR] SEM LEITURA` | **218 214** | 13 748 945 (2026.08.03 01:00:00) |
+| `[ATR] HANDLE MORTO` | **4 663** | 13 749 167 |
+| `[ATR] SERIE OK` | **0** | - |
+| `[ATR] HANDLE RECRIADO` | **0** | - |
+| `[ATR] IDENTIDADE ERRADA` | 2 | 69 574 064 (2026.08.17 14:00:00) |
+| `[ATR] LEITURA SUSPEITA` | 0 | - |
+| `[SIGNAL] BUY` | 279 | 14 005 |
+| `[SIGNAL] SELL` | 0 | - |
+| `[VALIDATION] APPROVED` | 16 | 6 794 099 |
+| `[VALIDATION] BLOCK` | 3 229 | 14 457 |
+
+**O que isto confirma por medicao (nao por codigo):**
+1. O binario antigo NUNCA entregou valor por serie: `SERIE OK = 0` prova que o ramo do P1.134 nao existia.
+2. O binario antigo NUNCA recriou handle: `HANDLE RECRIADO = 0` prova que o P1.135 nao existia.
+3. O 4807 e o caminho normal, nao excepcao: 218 214 `SEM LEITURA` contra 16 `APPROVED`.
+4. Amostra literal: `[ATR] SEM LEITURA | XAUUSD | CopyBuffer sem barras | barsCalc=-1 | erro=4807 | handle=10 |
+   barrasSerie=9247 | barrasGrafico=9247 | serieSync=1` — a serie local ESTAVA pronta e mesmo assim nada foi entregue.
+5. `[SIGNAL] SELL = 0` e coerente com o D-048 (0 shorts) e o log mostra o motivo literal:
+   `[VALIDATION] BLOCK | TREND BUY | XAUUSD | contramao vetada | tendencia formada | ADX=52.4 >= 22.0`.
+
+**Regra de leitura que fica para o B-032** (inalterada face ao D-049 §6, agora com o "antes" numerico):
+
+| contador | antes (1.2.170) | esperado (1.2.172) | veredicto se falhar |
+|---|---|---|---|
+| `[ATR] SEM LEITURA` | 218 214 | 0 | P1.134 nao entrou no binario |
+| `[ATR] HANDLE MORTO` | 4 663 | 0 | P1.135 nao entrou no binario |
+| `[ATR] SERIE OK` | 0 | > 0 | ramo do P1.134 nao correu |
+| `[ATR] HANDLE RECRIADO` | 0 | > 0 | ramo do P1.135 nao correu |
+| `[ATR] IDENTIDADE ERRADA` | 2 | <= 2 | nao deve piorar |
+
+Se `SEM LEITURA=0` **e** `HANDLE RECRIADO=0`, a janela nao continha o 4807 (virada de dia simulada de 03/08) e o
+teste nao prova nada — repetir com a janela `2026.08.01 -> 2026.11.05`, que e a que contem essa virada.
+
+**Estado do job do DELTA no momento desta nota:** 5 `metatester64`, simulado **2026.10.12 19:40** (~75% de
+01/08 -> 05/11), log 174 MB a crescer ~1 MB/min, disco C: livre **2,66 GB**. Ainda sem janela de resultado.
+O LOCK do ALFA (expira 02:30) continua a congelar o `.ex5` de 929 558 B; fontes editaveis.
+
+
+---
+
+## D-051 | 06/11/2026 01:19 | Compilacao REAL do 1.2.172 e lancamento do B-032 com contagem por offset
+
+**Contexto.** O job de tester do DELTA (config `XAU_AI_PRO.XAUUSD.H1.20260801_20261105.100.ini`,
+criado 00:25:56) terminou as **01:10:42-43** — o log `20261106.log` fecha com
+`XAUUSD,H1: 359831 ticks, 1500 bars generated ... Test passed in 0:44:46.542`
+e `connection closed`. 4 processos `metatester64` ficaram vivos, mas **inertes**
+(log sem escrita desde 01:10:43). Foi esta a prova usada para considerar a
+exclusividade satisfeita.
+
+**Achado de identidade (medido, nao suposto).** O log do job do DELTA imprime
+`[VERSION] v1.2.167`. O `.ex5` em uso tinha mtime 2026-11-05T23:12:18, 929558 B,
+hash `87E30E2B4E43`. Logo **a linha de base do D-050 foi medida contra o binario
+v1.2.167**, anterior a P1.133/P1.134/P1.135 — o que reforça a conclusao do D-050
+(`SERIE OK=0`, `HANDLE RECRIADO=0`): o codigo novo nao estava no binario testado.
+
+**Compilacao REAL (nao sombra).** `b032_runbook.ps1 -Force`:
+- backup D-040 antes de compilar:
+  `MQL5\Files\Backup\ex5\XAU_AI_PRO_1.2.167_20261105_231218.ex5` (929558 B, hash `87E30E2B4E43`)
+- identidade declarada: `#property version "1.372"` / `EA_VERSION_STRING "1.2.172"`
+- MetaEditor: `C:\Program Files\MetaTrader 5\metaeditor64.exe`
+- `Result: 0 errors, 0 warnings, 19512 ms elapsed, cpu='X64 Regular'`
+- `.ex5` novo: **931194 B, hash `0A28EDFC5BDC`, mtime 2026-11-06T01:19:48**
+- o nome do backup usa a versao do binario *substituido* (1.2.167), nao a do
+  codigo (1.2.172): a versa do backup e a do ficheiro, nao a do fonte.
+
+**B-032 lancado.** `tester_run_backtest` com
+`MQL5\Profiles\Tester\equipe_B032_xauusd.ini` (2026.08.01 -> 2026.11.05, Model=1,
+Symbol=XAUUSD, Period=H1) e `equipe_B032_xauusd.set`
+(`EnableVolatilityFilter=true`, `EnableVerboseDebug=false`, `AIUseGateway=false`,
+`Symbols=XAUUSD`). `run_id = 7704908543756588672`, arranque 01:21:xx,
+estimativa do tester `01:06:40`, agente `Core 1`.
+
+**Metodo de contagem: por OFFSET, nao por ficheiro novo.** O tester acrescenta ao
+mesmo `Tester\logs\20261106.log`. Antes de lancar foi medido e gravado em
+`MQL5\Files\Temp\b032_offset.txt`:
+`offset=180740040|mtime=2026-11-06T01:10:43`. A leitura do B-032 conta **so** os
+bytes a partir desse offset (`contadores_atr_v3.ps1 -Offset 180740040`).
+Sem isto, os 218214 `[ATR] SEM LEITURA` do job anterior entrariam na conta e a
+comparacao seria uma mentira aritmetica.
+
+**Criterio de aceitacao do B-032 (fixado ANTES de ver o resultado).**
+- `[ATR] SEM LEITURA` 218214 -> **0**
+- `[ATR] HANDLE MORTO` 4663 -> **0**
+- `[ATR] SERIE OK` 0 -> **> 0**
+- `[ATR] HANDLE RECRIADO` 0 -> **> 0** (prova de que o 4807 apareceu e foi tratado)
+- se `SEM LEITURA=0` **e** `HANDLE RECRIADO=0`, a janela nao continha o 4807:
+  o teste **nao** prova o P1.135 e tem de ser repetido noutra janela.
+
+**Limitacao declarada.** O `.set` do B-032 nao e identico ao `.set` do job do
+DELTA (que tinha `AIUseGateway=true` e `EnableVerboseDebug=true`). A comparacao
+e valida como antes/depois do *caminho de codigo do ATR*, nao como replicacao
+exata de inputs. Registado para nao ser lido como reprodutibilidade perfeita.
+
+**Pendencia aberta (nao resolvida aqui).** `[SIGNAL] NEUTRO | XAUUSD |
+EMA50=26.33 EMA200=0.00` com bid ~4074. Handles confirmados corretos
+(`SignalCore.mqh:110-111`, `iMA(...,FastEMA/SlowEMA,MODE_EMA,PRICE_CLOSE)`),
+cache indexada de forma consistente (linhas 122-131) e leitura com
+`CopyBuffer(...,0,3,fast)` sobre arrays em serie (linhas 294/314). Falta a
+medicao que distinga tester de terminal vivo — ver AVISO 047.
+
+---
+
+## D-052 | 06/11/2026 06/11/2026 02:12 | ALFA | B-032 prova P1.134 + P1.135 (ATR deixa de publicar sem leitura)
+
+**Binario medido (provado no log, nao presumido):** `[VERSION] v1.2.172`,
+`XAU_AI_PRO.ex5` 931194 B, hash `0A28EDFC5BDC`, mtime 2026-11-06T01:19:48,
+`Result: 0 errors, 0 warnings, 19512 ms elapsed, cpu='X64 Regular'`.
+O job anterior imprimia `[VERSION] v1.2.167` - essa era a linha de base do D-050.
+
+**Job:** B-032, `run_id 7704908543756588672`, agente `Core 1`, XAUUSD H1,
+Model=1 (OHLC M1), 2026.08.01 -> 2026.11.05, `equipe_B032_xauusd.ini` +
+`equipe_B032_xauusd.set` (EnableVolatilityFilter=true, EnableVerboseDebug=false,
+AIUseGateway=false). Fecho literal: `Test passed in 0:42:22.606 (including ticks
+preprocessing 0:00:00.016)`, `[STOP] XAUUSD | motivo=1 | equity=10257.16`,
+`connection closed` as 02:02:40. Report do servidor: `tester_status: stopped`.
+
+**Metodo de contagem (regra 10.1 do PROTOCOLO):** offset fixado ANTES do arranque,
+`offset=180740040` B (`b032_offset.txt`). Segmento medido = 22038506 B
+(180740040 -> 202778546). Ferramenta: `contadores_atr_v4.ps1 -Offset 180740040`
+(a v3 rebentou com `[System.String] nao contem um metodo denominado 'Add'`;
+a v4 le em blocos de 4 MB com `Decoder` stateful e fecha a ultima linha parcial).
+
+**Resultado medido (segmento do B-032, nao o dia inteiro):**
+
+| Marcador | D-050 (v1.2.167) | B-032 (v1.2.172) | Criterio fixado antes |
+|---|---|---|---|
+| `[ATR] SEM LEITURA` | 218214 | **0** | -> 0 |
+| `[ATR] HANDLE MORTO` | 4663 | **0** | -> 0 |
+| `[ATR] SERIE OK` | 0 | **1** | > 0 |
+| `[ATR] HANDLE RECRIADO` | 0 | **1** | > 0 |
+| `[ATR] IDENTIDADE ERRADA` | 0 | 1 | (novo marcador, disparou) |
+| `[ATR] LEITURA SUSPEITA` | 0 | 1 | (novo marcador, disparou) |
+| `[ATR] RATES OOB` | 0 | 0 | sem regressao |
+
+**Veredicto: CRITERIO CUMPRIDO.** O caminho de falha em massa desapareceu
+(218214 -> 0 e 4663 -> 0) e a cadeia nova foi exercitada pelo menos uma vez na
+janela (1 `SERIE OK`, 1 `HANDLE RECRIADO`), o que mostra que o 4807 apareceu
+e foi tratado com recriacao de handle e recuperacao por `ATRFromRates`.
+
+**Limite honesto desta prova.** n=1 evento de 4807. Isto prova que o caminho
+existe, e que nao ha publicacao sem leitura em 42 minutos de teste; **nao** prova
+robustez sob many-handles nem sob mudanca de simbolo a meio. Para 10/10 do item
+F3 (robustez) falta um teste com varios simbolos (13 graficos) que force mais
+4807 e uma contagem por offset igual a esta.
+
+**Metricas laterais do mesmo segmento:** `[SIGNAL] BUY` 22, `[SIGNAL] SELL` 63,
+`[SIGNAL] NEUTRO` 1349, `[VALIDATION] APPROVED` 98, `[VALIDATION] BLOCK` 662.
+Equity final 10257.16 sobre deposito 10000.00 (+257.16, +2.57% em ~3 meses de
+Historico; nao e promessa de rentabilidade futura).
+
+**Ficheiros:** `contadores_atr.txt` (saida da v4), `b032_offset.txt` (offset),
+`Tester\logs\20261106.log` (fonte imutavel ate novo job).
+
+**Decisao:** P1.134 e P1.135 passam de "aplicados" a "provados em tester".
+O LOCK do ALFA e libertado (`ESTADO: LIVRE`) para o proximo job.

@@ -224,3 +224,42 @@ Se for algo de código fora do meu escopo, eu aponto a linha e devolvo.
 - **bloqueio operacional:** reattach (ALFA/DELTA, quem tem MCP). Sem token, trades = 0 por decisao Q-018(b). .ex5 929 558 B @ 23:12:18.
 - **proximo passo:** ALFA/DELTA reattach 13/13 + medir [START]; DELTA grava .chr + mtime; CMD regista producao.
 - **evidencia:** logs terminal, git log e54b36ae / 165f48a, DECISOES.md D-028..D-033.
+
+---
+
+## SESSAO ENCERRADA - 06/11/2026 02:15 (CMD)
+
+### O que o CMD fez hoje (resumo final)
+- Equipa de 4 formalizada: PLANO_10_10, BACKLOG, INDICE, FERRAMENTAS, AUTORIZACOES, CONFIGURACOES, CONFIG_AGENTES, ROTINA, PEDIDO_DE_AJUDA, MCP_E_MOTORES, SINCRONIZACAO.
+- Ferramentas: Tools/equipe-audit.ps1 (auditor somente-leitura), 4 MCP instalados (filesystem, memory, context7, sequential-thinking) com handshake real, backup opencode.json.bak.20261106014625.
+- P1.132 publicado: commit e54b36ae (repo pai) + 165f48a (app, espelho). .ex5 929 558 B @ 23:12.
+- P1.133 escrito pelo ALFA (build sombra 0/0, 931 006 B); .ex5 de producao intacto.
+- Reattach P1.132 feito pelo ALFA: 13/13 [START], D-042.
+- CVE alta (oauthlib) fechada: merge e47fae6 em main (app repo).
+- Suite Python: vip_progress 31/31 verde; fastapi_gateway docstring restaurada.
+- Espelho sincronizado: 110/110, 0 divergentes.
+- D-028: causa de trades=0 provada (piso MinSimulationProbability=0.50 contra probabilidade 0.40).
+- D-032/D-033: respostas do DONO (Q-018 veto, Q-019 reattach, Q-020 opcao 3).
+- Q-021 aberta: token do gateway como bloqueio real.
+- Watcher iniciado (PID 12176), monitora canal+repos+espelho a cada 60s.
+- F8: 382,9 MB recuperados em disco (D-044).
+
+### Estado final medido
+- Repo pai: main...github/main (alinhado). Ultimo commit 76990fc3.
+- Repo aninhado: develop...origin/develop (alinhado). Ultimo commit 165f48a.
+- Canal: sync-agent check OK, auditor OK, espelho 110/110.
+- .ex5: 929 558 B @ 23:12 (P1.132), intacto. Build sombra 931 006 B @ Temp\bc (descartavel).
+- Lock: OCUPADO por ALFA ate 01:28 (B-031b). Liberar depois.
+- Per (ALFA): reattach P1.132 feito, B-031b a correr, Q-020/Q-021 abertas.
+
+### Bloqueios para amanha (nao automatizaveis pelo CMD)
+1. B-031b fechar (ALFA) -> compilar .ex5 real P1.133 -> reattach 13/13.
+2. Provisionar XAU_GATEWAY_TOKEN (infra/DONO) -> fecha Q-021.
+3. Gravar config viva nos .chr + mtime (DELTA) -> fecha risco P0.
+4. Conta real: bloqueada por F2/F6.
+
+### Watcher
+PID 12176 a correr. Para parar: taskkill /PID 12176 /F.
+Amanha ao acordar: ler QUADRO_ESTADO.md + este HANDOFF + INBOX_DONO.md.
+
+**Fim da sessao. Bom descanso.**

@@ -187,3 +187,41 @@ compilado, nada commitado, nada pushed.
 **Escrito no canal:** `D-031` (anexado; `DECISOES.md` 82 545 -> 87 491 B), `D-029` reposto (mesma operacao). Avisos: ALFA (mapa + P0 + espelho + constantes), CMD (`D-027` sem bloco + binario 3x + espelho + o P0 antes de reiniciar), DONO (pergunta urgente com 3 opcoes; voto: decidir `Q-019`, reanexar, depois gravar e medir o mtime).
 
 **Nao feito, por desenho:** nenhum parametro de risco tocado; nenhum `.ex5` compilado; nenhum reattach; nenhum perfil gravado; nenhum commit/push; nenhuma ordem.
+## Bloco 23:30-23:40 (DELTA) - "concluir projeto sem paradas, tudo automatizado"
+
+1. **Backtest B-031 continua `started`** - leituras 00:26:41 -> 00:28:08 -> 00:29:09 de ~00:38:24. **Sem PF, sem DD, sem trades.** Registado como `nao medido`, nao inventado. E a 3.ª janela seguida sem resultado; se acabar sem linha de relatorio, o B-031 fica com "correu" mas nao com "provou".
+
+2. **ID reservado:** `sync-agent.ps1 id -Tipo D -From DELTA` -> **D-036** (`D-032..D-035` ja gastos pelos outros). `D-036` escrito (8245 B) e anexado ao `DECISOES.md` -> **105 987 B**.
+
+3. **ATR vivo confirmado outra vez** - filtro `4807`, janela 22:30-23:35, 22 registos. `[ATR] SEM LEITURA ... erro=4807 barsCalc=-1` 23:11:01-23:11:55 em 10 simbolos; `[ATR] HANDLE MORTO ... sem barras ha 180 s` 23:14:45-23:18:34. O `.ex5` tem P1.132 desde 23:12:18, o grafico nao.
+
+4. **Universo real medido:** `[SCANNER] START` para **21 simbolos**, 13 graficos. 8 sem grafico: AMD, MSFT, INTC, NVDA, **GOLD**, USDCLP, USDCOP, USDSGD. `CHART11 = USDBRL em M5` contra 12 em H1 - assimetria de timeframe que o teste de identidade do ATR tem de conhecer.
+
+5. **Market watch podre:** 21 `selected: true`; USDBRL 25 min sem tick, USDCLP 4 h, USDCOP 3,5 h, USDRUB 6,5 h. `USDBRL volume_max = 0.01` = igual ao minimo -> so um lote minimo possivel. Isto explica recusas de dimensionamento sem ser saldo.
+
+6. **Disco:** 2377 MB livres agora. Medido 84,3 MB libertados dentro do `write_root` (`Notifications.old.log` 50,7 MB + 6 itens de `Temp`). `Tester\logs` 2675,4 MB **nao apagado** - fora da raiz, nao contornado.
+
+7. **2 avisos enviados:** `INBOX_DONO.md` -> 25 015 B (6 perguntas com opcoes e voto meu em cada) e `INBOX_AGENTE_1.md` -> 33 191 B (ATR vivo, F2.10 mede runtime nao persistencia, 8 simbolos sem grafico, CHART11 em M5, espelho divergente).
+
+8. **Correccao tecnica registada:** `serieSync=1` + `barsCalc=-1` nao e contradicao - o primeiro e a serie, o segundo o handle. Sao dois objectos. O log imprime os dois na mesma linha, o que induz em erro quem o ler. Sugerido ao ALFA separar.
+
+9. **Conta:** 0 posicoes, 0 ordens. Nada aberto, nada fechado, nada modificado.
+
+10. **Portao de etica:** 0 parametros de risco tocados, 0 compilacoes, 0 reattach, 0 perfis gravados, 0 commits, 0 push, 0 ordens. Escritas so em `MQL5\Files\Temp`, `EQUIPE\` e `MQL5\Profiles\Tester`.
+## Diario DELTA :: 2026-11-05 23:48 — B-031 fechado com numeros (D-041)
+
+1. Run 7704874073263362126 terminou as 23:44 (tester_wait timed_out=false, status stopped). Report lido.
+2. Numeros reais: lucro -163.63 USD, PF 0.6643, DD 4.42 % (454.70 USD), 9 trades / 18 deals,
+   4 ganhos / 5 perdas, 9 longs e 0 shorts, max 3 perdas seguidas, Sharpe -0.2537, recovery -0.3599.
+3. Binario desse run: 927391 B = ANTIGO, sem P1.132. Logo os numeros descrevem o binario antigo,
+   nao o EA atual. Registado assim, sem inflacionar.
+4. Baseline ATR contado no log do tester (leitura apenas, nada apagado):
+   1 428 980 linhas com erro=4807; 1 399 481 [ATR] SEM LEITURA; 29 499 [ATR] HANDLE MORTO; log 659.93 MB.
+5. Assinatura confirmada no backtest: handle=10, barsCalc=-1, erro=4807, serieSync=1, barrasSerie=barrasGrafico.
+   O mesmo handle 10 falha em [ATR] e em [ADX] => problema na camada de handles do tester, nao no simbolo.
+6. B-031b lancado as 23:45 (run 7704884692122883821) com o binario 929558 B (com P1.132) e ini/set congelados.
+   O A/B mede-se por diferenca de contadores face ao baseline acima.
+7. Observacao nova e nao investigada: 0 shorts em 3 meses de XAUUSD. Fica como pergunta aberta, nao como defeito.
+8. ID D-041 reservado pelo sync-agent.ps1 antes de escrever; bloco anexado a DECISOES.md (130595 B, backup criado).
+9. Disco 2009.3 MB livres; Tester\logs 20261031.log com 1404.87 MB continua por apagar (av037 ao DONO).
+10. Nada tocado em risco/lote/stop/alvo/spread. Nenhum reattach. Nenhum commit/push. Nenhuma compilacao.

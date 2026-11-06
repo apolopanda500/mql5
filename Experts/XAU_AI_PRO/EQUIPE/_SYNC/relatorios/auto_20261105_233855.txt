@@ -1,0 +1,48 @@
+EQUIPE-AUTO :: 2026-11-05 23:38:19 :: DELTA
+raiz EQUIPE :: C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Experts\XAU_AI_PRO\EQUIPE
+raiz EA     :: C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Experts\XAU_AI_PRO
+raiz MQL5 :: C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5
+
+== CANAL =====================================================
+  CANAL INTEGRO :: 0 problemas
+
+== AUDITOR (read-only) =======================================
+  RESULTADO: ok   (exit 0)
+  [WARN] INBOX_AGENTE_1.md: nome do legado colado -> _LEGADOEQUIPE
+
+== DISCO =====================================================
+  livre: 2283 MB   usado: 225636 MB   total: 227919 MB
+
+== CONSUMIDORES (MB / ficheiros) =============================
+  Tester\logs (fora da raiz de escrita)    2675.4 MB       7 f
+  MQL5\Files                               5621.9 MB   63221 f
+  Files\XAU_AI_PRO                         4212.8 MB   49434 f
+  Files\Data                                  989 MB      70 f
+  Files\Temp                                384.4 MB   13102 f
+  Files\Backup                               35.5 MB     601 f
+    maior: 20261031.log          1404.9 MB
+    maior: 20261104.log           672.5 MB
+    maior: 20261030.log           331.5 MB
+
+== FILA DO DONO / PEDIDOS ====================================
+  INBOX_DONO.md: 24.4 KB :: 26 blocos :: 0 marcados FECHADO :: ~26 por responder
+  PEDIDOS.md PEDIDO    : 1
+  PEDIDOS.md ACEITE    : 1
+  PEDIDOS.md DEVOLVIDO : 1
+
+== IDS / DECISOES ============================================
+  DECISOES.md: 34 blocos D-xxx :: IDS.md: 21 IDs USADO
+
+== ESPELHO / CODIGO ==========================================
+  XAU_AI_PRO.ex5 :: 929558 B :: 2026-11-05 23:12:18
+  fontes .mq5/.mqh: 282 ficheiros :: 5399.2 KB
+
+== GIT =======================================================
+  repo: C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5
+  branch: main :: alterados/nao rastreados: 45
+
+== VEREDICTO =================================================
+  CONFORME :: 0 falhas
+  AVISOS (2):
+   ~ Tester\logs com 2675.4 MB - fora da raiz de escrita, so o DONO apaga
+   ~ 26 bloco(s) por responder na fila do DONO

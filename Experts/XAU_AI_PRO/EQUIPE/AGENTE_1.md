@@ -505,3 +505,51 @@ EXECUTION: SIMULACAO BLOQUEADA | Razao=Low probability | Prob=0.40 | RR=0.81 | R
 
 **Proximo:** P1.132 (identidade do handle do ATR + fallback por `CopyRates`) continua a ser trabalho real, mas deixou de ser urgente por causa dos trades: o `EnableVolatilityFilter=false` impede o ATR de vetar entradas. O que o ATR contamina e o `[CENARIO]` (lote e alvo), o trailing e o parcial â€” ou seja, **qualidade da execucao**, nao a existir ou nao existir execucao. E P1.133 (o 40 usado como probabilidade) precisa de decisao do DONO, Q-018.
 
+
+---
+
+## [06/11/2026 01:23] ALFA - B-032 em curso, D-051 registado
+
+**Identidade em uso:** fonte `#property version` = "1.372"; `EA_VERSION_STRING` =
+"1.2.172"; `XAU_AI_PRO.ex5` = 931194 B, hash `0A28EDFC5BDC`,
+mtime 2026-11-06T01:19:48; compilacao REAL `Result: 0 errors, 0 warnings,
+19512 ms elapsed, cpu='X64 Regular'`.
+
+**Job em curso:** B-032 `run_id 7704908543756588672`, agente `Core 1`,
+`equipe_B032_xauusd.ini` (XAUUSD H1, Model=1, 2026.08.01->2026.11.05) +
+`equipe_B032_xauusd.set` (EnableVolatilityFilter=true, EnableVerboseDebug=false,
+AIUseGateway=false). Nenhum segundo job pode correr: o `Tester\logs\20261106.log`
+e o mesmo ficheiro de todos os jobs do dia.
+
+**Offset de contagem fixado ANTES do arranque:** `180740040` B
+(`b032_offset.txt`: `offset=180740040|mtime=2026-11-06T01:10:43|agora=2026-11-06T01:20:12`).
+A contagem final e `contadores_atr_v3.ps1 -Log ...\Tester\logs\20261106.log -Offset 180740040`.
+
+**Criterio de aceitacao (fixado antes de ver o resultado):** `[ATR] SEM LEITURA`
+218214 -> 0; `[ATR] HANDLE MORTO` 4663 -> 0; `[ATR] SERIE OK` 0 -> >0;
+`[ATR] HANDLE RECRIADO` 0 -> >0. Se SEM LEITURA=0 **e** HANDLE RECRIADO=0, a
+janela nao continha o 4807 e o P1.135 nao fica provado: repetir noutra janela.
+
+**Registado no canal nesta sessao (numeros medidos):**
+- `DECISOES.md` 153073 -> 156663 B (bloco D-051);
+- `INBOX_AGENTE_2.md` 30166 -> 33377 B e `INBOX_AGENTE_3.md` 42580 -> 45791 B (AVISO 047);
+- `IDS.md` 3195 B, linha 42 = `USADO | D | D-051 | ALFA | ...`;
+- `LOCK.md` 1185 B reescrito: dono ALFA, expira 06/11/2026 03:15, run_id 7704908543756588672;
+- `PROTOCOLO.md` 14882 -> 18017 B, nova **seccao 10** (linha 312) com as regras
+  de medicao: contagem por offset, um job de cada vez, `.set` de medicao vs rotina,
+  backup D-040 do `.ex5` e prova de identidade de versao.
+
+**Achado que continua aberto:** o log do job anterior imprime `[VERSION] v1.2.167`
+- logo a linha de base do D-050 foi medida contra o binario anterior a
+P1.133/P1.134/P1.135. E o que o B-032 corrige.
+
+**Pendente de decisao do DONO:** (1) P1.136 - nao imprimir EMA no `[SIGNAL] NEUTRO`
+quando `copyOK=false` (o gate `sig_neu_` nao depende do `copyOK`, dai o
+`EMA200=0.00` em aquecimento no tester); (2) 0 shorts (D-048);
+(3) `EnableVolatilityFilter=false` nos 13 graficos (AVISO 045).
+
+**Restricao de ambiente:** apagar `Tester\logs\2026103x.log`..`20261105.log`
+(~3.3 GB) libertaria espaco, mas `Tester` esta nos `read_roots` e nao nos
+`write_roots` do servidor MCP - a limpeza desses ficheiros exige accao do DONO
+na GUI/Explorer. Dentro de `MQL5` (write root) nao ha lixo relevante:
+`MQL5\Files\Temp` = 133 ficheiros, 1.5 MB.

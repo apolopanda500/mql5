@@ -308,3 +308,69 @@ Web, GitHub e documentacao autorizados. Toda ideia entra no `BACKLOG.md` com
 **fonte, custo e risco** antes de virar codigo. Revisao de backlog a cada dia
 de trabalho.
 
+
+## 10. Medicao de backtest - regras que vieram dos incidentes (D-051, 06/11 01:26)
+
+Estas tres regras nasceram de erros reais de medicao. Aplicam-se aos tres
+agentes e sao obrigatorias antes de qualquer conclusao apoiada em contagens de
+log do Strategy Tester.
+
+### 10.1 Contagem por OFFSET, nunca por ficheiro inteiro
+
+O tester escreve num unico ficheiro por dia:
+`<terminal>\Tester\logs\AAAAMMDD.log`. Dois jobs no mesmo dia partilham o
+ficheiro e as contagens somam-se. Um grep ao ficheiro inteiro mede a soma de
+todos os jobs do dia, nao o job que se quer medir ("mentira aritmetica").
+
+Procedimento obrigatorio, por esta ordem:
+
+1. **Antes** de lancar o job, fixar a linha de base:
+   `b032_offset.ps1` -> grava `offset=<Length>|mtime=<...>|agora=<...>` em
+   `MQL5\Files\Temp\<job>_offset.txt`.
+2. Lancar o job.
+3. **Depois** de fechar, contar so o segmento novo:
+   `contadores_atr_v3.ps1 -Log <log> -Offset <offset fixado>`.
+4. Registar no `DECISOES.md` o offset usado e a hora, para que o numero seja
+   reproduzivel por outra pessoa.
+
+Se o offset foi fixado depois do arranque do job, a medicao e invalida e o
+teste tem de ser repetido.
+
+### 10.2 Um job de cada vez
+
+Enquanto um job de tester estiver a correr, nenhum agente lanca um segundo
+job, mesmo noutro simbolo ou com outro `.set`: ver 10.1. Quem precisa do
+recurso pede no canal EQUIPE e espera. O `LOCK.md` marca quem esta a usar.
+
+Guarda de exclusividade antes de qualquer `tester_run_backtest`: contar
+`metatester64`, mas **provar** que o job anterior terminou pela cauda do log
+(`Test passed in ...` / `connection closed` + `mtime` parado), porque processos
+`metatester64` inactivos continuam a existir depois do fim do teste.
+
+### 10.3 Medicao e rotina usam `.set` diferentes - e diz-se qual foi
+
+- Backtest de **medicao** (contagens, A/B de um caminho de codigo): correr com
+  o `.set` original do job de referencia e declarar as diferencas que
+  restarem. Comparar antes/depois so e legitimo para o caminho de codigo
+  medido, nao como reprodutibilidade exacta de inputs.
+- Backtest de **rotina**: `xai_lownoise.set`.
+- Todo registo de resultado indica: ficheiro `.ini`, ficheiro `.set`, janela
+  `FromDate`/`ToDate`, modelo, tamanho e hash do `.ex5` usado.
+
+### 10.4 Backup do `.ex5` antes de compilar (D-040)
+
+Antes de qualquer compilacao que escreva
+`Experts\XAU_AI_PRO\XAU_AI_PRO.ex5`, copiar o binario em uso para
+`MQL5\Files\Backup\ex5\XAU_AI_PRO_<versao_do_binario>_<AAAAMMDD_HHMMSS>.ex5`
+e registar tamanho e hash. O `<versao_do_binario>` e a versao que o binario
+imprime em `[VERSION]` (ou a que o log do tester mostra), **nao** a versao nova
+do fonte - foi exactamente esse engano que se corrigiu no D-051.
+
+### 10.5 Identidade de versao tem de ser provada, nao presumida
+
+`#property version` aceita apenas `xxx.yyy` ("1.372"); a versao legivel
+(`EA_VERSION_STRING`, hoje "1.2.172") vive em
+`Enterprise/VersionManager.mqh`. Antes de atribuir um resultado a uma
+alteracao de codigo, provar no log do job qual versao correu:
+`[VERSION] vX.Y.ZZZ`. Um job que mostra uma versao anterior a alteracao nao
+mede a alteracao - foi o achado central do D-051.

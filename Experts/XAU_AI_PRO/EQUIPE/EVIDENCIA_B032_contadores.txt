@@ -1,0 +1,16 @@
+﻿contadores_atr_v4 - 06/11/2026 02:12:18
+log=C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\Tester\logs\20261106.log
+offset=180740040 tamanho=202778546 bytes_lidos=22038506 (segmento=22038506)
+---
+SEM LEITURA            = 0
+HANDLE MORTO           = 0
+SERIE OK               = 1
+HANDLE RECRIADO        = 1
+IDENTIDADE ERRADA      = 1
+LEITURA SUSPEITA       = 1
+RATES OOB              = 0
+SIGNAL BUY             = 22
+SIGNAL SELL            = 63
+SIGNAL NEUTRO          = 1349
+VALIDATION APPROVED    = 98
+VALIDATION BLOCK       = 662

@@ -585,7 +585,10 @@ function Show-Answer {
                   ('- **RESPOSTA:** {0} | **respondida por:** DONO | **hora:** {1}' -f $Resposta.Trim(), (Now-Short)), 1)
             }
             else {
-               $seg += "`r`n- **RESPOSTA:** $($Resposta.Trim()) | **respondida por:** DONO | **hora:** $(Now-Short)`r`n"
+               # Canal e LF puro (D-023). Este ramo escrevia `r`n e o `check`
+               # passava a acusar CR depois de cada resposta do DONO - o mesmo
+               # defeito do IDS.md, do Show-Check e do LOCK.md.
+               $seg += "`n- **RESPOSTA:** $($Resposta.Trim()) | **respondida por:** DONO | **hora:** $(Now-Short)`n"
             }
             if ($seg -match '(?m)^-\s*\*\*estado:\*\*\s*ABERTA\s*$') {
                $seg = [regex]::Replace($seg, '(?m)^(-\s*\*\*estado:\*\*\s*)ABERTA\s*$', '${1}FECHADA (dono, ' + (Now-Short) + ')', 1)

@@ -280,3 +280,200 @@ Um **restart do terminal** carrega os `.chr` das 21:37:10 e devolve `AllowTradeW
 | Trades | **0** | inalterado |
 
 Fonte: DELTA, `D-031` e `AGENTE_2.md` bloco 23:05-23:25. Nenhum parametro de risco alterado, nenhum `.ex5` compilado, nenhum reattach, nenhum commit.
+## Actualizacao 23:40 (DELTA) - seis perguntas abertas ao DONO, zero alteracoes feitas
+
+### Perguntas abertas (todas com opcoes e com o meu voto)
+
+| # | Pergunta | Opcoes | Voto DELTA | Prazo |
+|---|---|---|---|---|
+| P1 | Gravar a config viva nos 13 graficos antes do restart? | 1 gravar agora / 2 nao gravar e assumir / 3 esperar Q-019 | **3, depois 1** | antes do proximo restart |
+| P2 | Bloquear sinal em simbolo com tick > 15 min? | 1 >15 min / 2 >60 min / 3 nada | **1** | antes de conta real |
+| P3 | `GOLD` e `XAUUSD` no mesmo scanner? | 1 retirar GOLD / 2 magic separado / 3 manter | **1** | antes de conta real |
+| P4 | Autorizar limpeza de `Tester\logs` (2675,4 MB)? | 1 apagar `20261031.log` (1404,9 MB) / 2 autorizar ferramenta com raiz Tester / 3 deixar | **1** | quando o disco apertar |
+| P5 | R-003: `MaxDailyLossPercent` 10->5 e `MaxDrawdownPercent` 15->10 | sim / nao | **sim** | antes de conta real |
+| P6 | `MagicNumber=2026001` em 13/13 graficos | 1 magic unico por grafico / 2 aceitar limite x13 / 3 so nos 3 melhores simbolos | **1** | antes de conta real |
+
+### Limites efectivos hoje, medidos (P6)
+
+| Parametro | Por grafico | Multiplicado por 13 |
+|---|---|---|
+| `MaxOpenPositions` | 50 | **650** |
+| `MaxTradesPerDay` | 100 | **1300** |
+| `MaxTotalRiskPercent` | 10,0 | **130 % do capital** |
+| `MaxCorrelatedTrades` | 3 | **39** |
+| `MaxCorrelatedRiskPercent` | 3,0 | **39 %** |
+
+### Estado das provas nesta janela
+
+| Prova | Estado | Numero |
+|---|---|---|
+| B-031 backtest reprodutivel | **a correr** | `started`, 00:29:09 / 00:38:24 - sem PF/DD/trades |
+| B-011 ATR | **defeito vivo** | `erro=4807` em 10 simbolos, 23:11 e 23:14-23:18 |
+| F2.8 isolamento por instancia | **nao cumprido** | magic 2026001 em 13/13 |
+| Config persistida | **nao cumprida** | `.chr` de 21:37:10 dizem `false`, runtime diz `true` |
+| Universo de dados | **medido** | 21 simbolos no scanner vs 13 graficos |
+| Qualidade de dados | **falha** | USDBRL 25 min, USDCLP 4 h, USDCOP 3,5 h, USDRUB 6,5 h sem tick |
+
+### O que eu nao sei e nao vou fingir que sei
+
+- Se o B-031 vai terminar com resultado ou com erro. Nao ha numero para escrever.
+- Se o ATR corrigido (P1.132) funciona - so depois do reattach. Dizer que "esta corrigido" sem reattach seria mentira.
+- Quanto disco sobra para a noite. O tester escreve e eu nao o controlo.
+## Binario congelado para as provas (regra do D-040, ja aplicada) - 23:44
+
+O D-040 mostrou que o B-031 correu um binario que deixou de existir a meio da prova.
+Para nao repetir isso, o `.ex5` em uso foi **copiado** antes de qualquer outro build:
+
+| Item | Valor |
+|---|---|
+| Copia | `MQL5\Files\Backup\ex5\XAU_AI_PRO_v1.367_20261105_231218_87E30E2B.ex5` |
+| Tamanho | **929 558 B** |
+| SHA-256 | `87E30E2B4E43930C80B24E6AA984497F32158FE14B86AF9036BF57350809DBC7` |
+| Build original | 05/11/2026 23:12:18 |
+| Conteudo | `v1.2.167` com `P1.132` (ATR) |
+| Verificacao | hash da copia == hash da fonte (`IGUAL :: True`) |
+
+### Regra operacional (a partir de agora, sem precisar de autorizacao)
+
+Antes de arrancar qualquer `B-nnn` que exija repeticao:
+
+1. copiar o `.ex5` em uso para `MQL5\Files\Backup\ex5\XAU_AI_PRO_<versao>_<AAAAMMDD_HHMMSS>_<hash8>.ex5`;
+2. registar tamanho + SHA-256 + `mtime` no bloco da prova;
+3. so depois preparar `.ini`/`.set` e lancar.
+
+Custo: 1 MB por prova. Sem isso, uma prova que exige duas execucoes iguais pode
+ficar impossivel se o codigo mudar - e neste projecto o codigo muda todos os dias.
+
+### O que isto desbloqueia
+
+| Prova | Antes | Agora |
+|---|---|---|
+| Repetir o B-031 no binario em que correu | impossivel (binario perdido) | continua impossivel - o antigo nao foi copiado a tempo |
+| Repetir o B-031b no binario actual | possivel mas sem salvaguarda | **garantido** (copia com hash) |
+| A/B do `P1.132` | nao planeado | **executavel**, com o binario fixo |
+## Quadro :: B-031 run1 (binario antigo) — primeiro resultado numerico de backtest
+
+| Item | Valor medido |
+|---|---|
+| Run | 7704874073263362126 |
+| Binario | 927391 B (ANTIGO, sem P1.132) |
+| Periodo | XAUUSD H1 2026.08.01 -> 2026.11.05, m1 ohlc, 10000 USD, alav. 100 |
+| Lucro | -163.63 USD |
+| Profit factor | 0.6643 |
+| Drawdown | 454.70 USD = 4.42 % |
+| Trades | 9 (4 ganhos / 5 perdas), 9 longs / 0 shorts |
+| Sharpe | -0.2537 |
+| Recovery factor | -0.3599 |
+| Linhas erro=4807 no log | 1 428 980 |
+| Linhas [ATR] SEM LEITURA | 1 399 481 |
+| Linhas [ATR] HANDLE MORTO | 29 499 |
+| Log do tester no fim | 659.93 MB |
+
+STATUS HONESTO: este resultado e do binario ANTIGO. Nao representa o EA atual e nao decide nada sobre o
+P1.132. E a base A do A/B. Com 9 trades nao ha significancia estatistica: nao se conclui rentabilidade.
+
+A seguir: B-031b (run 7704884692122883821) com o binario 929558 B (com P1.132), mesmo ini/set.
+Criterio: diferenca dos contadores de 4807 face a base A acima.
+
+---
+
+## [06/11/2026 01:23] ALFA - B-032 em curso, D-051 registado
+
+**Identidade em uso:** fonte `#property version` = "1.372"; `EA_VERSION_STRING` =
+"1.2.172"; `XAU_AI_PRO.ex5` = 931194 B, hash `0A28EDFC5BDC`,
+mtime 2026-11-06T01:19:48; compilacao REAL `Result: 0 errors, 0 warnings,
+19512 ms elapsed, cpu='X64 Regular'`.
+
+**Job em curso:** B-032 `run_id 7704908543756588672`, agente `Core 1`,
+`equipe_B032_xauusd.ini` (XAUUSD H1, Model=1, 2026.08.01->2026.11.05) +
+`equipe_B032_xauusd.set` (EnableVolatilityFilter=true, EnableVerboseDebug=false,
+AIUseGateway=false). Nenhum segundo job pode correr: o `Tester\logs\20261106.log`
+e o mesmo ficheiro de todos os jobs do dia.
+
+**Offset de contagem fixado ANTES do arranque:** `180740040` B
+(`b032_offset.txt`: `offset=180740040|mtime=2026-11-06T01:10:43|agora=2026-11-06T01:20:12`).
+A contagem final e `contadores_atr_v3.ps1 -Log ...\Tester\logs\20261106.log -Offset 180740040`.
+
+**Criterio de aceitacao (fixado antes de ver o resultado):** `[ATR] SEM LEITURA`
+218214 -> 0; `[ATR] HANDLE MORTO` 4663 -> 0; `[ATR] SERIE OK` 0 -> >0;
+`[ATR] HANDLE RECRIADO` 0 -> >0. Se SEM LEITURA=0 **e** HANDLE RECRIADO=0, a
+janela nao continha o 4807 e o P1.135 nao fica provado: repetir noutra janela.
+
+**Registado no canal nesta sessao (numeros medidos):**
+- `DECISOES.md` 153073 -> 156663 B (bloco D-051);
+- `INBOX_AGENTE_2.md` 30166 -> 33377 B e `INBOX_AGENTE_3.md` 42580 -> 45791 B (AVISO 047);
+- `IDS.md` 3195 B, linha 42 = `USADO | D | D-051 | ALFA | ...`;
+- `LOCK.md` 1185 B reescrito: dono ALFA, expira 06/11/2026 03:15, run_id 7704908543756588672;
+- `PROTOCOLO.md` 14882 -> 18017 B, nova **seccao 10** (linha 312) com as regras
+  de medicao: contagem por offset, um job de cada vez, `.set` de medicao vs rotina,
+  backup D-040 do `.ex5` e prova de identidade de versao.
+
+**Achado que continua aberto:** o log do job anterior imprime `[VERSION] v1.2.167`
+- logo a linha de base do D-050 foi medida contra o binario anterior a
+P1.133/P1.134/P1.135. E o que o B-032 corrige.
+
+**Pendente de decisao do DONO:** (1) P1.136 - nao imprimir EMA no `[SIGNAL] NEUTRO`
+quando `copyOK=false` (o gate `sig_neu_` nao depende do `copyOK`, dai o
+`EMA200=0.00` em aquecimento no tester); (2) 0 shorts (D-048);
+(3) `EnableVolatilityFilter=false` nos 13 graficos (AVISO 045).
+
+**Restricao de ambiente:** apagar `Tester\logs\2026103x.log`..`20261105.log`
+(~3.3 GB) libertaria espaco, mas `Tester` esta nos `read_roots` e nao nos
+`write_roots` do servidor MCP - a limpeza desses ficheiros exige accao do DONO
+na GUI/Explorer. Dentro de `MQL5` (write root) nao ha lixo relevante:
+`MQL5\Files\Temp` = 133 ficheiros, 1.5 MB.
+---
+
+## D-052 | 06/11/2026 06/11/2026 02:12 | ALFA | B-032 prova P1.134 + P1.135 (ATR deixa de publicar sem leitura)
+
+**Binario medido (provado no log, nao presumido):** `[VERSION] v1.2.172`,
+`XAU_AI_PRO.ex5` 931194 B, hash `0A28EDFC5BDC`, mtime 2026-11-06T01:19:48,
+`Result: 0 errors, 0 warnings, 19512 ms elapsed, cpu='X64 Regular'`.
+O job anterior imprimia `[VERSION] v1.2.167` - essa era a linha de base do D-050.
+
+**Job:** B-032, `run_id 7704908543756588672`, agente `Core 1`, XAUUSD H1,
+Model=1 (OHLC M1), 2026.08.01 -> 2026.11.05, `equipe_B032_xauusd.ini` +
+`equipe_B032_xauusd.set` (EnableVolatilityFilter=true, EnableVerboseDebug=false,
+AIUseGateway=false). Fecho literal: `Test passed in 0:42:22.606 (including ticks
+preprocessing 0:00:00.016)`, `[STOP] XAUUSD | motivo=1 | equity=10257.16`,
+`connection closed` as 02:02:40. Report do servidor: `tester_status: stopped`.
+
+**Metodo de contagem (regra 10.1 do PROTOCOLO):** offset fixado ANTES do arranque,
+`offset=180740040` B (`b032_offset.txt`). Segmento medido = 22038506 B
+(180740040 -> 202778546). Ferramenta: `contadores_atr_v4.ps1 -Offset 180740040`
+(a v3 rebentou com `[System.String] nao contem um metodo denominado 'Add'`;
+a v4 le em blocos de 4 MB com `Decoder` stateful e fecha a ultima linha parcial).
+
+**Resultado medido (segmento do B-032, nao o dia inteiro):**
+
+| Marcador | D-050 (v1.2.167) | B-032 (v1.2.172) | Criterio fixado antes |
+|---|---|---|---|
+| `[ATR] SEM LEITURA` | 218214 | **0** | -> 0 |
+| `[ATR] HANDLE MORTO` | 4663 | **0** | -> 0 |
+| `[ATR] SERIE OK` | 0 | **1** | > 0 |
+| `[ATR] HANDLE RECRIADO` | 0 | **1** | > 0 |
+| `[ATR] IDENTIDADE ERRADA` | 0 | 1 | (novo marcador, disparou) |
+| `[ATR] LEITURA SUSPEITA` | 0 | 1 | (novo marcador, disparou) |
+| `[ATR] RATES OOB` | 0 | 0 | sem regressao |
+
+**Veredicto: CRITERIO CUMPRIDO.** O caminho de falha em massa desapareceu
+(218214 -> 0 e 4663 -> 0) e a cadeia nova foi exercitada pelo menos uma vez na
+janela (1 `SERIE OK`, 1 `HANDLE RECRIADO`), o que mostra que o 4807 apareceu
+e foi tratado com recriacao de handle e recuperacao por `ATRFromRates`.
+
+**Limite honesto desta prova.** n=1 evento de 4807. Isto prova que o caminho
+existe, e que nao ha publicacao sem leitura em 42 minutos de teste; **nao** prova
+robustez sob many-handles nem sob mudanca de simbolo a meio. Para 10/10 do item
+F3 (robustez) falta um teste com varios simbolos (13 graficos) que force mais
+4807 e uma contagem por offset igual a esta.
+
+**Metricas laterais do mesmo segmento:** `[SIGNAL] BUY` 22, `[SIGNAL] SELL` 63,
+`[SIGNAL] NEUTRO` 1349, `[VALIDATION] APPROVED` 98, `[VALIDATION] BLOCK` 662.
+Equity final 10257.16 sobre deposito 10000.00 (+257.16, +2.57% em ~3 meses de
+Historico; nao e promessa de rentabilidade futura).
+
+**Ficheiros:** `contadores_atr.txt` (saida da v4), `b032_offset.txt` (offset),
+`Tester\logs\20261106.log` (fonte imutavel ate novo job).
+
+**Decisao:** P1.134 e P1.135 passam de "aplicados" a "provados em tester".
+O LOCK do ALFA e libertado (`ESTADO: LIVRE`) para o proximo job.
