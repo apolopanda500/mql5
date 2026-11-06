@@ -305,22 +305,71 @@ bool InitSymbolManager()
    }
 
 
-   // P1.19: ActiveSymbols[] nao e consumido em mais nenhum modulo do EA; quem decide o que
-   // este programa negoceia e sempre _Symbol do grafico. Este aviso torna visivel no journal a
-   // incoerencia entre o simbolo do grafico e a lista Symbols configurada, que de outro modo
-   // ficaria silenciosa (o grafico opera na mesma, so que sem aparecer em Symbols).
+   //--------------------------------------------------
+   // v1.2.167 (05/11/2026) - P1.130: UNIVERSO UNIVERSAL.
+   // MEDIDO em 05/11 as 21:30, conta 113568614: Market Watch com 21 simbolos,
+   // `Symbols` com 11, e 10 simbolos do Market Watch fora da lista (AMD, MSFT,
+   // INTC, NVDA, GOLD, USDCLP, USDCOP, USDCZK, USDRUB e USDSGD). A instancia
+   // mestre percorre ActiveSymbols, logo esses 10 NUNCA eram avaliados; tres
+   // deles (USDCZK, USDRUB e USDSGD) tinham grafico aberto no perfil e ficavam
+   // a operar apenas por si mesmos, sem passar pelo pipeline. O universo do EA
+   // era um retrato fixo que comecava em XAUUSD.
+   // Agora o universo e o do TERMINAL: os simbolos de `Symbols` (base, por
+   // ordem de prioridade) mais o Market Watch mais o simbolo do proprio
+   // grafico. Nenhum simbolo e privilegiado. Com SymbolsFromMarketWatch=false
+   // fica o comportamento anterior (Symbols + simbolo do grafico).
+   int mwAdicionados = 0;
+
+   if(SymbolsFromMarketWatch)
+     {
+      int totalMWAdd = SymbolsTotal(true);
+
+      for(int mw = 0; mw < totalMWAdd; mw++)
+        {
+         string mwSymbol = SymbolName(mw, true);
+
+         if(mwSymbol == "")
+            continue;
+
+         if(SymbolAlreadyActive(mwSymbol))
+            continue;
+
+         if(!IsSymbolTradeable(mwSymbol))
+            continue;
+
+         int mwSize = ArraySize(ActiveSymbols);
+         ArrayResize(ActiveSymbols, mwSize + 1);
+         ActiveSymbols[mwSize] = mwSymbol;
+         mwAdicionados++;
+        }
+     }
+
+   // O simbolo do GRAFICO entra sempre, mesmo fora de `Symbols` e fora do
+   // Market Watch: e o unico simbolo que este programa tem a vista garantida.
    string selfResolved = ResolveBrokerSymbol(_Symbol);
    if(selfResolved == "")
       selfResolved = _Symbol;
 
-   if(!SymbolAlreadyActive(selfResolved))
-   {
-      // P2.00: e configuracao estatica, nao um evento - 1x/dia por CONTA.
-      if(AccountLogGatePodeImprimir("syms_aviso", 86400))
-         Print("[SYMS] AVISO P1.19: o simbolo do grafico '", selfResolved,
-            "' nao consta em Symbols [", Symbols, "]. A lista Symbols nao limita o que este grafico negoceia.");
-   }
+   bool graficoAdicionado = false;
 
+   if(!SymbolAlreadyActive(selfResolved) && IsSymbolTradeable(selfResolved))
+     {
+      int selfSize = ArraySize(ActiveSymbols);
+      ArrayResize(ActiveSymbols, selfSize + 1);
+      ActiveSymbols[selfSize] = selfResolved;
+      graficoAdicionado = true;
+     }
+
+   // P2.00: e configuracao estatica, nao um evento - 1x/dia por CONTA. A linha
+   // que o P1.19 publicava continua, agora com o universo JA completo e com a
+   // origem dita por extenso (antes avisava que o simbolo do grafico nao estava
+   // em `Symbols` e nada era feito com essa informacao).
+   if(AccountLogGatePodeImprimir("syms_universo", 86400))
+      Print("[SYMS] UNIVERSO | marketwatch=", totalMW, " | deSymbols=", count,
+            " | adicionadosDoMarketWatch=", mwAdicionados,
+            " | grafico=", selfResolved, (graficoAdicionado ? " (adicionado)" : ""),
+            " | ativos=", ArraySize(ActiveSymbols), " | origem=",
+            (SymbolsFromMarketWatch ? "Symbols+MarketWatch+grafico" : "Symbols+grafico"));
    string listaAtivos = "";
    for(int i = 0; i < ArraySize(ActiveSymbols); i++)
    {
@@ -332,7 +381,7 @@ bool InitSymbolManager()
    if(LogInicioDetalhe()) Print("[SYMS] configurados=", count, " | ativos=", ArraySize(ActiveSymbols),
          " | marketwatch=", totalMW, " | grafico=", _Symbol,
          (duplicados != "" ? (" | duplicados=" + duplicados) : ""),
-         " | ", listaAtivos);
+         " | ", listaAtivos, " | mwAdicionados=", mwAdicionados);
 
    if(ArraySize(ActiveSymbols) == 0)
    {

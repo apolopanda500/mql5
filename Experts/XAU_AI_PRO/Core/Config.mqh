@@ -931,6 +931,19 @@ input string Symbols=
 
 "USDCNH";
 
+// v1.2.167 (05/11/2026) - P1.130: UNIVERSO DO EA.
+// `Symbols` deixou de ser o universo inteiro: e a lista de BASE, por ordem de
+// prioridade. MEDIDO em 05/11 as 21:30 na conta 113568614: o Market Watch tinha
+// 21 simbolos e `Symbols` tinha 11 - nenhum dos 21 estava fora de `Symbols`, mas
+// 10 estavam fora da lista (AMD, MSFT, INTC, NVDA, GOLD, USDCLP, USDCOP, USDCZK,
+// USDRUB e USDSGD), e destes ultimos tres tinham grafico aberto no perfil sem
+// nunca serem avaliados pela instancia mestre. A instancia mestre percorre
+// ActiveSymbols, portanto o universo do EA era um retrato fixo que comecava em
+// XAUUSD e nunca acompanhava o que o terminal realmente tem.
+// true  = universo = Symbols + Market Watch + simbolo do grafico (universal).
+// false = universo = Symbols + simbolo do grafico (comportamento anterior).
+input bool   SymbolsFromMarketWatch = true;
+
 //==================================================
 // RISCO EM DINHEIRO -> DISTANCIA EM PONTOS
 //==================================================

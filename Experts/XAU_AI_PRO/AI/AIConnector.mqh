@@ -108,6 +108,12 @@ string   g_aiStateSignal[AI_STATE_CACHE_MAX];
 double   g_aiStateConf[AI_STATE_CACHE_MAX];
 datetime g_aiStateWhen[AI_STATE_CACHE_MAX];
 
+// v1.2.167 (05/11/2026) - P1.131: prototipo antes do primeiro uso.
+// AIClockRelogio() esta definido mais abaixo, junto do FetchPredictionFromGateway,
+// e passou a ser a unica fonte de tempo deste ficheiro: TimeLocal em producao
+// (avanca com o broker em baixo) e TimeCurrent no tester (tempo modelado).
+datetime AIClockRelogio();
+
 void AIRecordState(string symbol, string signal, double conf)
 {
    if(symbol=="" || signal=="")
@@ -136,7 +142,7 @@ void AIRecordState(string symbol, string signal, double conf)
    g_aiStateSymbol[slot]=symbol;
    g_aiStateSignal[slot]=signal;
    g_aiStateConf[slot]=conf;
-   g_aiStateWhen[slot]=TimeCurrent();
+   g_aiStateWhen[slot]=AIClockRelogio();   // v1.2.167 P1.131: relogio unico
 }
 
 bool AIStateForSymbol(string symbol, string &signal, double &conf, datetime &when)
@@ -203,7 +209,22 @@ string NormalizeAISymbol(string symbol)
    }
 
    // Mapeamento de aliases -> nome base do Python
-   if(up=="GOLD" || up=="XAU")
+   //
+   // v1.2.167 (05/11/2026) - P1.130: "GOLD" e AMBIGUO nesta corretora.
+   // MEDIDO no Market Watch as 21:30 de 05/11: existe GOLD (Barrick Gold
+   // Corporation, XNYS, stock, contract_size=1, exemode=EXCHANGE, bid 37.40)
+   // e existe XAUUSD (metal, contract_size=100, exemode=MARKET, bid 4106.66).
+   // O alias mandava as DUAS para XAUUSD, portanto um grafico do stock GOLD
+   // pedia ao gateway a previsao do METAL e recebia um numero que nao era
+   // dele - a mesma troca de serie que o P1.113/P1.115 corrigiram do lado
+   // dos indicadores. O alias passa a valer so para instrumento que NAO
+   // seja de bolsa (o metal que a corretora chame GOLD).
+   bool deBolsa = false;
+
+   if(SymbolSelect(symbol, true))
+      deBolsa = (SymbolInfoInteger(symbol, SYMBOL_TRADE_EXEMODE) == SYMBOL_TRADE_EXECUTION_EXCHANGE);
+
+   if((up=="GOLD" || up=="XAU") && !deBolsa)
       return "XAUUSD";
 
    if(up=="BTC")
@@ -1292,7 +1313,7 @@ bool LoadAIPrediction(string symbol="")
    // usam o retorno de ParsePredictionJSON), entao o comportamento de sinal
    // nao muda: so a frequencia do aviso.
    static datetime lastLogTime = 0;
-   datetime logNow = TimeCurrent();
+   datetime logNow = AIClockRelogio();   // v1.2.167 P1.131: portao de log nao pode congelar
    bool logOnce = (logNow - lastLogTime >= 1800);
    if(logOnce)
       lastLogTime = logNow;

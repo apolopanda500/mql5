@@ -118,8 +118,12 @@ void OperatorBriefTick(int tradesToday)
    {
       ai = aiSignal + " " + DoubleToString(aiConf, 1) + "%";
 
-      if(aiWhen > 0 && TimeCurrent() >= aiWhen)
-         ai += " (ha " + IntegerToString((int)(TimeCurrent() - aiWhen)) + "s)";
+      // v1.2.167 (P1.131): a idade tem de ser medida com o MESMO relogio que a
+      // gravou. AIConnector grava g_aiStateWhen com AIClockRelogio (TimeLocal em
+      // producao); comparar aqui com TimeCurrent, que e tempo do servidor e fica
+      // parado com o broker em baixo, dava idade errada por +/- 18000 s.
+      if(aiWhen > 0 && AIClockRelogio() >= aiWhen)
+         ai += " (ha " + IntegerToString((int)(AIClockRelogio() - aiWhen)) + "s)";
    }
    else if(AI_Signal != "")
       ai = AI_Signal + " " + DoubleToString(AI_Confidence, 1) + "%"
