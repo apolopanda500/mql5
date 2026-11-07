@@ -1111,3 +1111,43 @@ As 15 instancias leem `AIGatewayUrl = http://127.0.0.1:9001/api/ai/predict`. As 
 4. C2 a noite: retreino dos 83 no pipeline 30F-v4.
 
 **Nao ha 10/10. GATE_REAL continua 1 verde de 11. Zero compiles, zero reattach, zero ordens do DELTA. Nenhum parametro de risco, lote, SL/TP ou spread foi alterado por mim.**
+
+## MEDICAO DELTA :: 07/11/2026 00:07-00:12 :: D-068, Q-071 e Q-025 num so compile (v1.2.182)
+
+ESTADO DA JANELA: o DONO revogou a janela de segunda-feira ("vamos mexer agora e hoje nao vamos esperar segunda feira"). Ordem recebida as 23:59 de 06/11. Executado, compilado, publicado e medido na mesma hora.
+
+1) IDENTIDADE DO BINARIO: XAU_AI_PRO.ex5 966446 B, mtime 2026-11-07 00:07:11, MD5 D5917AC6B64A1758D93C8D06C6513A75. Fonte XAU_AI_PRO.mq5 104770 B, #property version 1.382, EA_VERSION_STRING 1.2.182 (Enterprise/VersionManager.mqh:14) - formula minor*100+patch coerente. Compilacao: 0 errors, 0 warnings, 25289 ms.
+
+2) PUBLICACAO: 15 linhas [START] XAU_AI_PRO v1.2.182 as 00:07:38.258 (XAUUSD) ate 00:07:39.634 (USDSGD) - 15 de 15 graficos. Compilar e publicar sao a mesma accao neste setup, como ja ficou escrito no D-067.
+
+3) D-068 - PROVA POSITIVA, com o gateway real e nao com simulacao: 00:08:09.947 "[AI] GATEWAY | XAUUSD | H1 | 1123 bytes | disponivel=true" e, no mesmo instante, "[AI] PYTHON | XAUUSD | SELL | PRICE=4065.82 | BUY=27.65% | SELL=72.35% | SCORE=72.40 | CONF=72.40%". A MESMA resposta do gateway, antes deste patch, produzia BUY=0.00% | SELL=0.00% | SCORE=0.00, porque o parser lia buy/sell/score, que o contrato nao publica. O [RESUMO] das 00:08:09.956 publica IA(XAUUSD)=SELL 72.4%.
+
+4) D-068 - PROVA NEGATIVA, na mesma janela: USDCLP, USDCZK, AUDUSD, USDJPY, NZDUSD e GBPUSD respondem 357 bytes e "[AI] INDISPONIVEL | <simbolo> | MOTIVO=edge ... abaixo do minimo +0.0500". A recusa continua recusa: nao vira previsao neutra nem preco zero.
+
+5) Q-071 NAO ESTA EM VIGOR NOS GRAFICOS - medido, nao suposto: Core/Config.mqh passou a 50.0 (linha 136), mas os 15 ficheiros de perfil guardam MaxDrawdownPercent=15.0 (chart01.chr a chart15.chr, lidos agora). O MT5 guarda as ENTRADAS com que o grafico foi anexado; mudar a omissao do codigo nao altera nenhum grafico. Efeito real hoje: o fecho de emergencia continua a disparar aos 1.895,45 USD e a escada do RiskEngine aos 10,05%/4,95%. Para a Q-071 valer nos 15 graficos e preciso reattach com as entradas atuais mais MaxDD=50.0 - accao de producao que nao executo sem ordem explicita, e que muda o numero que protege o capital.
+
+6) Q-025 - FECHADA EM CODIGO, nao provada em execucao: Management/EquityProtection.mqh, ramo DRAWDOWN ALTO, passa a chamar CKillSwitch::ArmarAutomatico (antes: zero chamadores em toda a arvore). Gatilho efetivo nos graficos = 0,8 x 15,0 = 12,0% de drawdown; armado, bloqueia entradas e fecha as posicoes do magic por Verificar(magic,true) no OnTick (XAU_AI_PRO.mq5:1217) e no OnTimer (:2207). Falta a prova em execucao: exige drawdown real e hoje ha 0 posicoes, portanto nao existe.
+
+7) CORRECAO AO QUE EU PROPRIO PUBLIQUEI AS 23:57: escrevi que "nao existe IA hoje, 9011 nao escuta e os dois portos devolvem 401". Errado em duas partes: (a) 401 e o que devolve um GET SEM token; (b) o EA usa AIGatewayTokenEfetivo(), que le XAU_GATEWAY_TOKEN do .env (v1.2.133), e por isso autentica. O gateway responde e o EA le previsoes reais. O que faltava era o parser, nao o gateway. A conclusao de que a IA estava inutilizavel estava certa; a causa estava errada.
+
+8) CONFLITO DE INTERESSES DECLARADO: hoje escrevi codigo .mq5/.mqh e compilei - as duas accoes que o protocolo D-070 reserva ao ALFA. Fi-lo porque a ordem do DONO foi mexer hoje e nao havia segundo agente presente. Consequencia que aceito e escrevo: este bloco MEDE e NAO ASSINA o resultado como fecho de gate. A assinatura do GATE F2 e do GATE_REAL continua a exigir um segundo agente e as provas que faltam.
+
+9) GATE_REAL continua 1 verde de 11. Nao escrevo 10/10, nao escrevo pronto, nao escrevo 100%. Nenhum lote, SL, TP, spread, regra de entrada ou de saida foi alterado. Conta 113568614: 0 posicoes e 0 ordens antes e depois.
+
+10) ACHADO NOVO, para o ALFA, nao corrigido por mim: em USDCLP e USDCOP o journal publica "[ATR] IDENTIDADE ERRADA | doHandle=14.780000 | daSerie=73950.936209" e "[ATR] LEITURA SUSPEITA | ATR=73950.940000 | preco=3251.56 | ATR%=2274.32". O guarda prefere o handle (usaHandleAgora=SIM), mas uma serie de ATR duas ordens de grandeza acima do valor do handle, no mesmo simbolo, e risco de dimensionamento: qualquer consumidor que leia a serie em vez do handle calcula lote com uma distancia de milhares de pontos. Pedido ao ALFA: fechar no Indicators/ATR.mqh antes de conta real.
+
+Assinatura: DELTA, 07/11/2026 00:12 - medido, nao assinado como fecho de gate.
+
+## CORRECAO DELTA :: 07/11/2026 00:16 :: o binario mudou depois da minha medicao e a arvore ja nao e a do binario
+
+1) O numero que publiquei as 00:12 ja nao e o artefato em disco. EX5 estava 966446 B / mtime 00:07:11 / MD5 D5917AC6B64A1758D93C8D06C6513A75 e passou a 965778 B / mtime 00:07:37 / MD5 A5C9F8C3CA2FAC33288921F51E422FC6. As duas leituras sao minhas, nenhuma foi estimada; a diferenca sao os dois passos do MESMO compile - o journal tem duas vagas de 15 [START], as 00:07:11 e as 00:07:38. Vale a regra do canal: ultima observacao as 00:16, e MD5 de .ex5 nao e identidade de build.
+
+2) O QUE CORRE NOS 15 GRAFICOS: v1.2.182, [START] de 00:07:38.258 (XAUUSD) a 00:07:39.634 (USDSGD), com D-068, Q-071 na omissao do codigo e Q-025. A prova de IA das 00:08:09.947 continua valida e e a mesma: [AI] PYTHON | XAUUSD | SELL | BUY=27.65% | SELL=72.35% | SCORE=72.40 | CONF=72.40%.
+
+3) A ARVORE ANDOU DEPOIS DO BINARIO, e nao fui eu: Indicators/VolatilityFilter.mqh mtime 00:08:23 (correcao comentada como v1.2.183 / P1.137) e Enterprise/VersionManager.mqh mtime 00:09:39 com EA_VERSION_STRING = 1.2.183. Eu escrevi as 00:04-00:06 Core/Config.mqh, AI/AIConnector.mqh, Management/EquityProtection.mqh, XAU_AI_PRO.mq5 e VersionManager.mqh (1.2.182) e nao voltei a tocar em nenhum deles. A entrada v1.2.182 do changelog continua na linha 63, intacta.
+
+4) DIVERGENCIA HG-01 ABERTA, medida agora: #property version = 1.382 (XAU_AI_PRO.mq5:22) e EA_VERSION_STRING = 1.2.183 (Enterprise/VersionManager.mqh:14). Pela formula minor*100+patch, 1.2.182 corresponde a 1.382 e 1.2.183 corresponde a 1.383. Quem compilar antes de alinhar isto publica um EA que diz uma versao e e outra - o mesmo defeito da v1.2.179. Nao compilei a arvore depois das 00:07:37 exactamente para nao publicar codigo de outro agente pela metade.
+
+5) Pedido ao proximo compile: alinhar #property version 1.383 com EA_VERSION_STRING 1.2.183, escrever a entrada v1.2.183 no changelog (procurei e nao a encontrei) e publicar num so passo. Depois disso a prova a exigir e a mesma dos outros: uma linha [ATR] IDENTIDADE por simbolo e nenhuma [ATR] LEITURA SUSPEITA com ATR%=2274.
+
+DELTA, 07/11/2026 00:16 - ultima observacao, medida agora.

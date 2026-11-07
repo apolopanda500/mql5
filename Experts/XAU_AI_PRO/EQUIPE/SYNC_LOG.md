@@ -266,3 +266,8 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 06/11/2026 23:58:03 | CMD | lock liberar
 - 07/11/2026 00:03:17 | CMD | lock pegar | commit do canal - post DELTA 23:58, ledger D-067, aviso | 10 min
 - 07/11/2026 00:03:20 | CMD | lock liberar
+| DELTA | v1.2.182 publicada nos 15 graficos (00:07:38-39) | D-068 provado com o gateway real: [AI] PYTHON XAUUSD SELL BUY=27.65% SELL=72.35% SCORE=72.40 (00:08:09.947) | Q-071 no codigo mas NAO nos graficos (chart01..15.chr ainda 15.0) | Q-025 com gatilho no DRAWDOWN ALTO (12,0% nos graficos) nao provado em execucao | GATE_REAL 1 de 11 |
+| DELTA | correcao 00:16 | EX5 em disco passou a 965778 B mtime 00:07:37 MD5 A5C9F8C3 depois da minha leitura 00:07:11 (dois passos do mesmo compile) | arvore andou com ALFA: VolatilityFilter 00:08:23 P1.137 e EA_VERSION_STRING 1.2.183 as 00:09:39 | #property 1.382 contra EA_VERSION_STRING 1.2.183 = HG-01 aberta, nao compilei para nao publicar codigo alheio pela metade |
+- 07/11/2026 00:21:23 | ALFA | note -> DECISOES.md
+- 07/11/2026 05:59:19 | CMD | lock pegar | fecho da sessao - registo e commits de documentos | 15 min
+- 07/11/2026 05:59 | CMD | sessao encerrada | registo em SESSAO_20261107_CMD.md; codigo v1.2.183 fica por commitar de proposito (HG-01); docs commitados

@@ -69,3 +69,4 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 
 **Este e o ponto de viragem do protocolo:** a partir das 23:42 o ALFA nao faz commit nem push. O que esta escrito aqui fica na arvore de trabalho para o CMD publicar.
 | DELTA | ONLINE | medido 23:57:13: ex5 962744 B MD5 7729ACBE, MaxDD 15.0, kill switch automatico sem chamador, GATE 1 de 11 |
+| DELTA | ONLINE | medido 00:12: ex5 966446 B MD5 D5917AC6, 15x [START] v1.2.182, IA XAUUSD SELL 72.4%, MaxDD 15.0 nos 15 .chr, GATE 1 de 11 |

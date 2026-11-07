@@ -3721,3 +3721,73 @@ O DONO aprovou o `CICLO_FINAL.md` completo. Isso ratifica tambem a proposta 5 qu
 ### 8. Efeito no primeiro dia do ciclo (segunda 09/11)
 
 O dia comeca como estava - F2.2 por 3 testes, F2.3 a F2.10, GATE F2 com 6 falhas simuladas - e ganha **uma janela de compile unica** que leva, de uma vez: (i) patch do parser (Q-068), (ii) `MaxDrawdownPercent` 15 -> 50 nos dois sitios, (iii) consumidor real do `ArmarAutomatico` no mesmo numero. Uma versao, um `[START]` por grafico, uma medicao. Depois disso C2 comeca com o retreino dos 83 no pipeline 30F-v4.
+
+---
+
+## D-072 - Sessao autorizada de 07/11 (madrugada): Q-071 aplicada nos 15 graficos, patch do parser provado em producao, Q-023 fechada, "cotacao velha" explicada pelo fecho semanal
+
+**Data:** 07/11/2026 00:14-01:20 (hora do terminal) | **Autor:** ALFA | **Compile:** v1.2.183 / #property 1.382 / binario 968458 B / 0 errors 0 warnings
+
+**Autorizacao do DONO (literal, chat):** "autorizo voce. e quero mexer hoje no projeto sem esperar segunda feira ok."
+
+Esta autorizacao derroga a **Q-068 = b** ("nada compilado com mercado fechado") apenas para este conjunto de actos, listados abaixo. **Nao** autoriza REAL, **nao** assina GATE F2, GATE F6 nem F2.2, e **nao** altera o GATE_REAL, que continua **1 verde de 11** (so G2). Nenhuma linha deste bloco pode ser lida como "10/10".
+
+### 1. Q-071 aplicada: MaxDrawdownPercent 15 -> 50 em 15 de 15 graficos, e persistida no disco
+
+- Os 15 graficos foram re-anexados (`chart_add_expert`) com **uma unica** alteracao: `MaxDrawdownPercent=50.0`. Os restantes valores nao-default foram preservados (`AutoTrade=true`, `MagicNumber=2026001`, `AIGatewayUrl=http://127.0.0.1:9001/api/ai/predict`, `EnableMCPServer=true`, `MCPServerToken`, `RiskPercent=1.0`, `MaxDailyLossPercent=10.0`, `EnableStaleDataGuard=true`, `MaxSymbolTickAgeSec=900`, `MinAIConfidence=60.0`, `AllowTradeWithoutAI=false`, `EnableAutonomousMode=true`, `BlockZeroAIScore=true`).
+- **Prova no disco, medida depois:** `Profiles\Charts\Default\chart01..15.chr` com `MaxDrawdownPercent=50.0` na linha 84 (15/15) e `Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071\chart01..15.chr` idem. DiferenÃ§a de `<inputs>` entre os dois perfis: **321 inputs, 0 linhas diferentes**.
+- **Porque era preciso mexer no .chr e nao so no codigo:** o `Config.mqh:136` ja tinha `input double MaxDrawdownPercent = 50.0` desde o compile anterior; mas **o valor guardado no grafico sobrepoe-se ao default compilado**. Sem re-anexar, o EA corria a 15% e a decisao do DONO nao existia em lado nenhum.
+- **Caveat medido:** a linha `[CONFIG] EM VIGOR ... MaxDD=15.0%` que aparece no journal as 00:07:11 pertence ao **v1.2.182**, antes do reattach. Em v1.2.183 a linha **nao foi reemitida** (filtros `EM VIGOR` e `MaxDD` em 00:11-01:10 devolvem **0 registos**), o que aponta para um guard de "uma vez por sessao do terminal" nesse Print. Logo a prova do valor efectivo e o `.chr` no disco, **nao** o journal. Reconfirmar `[CONFIG]` num arranque limpo (terminal reaberto).
+- Efeito assumido, escrito antes de acontecer: o escalonamento do `RiskEngine` (33% e 16,5% do limite) passa a reduzir risco aos **16,5% e 8,3% em vez de 5% e 2,5%** de antes - o EA corre com risco cheio muito mais tempo. O kill switch e o `EquityProtection` passam a disparar aos **50% do balanco = 6.318,16 USD** (alerta aos 80% = 40% = 5.054,53 USD). Em DEMO e o que o DONO pediu; **em REAL nao sera usado sem o forward de 30 dias provar drawdown realizado abaixo de 8%**.
+
+### 2. Patch do parser: agora tem ID - e o D-072 e esse ID
+
+A decisao anterior deixava o patch do parser **sem ID**, a reservar na segunda-feira. Como o patch foi compilado e publicado hoje por autorizacao do DONO, **fica documentado por este D-072**. Nao ha dois IDs para o mesmo acto.
+
+- **Prova em producao (v1.2.183), journal de 07/11 00:12:16.702, XAUUSD H1:**
+  `[AI] PYTHON | XAUUSD | SELL | PRICE=4065.82 | BUY=27.65% | SELL=72.35% | SCORE=72.40 | CONF=72.40%`
+- **Gateway no mesmo segundo:** `[AI] GATEWAY | XAUUSD | H1 | 1122 bytes | disponivel=true`.
+- **O que isto muda, e so isto:** o parser deixa de devolver score 0.00 (era o `BLOQUEADO | score=0.00` de ontem) e passa a ler `prob_buy`/`prob_sell` publicados pelo gateway. Com `EnableAutonomousMode=true`, `AIGateRequired()` devolve `false`; o unico veto restante e `BlockZeroAIScore && score <= 0.0`. Como `AdvancedAIScore` soma componentes tecnicos (tendencia, ADX, spread, volatilidade, bonus direccional), **um simbolo sem modelo publicado pontua > 0 e opera a tecnico** - ou seja **a Q-072 = (a) esta implementada, sem compile adicional**. O que falta e a prova em mercado aberto, nao o codigo.
+- **Limite honesto desta prova:** um simbolo (XAUUSD) e um instante. Nao e prova de que os 20 restantes pontuam >0 nem de que entram. Essa medicao so existe com mercado aberto.
+
+### 3. P1.137 - guarda de identidade do ATR escolhia o lado errado
+
+- Medido em v1.2.182: `[ATR] IDENTIDADE ERRADA | USDCLP | doHandle=4.315000 | daSerie=203.576255` com preco 971.05, e `[ATR] IDENTIDADE ERRADA | USDCOP | doHandle=14.780000 | daSerie=73950.936209` com preco 3251.56 - a serie devolvia valores fisicamente impossiveis (**20,96%** e **2274,32%** do preco) e a guarda mantinha o lado plausivel.
+- Corrigido em `Indicators/VolatilityFilter.mqh`: quando o desvio excede `ATR_IDENTITY_TOL_PCT` (25%), testa a plausibilidade **da serie** contra `ATR_MAX_PLAUSIBLE_PCT` (5%); se a serie e impossivel, descarta a serie e mantem o handle; se e a serie que e plausivel, mantem a serie.
+- **Medicao em v1.2.183:** janela 00:11-00:40 do journal, filtro `ATR` -> **0 registos**. Ressalva obrigatoria: nessa janela o `StalenessGuard` bloqueou todos os simbolos, logo o ATR pode simplesmente nao ter sido recalculado. **0 registos nao e prova de correcao; e ausencia de contradicao.**
+
+### 4. Q-023 fechada - permissao de trading algoritmico persistida
+
+- `expertmode=5` nos 15 `.chr`, **dentro do bloco `<expert>`** (`chart01..15`, linha 67). O segundo `expertmode=1` que existe na linha 411 pertence a um `<indicator>` e nunca teve relacao com o EA.
+- Confirmacao independente: 15 `[START] XAU_AI_PRO v1.2.183 | conta=113568614 | ... | saldo=12636.32` entre 00:11:46 e 00:13:25.
+
+### 5. "COTACAO VELHA" e o fecho semanal, nao um defeito
+
+- `Core/StalenessGuard.mqh:IdadeSegundos` compara `TimeTradeServer()` com `MqlTick.time` - mesma escala (D-029/D-064), **sem bug de fuso**. `CotacaoVelha` devolve `true` se idade > `MaxSymbolTickAgeSec` (900s).
+- Medido em 00:13:47: USDSEK 18831s, USDCZK 18832s, USDJPY 18832s, USDCHF 18843s, USDCLP 35072s, USDCOP 33243s. Ultimo tick de XAUUSD: **2026-11-06 22:59:59**; FX ~23:59:58. Mercado fechado (sexta). As idades batem com o fecho, nao com um feed partido.
+- **Previsao falsificavel:** na abertura o journal deve mostrar `[TRADE BLOCK] COTACAO VOLTOU` e as entradas tecnicas. Se nao mostrar, o defeito existe e e outro.
+
+### 6. O que NAO esta feito - escrito para nao haver leitura optimista
+
+1. **GATE_REAL continua 1 verde de 11** (so G2). GATE F2, GATE F6 e F2.2 **sem assinatura** (quem faz nao assina, e o DELTA nao mediu nada disto).
+2. **12 ficheiros por commitar** na arvore de trabalho, incluindo `EQUIPE\tools\sync-agent.ps1`. **O commit e do CMD** (item 4 da decisao anterior) - ALFA nao faz commit nem push.
+3. **F2.8 por fechar:** os 15 graficos partilham `MagicNumber=2026001`. Um magic por instancia continua a ser requisito.
+4. **Criterio de publicacao de modelos incoerente:** o meta declara `min_edge 0.05`, o criterio real medido e `edge_balanced >= 0.0300 AND AUC >= 0.5200 AND folds maioritariamente positivos`. 14 de 15 simbolos sao recusados por um piso que nunca foi validado. Por reconciliar.
+5. **`[MCP] DESATIVADO | token literal publico recusado`** no arranque: o `MCPServerToken=xau-mcp-local-2026` guardado no `.chr` e tratado como literal publico e o servidor MCP nao sobe. Registado, **nao corrigido hoje** (exigiria decisao do DONO sobre um token privado e um segundo compile).
+6. **18 perguntas abertas** no `INBOX_DONO.md`, entre elas a Q-017 (10% / 15% / 1.0).
+7. **C2 (retreino dos 83 modelos) bloqueado** por duas perguntas ao CMD sem resposta: (i) o 30F-v4 esta amarrado a XAUUSD (features de ouro, sessoes, DXY)? (ii) quais dos 20 simbolos nao tem profundidade de dataset?
+
+### 7. Como corre o proximo ciclo, agente por agente, ate ao fim
+
+| # | Fase | Quem | Entrega | Criterio de saida |
+|---|---|---|---|---|
+| 0 | Abertura de mercado | ALFA | observacao do journal sem tocar em nada | `COTACAO VOLTOU` + `[AI] PYTHON` com BUY/SELL != 0 em >= 5 simbolos |
+| 1 | F2.2 | DELTA | 3 provas por guarda: recusa acima do tecto, fail-closed com `ACCOUNT_MARGIN` ilegivel, zero falso positivo abaixo do tecto | 3/3 escritas, nenhuma auto-assinada |
+| 2 | F2.3-F2.10 | ALFA escreve / DELTA mede | guardas uma a uma, 1 compile por janela | efeito atribuivel, 0 errors 0 warnings |
+| 3 | GATE F2 | DELTA | 6 falhas simuladas | assinatura do DELTA, nao do ALFA |
+| 4 | F3 dados + IA | CMD | dataset 30F-v4 + modelos publicados | `edge >= +0.0500` medido |
+| 5 | F4 forward 30 dias | ALFA mede / DONO le | DEMO, sem intervencao manual | PF >= 1.2, DD <= 8%, >= 100 trades, IA >= 95%, 0 bloqueios injustificados |
+| 6 | F5 GATE 11/11 | DELTA | prova positiva E negativa por criterio | 11/11 verde |
+| 7 | F6 REAL micro-lote | DONO | autorizacao escrita | so depois de 5 e 6 |
+
+**Regra que nao muda:** enquanto o passo 6 nao fechar, nenhum documento deste canal escreve "10/10", "100%" ou "pronto". O que existe hoje e **1 de 11**.
