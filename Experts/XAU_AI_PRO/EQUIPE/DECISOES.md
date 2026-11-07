@@ -3622,3 +3622,102 @@ GATE_REAL continua 1 verde de 11. GATE F2 por assinar. F2.2 "ligada, nao provada
 
 ### 11. Como o projeto termina
 Quando as 10 provas estiverem verdes e o DONO assinar. Nesse dia: main = working tree = .ex5 provado por [START]; relatorio de 1 pagina com as 10 provas datadas; forward fechado com o pacote de metricas; decisao de real com numero; e o "10/10" escrito uma vez, por quem assinou. Depois passa a manutencao: retreino mensal, revisao trimestral de risco, runbook vivo.
+
+---
+
+## D-070 | Reorganizacao da EQUIPE e protocolo do ciclo ate 10/10 (DELTA, 06/11 23:40)
+
+**Ordem que origina esta decisao:** DONO, 06/11 23:36 - concluir todas as pendencias com os 3 agentes, com commit/push/deploy, anotacao, teste, simulacao, aprovacao e validacao, e o EA operando 30 dias para endurecer antes de uso REAL.
+
+**O que muda a partir de agora**
+
+1. **Papeis com uma mao cada**: ALFA e o dono do codigo do EA (unico que edita e compila `Experts/**`, `AI/**`, `Core/**`, `Indicators/**`); CMD e o integrador (unico que faz commit, push, deploy, CI, gateway e infra); DELTA e o medidor e auditor (mede, prova, assina ou recusa; nao edita codigo do EA nem git); DONO decide e autoriza. Canal escrito por todos, sempre sob `LOCK.md`.
+2. **Cinco faixas**: L1 codigo do EA (ALFA), L2 dados e IA (ALFA+CMD), L3 infra e entrega (CMD), L4 medicao e gates (DELTA), L5 operacao forward (DONO decide, DELTA mede).
+3. **Sete fases**: F0 saneamento (ate 07/11 12:00), F1 parser D-068 (ate 09/11 antes da abertura), F2 guardas provadas (ate 20/11), F3 dados e IA (ate 27/11), F4 forward 30 dias em demo, F5 GATE_REAL 11/11, F6 real com autorizacao escrita.
+4. **Regras de evidencia**: valor + hora + origem em toda afirmacao numerica; prova positiva **e** negativa para toda trava; "nao medido" e resposta valida, "deve funcionar" nao e; MD5 de `.ex5` nao e identidade de build (build 6306 nao e reprodutivel - 3 compiles, 3 tamanhos); nunca "identidade vigente", sempre "ultima observacao as HH:MM:SS".
+5. **Ritual diario**: 6 linhas fixas por agente ate 21:00 local (feito/prova, nao feito/motivo, bloqueio/dependencia, numeros, amanha, pedido ao DONO) + `check` 2x/dia por agente; canal com problema para o trabalho daquele agente.
+6. **Definition of Done de 6 condicoes**: escrito na zona do dono; compila 0 errors 0 warnings com log; provas com hora; commit+push declarando autor; anotacao no canal com ID reservado antes; assinatura do DELTA ou recusa escrita. Faltando uma, o item esta aberto - nao existe "quase pronto".
+7. **Compile unico**: um compile por janela, anunciado com hora, versao e motivo; duas mudancas no mesmo compile = efeito nao atribuivel = dois compiles em duas janelas.
+8. **Deploy**: compile 0/0 + CI verde + provas no canal + `check` 0 problemas + registro (versao, hora, hash, graficos, `[START]` medido). Publica o CMD, aprova o DELTA, autoriza real o DONO.
+9. **30 dias de forward em DEMO** a contar do dia em que o parser estiver corrigido: minimo 100 trades; aprovacao com PF >= 1.2, DD <= 8%, disponibilidade de IA >= 95%, zero bloqueio sem motivo publicado, zero alteracao de parametro na janela. Reprovar repete a janela; **nao se ajusta o criterio para passar**.
+
+**Definicao de 10/10 (a unica aceita neste ciclo):** 11 de 11 criterios do `GATE_REAL` com prova positiva e negativa + 30 dias de forward em demo nos criterios acima + autorizacao escrita do DONO. Medido em 06/11 22:49: **1 verde de 11** (G2). O plano nao muda esse numero; a prova muda.
+
+**Documento completo:** `EQUIPE/PROTOCOLO_CICLO_10_10.md` (216 linhas, criado 06/11 23:40) - papeis, faixas, fases, evidencias, ritual, DoD, compile, deploy, forward, escalonamento, proibicoes e quadro de pendencias com dono e prazo.
+
+**Ack obrigatorio:** ALFA e CMD ate 07/11 12:00, com uma linha no `SYNC_LOG.md` no formato `<data hora> | <AGENTE> | ACK PROTOCOLO D-070 | discordo de: <nada|item N>`. Sem ack, o trabalho daquele agente fica bloqueado (regra 11 do protocolo).
+
+**Limite declarado pelo autor:** este bloco ordena o trabalho, nao certifica resultado. O DELTA nao declara 10/10, nao sobe gate, nao compila e nao edita codigo do EA. Se algum numero deste texto divergir do que o comando mede, o comando vence.
+
+**Nota de numeracao (medida):** o `D-069` foi reservado as **23:36:58** com autor `sistema` e texto **vazio**, antes deste bloco. Por isso o protocolo passa a **D-070**. Quem reservou o D-069 tem de escrever o corpo dele ou devolver o numero ao ledger - reserva vazia e ID consumido sem decisao, e o mesmo defeito que o D-067 teve ontem.
+
+---
+
+## D-071 - as quatro respostas do DONO de 06/11 23:42: 50% nas duas guardas, os 20 ativos a tecnico, git passa ao CMD e CICLO_FINAL ratificado
+
+**ID:** D-071 reservado por `id -Tipo D -From ALFA`
+**Autor:** ALFA | **Carimbo:** 06/11/2026 23:47:19 (lido do relogio no momento da escrita) | **Status:** em vigor
+**Origem:** mensagem do DONO de 06/11 23:42 - `Q-071 50%` / `Q-072 a` / `Git cmd ja` / `Aprova o CICLO_FINA completo`
+
+### 1. As quatro respostas, transcritas sem interpretacao
+
+| # | Pergunta | Resposta do DONO | Efeito |
+|---|---|---|---|
+| 1 | Q-071 - qual numero alinha as duas guardas | **50%** | as duas disparam no mesmo ponto: 50% da banca = **6.318,16 USD** sobre o balanco de 12.636,32 USD |
+| 2 | Q-072 - os 20 ativos sem modelo | **(a) tecnico ja** | os 20 operam a sinal tecnico; a IA fala so onde tem modelo publicado |
+| 3 | Q-071 / divergencia 1 do CICLO_FINAL (secao 13) - quem faz commit e push | **"Git cmd ja"** | o git passa ao CMD a partir de agora, nao em C1 |
+| 4 | Ratificacao do contrato do ciclo | **Aprova o CICLO_FINAL completo** | `CICLO_FINAL.md` e o contrato; `PROTOCOLO_CICLO_10_10.md` (D-070) fica como **anexo tecnico** dele |
+
+### 2. Q-071 = 50%: o que muda no codigo (medido, ficheiro e linha)
+
+O numero e um so. Hoje as guardas estao desalinhadas e e por isso que uma chega primeiro - o MaxDrawdownPercent (15%) bloqueia entradas e o kill switch (50% da banca, Q-025) matava a conta depois. O que a resposta obriga:
+
+| Peca | Hoje (medido) | Depois |
+|---|---|---|
+| `Core/Config.mqh:123` | `input double MaxDrawdownPercent = 15.0;` | `50.0` |
+| `Management/EquityProtection.mqh:11` | `bool EquityProtection(double maxDrawdownPercent = 15.0)` | `50.0` (valor de recurso, para nao haver duas verdades) |
+| `Core/KillSwitch.mqh` via automatica | `ArmarAutomatico()` existe e **nao tem um unico chamador** em toda a arvore - a via automatica esta declarada e morta | um consumidor real, disparado exactamente no mesmo numero (50% do balanco), com `[KILL SWITCH] ARMADO AUTOMATICAMENTE` no journal |
+
+**O que isto custa, escrito antes de acontecer:** o escalonamento do `RiskEngine` (`Core/RiskEngine.mqh:88-90`: `ddCritical = MaxDrawdownPercent`, `ddHigh = 0.67x`, `ddModerate = 0.33x`) passa a reduzir risco aos **33% e 16,5%** em vez dos 10% e 5% de hoje - ou seja o EA corre com risco cheio muito mais tempo. O `EquityProtection` alerta aos 80% do limite, isto e aos **40% (5.054,53 USD)**, e so fecha aos 50%. Em DEMO e endurecimento aceitavel e e o que o DONO pediu; em REAL nao sera usado sem o forward de 30 dias provar drawdown realizado abaixo de 8%.
+
+**Nao alterado nesta sessao:** nenhum ficheiro de codigo foi tocado. A alteracao e **1 compile unico**, na janela de segunda-feira com o patch do parser (Q-068 = b: nada compilado com mercado fechado).
+
+### 3. Q-072 = (a): os 20 ativos a tecnico - e a dependencia que o DONO nao podia ver
+
+A escolha e clara e e a unica que produz dados. Mas o estado medido diz que **"a IA calada" hoje nao e "IA neutra": e score 0.0 e bloqueio em todos os simbolos**, porque o parser procura `buy`/`sell`/`score` e o gateway publica `prob_buy`/`prob_sell`/`edge` (Q-068), e porque `AIEngine.mqh` tem `if(BlockZeroAIScore && score <= 0.0) return(false);` com `BlockZeroAIScore=true` nos 15 graficos.
+
+Consequencia honesta: **(a) so se cumpre depois do patch do parser + o compile de segunda**. Sem esse patch, "operar a tecnico ja" produziria o oposto do pedido - zero entradas em 20 de 21 ativos. Isto nao e objecao a resposta; e a ordem de execucao dela.
+
+Efeito desejado que passa a existir: cada ativo acumula historico proprio de entradas tecnicas em demo, que e a base de dados para o retreino de C2 (os 83 reprovados).
+
+### 4. "Git cmd ja": a divergencia 1 resolve-se a favor do DELTA
+
+- A **regra interina** que eu tinha escrito na secao 13 do `CICLO_FINAL.md` ("documentos com ALFA ate C1") **cai**. Passa a valer a versao do DELTA desde ja: **o CMD e a unica mao de commit, push e deploy.**
+- **ALFA nao faz mais nenhum commit nem push.** O registo desta decisao fica **na arvore de trabalho, nao commitado**, para o CMD publicar - e isso e a primeira entrega do CMD sob a regra nova, nao um esquecimento meu.
+- Continua proibido **duas maos a fazer push do mesmo ramo no mesmo dia**. Uma mao por dia, hash registado no `SYNC_LOG`.
+- O que o ALFA mantem: escrever o plano, o codigo e as medicoes, **com o comando e a hora**, e o canal enquanto tiver o LOCK.
+
+### 5. CICLO_FINAL ratificado: contrato + anexo, zero duplicacao
+
+O DONO aprovou o `CICLO_FINAL.md` completo. Isso ratifica tambem a proposta 5 que o DELTA fez as 23:47:
+
+- **`CICLO_FINAL.md` = o contrato** (D-069): 10 provas, quem faz nao assina, fases C0-C7, forward congelado.
+- **`PROTOCOLO_CICLO_10_10.md` = anexo tecnico** (D-070): ritual diario, Definition of Done, regras de evidencia, registo/versionamento, protocolo de teste.
+- **Um contrato, um anexo.** Onde os dois divergirem, vale o contrato.
+
+### 6. Correccao de IDs que estava pendente (e que o DELTA levantou com razao)
+
+- **D-069 nao esta vazio:** o corpo esta neste ficheiro desde 23:39:04. O que ficou vazio foi a **linha do ledger**, porque o `id` foi chamado sem `-From`/descricao. Corrigida nesta sessao com a descricao do corpo. Reserva sem descricao e defeito de registo, nao decisao inexistente.
+- **O parser nao e D-068.** O D-068 e a decisao de risco/universo/modelos de 23:03. O patch do parser recebe **ID proprio, reservado na segunda-feira no momento de aplicar**, junto com o unico compile. Enquanto nao for reservado, nenhum commit ou dossie pode chamar-lhe D-068.
+
+### 7. O que esta decisao NAO autoriza
+
+1. Escrever "10/10", "100%", "pronto" ou "F2 verde". O GATE_REAL continua **1 verde de 11**.
+2. Assinar GATE F2, GATE F6 ou F2.2 - a assinatura e do DELTA, e nenhum dos tres tem prova ainda.
+3. Ir a conta real. A Q-071 eleva o limite de perda; nao aproxima o REAL de coisa nenhuma.
+4. Compilar antes de segunda-feira, com o mercado fechado e sem o CMD presente (Q-068 = b).
+5. Fazer commit ou push (item 4 deste bloco).
+
+### 8. Efeito no primeiro dia do ciclo (segunda 09/11)
+
+O dia comeca como estava - F2.2 por 3 testes, F2.3 a F2.10, GATE F2 com 6 falhas simuladas - e ganha **uma janela de compile unica** que leva, de uma vez: (i) patch do parser (Q-068), (ii) `MaxDrawdownPercent` 15 -> 50 nos dois sitios, (iii) consumidor real do `ArmarAutomatico` no mesmo numero. Uma versao, um `[START]` por grafico, uma medicao. Depois disso C2 comeca com o retreino dos 83 no pipeline 30F-v4.

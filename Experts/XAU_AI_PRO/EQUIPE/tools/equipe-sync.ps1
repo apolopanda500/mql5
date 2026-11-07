@@ -357,21 +357,37 @@ switch($Cmd.ToLower()){
     $p = Join-Path $Root 'INBOX_DONO.md'
     if(-not (Test-Path -LiteralPath $p)){ Write-Output 'ERRO: INBOX_DONO.md nao existe'; exit 1 }
     $t = $enc.GetString([System.IO.File]::ReadAllBytes($p))
-    $blocos = [regex]::Split($t, '(?m)^(?=#{2,3}\s+)')
+    # O split por `##`/`###` partia blocos ao meio em perguntas que tem
+    # sub-seccoes `###` no corpo: a segunda linha RESPOSTA caia noutro bloco e a
+    # pergunta aparecia "fechada sem RESPOSTA" (Q-019 e Q-065, medido 07/11).
+    # Passa a cortar so em `## Q-nnn`, igual ao Get-PerguntasAbertas do
+    # sync-agent.ps1, para os dois contadores lerem exatamente o mesmo bloco.
+    $blocos = [regex]::Split($t, '(?m)^(?=##\s+Q-\d{3})')
     Write-Output ('FILA DO DONO :: ' + $Root)
     Write-Output ''
     $n = 0
     foreach($b in $blocos){
       if($b -notmatch '(?m)^#{2,3}\s+Q-\d{3}'){ continue }
-      # Medido 06/11 21:20 (DELTA): o filtro exigia `ABERTO` seguido de `|` ou
-      # fim de linha; toda pergunta escrita `ABERTA` era descartada em silencio
-      # (13 visiveis de 22 abertas). Aceita ABERT[AO] e nao esconde o resto:
-      # um estado nao reconhecido imprime aviso em vez de desaparecer.
-      if($b -notmatch 'estado:\s*\*{0,2}\s*ABERT[AO]\b'){
-        if($b -notmatch 'estado:\s*\*{0,2}\s*FECHAD[OA]\b'){
-          Write-Output ('IGNORADO (estado nao reconhecido) :: ' + (($b -split "`n")[0]).Trim())
-        }
-        continue
+      # DEFEITO CORRIGIDO (07/11/2026): esta fila filtrava SO por
+      # `estado: ABERT[AO]`, enquanto o sync-agent.ps1 filtrava por RESPOSTA
+      # preenchida. Duas perguntas no mesmo ficheiro davam 20 e 29. O criterio
+      # passa a ser o mesmo dos dois lados: falta texto de RESPOSTA -> entra na
+      # fila do DONO. Aceita a forma em negrito `- **RESPOSTA:** texto`, que e a
+      # que o canal usa desde 06/11 e que a regex antiga nao via.
+      $temResposta = $false
+      foreach($rm in [regex]::Matches($b, '(?m)^-[ \t]*\*{0,2}[ \t]*RESPOSTA[ \t]*:?[ \t]*\*{0,2}[ \t]*([^\r\n]*)$')){
+        $rv = $rm.Groups[1].Value.Trim()
+        if($rv -ne '' -and $rv -notmatch '^_*$'){ $temResposta = $true; break }
+      }
+      if($temResposta){ continue }
+      # Estado que diz FECHADA/RESPONDIDA sem texto e defeito de registo, nao
+      # pergunta respondida: mostra-se na fila (nao se esconde a decisao em
+      # falta) com aviso explicito, para o dono ver que falta a palavra escrita.
+      if($b -match 'estado:\s*\*{0,2}\s*(FECHAD[OA]|RESPONDID[OA])\b'){
+        Write-Output ('AVISO (fechada sem RESPOSTA escrita) :: ' + (($b -split "`n")[0]).Trim())
+      }
+      elseif($b -notmatch 'estado:\s*\*{0,2}\s*ABERT[AO]\b'){
+        Write-Output ('AVISO (estado nao reconhecido) :: ' + (($b -split "`n")[0]).Trim())
       }
       $n++
       $linhas = @($b -split "`n")

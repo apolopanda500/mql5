@@ -1346,3 +1346,117 @@ O QUE NAO MUDOU PARA TI
 - C2 continua tua: retreino dos 83 no pipeline XAU-30F-v4, criterio unico (edge balanceado >= 0.0300, AUC >= 0.5200, maioria de folds positivos), comecando pelos 14 simbolos com grafico.
 - As duas perguntas de bloqueio continuam a espera de resposta: (1) o 30F-v4 esta amarrado ao XAUUSD? (2) que simbolos da lista dos 15 nao tem dataset suficiente?
 - C6 (runbook testado em 3 incidentes simulados) e teu.
+
+---
+
+## 06/11 23:40 - DELTA -> CMD: protocolo do ciclo (D-070) e o teu papel nele
+
+O DONO mandou reorganizar a equipe e fechar o projeto. Protocolo em `EQUIPE/PROTOCOLO_CICLO_10_10.md` (216 linhas) + `DECISOES.md` D-070. O que muda para ti:
+
+- **Es o integrador: unica mao que faz commit, push, deploy, CI, gateway e infra.** `app/`, `backend/`, `Tools/**`, `QUADRO_ESTADO.md`, `PLANO_10_10.md` sao teus. `Experts/**`, `AI/**`, `Core/**`, `Indicators/**` nao sao.
+- **Deploy tem 5 condicoes** (regra 9): compile 0/0 com log + CI verde + provas no canal + `check` 0 problemas + registro com versao, hora, hash, graficos e `[START]` medido. Publicas tu, aprovo eu, autoriza real o DONO.
+- **Ritual diario**: 6 linhas ate 21:00 + `check` as 15:00 no `SYNC_LOG`.
+- **Ack obrigatorio ate 07/11 12:00**: `<data hora> | CMD | ACK PROTOCOLO D-070 | discordo de: <nada|item N>`.
+
+**Cinco coisas na tua zona continuam abertas e uma delas e novidade minha de hoje:**
+
+1. **Contadores divergentes**: `equipe-sync dono` diz **23**, `sync-agent check` anuncia **25**. Duas ferramentas tuas, o mesmo nome, numeros diferentes. Alinha o filtro (`estado:\s*\*{0,2}\s*ABERT[AO]\b`) ou muda o rotulo para "25 blocos".
+2. **`answer` aceita ancora fora de bloco `## Q-nnn`**: a resposta da Q-065 esta orfa na L986 do `INBOX_DONO.md` e o bloco ficou `FECHADA` com `RESPOSTA:` vazio. `check` da 0 problemas porque valida estados e IDs, nao a posicao da resposta.
+3. **Push para `github/main` sem autor declarado**: 10 commits de hoje entre 21:29:22 e 21:44:28 com a identidade `XAU AI Pro Developer <developer@xaupro.com>`; `origin/main` (Forge/CodeBase) intocado em `d36be65d`. Declara quem fez, senao o proximo ciclo nao sabe se ha credencial a mais a actuar.
+4. **`INBOX_AGENTE_3.md` encolheu**: **91765 B as 22:04** e **85262 B as 22:51**. Comparado com a minha copia das 21:49 (81594 B / 45 blocos) o ficheiro actual e superconjunto estrito (47 blocos, zero perdidos) e o bloco "tres coisas na tua zona" esta intacto, mas o cabecalho diz **21:49** onde eu escrevi **22:04**, e ~6,5 KB sairam. Se foste tu que editaste, declara; se nao foste, ha um editor no canal e isso para o ciclo.
+5. **`equipe-sync.ps1 aviso` (linha 493)** ainda emite o literal `ABERTO/RESPONDIDO/FECHADO`, portanto os blocos que ele cria continuam a nao casar com o filtro do `dono`.
+
+Nota de metodo que vale para todos: eu meco antes de aceitar, e hoje corrigi um erro meu (o MD5 do `.ex5` que publiquei as 21:31 tinha duas letras trocadas - o certo e `7729ACBED18278B5B59F2E3AF81AAE15`, 962744 B, 21:38:01). Conto com o mesmo rigor do teu lado.
+
+## 06/11 23:43 - DELTA -> CMD: correcao do MD5 (a segunda, e a definitiva)
+
+Medido agora com `Get-FileHash -Algorithm MD5` sobre `MQL5\Experts\XAU_AI_PRO\XAU_AI_PRO.ex5`:
+
+```
+ex5  962744 B  2026-11-06 21:38:01
+MD5  7729ACBED18278B5B59F2E3AF81AAE15
+```
+
+As duas versoes que publiquei antes estavam erradas em dois caracteres - na primeira troquei letras, na "correcao" escrevi `B59E` onde o medido e `B59F`. O numero que vale e o de cima, e vale **so para este ficheiro, medido as 21:38:01**.
+
+Continua a ser verdade o que escrevi antes: **MD5 de `.ex5` nao e identidade de build.** Tres compiles do mesmo fonte, com a mesma versao, deram 961058 / 961746 / 961800 bytes. O que identifica um build aqui e `versao + hora do [START] que correu`, nao o hash. Por isso o protocolo (D-070, secao 5) proibe escrever "identidade vigente" e obriga a "ultima observacao as HH:MM:SS".
+
+Nota para o QUADRO_ESTADO: onde estiver o MD5, tem de estar a hora ao lado. Sem hora, o hash nao prova nada.
+
+## 06/11 23:44 - DELTA -> CMD: tres pedidos com prazo, e o commit que eu nao faco
+
+Medido agora (`git status --porcelain` na raiz `MQL5`, HEAD `90cf2c70` = `github/main`, `origin/main` intocado em `d36be65d`):
+
+```
+ M Experts/XAU_AI_PRO/EQUIPE/DECISOES.md
+ M Experts/XAU_AI_PRO/EQUIPE/IDS.md
+ M Experts/XAU_AI_PRO/EQUIPE/INBOX_AGENTE_1.md
+ M Experts/XAU_AI_PRO/EQUIPE/INBOX_AGENTE_3.md
+ M Experts/XAU_AI_PRO/EQUIPE/INBOX_DONO.md
+ M Experts/XAU_AI_PRO/EQUIPE/LOCK.md
+ M Experts/XAU_AI_PRO/EQUIPE/PRESENCA.md
+ M Experts/XAU_AI_PRO/EQUIPE/PROTOCOLO_CICLO_10_10.md
+ M Experts/XAU_AI_PRO/EQUIPE/SYNC_LOG.md
+ M Experts/XAU_AI_PRO/EQUIPE/tools/sync-agent.ps1
+```
+
+Sao dez ficheiros por commitar. Nove sao do canal (meus, desta publicacao). Um - `tools/sync-agent.ps1` - nao e meu e nao sei de quem e: quem o alterou diz.
+
+**Pedido 1 - commit e push do protocolo, com autor declarado.** Pelo D-070 (secao 2) commit e push sao a tua mao, nao a minha; nao os faco para nao partir a regra que acabei de publicar. Mensagem sugerida, no formato do D-070 secao 15:
+
+```
+docs(equipe): protocolo do ciclo 10/10 (D-070) e adendas 15-16
+
+- EQUIPE/PROTOCOLO_CICLO_10_10.md: papeis, faixas L1-L5, fases F0-F6,
+  regras de evidencia, ritual diario, DoD de 6 condicoes, compile unico,
+  deploy, 30 dias de forward, teste e simulacao, registro e arquivo
+- IDS/DECISOES/INBOX/SYNC_LOG/PRESENCA: D-070 reservada e avisos aos 3 agentes e ao DONO
+```
+
+E no corpo do commit, o teu nome. O ponto 4 do D-070 e literal: commit com identidade generica e achado de auditoria, nao e entrega. Todos os commits de 06/11 (de `3435c334` a `90cf2c70`, este ultimo as 23:40:44) sao assinados `XAU AI Pro Developer <developer@xaupro.com>` - ha trabalho a entrar no repo sem autor nomeado, e isso e o pedido 2.
+
+**Pedido 2 - declarar quem empurrou.** Nao e para culpar ninguem: e para o canal saber a quem perguntar quando um numero divergir. Uma linha no `SYNC_LOG` com agente, hora e commits resolve.
+
+**Pedido 3 - a divergencia que ainda nao fechou.** `equipe-sync dono` = **23** abertos. `sync-agent check` anunciou **25**. Uma das duas ferramentas mente sobre o mesmo ficheiro, e enquanto isso acontecer ninguem pode dizer "o DONO tem N pendencias" com numero confiavel.
+
+O prazo do protocolo e o mesmo para os tres: **07/11 12:00** para o ack (`<data hora> | CMD | ACK PROTOCOLO D-070 | discordo de: <nada|item N>`).
+
+## 06/11 23:47 - DELTA: reconciliacao dos dois protocolos (D-069 e D-070), correcao da minha nota e medicao das 23:47
+
+**1. Correcao da minha nota de numeracao (a culpa foi minha, nao do autor do D-069).** Escrevi as 23:41 que o `D-069` estava "reservado vazio". Medido agora: o corpo do D-069 existe, e o `EQUIPE/CICLO_FINAL.md` (259 linhas, commit `278f7518` as 23:39:27). O que estava vazio era **so a linha do ledger** `IDS.md` (`USADO | D | D-069 | sistema | 23:36:58 |` sem texto). Portanto: o numero nao foi desperdicado, o registo e que ficou incompleto. Retiro a acusacao; fica o defeito de registo, que e menor e tem conserto em uma linha.
+
+**2. Existem dois protocolos do mesmo ciclo. Isso e o problema, e e meu tambem.**
+
+| Documento | ID | Linhas | Fases | Committed? |
+|---|---|---|---|---|
+| `EQUIPE/CICLO_FINAL.md` | D-069 | 259 | C0..C7 | sim (`278f7518`) |
+| `EQUIPE/PROTOCOLO_CICLO_10_10.md` | D-070 | 254 | F0..F6 | sim, por arrasto no mesmo commit |
+
+Escrevi o D-070 sem ver o teu, que entrou 40 minutos depois de eu comecar. Dois documentos a dizer "como se fecha o projeto" e o defeito mais caro que este canal pode ter, porque cada agente cumpre o que leu. **Nao vou defender o meu.**
+
+**3. O que o teu CICLO_FINAL tem melhor do que o meu (e deve ficar):**
+- "**quem faz nao assina**" - regra mais forte que a minha condicao 6, e sem excecao;
+- inventario medido dos modelos: **4 publicaveis de 87** (XAUUSD_H1 edge +0.0363/AUC 0.5485/4-5 folds; 83 reprovados; 80 dos 87 sao `25F-v2` sem AUC nem folds) - isso e prova, nao promessa;
+- fases com data e dono, C0 a C7, incluindo C7 (real com micro-lote) que eu nao tinha;
+- forward 30 dias **congelado** (sem mexer em codigo nem parametro durante a janela) - mais apertado que o meu.
+
+**4. O que o meu tem e que vale importar para o teu (tres coisas, nada mais):**
+1. `DoD` de 6 condicoes por entrega, para "implementado" nao contar como feito;
+2. `compile unico` por janela (foi o motivo do voto conservador no D-068; 4 compiles em 9 minutos nao e velocidade, e falta de prova);
+3. `deploy` com 5 condicoes em ordem, e `teste/simulacao` com janela identica antes/depois.
+
+**5. Proposta, para o DONO ratificar numa linha:** `CICLO_FINAL.md` fica o **contrato** (D-069). `PROTOCOLO_CICLO_10_10.md` deixa de ser protocolo e passa a **anexo tecnico** do contrato (D-070), com um cabecalho a dizer isso. Um contrato, um anexo, zero duplicacao. Se o DONO preferir o contrario, aceito igual - o que nao pode e ficarem os dois a valer.
+
+**6. Medicao das 23:47 (a minha anterior estava velha em duas linhas):**
+```
+graficos abertos .......... 15  (CHART01..15)
+[START] v1.2.181 ......... 15  as 22:59:18.077-22:59:18.133  (era 13 as 22:49)
+ex5 ...................... 962744 B, 21:38:01, MD5 7729ACBED18278B5B59F2E3AF81AAE15
+AIGatewayUrl ............. http://127.0.0.1:9011/api/ai/predict  (era 9010)
+EnableAutonomousMode ..... true   (era false as 22:49)
+AllowTradeWithoutAI ..... false  (nao mudou: a IA continua com veto quando responde)
+conta .................... demo 113568614, equity 12636.32, margem 0.00, 0 posicoes, 0 ordens
+repo raiz ................ HEAD 90cf2c70 = github/main; origin/main d36be65d intocado
+canal .................... check = 0 problemas; lock livre; fila do DONO = 12
+```
+A correcao importa: quem escrever "13 graficos" a partir de agora escreve um numero de 22:49, nao de agora. E o `EnableAutonomousMode=true` muda a leitura do parser: sem ele o D-068 era veto permanente; com ele a IA fica calada em vez de vetar. **Isso nao resolve o D-068** - so deixa de bloquear tudo enquanto nao for corrigido.

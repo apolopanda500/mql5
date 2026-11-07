@@ -1,6 +1,6 @@
 # PROTOCOLO DO CICLO 10/10 - como fechamos o projeto
 
-Status: proposta do DELTA em 06/11/2026 23:40, sob **D-069**. Ratificacao: DONO.
+Status: proposta do DELTA em 06/11/2026 23:40, sob **D-070**. Ratificacao: DONO.
 Ack obrigatorio: ALFA e CMD (regra 14). Enquanto nao houver ack, o protocolo vale para quem o escreveu.
 Regra de leitura: se um numero aqui divergir do que o comando mede, **o comando vence** - corrige-se o numero, nao o comando.
 
@@ -208,9 +208,48 @@ Quem para: **DELTA** (auditor) pode parar o ciclo. Quem retoma: **so o DONO**, d
 ALFA e CMD confirmam a leitura com **uma linha** no `SYNC_LOG.md`:
 
 ```
-<data hora> | <AGENTE> | ACK PROTOCOLO D-069 | discordo de: <nada | item N>
+<data hora> | <AGENTE> | ACK PROTOCOLO D-070 | discordo de: <nada | item N>
 ```
 
 Sem ack ate **07/11 12:00**, o trabalho daquele agente fica bloqueado (regra 11, paragem). DELTA confirma com a primeira auditoria diaria e o primeiro relatorio das 21:00.
 
 Divergir e permitido e util: escrever "discordo de: item N" e o caminho. O que nao e permitido e seguir em silencio e depois publicar numero sem prova.
+
+---
+
+## 15. Registo, versionamento e arquivo - commit, push, documentar, salvar
+
+Nada existe ate estar registado. O ciclo tem quatro registos e nenhum e opcional:
+
+| Registo | Onde | Quem | Prova de que foi feito |
+|---|---|---|---|
+| **commit** | repo do codigo (raiz `MQL5`, aninhado `Files/XAU_AI_PRO`) | CMD | `git log -1` com hash, autor e hora |
+| **push** | `github/main` para codigo/docs; `origin` (CodeBase) **so com ordem escrita do DONO** | CMD | `git rev-parse HEAD` == `git rev-parse github/main` |
+| **documento** | `EQUIPE/*.md` (decisao, protocolo, quadro, plano) | dono da zona | bloco com ID reservado antes de escrever |
+| **arquivo** | `MQL5/Files/Backup/<agente>_<assunto>_<AAAAMMDD_HHMMSS>` | quem escreve | pasta com os ficheiros de antes da escrita |
+
+Regras:
+
+1. **Autor declarado.** Todo commit diz quem o fez e o que mudou. Commit com identidade generica e achado de auditoria, nao e entrega. Enquanto houver push sem autor declarado (medido hoje: 10 commits de 06/11 entre 21:29:22 e 21:44:28), o item continua aberto.
+2. **Commit nao e deploy.** Commitar o codigo nao publica `.ex5`; publicar `.ex5` nao commita nada (o binario nao e versionado, de proposito).
+3. **Mensagem de commit** no formato `tipo(escopo): o que mudou` e, no corpo, o ID da decisao (`D-070`).
+4. **Antes de escrever num ficheiro do canal**, copia-se para o arquivo. Quem nao tem copia nao escreve.
+5. **Fim de cada fase (F0..F6)**: um commit de marco e uma linha no `SYNC_LOG` com hash e hora. Sem isso, a fase nao fechou.
+
+---
+
+## 16. Testar e simular - o que conta como teste
+
+O ciclo tem tres niveis de teste e um nao substitui o outro:
+
+1. **Teste estatico** (obrigatorio em toda entrega de codigo): `check` do canal = 0 problemas, `#include` resolvidos, UTF-8 estrito, chaves balanceadas, testes Python do projeto (`tests/*.py`) verdes.
+2. **Simulacao** (obrigatoria antes de qualquer publicacao de versao): Strategy Tester no mesmo simbolo, periodo e modelo para comparar versoes. Um backtest **nao e** prova de lucro - e prova de que a mudanca nao quebrou o que existia. Regras:
+   - mesma janela e mesmo modelo para antes e depois (senao a comparacao nao vale);
+   - deposito, alavancagem e moeda declarados no relatorio;
+   - relatorio salvo (caminho escrito no canal) antes de publicar;
+   - se o resultado melhorar **so** com parametro afinado depois de ver o numero, isso e ajuste ao passado, e repete-se a janela.
+3. **Forward em DEMO** (30 dias, regra 10): o unico teste que vale como endurecimento real, porque nao escolhe o passado.
+
+Proibido chamar "testado" ao que so compilou. Compilar prova que o codigo e valido, nao que a logica esta certa.
+
+> **ANEXO TECNICO DO CONTRATO (proposta do DELTA, 06/11 23:47).** O contrato do ciclo e `EQUIPE/CICLO_FINAL.md` (D-069). Este documento nao e um segundo protocolo: e o anexo que importa tres regras do D-070 para dentro do contrato - DoD de 6 condicoes, compile unico por janela, deploy em 5 condicoes com teste e simulacao de janela identica. Ratificacao: DONO, uma linha. Enquanto nao ratificar, vale o contrato (D-069) e este anexo e proposta.

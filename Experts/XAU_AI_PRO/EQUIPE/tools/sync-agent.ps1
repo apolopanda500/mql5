@@ -503,6 +503,19 @@ function Show-Read {
    Write-Output ''
 }
 
+function Test-BlocoTemResposta {
+   <# Diz se o bloco tem ALGUMA linha RESPOSTA com texto.
+   Olha TODAS as ocorrencias, e nao so a primeira: ha perguntas com uma
+   `- **RESPOSTA:**` vazia (do formato) e a resposta preenchida na linha
+   seguinte, e outras com duas respostas (uma por destinatario). #>
+   param([string]$Bloco)
+   foreach ($m in [regex]::Matches($Bloco, '(?m)^-[ \t]*\*{0,2}[ \t]*RESPOSTA[ \t]*:?[ \t]*\*{0,2}[ \t]*([^\r\n]*)$')) {
+      $v = $m.Groups[1].Value.Trim()
+      if ($v -ne '' -and $v -notmatch '^_*$') { return $true }
+   }
+   return $false
+}
+
 function Get-PerguntasAbertas {
    <# Perguntas Q-nnn sem campo RESPOSTA preenchido. #>
    $txt = Read-Text $InboxDono
@@ -521,13 +534,40 @@ function Get-PerguntasAbertas {
       if (-not $m.Success) { continue }
       $id = $m.Groups[1].Value
       $titulo = $m.Groups[2].Value.Trim()
-      $resp = [regex]::Match($b, '(?m)^-\s*RESPOSTA:\s*(.*)$')
-      $aberta = (-not $resp.Success) -or [string]::IsNullOrWhiteSpace($resp.Groups[1].Value) -or ($resp.Groups[1].Value.Trim() -match '^_*$')
+      # DEFEITO CORRIGIDO (07/11/2026): o canal escreve a resposta em NEGRITO -
+      # `- **RESPOSTA:** texto` - e a regex so aceitava `- RESPOSTA:`. Resultado:
+      # 9 perguntas ja respondidas (Q-016..019, 025, 026, 065, 068, 070) eram
+      # contadas como abertas, e o `check` anunciava 29 quando a fila real tinha
+      # 20. Aceita as duas formas, procura em TODAS as linhas (ha blocos com uma
+      # RESPOSTA vazia e outra preenchida) e conta vazio como aberta.
+      $aberta = -not (Test-BlocoTemResposta $b)
       $out.Add([pscustomobject]@{ Id = $id; Titulo = $titulo; Aberta = $aberta })
    }
    # A virgula impede o PowerShell de desenrolar a lista: com 0 ou 1 item o
    # chamador recebia $null/objecto e `.Count` rebentava em StrictMode.
    return ,@($out | Where-Object { $_.Aberta })
+}
+
+function Get-PerguntasFechadasSemResposta {
+   <# Integridade: `estado:` diz FECHADA/RESPONDIDA mas nao ha texto de RESPOSTA.
+   Nao e uma pergunta aberta (o estado diz que nao), nem uma pergunta fechada
+   de verdade (nao ha decisao escrita). Fica de fora das duas contagens e e
+   denunciada no `check` para alguem repor o texto. #>
+   $txt = Read-Text $InboxDono
+   if ([string]::IsNullOrWhiteSpace($txt)) { return ,@() }
+   $out = New-Object System.Collections.Generic.List[object]
+   $blocks = [regex]::Split($txt, '(?m)^(?=##\s+Q-\d{3})')
+   foreach ($b in $blocks) {
+      $m = [regex]::Match($b, '^##\s+(Q-\d{3})\s*[|]\s*([^|\r\n]+)', 'Multiline')
+      if (-not $m.Success) { $m = [regex]::Match($b, '^##\s+(Q-\d{3})\s*-\s*([^\r\n]+)', 'Multiline') }
+      if (-not $m.Success) { continue }
+      $est = [regex]::Match($b, 'estado:\s*\*{0,2}\s*([A-Z/]+)')
+      if (-not $est.Success) { continue }
+      if ($est.Groups[1].Value -notmatch '^(FECHAD[OA]|RESPONDID[OA])$') { continue }
+      if (Test-BlocoTemResposta $b) { continue }
+      $out.Add($m.Groups[1].Value)
+   }
+   return ,@($out.ToArray())
 }
 
 function Show-Ask {
@@ -753,6 +793,12 @@ function Show-Check {
    $l = Get-LockState
    if ($l.Expirado) {
       $problemas.Add("LOCK vencido de $($l.Dono) ($($l.Motivo)) - liberte com: lock -Acao liberar -From $($l.Dono)")
+   }
+
+   # 6. pergunta fechada sem texto de resposta
+   $semResposta = Get-PerguntasFechadasSemResposta
+   foreach ($q in $semResposta) {
+      $problemas.Add("${q}: estado FECHADA/RESPONDIDA mas sem texto de RESPOSTA - a decisao nao esta escrita")
    }
 
    Write-Output ''

@@ -59,3 +59,12 @@ ultimas 3 linhas (uma por agente) ou corre equipe-watch.ps1 -Quem.
 06/11/2026 22:51:39 | DELTA | ONLINE | medido: raiz e5c04136=github/main limpa, origin d36be65d intocado, aninhado develop de0f08f=origin/develop limpo; ex5 962744 B 21:38:01 MD5 7729ACBE...; 13/13 graficos v1.2.181 desde 21:38:01; conta demo 0 posicoes 0 ordens; GATE_REAL 1 de 11
 
 06/11 06/11/2026 23:39:04 - ALFA: CICLO_FINAL publicado e D-069 aberto. Post enviado a DELTA e a CMD com papel, primeira tarefa e duas perguntas de bloqueio (30F-v4 amarrado ao XAUUSD? simbolos sem dataset?). Dono informado do contrato e dos dois prazos (Q-071, Q-072). Nada compilado: Q-068 = b.
+06/11/2026 23:41:34 | DELTA | ONLINE | protocolo do ciclo 10/10 publicado (D-070, PROTOCOLO_CICLO_10_10.md 216 linhas): uma responsabilidade uma mao, fases F0..F6, 10/10 definido como 11/11 do GATE_REAL + 30 dias forward demo + autorizacao escrita; medido agora 1 verde de 11, 13 graficos v1.2.181 desde 21:38:01, ex5 962744 B 21:38:01, conta demo 0 posicoes 0 ordens; ack de ALFA e CMD ate 07/11 12:00; D-069 estava reservado vazio as 23:36:58
+06/11/2026 23:43:47 | DELTA | ONLINE | protocolo D-070 publicado (16 secoes) e canal 0 problemas; ex5 962744 B 21:38:01, MD5 7729ACBED18278B5B59F2E3AF81AAE15 (correcao medida); raiz HEAD 90cf2c70=github/main, origin d36be65d intocado; conta demo 113568614 equity 12636.32, 0 posicoes 0 ordens; GATE_REAL 1 de 11; ack ALFA e CMD ate 07/11 12:00
+06/11/2026 23:45:09 | DELTA | ONLINE | medido: 15 graficos [START] v1.2.181 22:59:18.077-133 (corrige os 13 de 22:49), gateway 9011, EnableAutonomousMode=true, AllowTradeWithoutAI=false; ex5 962744 B 21:38:01; raiz HEAD 90cf2c70=github/main, origin d36be65d intocado; canal 0 problemas, fila do DONO 12; proposto contrato=D-069 CICLO_FINAL com D-070 como anexo tecnico
+
+06/11 23:48 - ALFA regista as quatro respostas do DONO de 23:42 e entrega o git ao CMD.
+
+D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)** (20 ativos a tecnico), **git passa ao CMD ja**, CICLO_FINAL ratificado como contrato com o PROTOCOLO do DELTA como anexo tecnico. Q-071 e Q-072 fechadas no `INBOX_DONO.md`; linha do ledger do D-069 corrigida (estava reservada sem descricao).
+
+**Este e o ponto de viragem do protocolo:** a partir das 23:42 o ALFA nao faz commit nem push. O que esta escrito aqui fica na arvore de trabalho para o CMD publicar.
