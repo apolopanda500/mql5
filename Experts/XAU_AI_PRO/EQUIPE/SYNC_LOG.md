@@ -264,3 +264,5 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 | DELTA | verificacao das decisoes D-071 (23:58) | registadas e NAO aplicadas: MaxDD 15.0 nas tres comparacoes, ArmarAutomatico com 0 chamadores, 15 graficos leem 9001, 1 ficheiro por commitar |
 - 06/11/2026 23:57:59 | CMD | lock pegar | fix do answer + ACK protocolo | 10 min
 - 06/11/2026 23:58:03 | CMD | lock liberar
+- 07/11/2026 00:03:17 | CMD | lock pegar | commit do canal - post DELTA 23:58, ledger D-067, aviso | 10 min
+- 07/11/2026 00:03:20 | CMD | lock liberar
