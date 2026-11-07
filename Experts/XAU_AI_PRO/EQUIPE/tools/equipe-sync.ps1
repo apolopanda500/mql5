@@ -283,9 +283,9 @@ function Get-Metricas([string]$Path){
   $cr = 0
   for($i = 0; $i -lt $b.Length; $i++){ if($b[$i] -eq 13){ $cr++ } }
   $linhas = ([regex]::Matches($t, "`n")).Count
-  $aberto = ([regex]::Matches($t, 'estado:\s*\*{0,2}\s*ABERTO\s*(\||$)')).Count
-  $fechado = ([regex]::Matches($t, 'estado:\s*\*{0,2}\s*FECHADO\s*(\||$)')).Count
-  $resp = ([regex]::Matches($t, 'estado:\s*\*{0,2}\s*RESPONDIDO\s*(\||$)')).Count
+  $aberto = ([regex]::Matches($t, 'estado:\s*\*{0,2}\s*ABERT[AO]\b')).Count
+  $fechado = ([regex]::Matches($t, 'estado:\s*\*{0,2}\s*FECHAD[OA]\b')).Count
+  $resp = ([regex]::Matches($t, 'estado:\s*\*{0,2}\s*RESPONDID[OA]\b')).Count
   $rodape = ''
   $m = [regex]::Matches($t, 'Ultima alteracao: (.*)')
   if($m.Count -gt 0){ $rodape = $m[$m.Count - 1].Groups[1].Value }
@@ -332,7 +332,11 @@ switch($Cmd.ToLower()){
       if(-not $m.Utf8Ok){ Write-Output ('FALHA ' + $m.Nome + ' :: UTF-8 invalido'); $problemas++ }
       if($m.Bytes -eq 0){ Write-Output ('FALHA ' + $m.Nome + ' :: ficheiro vazio'); $problemas++ }
       $t = $enc.GetString([System.IO.File]::ReadAllBytes($f.FullName))
-      $ids = [regex]::Matches($t, '(?m)^#{2,3}\s+(D-\d{3}|P-\d{3}|Q-\d{3})')
+      # Falso positivo medido 06/11 21:22 (DELTA): `^#{2,3}` contava tambem
+      # cabecalhos de nivel 3 usados como adenda (ex.: `### D-064 adenda`),
+      # acusando "ID duplicado D-064 x2" sem existir segundo bloco de decisao.
+      # So `^## ` abre bloco de ID; `^### ` e subsecao/adenda do bloco acima.
+      $ids = [regex]::Matches($t, '(?m)^##\s+(D-\d{3}|P-\d{3}|Q-\d{3})')
       $grupos = @{}
       foreach($i in $ids){
         $k = $i.Groups[1].Value
@@ -359,7 +363,16 @@ switch($Cmd.ToLower()){
     $n = 0
     foreach($b in $blocos){
       if($b -notmatch '(?m)^#{2,3}\s+Q-\d{3}'){ continue }
-      if($b -notmatch 'estado:\s*\*{0,2}\s*ABERTO\s*(\||$)'){ continue }
+      # Medido 06/11 21:20 (DELTA): o filtro exigia `ABERTO` seguido de `|` ou
+      # fim de linha; toda pergunta escrita `ABERTA` era descartada em silencio
+      # (13 visiveis de 22 abertas). Aceita ABERT[AO] e nao esconde o resto:
+      # um estado nao reconhecido imprime aviso em vez de desaparecer.
+      if($b -notmatch 'estado:\s*\*{0,2}\s*ABERT[AO]\b'){
+        if($b -notmatch 'estado:\s*\*{0,2}\s*FECHAD[OA]\b'){
+          Write-Output ('IGNORADO (estado nao reconhecido) :: ' + (($b -split "`n")[0]).Trim())
+        }
+        continue
+      }
       $n++
       $linhas = @($b -split "`n")
       Write-Output $linhas[0]
@@ -387,7 +400,7 @@ switch($Cmd.ToLower()){
           $fim = $t.IndexOf("`n`n", $idx)
           if($fim -lt 0){ $fim = [Math]::Min($idx + 1200, $t.Length) }
           $trecho = $t.Substring($idx, [Math]::Min($fim - $idx, 1200))
-          if($trecho -match 'estado:\s*\*{0,2}\s*ABERTO\s*(\||$)'){ $total++ }
+          if($trecho -match 'estado:\s*\*{0,2}\s*ABERT[AO]\b'){ $total++ }
         }
       }
       Write-Output ('{0,-6} :: {1,3} item(ns) ABERTO' -f $a, $total)
