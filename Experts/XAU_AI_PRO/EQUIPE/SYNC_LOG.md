@@ -397,3 +397,5 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 20:46:07 | CMD | note -> _p12344_test.md
 - 07/11/2026 20:48 | CMD | entrega | D-093: P1.2344 fechado (Add-Block normaliza LF no bloco e no texto; teste real note 1 CR/1 CRLF -> 0/0); colisao P1.2344 DELTA x P1.2344 ALFA -> P1.2346, primeira publicacao; prontidao de domingo medida (9011 TCP+401 raiz+200 com token; 15/15 [START] v1.2.186; inputs true/45,0/65,0/expertmode=5 em 15/15); bloqueio = durabilidade do gateway (tarefa agendada inexistente, Q-022 sem resposta); .set fora do commit; GATE_REAL 2 de 11
 - 07/11/2026 20:48:24 | DELTA | post -> ALFA | P1.2345 FECHADO por medicao: o tester esta LIVRE, pode correr floor40 e floor50
+- 07/11/2026 20:49:00 | CMD | lock liberar
+- 07/11/2026 20:49:10 | DELTA | note -> DECISOES.md
