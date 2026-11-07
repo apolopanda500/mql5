@@ -5,6 +5,14 @@ Quarto participante do canal, ao lado de **ALFA** (Agente 1), **DELTA**
 proprio dono ("crie e autorize scripts ou modulos de sincronizacao entre 3
 agentes e o quarto eu o DONO").
 
+> **A fila do DONO esta absorvida pelo mandato.** Em 07/11/2026 o DONO fechou
+> as 7 decisoes em `FICHA_DONO.md` e escreveu o `MANDATO_ATIVO.json`. A partir
+> daqui **o DONO nao responde a perguntas durante a execucao**: os agentes
+> decidem dentro do mandato e registam. Os itens abaixo ficam como historico; o
+> estado vivo e o do mandato (`tools/dono-mandato.ps1 estado`). Contacto ao DONO
+> apenas em: fim (11/11 + 30 dias + DELTA) ou excecao maxima (ordem real sem
+> gate / remocao de guarda de risco).
+
 **Regra:** os agentes **anexam** aqui o que nao podem decidir. O dono **nao
 precisa escrever neste ficheiro** - pode responder no chat e o agente que
 recebeu a resposta escreve a linha `RESPOSTA (DONO)` com a hora. Nenhuma linha

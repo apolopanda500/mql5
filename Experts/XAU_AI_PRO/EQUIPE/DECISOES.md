@@ -5022,3 +5022,102 @@ corrida P1.2345 (deposito 0,00). Mantido **nao commitado**, como no turno 7.
 
 **GATE_REAL continua 2 de 11.** Nada neste turno move um criterio: foram
 ferramenta, colisao de ID e medicoes de prontidao. Nao existe 10/10.
+
+## D-094 | DELTA | 07/11/2026 20:55 | turno T6: P1.2345 fechado por medicao, gateway medido, Q-079/B e ATR medidos, P1.3476 aberto. Nada compilado, nada reattachado, nenhuma ordem, nenhum parametro de risco tocado. GATE_REAL 2 de 11.
+
+**1) P1.2345 FECHADO, e nao como estava escrito.** O slot do tester nao esta ocupado por mim. O terminal foi reiniciado as 20:39:50 (terminal64 PID 15036, StartTime 20:39:50; o anterior saiu as 20:29:38); `tester_list_result_windows` devolve 0 janelas; `Tester\logs\20261107.log` nao recebe escrita desde 20:29:38. Nao existe corrida do DELTA na sessao atual. O ALFA pode correr floor40 e floor50 - avisado por post na caixa dele as 20:48.
+
+**2) Gateway 9011 medido: VIVO e AUTENTICADO.** A porta aceita conexao; a raiz devolve 401; `/api/ai/predict?symbol=XAUUSD&timeframe=H1` COM token devolve HTTP 200 com inferencia real: `available=true`, `signal=SELL`, `confidence=72.4`, `prob_sell=0.7235`, `price=4065.82`, `atr=20.983`. `Tools\api-probe.ps1`: 4 de 4 passos, RESULTADO sem falhas de infraestrutura.
+
+**3) O `HTTP 1001` do EA as 20:40:34 tem causa medida e nao e defeito.** `python.exe` PID 2608 arrancou as **20:42:32**, isto e 2 min 38 s DEPOIS do terminal (20:39:50) e depois da tentativa do EA: o EA falou com um gateway que ainda nao existia. Com o mercado fechado nao ha OnTick, logo nao ha nova tentativa - o EA so volta a tentar na abertura de segunda. O gateway nao e servico do Windows (Q-009): quem reinicia o terminal tem de o relancar, e o EA perde o primeiro poll se nao esperar.
+
+**4) Q-079/B: o selo nunca esteve no journal.** Medido em `MQL5\Logs` de 01 a 07/11: `[VALIDATION] TREND CONTRA OK` aparece **57 vezes, TODAS entre 01/11 e 05/11 18:57**, e **ZERO em 06/11 e ZERO em 07/11**. As 57 antigas trazem o texto velho `contramao PERMITIDA` e nao trazem selo. O selo `| Q-079/B` e escrito em `Filters\MarketScenario.mqh:231`; a v1.2.185 foi compilada as 18:57 de 07/11 e a v1.2.186 as 19:30, ambas DEPOIS do fecho semanal de 06/11 23:59:59. Conclusao: a folga nunca foi exercitada ao vivo; os 10 simbolos do D-090 sao do tester. Na segunda a linha a procurar e: `[VALIDATION] TREND CONTRA OK | simbolo | Signal=n | contramao dentro da folga de 1.00 ATR | dist=... | ATR=... | Q-079/B`.
+
+**5) ATR da folga em H1: resolvido por codigo.** `MarketScenario.mqh:215` exige `Period()==TrendTF`, logo a folga so vale em grafico H1 e USDBRL (M5) nunca a recebe - e o P1.2344, agora confirmado na linha. A propria linha imprime o ATR usado, nao ha que adivinhar.
+
+**6) NOVO P1.3476: `[SCORE]` esta mudo desde 03/11.** Medido: 65 linhas SCORE em 01-05/11 (60 delas em 02/11), 3 em 03/11, 1 em 05/11, **ZERO em 06/11 e ZERO em 07/11**; o campo `PTS=` que o P1.138 acrescentou tem **ZERO ocorrencias** em qualquer log. Consequencia: a correcao de escala do P1.138 (total = 100*pts/115) nao tem uma unica prova viva e a distribuicao de `TOTAL=` que o ALFA pediu **NAO E MENSURAVEL hoje**. As 65 amostras existentes sao pre-v1.2.184 e todas 100.00 (65 de 65): confirmam o defeito antigo, nao validam a correcao.
+
+**7) ATR, P1.110 e P1.119: 47 linhas de identidade em 01-07/11, duas familias.** (a) `IDENTIDADE ERRADA` com doHandle e daSerie na mesma ordem de grandeza e racio constante 0,68-0,75, que o P1.137 ja explicou como vicio de aquecimento e nao troca de serie. (b) `serie impossivel descartada` em USDCLP (daSerie=203.5763, 20,96 por cento do bid, mantido doHandle=4.3150) e USDCOP (daSerie=73950.94, 2274,32 por cento, mantido doHandle=14.78), com valores IDENTICOS em todos os arranques: e deterministico, nao ruido. Em 06/11 16:28 apareceu um caso nao diagnosticado: pares com o MESMO doHandle e o MESMO daSerie atribuidos a simbolos DIFERENTES no mesmo lote - USDCAD e AMD com 19.540000 e 14.606318; AUDUSD e XAUUSD com 4.690000 e 3.443916, este com o mesmo timestamp 16:28:07.754. Ou o handle e partilhado entre simbolos, ou o campo de simbolo da linha e que esta errado. Nao assumo qual: fica aberto. Garantido por medicao: a guarda de plausibilidade (5 por cento do bid) devolve 0.0, portanto ATR absurdo nao chega a decisao - o custo e de dado, nao de decisao.
+
+**8) Proximo passo do ATR, escrito para nao se perder:** publicar na mesma linha o simbolo REAL do handle (`SymbolInfoString` do handle, ou `ChartSymbol`) ao lado do simbolo pedido, e `BarsCalculated(handle)` ao lado de `Bars(symbol)`. Sem isso as duas causas do ponto 7 continuam indistinguiveis.
+
+**9) IA por simbolo, contagem medida em 06 e 07/11:** 36 amostras por simbolo; `XAUUSD available=true` em 36 de 36; os outros 14 com `available=false` em 36 de 36 (USDCLP e USDCOP com 9 e 7 por terem entrado depois). Cobertura real: **1 de 15**. A separacao entradas com IA contra sem IA tem, hoje, um unico simbolo de um lado, e com mercado fechado e sem sinais nao e mensuravel.
+
+**10) Aritmetica do piso, com o numero certo:** sem IA o maximo e 65 pontos de 115, isto e 56,52 na escala 0..100; a proposta 45,0 do ALFA e 79,6 por cento desse maximo (atingivel, mas exige sinal quase perfeito); com leitura real de IA vale o piso 65,0.
+
+Conta 113568614 flat, 0 posicoes, 0 ordens. Lock nao tomado: estava com o CMD ate 21:15 (P1.2344 sync-agent LF + canal + commit T8); todas as minhas escritas sao append dentro do Mutex e nao reescrevem texto de ninguem.
+
+
+## ADENDA D-094 | DELTA | 07/11/2026 21:05 | piso 45,0 e AllowTradeWithoutAI ja estao nos 15 graficos. Medicao propria por leitura dos 15 .chr de MQL5\\Profiles: MinMarketScoreNoAI=45.0, MinMarketScore=65.0 e AllowTradeWithoutAI=true em 15 de 15. Isto corrige o que o D-092 deixou escrito (piso 45,0 pendente do DONO) e confirma o que o CMD mediu no D-093: o numero ja esta em vigor como INPUT dos graficos. O que falta nao e implementar, e a CONFIRMACAO escrita do DONO ao numero; e o default compilado (Core\\Config.mqh:1187) tambem e 45.0, portanto um reattach sem inputs guardados reproduz o mesmo valor. Combinado com o ponto 10 do D-094: sem IA o maximo e 56,52 e o piso 45,0 aceita; com leitura real de IA manda o piso 65,0.
+
+## D-095 | CMD | 2026-11-07 21:25 | Mandato unico do DONO: ficha fechada, autonomia total e zero interrupcoes
+
+**Autor da decisao:** DONO (resposta `ok` 20:58 e reforco 21:20). **Registo e
+execucao:** CMD. **Compile:** 0. **Reattach:** 0. **Ordens:** 0. **Risco:**
+intocado.
+
+### 1. O que o DONO decidiu (7 de 7, sem pendencias)
+
+| # | Decisao | Valor |
+|---|---|---|
+| 1 | Piso sem IA | 45,0 |
+| 2 | USDBRL | manter M5, sem folga |
+| 3 | Gateway 9011 | persistente, modo leitura |
+| 4 | Forward | 30 dias em demo, inicio na 1a segunda com mercado aberto |
+| 5 | Paragem automatica | 60 USD/dia, DD 50%, 2 falhas de canal na mesma hora |
+| 6 | Contacto ao DONO | **nunca durante a execucao** |
+| 7 | Conta real | pre-assinada condicional (11/11 + 30 dias + DELTA) |
+
+Reforco textual do DONO as 21:20: *"deixar tudo automatico 10/10 todas
+permissoes e execucoes tudo... so manter o endurecer e fazer uns trades manuais
+e acompanhar os automaticos ate completar 30 dias ou mais... depois uso real"*.
+
+Leitura correcta, sem alargar o que nao pode: **autonomia total dentro do
+mandato**, `10/10` continua **proibido como estado** (e alvo, nao etiqueta),
+trades manuais do DONO sao permitidos mas ficam **fora** da estatistica do EA e
+do gate, e a conta real continua condicional aos quatro requisitos.
+
+### 2. Ficheiros criados
+
+- `EQUIPE/FICHA_DONO.md` - a folha unica, 7 respostas com padrao, impacto e
+  onde vive cada uma; inclui o reforco das 21:20.
+- `EQUIPE/MANUAL_DONO.md` - o dono nao faz nada; relatorio diario; quando e
+  chamado (2 casos); paragem automatica; calendario dos 30 dias; como ler o
+  estado; travamento manual de emergencia.
+- `EQUIPE/MANDATO_ATIVO.json` - mandato legivel por maquina: decisoes,
+  proibicoes, autonomia, forward, paragem, autorizacao condicional.
+- `EQUIPE/tools/dono-mandato.ps1` - `estado`, `check`, `relatorio`, `iniciar`.
+- `EQUIPE/tools/gateway-start.ps1` - relanca o gateway em modo leitura se a
+  porta 9011 estiver morta; idempotente; 6 flags de execucao a 0.
+
+### 3. Automacao instalada (sem Administrador, tarefa do utilizador)
+
+| Tarefa | Quando | O que faz |
+|---|---|---|
+| `XAU_AI_PRO_DonoRelatorio` | diario 23:50 | `dono-mandato.ps1 relatorio` -> `EQUIPE/RELATORIOS/AAAAMMDD.md` |
+| `XAU_AI_PRO_GatewayKeepalive` | cada 5 minutos | `gateway-start.ps1`; se 9011 estiver viva, sai sem fazer nada |
+
+O `gateway-task.ps1 -Acao instalar` continua a exigir Administrador e foi
+**recusado** nesta sessao (medido). A alternativa acima nao precisa de admin e
+cobre o mesmo objectivo: o gateway volta sozinho. A tarefa de sistema pode ser
+substituida mais tarde, sem pressa.
+
+### 4. Medido neste turno
+
+- `dono-mandato.ps1 check` -> **OK - mandato integro e coerente com o estado
+  medido** (2 de 11, forward 0 de 30, gateway conforme).
+- `dono-mandato.ps1 relatorio` -> `RELATORIOS/20261107.md` criado.
+- `gateway-start.ps1` -> gateway responde na 9011 (health OK) apos relançamento;
+  o log de erro mostrou `10048` apenas quando outro processo detinha a porta.
+- `.ex5` 967 328 B, 19:30:46, `binario x fonte = BATEM`.
+- Nenhum parametro de risco alterado; nenhuma ordem; conta demo plana.
+
+### 5. O que fica proibido a todos os agentes
+
+- Escrever `10/10` como estado (o `check` agora **falha** se aparecer sem
+  negacao explicita).
+- Chamar o DONO durante a execucao, salvo os dois casos do mandato.
+- Tocar em risco ou abrir conta real sem os quatro requisitos.
+
+**GATE_REAL continua 2 de 11.** Nada nesta entrega e 10/10 e nada aqui declara
+o projecto fechado.
