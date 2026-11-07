@@ -199,7 +199,10 @@ double CalculateMarketScore(
    // BASE SCORE
    //================================================
 
-   double score=50.0;
+   // v1.2.184 (P1.138) - G3: sem base arbitraria. Base 50 + EMA 20 + RSI 15 +
+   // ADX 15 = 100.00 antes da IA e do KCI, logo MinMarketScore=65.0 nunca
+   // filtrava nada (162/162 amostras em TOTAL=100.00). Ver normalizacao no fim.
+   double score=0.0;
 
 
    //================================================
@@ -460,6 +463,19 @@ double CalculateMarketScore(
    // LIMIT SCORE
    //================================================
 
+   // v1.2.184 (P1.138) - GATE_REAL G3: o total passa a ser a FRACAO dos pontos
+   // possiveis, em escala 0..100, em vez de uma soma com base arbitraria.
+   // Maximo real = 20 (EMA) + 15 (RSI) + 15 (ADX) + 10 (KCI dir) + 5 (KCI vol)
+   // + 50 (IA a 100%) = 115. Nenhuma parcela mudou de peso relativo; muda a
+   // escala em que `MinMarketScore` (65.0) e comparado.
+   const double maxScorePoints=115.0;
+   double scorePoints=score;
+
+   score=
+      100.0*
+      score/
+      maxScorePoints;
+
    if(score>100.0)
       score=100.0;
 
@@ -542,6 +558,11 @@ double CalculateMarketScore(
          ),
          " | WARMUP=",
          (indicadoresProntos ? "NAO" : "SIM"),
+         " | PTS=",
+         DoubleToString(
+            scorePoints,
+            2
+         ),
          " | TOTAL=",
          DoubleToString(
             MarketScore,
