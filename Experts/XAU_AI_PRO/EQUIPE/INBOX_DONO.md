@@ -984,3 +984,100 @@ Corrigido e medido: `Show-Ask` agora (a) conta **qualquer** `Q-nnn` do inbox, (b
 
 
 - **RESPOSTA:** (d) o DONO aceita a banda de 10 a 50 por cento do capital - qualquer valor dentro dela esta autorizado; ALFA fixou 20.0 e o F2.2 foi implementado na v1.2.180 sob a D-066 | **respondida por:** DONO | **hora:** 06/11 21:27
+
+
+---
+
+## 06/11 21:44 - DELTA -> DONO: a segunda linha que colou ("COTACAO VELHA | USDBRL | idade=13114s") tambem NAO e avaria - e o mesmo preco de ha 3h38m. E eu tenho de corrigir uma previsao minha.
+
+- **de:** DELTA | **hora:** 21:44
+- **estado:** INFORMATIVO | 21:44 | DELTA  (nao pede decisao sua; nao entra na fila)
+
+**1) E o mesmo preco congelado da primeira linha, nao um erro novo.** O ultimo
+tick do USDBRL no Market Watch tem carimbo `2026-11-06T22:59:59` do servidor, lido
+directamente do simbolo - esse carimbo nao passa por nenhuma guarda, e o dado bruto.
+E 13114 s antes das 21:38:33 dao 17:59:59 locais, exactamente o mesmo instante que
+as linhas anteriores implicavam. O mercado fechou a sexta e este simbolo nao tem
+tick novo desde entao. O EA recusa negociar um preco velho, com limite de 900 s.
+Esta a fazer o que deve.
+
+**2) A serie agora tem cinco pontos e o erro e zero.** Idade do USDBRL contra o
+relogio local, em cinco leituras:
+`21:24:11 idade=12252` -> `21:26:23 idade=12384` (+132 s em +132 s) ->
+`21:26:59 idade=12420` (+36 em +36) -> `21:29:11 idade=12552` (+132 em +132) ->
+`21:38:33 idade=13114` (+562 em +562). Cinco pontos, zero segundos de erro, e
+atravessam duas mudancas de versao. A idade nao esta congelada: anda com o relogio.
+
+**3) Porque apareceu outra vez agora.** As 21:38:01-02 os 13 graficos arrancaram
+com a **v1.2.181** (`[START]` 13x). A publicacao da transicao usa um marcador
+estatico que morre com o programa, logo cada arranque volta a dizer "estou cego"
+uma vez por grafico. As 21:38:31-32 sairam as 13 linhas. Isso e o comportamento
+correcto, nao uma repeticao espuria: um EA que acabou de arrancar tem de dizer que
+ainda nao viu preco vivo.
+
+**4) Correccao de uma previsao minha, e e a parte que me interessa escrever.** Eu
+disse-lhe por escrito que o primeiro lembrete horario apareceria por volta das
+21:47. **Nao serve**: o temporizador reinicia com o programa e a v1.2.181 arrancou
+as 21:38. Sem novas republicacoes, o primeiro lembrete cai por volta das 22:38.
+Mais: enquanto o EA continuar a ser republicado a cada poucos minutos, a ausencia ou
+a presenca do lembrete nao prova nada em nenhum dos dois sentidos, e eu nao a vou
+usar como prova. Fica registado que voido a minha propria previsao em vez de a
+defender.
+
+**5) Estado medido agora.** v1.2.181: `#property version "1.381"`, fonte 104770 B de
+21:37:33, binario 962744 B / MD5 `7729ACBED18278B5B59E2F3AF81AAE15` de 21:38:01, 13
+de 13 graficos. E a quinta publicacao desde as 21:23:40. Conta intocada: demo
+113568614, equity 12636.32, 0 posicoes, 0 ordens. `GATE_REAL` continua 1 verde de 11
+e eu nao escrevo "10/10".
+
+- **estado:** INFORMATIVO | 21:44 | DELTA
+
+
+---
+## 06/11 21:49 - ALFA -> DONO | INFORMATIVO: o ALFA nao compila mais nada hoje + a causa medida do EA nao operar
+
+- **estado:** FECHADO | **hora:** 06/11 21:49 | **de:** ALFA
+
+**INFORMATIVO DO ALFA AO DONO - 06/11 21:49 - o ALFA nao compila mais nada hoje**
+
+O DELTA levantou, com razao, uma preocupacao a meu respeito: cada recarga dos 13 graficos reinicia as guardas de perda diaria dos 13 EAs. A resposta, por escrito e com hora:
+
+**Compromisso: ZERO compiles e ZERO recargas daqui ate ao fim da noite.** O estado das **21:38:02** e o estado em que a noite fica. Se houver codigo a mudar, fica anunciado no canal e espera por janela combinada.
+
+**A contagem honesta das 5 recargas:** 21:23:40 -> 21:25:51 -> 21:26:28 -> 21:28:39 (quatro, antes de eu mexer no binario) e **21:38:01** - e esta ultima **nao foi um publish meu**: o MT5 recarrega sozinho os graficos quando o `.ex5` e recompilado. Neste terminal compilar e publicar sao a mesma accao, e foi por isso que parei e vim pedir janela em vez de continuar. Das 21:38:02 ate as 21:49: **zero recargas**.
+
+**Quanto custou em protecao: nada, medido.** `trades=0 | W=0 | L=0 | pico=12636.32` em 06/11. Nao havia perda diaria acumulada para apagar, porque nao houve um unico trade hoje. O risco existe a partir do momento em que houver trades abertos - e nessa altura o compromisso acima e o que o impede.
+
+**Uma coisa que precisa da sua decisao, e nao e tecnica.** Descobri por medicao porque e que o EA nao opera, e nao e o setup tecnico: o gateway de IA responde correctamente (`signal=SELL`, `confidence=72.4`, `prob_buy=0.2765`, `prob_sell=0.7235`), mas o EA procura no JSON as chaves `buy`, `sell` e `score`, que o gateway **nao publica**. Resultado: o score de IA fica 0.0, e o piso `AI_Score<MinAIConfidence` (0 < 60) devolve "sem sinal" em **todos** os simbolos, sempre. Com `AllowTradeWithoutAI=false`, o EA nao pode abrir uma unica posicao. A correccao esta escrita e testada por leitura, **nao compilada** - por causa do compromisso acima. E a proxima accao da fila, e preciso que o CMD ou o DONO autorizem a janela de compilacao.
+
+**O que NAO mudou:** GATE_REAL **1 verde de 11**; F2.2 aberto (falta prova de recusa e de fail-closed); 10/10 e F6 nao assinados. Conta demo 113568614, equity 12636.32, 0 posicoes, 0 ordens.
+
+---
+## 06/11 21:55 - ALFA -> DONO | PRECISO DE UMA PALAVRA: autoriza o D-068 (parser de IA) num compile unico?
+
+- **precisa:** autorizo / nao autorizo / segunda-feira
+- **estado:** ABERTO | **hora:** 06/11 21:55 | **de:** ALFA
+
+**ALFA -> DONO - 06/11 21:55 - uma pergunta fechada, uma decisao que so o DONO pode tomar**
+
+**A pergunta que estava aberta esta respondida:** nao compilo nem recarrego mais nada hoje. Das 21:38:02 as 21:55, journal: **0 `[START]`**. O estado em que a noite fica e o das 21:38:02 (v1.2.181, 13/13 graficos).
+
+**O que preciso de si: uma palavra sobre o D-068.** Encontrei a razao pela qual o EA nao opera, e nao e o setup tecnico: o gateway responde bem (`signal=SELL`, `confidence=72.4`, `prob_buy=0.2765`, `prob_sell=0.7235`), mas o EA procura no JSON `buy`, `sell` e `score` - chaves que **nao existem** no payload. Dai o score de IA ficar `0.00`, e o piso `AI_Score < MinAIConfidence` (0 < 60) devolver "sem sinal" em **todos** os simbolos, sempre. Com `AllowTradeWithoutAI=false`, o EA nao pode abrir uma unica posicao. Nao e falta de modelo, nao e falta de sinal tecnico, nao e o gateway: e o contrato de leitura.
+
+**O que o D-068 faz, na versao conservadora que o DELTA votou e eu aceitei:** (1) quando `buy`/`sell` nao existem, le `prob_buy`/`prob_sell`; (2) quando `score` nao existe, usa a confianca (`72.4`) como score. **Nada mais.** A escala das probabilidades (que pode somar ate 30 pontos ao composto e mudar a taxa de entrada) fica para um compile separado, para se saber a que mudanca se deve o quÃª.
+
+**O custo medido de o fazer agora:** zero em protecao - 0 posicoes, 0 ordens, margem 0.00, `trades=0` hoje, kill switch LIVRE, mercado fechado ate segunda. O MT5 recarrega os 13 graficos sozinho e nada mais acontece hoje.
+
+**O risco, dito por inteiro:** o D-068 faz o EA **poder** operar. Nao prova que **deve**. O GATE_REAL continua 1 verde de 11, o F2.2 continua sem prova de recusa e sem prova de fail-closed, e o forward de 30 dias (F6) nao arrancou. Autorizar o D-068 e destrancar a porta, nao e dizer que a sala esta segura.
+
+**Se autorizar, escrevo a hora no canal, aplico, compilo uma vez e reporto 13/13 `[START] v1.2.182` no journal.** Se preferir que fique para segunda-feira com o mercado aberto e o CMD presente, tambem e uma resposta boa - e entao isto fica preparado e provado por leitura ate la, sem tocar no binario.
+
+---
+## Q-068 - D-068 (parser de IA): autoriza um compile unico da correccao conservadora? O EA nao opera porque o parser procura buy/sell/score e o gateway publica prob_buy/prob_sell/edge - AI_Score fica 0.0 e AIEngine.mqh:289 (0<60) devolve 0 em todos os simbolos, sempre. Escopo: (1) buy->prob_buy e sell->prob_sell; (2) AI_Score<-AI_Confidence quando nao ha score. A escala 0..1->0..100 fica para um compile separado (voto do DELTA). Custo agora medido: 0 posicoes, 0 ordens, margem 0.00, trades=0 hoje, mercado fechado - zero proteccao perdida. O D-068 faz o EA PODER operar; nao prova que DEVE (GATE_REAL 1 de 11, F2.2 sem prova de recusa nem de fail-closed, F6 nao arrancado).
+
+- **de:** ALFA | **hora:** 06/11 21:56
+- **prazo:** 06/11 23:00
+- **opcoes:** (a) autorizo agora, ainda hoje - o ALFA anuncia a hora e faz um compile; (b) autorizo, mas segunda-feira com o mercado aberto e o CMD presente; (c) nao autorizo o D-068 - fica como esta e o EA continua sem poder entrar
+- **estado:** ABERTA
+- **RESPOSTA:**
+

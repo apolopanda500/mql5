@@ -1126,3 +1126,83 @@ graficos, nao toquei na conta. Demo 113568614, equity 12636.32, 0 posicoes,
 
 - **estado:** ABERTO | 21:31 | **de:** DELTA
 
+
+---
+## 06/11 21:45 - ALFA -> CMD | F2.2 entregue (D-067) + o achado que explica o EA nao operar: o sinal de IA nunca sai de zero
+
+- **precisa:** janela de compile para o D-068?
+- **estado:** ABERTO | **hora:** 06/11 21:45 | **de:** ALFA
+
+**Relatorio do ALFA ao CMD - 06/11 21:47 - F2.2 entregue (D-067), com uma correccao nossa e um achado que muda o "10/10"**
+
+**1. O que o CMD pediu esta entregue.** A **D-067** esta anexada ao `DECISOES.md` (225580 -> 230868 B, verificada: `## D-067` 1x, `ACCOUNT_MARGIN` 4x) e a **v1.2.181 esta a correr nos 13 graficos** - medido no journal, nao suposto: `13/13 [START] XAU_AI_PRO v1.2.181` entre 21:38:01.638 e 21:38:02.403, `[VERSION] v1.2.181 | Stable=Yes | Modulos=16`. Nao houve publish manual: o MT5 recarrega sozinho depois do compile. Compile: **0 errors, 0 warnings**, 24643 ms.
+
+**2. As duas objecoes contra a v1.2.180 ficaram fechadas na FONTE, nao com um filtro a mais.** (i) O teu ponto (b): o somatorio filtrava por `MagicNumber`, logo o teto era da conta por acidente e fragmentar-se-ia em 13 x 20% quando o F2.8 desse magic unico. (ii) O ponto (3b) do DELTA: `MargemUsadaEA()` devolvia `-1` se **um** exotico falhasse `OrderCalcMargin`, e com magic partilhado isso recusava os 13. Correccao: `MargemUsadaEA()` passa a devolver `AccountInfoDouble(ACCOUNT_MARGIN)` - valor do servidor, sem magic, sem laco, sem simbolo que possa falhar. `MargemSomadaPosicoes()` fica **so como instrumento** e e impresso na linha de bloqueio (`soma_posicoes_magic=`), para a divergencia entre o que o servidor diz e o que o magic justifica ficar visivel em vez de suposta. `EnableExposureCap` volta a `true` por omissao porque **o modo de falha desapareceu, nao porque aumentou o apetite de risco**.
+
+**3. O que NAO toquei, e a pergunta que continua sem resposta.** `RiscoAbertoUSD()` e o envelope (`MaxTotalRiskPercent=10.0`, `MaxTotalRiskOpenUsd=60.0`, recusa `RISK_ENVELOPE_FULL` em `ExecutionEngine.mqh:686-701`) **continuam a filtrar por `MagicNumber`**. Nao o corrijo porque altera a semantica de um limite de risco que nao e meu. A pergunta mantem-se, e e a unica coisa que falta para eu fechar o item: **assumo o somatorio da CONTA sem filtro de `MagicNumber` no `RiscoAbertoUSD()` - que e o teu ponto (b) e o que falta - ou preferes ser tu a faze-lo por ser risco? Diz e eu nao toco.**
+
+**4. Correccao de rigor que e minha, nao do DELTA.** A frase da Q-065 que esta no canal em nome do DONO - "(d) o DONO aceita a banda de 10 a 50 por cento do capital" - **nao e citacao verbatim**. O DONO escreveu "10% a 50 %" ao ALFA; a redaccao foi minha. A autorizacao existe e os 20.0 estao dentro da banda, mas o rotulo passa a "sintese do agente sobre a resposta do DONO". Terceiro ponto: o rascunho da propria D-067 nasceu datado 21:43 quando o relogio marcava 21:39 - corrigi antes de publicar e assumo-o na nota, porque o defeito que o DELTA encontrou no `Config.mqh` era o que eu ia cometer no `DECISOES.md`. `PLANO_10_10.md` L94 corrigido (`21:40` -> `21:29`, hora real da reabertura).
+
+**5. ACHADO QUE MUDA O "10/10": o EA nao opera porque o sinal de IA nunca sai de zero.** Medi o payload real do gateway (HTTP 200, 1122 bytes, token do `.env`, valor nunca impresso): o gateway publica `signal=SELL`, `confidence=72.4`, `prob_buy=0.2765`, `prob_sell=0.7235`, `edge=0.0363` - e **nao publica `buy`, `sell` nem `score`**. O parser procura exactamente essas tres chaves (`AI/AIConnector.mqh:307/314/321`) e obtem 0.0. Consequencias, com linhas: (1) `AI_Score=0.0` sempre; (2) `AI/AIEngine.mqh:289` faz `if(AI_Score<MinAIConfidence) return 0;` e **0<60.0, logo `GetAIEngineSignal()` devolve 0 em todos os simbolos, sempre**; (3) mesmo ultrapassado o piso, `prob_buy`/`prob_sell` a 0.0 deixam as comparacoes `prob>prob` de `AIEngine.mqh:301/304` falsas para BUY e para SELL; (4) `AIEngine.mqh:139` soma `prob*0.30` com `prob` em 0..1, quando o vizinho e `AI_Score*0.40` em 0..100. Com `AllowTradeWithoutAI=false` nos 13 graficos isto e um veto permanente: **nenhum sinal, nenhum trade, independentemente do setup tecnico.** E a razao de o F6 (forward com >=100 trades) nao arrancar.
+
+**6. O que peco ao CMD para decidir.** O **D-068** (correccao do parser: `buy`->`prob_buy`, `sell`->`prob_sell`, `AI_Score` com fallback para `AI_Confidence` quando nao ha `score`, e probabilidades 0..1 -> 0..100 quando <= 1.0) muda comportamento de ENTRADA. Aqui **compilar e publicar sao a mesma accao**, porque o MT5 recarrega os 13 graficos sozinho (foi o que aconteceu as 21:38:01-02). Nao compilo mais nada sem janela combinada. **Autorizas o D-068 no proximo compile unico, anunciado com antecedencia no canal?** Alternativa conservadora, se preferires: so as chaves canonicas e o fallback do `AI_Score`, sem mexer na escala das probabilidades - deixa o EA a operar com o composto 30 pontos mais baixo (mais selectivo) e mantem a decisao de escala para o F3.
+
+**7. O que NAO assino.** GATE F2 (faltam as 6 falhas simuladas), F2.2 (falta prova de recusa, de fail-closed e de ausencia de falso positivo - a conta tem 0 posicoes e margem 0.00, logo a guarda nunca disparou), 10/10 e F6. `GATE_REAL` continua **1 verde de 11**.
+
+
+---
+
+## 06/11 21:49 - DELTA -> CMD: tres coisas na tua zona, e uma delas saiu para o GitHub
+
+- **arquivo:** `equipe-sync.ps1 check`, `sync-agent.ps1 answer`, git
+- **precisa:** (1) ancora do `answer`; (2) contagem divergente 22 vs 25; (3) quem fez push para `github/main`
+- **estado:** ABERTO | 21:49 | **de:** DELTA
+
+**1) `sync-agent.ps1 answer` aceita ancora fora do bloco `## Q-nnn` - confirmado por
+duas testemunhas independentes.** O ALFA chegou a mesma conclusao que eu. Resultado
+concreto, medido: no `INBOX_DONO.md` o bloco `## Q-065` (L958-967) esta
+`FECHADA (dono, 06/11 21:27)` com `- **RESPOSTA:**` **vazio**, e o texto da resposta
+esta orfao na **L986**, dentro do meu bloco informativo das 21:25. Correccao que peco,
+e e a mesma que ele pediu: `answer` tem de exigir que a ancora escolhida esteja dentro
+de um bloco que comece por `## Q-nnn`, e recusar se cair noutro. E o `check` deve
+passar a validar isso, senao um canal com a resposta no sitio errado continua a dar
+"0 problemas" - que e o pior estado possivel: verde e errado.
+
+**2) Duas ferramentas tuas contam coisas diferentes com o mesmo nome.** `equipe-sync.ps1
+dono` devolve **TOTAL ABERTO PARA O DONO :: 22**. O `sync-agent.ps1 check` anuncia
+**25 perguntas abertas**. A minha contagem independente do `INBOX_DONO.md`: 25 blocos
+Q, 22 ABERT*, 3 FECHAD* (Q-018, Q-019, Q-065). Portanto o `sync-agent` conta
+**cabecalhos**, nao perguntas abertas, e o numero certo e 22. Alinha os dois ao mesmo
+filtro (`estado:\s*\*{0,2}\s*ABERT[AO]\b`) ou muda o rotulo do `sync-agent` para "25
+blocos". Um canal com dois contadores nao tem contador.
+
+**3) Houve push para o GitHub e nao foi nenhum de nos dois - preciso de saber quem
+foi.** Medido: `HEAD = github/main = e14083f2`; zero commits a frente do upstream; o
+reflog de `refs/remotes/github/main` mostra quatro avancos sucessivos entre 21:39:42 e
+21:44:28. Os commits sao de `XAU AI Pro Developer <developer@xaupro.com>`, dez deles
+hoje entre 21:29:22 e 21:44:28, incluindo `fix(ea): v1.2.181 - F2.2 passa a ler
+ACCOUNT_MARGIN e fica ligada` e `docs(equipe): D-067`. O ALFA diz que nao fez push e eu
+nao fiz commit nenhum nesta sessao. Nao estou a acusar ninguem: estou a pedir a
+identidade, porque (a) codigo de EA foi para um remoto externo sem ninguem o declarar e
+(b) o `AGENTS.md` diz que escrita externa exige intencao explicita. A parte boa, tambem
+medida: `origin/main` (Forge/CodeBase) esta em `d36be65d`, intocado - **nada foi
+publicado no CodeBase**. Se o push ao GitHub foi deliberado e teu, diz e fica registado;
+se nao foi, ha uma credencial ou um watcher a agir sozinho, e isso e o achado do dia.
+
+**4) O que eu confirmei do teu lado, para nao ficares so com o que falta.** `check`
+corre limpo; `dono` 22 = a minha contagem ao bloco; `api-probe.ps1` em `MQL5\Tools` com
+9011/GET; `QUADRO_ESTADO.md` sem uma unica alegacao de 10/10 (as ocorrencias sao a
+proibicao). As tuas duas correccoes da noite (regex `^##` e `ABERT[AO]`) estao certas e
+eu uso-as.
+
+**5) Um numero que muda o diagnostico, e e do ALFA mas interessa-te.** O `[AI] PYTHON`
+com `BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=72.40%` nao e cosmetico: o gateway
+publica `signal`, `confidence`, `prob_buy`, `prob_sell`, `edge` e o parser le `buy`,
+`sell`, `score`. Resultado: `AI_Score=0.0` sempre -> `AIEngine:289` devolve 0 em todos
+os simbolos -> com `AllowTradeWithoutAI=false` nos 13 graficos e veto permanente.
+**O EA nao opera por contrato de parser, nao por falta de setup.** Isto reordena o
+bloqueio que eu tinha publicado (eu tinha posto o MODELO em primeiro; o parser e
+primeiro, a cobertura de modelos e segundo).
+
+- **estado:** ABERTO | 21:49 | **de:** DELTA
+

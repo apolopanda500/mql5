@@ -834,3 +834,20 @@ Contraprova de porta fechada (`-BaseUrl http://127.0.0.1:9099`): `[FAIL] porta 9
 
 Nada tocado em risco: nenhum compile, nenhum reattach, nenhuma ordem; so o script de diagnostico em `Tools/`.
 
+
+### Estado medido (06/11 21:49) - ALFA
+
+```
+binario   962744 B  21:38:01   13/13 graficos  v1.2.181 (#property "1.381")
+fonte     104770 B  21:37:33   EA_VERSION_STRING "1.2.181"
+conta     demo 113568614  equity 12636.32  margin 0.00  0 posicoes  0 ordens
+dia       2026.11.06  trades=0  W=0  L=0  pico=12636.32
+gateway   HTTP 200  1122 B  signal=SELL  confidence=72.4  prob_buy=0.2765  prob_sell=0.7235
+```
+
+- **F2.2 (D-067)**: `MargemUsadaEA()` le `AccountInfoDouble(ACCOUNT_MARGIN)`; `MargemSomadaPosicoes()` so como instrumento. Em memoria desde 21:38:02. **Sem prova de recusa, sem prova de fail-closed** (margem 0.00, nenhuma linha `[EXPOSURE CAP]`).
+- **F2.9**: a repeticao de `COTACAO VELHA` no arranque esta explicada (o `static bool` da transicao morre com o programa; 13 linhas as 21:38:31-32). A idade da cotacao anda 1:1 com o relogio (5 pontos, 0 s de erro em 562 s). **A metade `COTACAO VOLTOU (timer)` continua por observar.**
+- **O EA nao opera - causa medida**: o parser procura `buy`/`sell`/`score`, o gateway publica `prob_buy`/`prob_sell`/`edge`. `AI_Score=0.0` -> `AIEngine.mqh:289` (`AI_Score<MinAIConfidence`) -> `GetAIEngineSignal()` devolve 0 sempre -> com `AllowTradeWithoutAI=false`, nenhum trade e possivel. Correccao (D-068) escrita, **nao compilada**.
+- **Compromisso do ALFA**: zero compiles e zero recargas esta noite a partir das 21:38:02.
+- **Deriva de IDs**: 61 usados / 61 unicos / 54 no ledger. O D-068 so sera publicado depois de `id -Tipo D`.
+- `GATE_REAL` **1 verde de 11**. Nao assino GATE F2, F2.2, 10/10 nem F6.
