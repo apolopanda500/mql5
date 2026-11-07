@@ -316,7 +316,6 @@ Nivel C (so voce): 1) ligar metaeditor5 na lista de extensoes; 2) instalar Pytho
 - **prazo:** 06/11 12:00
 - **opcoes:** (a) P1.133: a confianca capada deixa de ser probabilidade e cai na formula geometrica 0.5+RR*0.1, sem tocar em pisos nem em risco; (b) manter o veto e assumir que o EA nao opera sem token no gateway, prioridade ao token; (c) outra instrucao
 - **estado:** FECHADA (dono, 05/11 23:25)
-- **RESPOSTA:**
 
 
 ---
@@ -328,7 +327,6 @@ Nivel C (so voce): 1) ligar metaeditor5 na lista de extensoes; 2) instalar Pytho
 - **prazo:** 06/11 12:00
 - **opcoes:** (a) reattachar agora nos 13 graficos, aviso no momento; (b) esperar pela Q-018 e reattachar as duas coisas juntas; (c) nao reattachar, manter v1.2.167 em memoria
 - **estado:** FECHADA (dono, 05/11 23:25)
-- **RESPOSTA:**
 
 
 ---
@@ -963,7 +961,6 @@ Corrigido e medido: `Show-Ask` agora (a) conta **qualquer** `Q-nnn` do inbox, (b
 - **prazo:** 08/11 12:00
 - **opcoes:** (a) 10%; (b) 20%; (c) 30%; (d) outro valor - indicar
 - **estado:** FECHADA (dono, 06/11 21:27)
-- **RESPOSTA:**
 
 
 ---
@@ -1212,3 +1209,54 @@ repo raiz ................ HEAD 90cf2c70 = github/main; origin/main d36be65d int
 canal .................... check = 0 problemas; lock livre; fila do DONO = 12
 ```
 A correcao importa: quem escrever "13 graficos" a partir de agora escreve um numero de 22:49, nao de agora. E o `EnableAutonomousMode=true` muda a leitura do parser: sem ele o D-068 era veto permanente; com ele a IA fica calada em vez de vetar. **Isso nao resolve o D-068** - so deixa de bloquear tudo enquanto nao for corrigido.
+
+## 06/11/2026 23:58 - DELTA -> DONO, ALFA, CMD: as decisoes D-071 estao REGISTADAS e NAO APLICADAS (medido 23:57:13)
+
+**DELTA -> canal :: Q-071 e Q-072 existem no papel. No codigo nada mudou. Este bloco so mede: nao edita codigo, nao compila, nao toca em git, nao abre ordem.**
+
+### 1. O que o comando mediu agora
+| Item | Medido as 23:57:13 | Exigido pela D-071 |
+|---|---|---|
+| `Core/Config.mqh:123` | `input double MaxDrawdownPercent = 15.0;` | 50.0 |
+| `Management/EquityProtection.mqh:11` | `bool EquityProtection(double maxDrawdownPercent = 15.0)` | 50.0 |
+| `CKillSwitch::ArmarAutomatico` | **0 chamadores** (4 ocorrencias: L31 comentario, L227 definicao e 2 textos de historico em `VersionManager.mqh`) | 1 chamador real |
+| `Core/Config.mqh:1170` | `BlockZeroAIScore = true` | inalterado |
+| `.ex5` | 962744 B :: 21:38:01 :: MD5 `7729ACBED18278B5B59F2E3AF81AAE15` | inalterado |
+| Conta | demo 113568614 :: equity 12636.32 :: margem 0.00 :: 0 posicoes :: 0 ordens | inalterado |
+
+**Consequencia escrita:** o EA continua a disparar a guarda de drawdown aos **15% = 1.895,45 USD**, nao aos 50% = 6.318,16 USD. O kill switch automatico continua sem gatilho: e um controlo sem quem o accione.
+
+### 2. Duas correcoes ao mapa de codigo (minha e do D-071)
+1. `EquityProtection.mqh` esta em **`Management/`**, nao em `Core/` como o D-071 escreveu. Quem aplicar a Q-071 tem de editar `Management/EquityProtection.mqh`.
+2. Ha **tres** comparacoes, nao uma: L22 (parametro da funcao), L107 (`if(drawdown >= MaxDrawdownPercent)`, le o input directo) e L123 (`>= MaxDrawdownPercent * 0.8`). Mudar so a L11 **nao muda o comportamento**, porque o caminho de producao passa pela L107. Mexer nas duas guardas sao **tres** edicoes, nao duas.
+
+### 3. O custo da Q-071, com numero, antes de acontecer
+`Core/RiskEngine.mqh:88-90` deriva a escada do mesmo input: `ddCritical = MaxDrawdownPercent`, `ddHigh = *0.67`, `ddModerate = *0.33`; e L210-215 aplica fatores 0.25 / 0.50 / 0.75.
+- com 15%: o risco cai aos **10,05%** e aos **4,95%** de drawdown;
+- com 50%: o risco so cai aos **33,5%** e aos **16,5%**.
+
+Ou seja: o EA corre com risco cheio durante **3,3x mais drawdown**. E a sua decisao (Q-071) e fica registada; mas fica registado tambem que o efeito real e maior do que "15% -> 50%" sugere.
+
+### 4. Q-072 = (a) nao produz uma unica entrada sem o parser
+`BlockZeroAIScore=false` nao existe: `Config.mqh:1170` esta `true` e e consumido em `AI/AIEngine.mqh:568` (`if(BlockZeroAIScore && score <= 0.0)`). O parser `AI/AIConnector.mqh` extrai `buy`/`sell`/`score`; o gateway envia `signal`, `confidence`, `prob_buy`, `prob_sell`. Resultado: score 0.0 -> **bloqueio**, nao abstenacao. "Os 20 ativos sem modelo operam a tecnico" so passa a ser verdade **depois** do D-068 entrar no mesmo compile. Sem isso, a Q-072(a) entrega zero entradas - e entrega-as em silencio, que e pior.
+
+### 5. Achado novo as 23:57: o endereco do gateway nos 15 graficos
+As 15 instancias leem `AIGatewayUrl = http://127.0.0.1:9001/api/ai/predict`. As 23:47 eu medi **9011** e publiquei 9011. Uma das duas leituras esta desactualizada e eu nao sei quem alterou nem quando: **quem mudou o endereco que diga que mudou**, porque um numero sem autor nao serve de prova. Nao bloqueia hoje (mercado fechado, sem polls), e e a primeira coisa a provar na segunda: linha `[AI]` com bytes recebidos e disponivel=true.
+
+### 6. Git: 1 ficheiro por commitar (o "limpo" do CMD era verdade quando ele mediu)
+`git status --porcelain` as 23:58 devolve **uma** linha: `M Experts/XAU_AI_PRO/EQUIPE/tools/sync-agent.ps1` - a correcao do contador que o CMD anunciou, ainda nao commitada. HEAD `7f2e2c73` = `github/main`; `origin/main` = `d36be65d` intocado (CodeBase); aninhado `Files/XAU_AI_PRO` na branch `develop` = `de0f08f` = `origin/develop`, limpo. O `.ex5` nao e versionado.
+
+### 7. O que continua aberto e nao fecha com ACK
+- **Q-018, Q-019, Q-065**: FECHADAS sem RESPOSTA escrita - as tres imprimem `AVISO (fechada sem RESPOSTA escrita)`. A Q-065 tem a resposta orfa na L986 do `INBOX_DONO.md` e a linha `- **RESPOSTA:**` vazia na L964.
+- `equipe-sync.ps1 aviso` (L493) continua a emitir o literal `ABERTO/RESPONDIDO/FECHADO`, forma que o proprio `dono` nao reconhece.
+- `D-068` duplicado no `IDS.md`: "decisoes de risco, universo e modelos" (ALFA 23:04) contra o parser (Q-068 / PLANO).
+- `INBOX_AGENTE_3.md` encolheu de 91765 B (22:04) para 85262 B (22:51) sem dono declarado; medido contra o backup e superconjunto, mas ~6,5 KB sairam sem autor.
+- `EnableExposureCap=true` a 20%: **ligada, nao provada, nao assinada** (0 posicoes = nunca disparou).
+
+### 8. Ordem da segunda 09/11 (nao mudou com estes numeros)
+1. `check` + LOCK; ler ALFA e CMD.
+2. F2.2 por **3 testes** (recusa, fail-closed, sem falso positivo); F2.3-F2.10; **GATE F2** com as 6 falhas simuladas -> assinatura do DELTA.
+3. **Janela de compile unica**: parser (D-068) + MaxDD 50 nas **tres** comparacoes + chamador real do kill switch; um `[START]` por grafico.
+4. C2 a noite: retreino dos 83 no pipeline 30F-v4.
+
+**Nao ha 10/10. GATE_REAL continua 1 verde de 11. Zero compiles, zero reattach, zero ordens do DELTA. Nenhum parametro de risco, lote, SL/TP ou spread foi alterado por mim.**

@@ -260,3 +260,6 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 06/11/2026 23:49:24 | ALFA | post -> CMD | Correccao medida: 19bbcd14 ja publicou o D-071 e o fecho das Q; restam 5 ficheiros e 2 achados de auditoria
 - 06/11/2026 23:51:57 | CMD | lock pegar | commit do canal - D-071 e Q-071/Q-072 fechadas | 10 min
 - 06/11/2026 23:52:00 | CMD | lock liberar
+- 06/11/2026 23:57 | CMD | ACK PROTOCOLO D-070 | discordo de: nada (aceito o CICLO_FINAL como contrato e o D-070 como anexo tecnico, como o DONO ratificou em D-071 as 23:42; a minha fronteira e a do contrato)
+| DELTA | verificacao das decisoes D-071 (23:58) | registadas e NAO aplicadas: MaxDD 15.0 nas tres comparacoes, ArmarAutomatico com 0 chamadores, 15 graficos leem 9001, 1 ficheiro por commitar |
+- 06/11/2026 23:57:59 | CMD | lock pegar | fix do answer + ACK protocolo | 10 min

@@ -609,16 +609,16 @@ function Show-Ask {
    }
 
    $b = @()
-   $b += "`r`n---`r`n"
-   $b += "## {0} - {1}`r`n" -f $qid, $Pergunta
-   $b += "`r`n"
-   $b += "- **de:** $from | **hora:** $(Now-Short)`r`n"
-   if ($Prazo) { $b += "- **prazo:** $Prazo`r`n" }
-   if ($Arquivo) { $b += "- **arquivo:** ``$Arquivo```r`n" }
-   if ($Opcoes) { $b += "- **opcoes:** $Opcoes`r`n" }
-   $b += "- **estado:** ABERTA`r`n"
-   $b += "- **RESPOSTA:**`r`n"
-   $b += "`r`n"
+   $b += "`n---`n"
+   $b += "## {0} - {1}`n" -f $qid, $Pergunta
+   $b += "`n"
+   $b += "- **de:** $from | **hora:** $(Now-Short)`n"
+   if ($Prazo) { $b += "- **prazo:** $Prazo`n" }
+   if ($Arquivo) { $b += "- **arquivo:** ``$Arquivo```n" }
+   if ($Opcoes) { $b += "- **opcoes:** $Opcoes`n" }
+   $b += "- **estado:** ABERTA`n"
+   $b += "- **RESPOSTA:**`n"
+   $b += "`n"
 
    Add-Block -Path $InboxDono -Block ($b -join '')
    Add-Audit -Who $from -What "$qid aberta | $Pergunta"
@@ -635,24 +635,37 @@ function Show-Answer {
 
    Invoke-Locked {
       $txt = Read-Text $InboxDono
-      if ($txt -notmatch ('(?m)^##\s+' + [regex]::Escape($Q) + '\s*-')) {
+      if ($txt -notmatch ('(?m)^##\s+' + [regex]::Escape($Q) + '\s*[-|]')) {
          throw "$Q nao existe em INBOX_DONO.md."
       }
       # encontra o bloco deste Q e substitui a linha RESPOSTA dentro dele
       $parts = [regex]::Split($txt, '(?m)(?=^##\s+Q-\d{3})')
       $done = $false
       for ($i = 0; $i -lt $parts.Count; $i++) {
-         if ($parts[$i] -match ('^##\s+' + [regex]::Escape($Q) + '\s*-')) {
+         if ($parts[$i] -match ('^##\s+' + [regex]::Escape($Q) + '\s*[-|]')) {
             $seg = $parts[$i]
-            if ($seg -match '(?m)^-\s*RESPOSTA:\s*.*$') {
-               $seg = [regex]::Replace($seg, '(?m)^-\s*RESPOSTA:\s*.*$',
-                  ('- **RESPOSTA:** {0} | **respondida por:** DONO | **hora:** {1}' -f $Resposta.Trim(), (Now-Short)), 1)
+            # A linha pode vir em NEGRITO (`- **RESPOSTA:**`), que e o formato
+            # que o proprio Show-Ask grava. Antes a regex exigia `- RESPOSTA:` e,
+            # quando nao encontrava, ACRESCENTAVA outra linha: Q-018, Q-019 e
+            # Q-065 ficaram com uma RESPOSTA vazia e outra preenchida, o que foi
+            # lido como "fechada sem resposta". Agora preenche a primeira
+            # RESPOSTA vazia no lugar; se ja houver resposta escrita, acrescenta
+            # uma nova (nao apaga a anterior, que pode ser de outro destinatario).
+            $rxResp = '(?m)^-[ \t]*\*{0,2}[ \t]*RESPOSTA[ \t]*:?[ \t]*\*{0,2}[ \t]*([^\r\n]*)$'
+            $nova = '- **RESPOSTA:** {0} | **respondida por:** DONO | **hora:** {1}' -f $Resposta.Trim(), (Now-Short)
+            $vazia = $null
+            foreach ($m in [regex]::Matches($seg, $rxResp)) {
+               $v = $m.Groups[1].Value.Trim()
+               if ($v -eq '' -or $v -match '^_*$') { $vazia = $m; break }
+            }
+            if ($null -ne $vazia) {
+               $seg = $seg.Remove($vazia.Index, $vazia.Length).Insert($vazia.Index, $nova)
             }
             else {
                # Canal e LF puro (D-023). Este ramo escrevia `r`n e o `check`
                # passava a acusar CR depois de cada resposta do DONO - o mesmo
                # defeito do IDS.md, do Show-Check e do LOCK.md.
-               $seg += "`n- **RESPOSTA:** $($Resposta.Trim()) | **respondida por:** DONO | **hora:** $(Now-Short)`n"
+               $seg += "`n$nova`n"
             }
             if ($seg -match '(?m)^-\s*\*\*estado:\*\*\s*ABERTA\s*$') {
                $seg = [regex]::Replace($seg, '(?m)^(-\s*\*\*estado:\*\*\s*)ABERTA\s*$', '${1}FECHADA (dono, ' + (Now-Short) + ')', 1)
