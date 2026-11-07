@@ -808,3 +808,42 @@ Correcao (so notificacao, nenhuma regra de negociacao tocada):
 Residual honesto: (a) a primeira utilizacao de um ficheiro de portao pode deixar passar mais do que uma instancia no mesmo segundo (licao do P2.14) - nao aconteceu nesta medicao, o relatorio saiu uma unica vez; (b) o conteudo do relatorio (DailyProfit, TradesToday) e o da instancia que o envia; (c) o segundo reload seguido de 20:51:03 nao gerou o seu `EA finalizado` porque caiu dentro dos 120 s do portao - um encerramento isolado continua a sair.
 
 Compilacao: 0 errors, 0 warnings (`XAU_AI_PRO.ex5`, 926.192 B, 05/11/2026 20:50). 14 graficos com v1.2.166. Sem push, sem commit (380 commits locais). Conta real continua PROIBIDA.
+
+---
+
+## Fecho de turno :: DELTA :: 2026-11-06 05:55
+
+Entrada de passagem de testemunho. Nada aqui e previsao: so o que foi medido neste turno.
+
+**Motores de prova usados (Strategy Tester, XAUUSD H1 2026.08.01-2026.11.05, m1 ohlc, 10000 USD)**
+
+| run_id | Binario | Resultado | Nota |
+|---|---|---|---|
+| 7704874073263362126 | 927391 B (sem P1.132) | -163.63 USD / PF 0.6643 / DD 4.42 % / 9 trades | base A do A/B |
+| 7704884692122883821 | 929558 B (com P1.132) | +66.15 USD / DD 0.58 % / 9 trades / 0 perdas | base B do A/B |
+| 7704894539993498139 | 929558 B (repeticao de B) | identico a B ate ao ultimo decimal | prova de determinismo |
+
+Conclusao que fica: o P1.132 reduziu as falhas de ATR em ~84 % (1 428 980 -> 222 878 linhas erro=4807) mas
+nao fechou o defeito — o fecho veio depois, com P1.134/P1.135 no 1.2.172 (D-047/D-049/D-052, contadores a
+ZERO). O teste e deterministico nestas condicoes: repetir o mesmo binario da exactamente o mesmo relatorio.
+Nenhum destes numeros serve para dizer que a estrategia e boa: 9 trades nao tem significancia.
+
+**Binario atual em uso:** `XAU_AI_PRO.ex5` 931194 B, hash 0A28EDFC5BDC (v1.2.172, D-051). O binario do meu
+A/B (929558 B, 1.2.167) esta congelado em `Files\Backup\ex5\` e NAO deve ser usado para novas provas.
+
+**Achados de codigo que continuam abertos (nao corrigidos por mim, zona partilhada):**
+- `Core\OrderManager.mqh`: `OpenBuy()`/`OpenSell()` com formula propria de SL/TP e NENHUM chamador. O
+  caminho real de execucao e `MarketScanner.mqh:743 -> ExecutionEngine.mqh:246`. Codigo morto a decidir.
+- `Core\DecisionEngine.mqh:519`: `[SCORE] ... TOTAL=100.00` em 11 de 11 amostras medidas => saturacao do
+  tecto e gate `MinMarketScore` sem discriminar neste periodo. Nao medi se e estrutural.
+- "0 shorts" NAO e avaria: `SignalCore.mqh:372-375` exige EMA50<EMA200 para vender (ver D-048).
+
+**Canal:** no momento do fecho estava em lock do ALFA (B-033 / congelar o .ex5 1.2.172). O bloco D-046
+(registado como USADO por DELTA no IDS.md) ainda NAO esta no DECISOES.md por esse motivo. Fila pronta em
+`MQL5\Files\Temp\`: `d046.txt`, `diario046.txt`, `quadro046.txt`, `av046_dono.txt`, `av046_alfa.txt`;
+comandos em `PENDENTE_046_publicar.md`. Arquivamento da conversa em
+`EQUIPE\_SYNC\relatorios\CONVERSA_DELTA_20261105_06.md`.
+
+**Estado do terminal:** 0 posicoes, 0 ordens. 13 graficos, magic 2026001 nos 13. Conta real PROIBIDA
+(portas G1..G5). Risco/lote/stop/alvo/spread nao foram tocados neste turno. Disco ~2820 MB livres;
+`Tester\logs` ~3900 MB (fora da raiz de escrita — so o DONO apaga; pedido em av037).

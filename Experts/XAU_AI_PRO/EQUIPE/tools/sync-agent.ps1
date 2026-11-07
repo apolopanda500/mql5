@@ -33,7 +33,7 @@
 [CmdletBinding()]
 param(
    [Parameter(Mandatory = $true, Position = 0)]
-   [ValidateSet('help', 'status', 'post', 'read', 'ask', 'answer', 'id', 'lock', 'check', 'log', 'note')]
+   [ValidateSet('help', 'status', 'post', 'read', 'ask', 'answer', 'id', 'lock', 'check', 'log', 'note', 'ping')]
    [string]$Cmd,
 
    [string]$From = '',            # ALFA | DELTA | CMD | DONO
@@ -317,6 +317,8 @@ sync-agent.ps1 - canal de sincronizacao ALFA / DELTA / CMD / DONO
   read    -Agent ALFA [-Tail 40]   ultimas linhas da minha caixa
   note    -From ALFA -Arquivo DECISOES.md -Corpo "texto"
                                    anexa a um .md do canal dentro do Mutex (so append)
+  ping    -From CMD [-Assunto "..."] [-Precisa ONLINE|OCUPADO|AUSENTE]
+                                   regista presenca em PRESENCA.md (heartbeat em tempo real)
   ask     -From ALFA -Pergunta "..." -Opcoes "(a)...; (b)..." [-Prazo "06/11 12:00"]
                                    abre Q-nnn em INBOX_DONO.md (decisao DO DONO)
   answer  -Q Q-001 -Resposta "(a)"  SO O DONO: responde e fecha a pergunta
@@ -537,11 +539,33 @@ function Show-Ask {
    $qid = Invoke-Locked {
       $txt = Read-Text $InboxDono
       $max = 0
-      foreach ($m in [regex]::Matches($txt, '(?m)^##\s+Q-(\d{3})')) {
+      # Contar QUALQUER Q-nnn do inbox, nao so os cabecalhos `## Q-nnn`.
+      # Um cabecalho no formato antigo (`## 06/11/2026 ... Q-024`) era
+      # invisivel e o contador voltava a entregar um ID ja usado. Medido em
+      # 06/11/2026 20:21: a Q-024 saiu duas vezes (DELTA 20:13, ALFA 20:21).
+      foreach ($m in [regex]::Matches($txt, 'Q-(\d{3})')) {
          $n = [int]$m.Groups[1].Value
          if ($n -gt $max) { $max = $n }
       }
-      return ('Q-{0:000}' -f ($max + 1))
+      # O ledger e a fonte de verdade da reserva: um Q ja entregue a outro
+      # agente nunca pode ser recalculado a partir do texto do inbox.
+      foreach ($u in (Get-Usados -Type 'Q')) {
+         $m = [regex]::Match($u, '(\d+)$')
+         if ($m.Success) {
+            $n = [int]$m.Groups[1].Value
+            if ($n -gt $max) { $max = $n }
+         }
+      }
+      $id = 'Q-{0:000}' -f ($max + 1)
+      # Reserva no ledger dentro do mesmo Mutex: dois agentes em paralelo nao
+      # podem receber o mesmo Q.
+      $led = Read-Text $Ledger
+      if (-not $led.EndsWith("`n")) { $led += "`n" }
+      $quem = if ($From) { $From.ToUpperInvariant() } else { 'sistema' }
+      $assunto = ($Pergunta -replace '\s+', ' ').Trim()
+      $led += ("USADO | Q | {0} | {1} | {2} | {3}`n" -f $id, $quem, (Now-Stamp), $assunto)
+      Write-TextAtomic -Path $Ledger -Text $led
+      return $id
    }
 
    $b = @()
@@ -783,6 +807,22 @@ function Show-Note {
    Write-Output "OK: nota anexada a $Arquivo por $who."
 }
 
+function Show-Ping {
+    $who = Get-AgenteValido -Who $From -Campo 'From'
+    if ([string]::IsNullOrWhiteSpace($Assunto)) { $Assunto = 'turno em curso' }
+    $estado = 'ONLINE'
+    if (-not [string]::IsNullOrWhiteSpace($Precisa)) { $estado = $Precisa.ToUpper() }
+    $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    $linha = "$ts | $who | $estado | $Assunto"
+    $path = Join-Path $Equipe 'PRESENCA.md'
+    if (-not (Test-Path -LiteralPath $path)) {
+        throw 'PRESENCA.md inexistente no canal.'
+    }
+    Add-Block -Path $path -Block ("`r`n" + $linha + "`r`n")
+    Add-Audit -Who $who -What "ping -> $estado ($Assunto)"
+    Write-Output "OK: presenca registada por $who :: $estado :: $Assunto"
+}
+
 # ---------------------------------------------------------------------------
 # 5. Despacho
 # ---------------------------------------------------------------------------
@@ -798,4 +838,5 @@ switch ($Cmd) {
    'check' { Show-Check }
    'log' { Show-Log -Lines $Tail }
    'note' { Show-Note }
+    'ping' { Show-Ping }
 }
