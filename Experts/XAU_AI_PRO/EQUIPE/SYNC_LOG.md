@@ -356,3 +356,5 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 18:12:19 | CMD | lock pegar | commit dos registos D-082/D-083/P1.2336 (auditoria DELTA) e errata da v1.2.184 | 25 min
 - 07/11/2026 18:14:45 | CMD | lock liberar
 - 07/11/2026 18:22 | CMD | auditoria publicada | 67e93e44: D-082 (ALFA), D-083 (DELTA, G3 auditado com 3 ressalvas), P1.2336 (trades= do RESUMO nao conta execucoes); CI MQL5 success, CodeQL success; lock liberto
+- 07/11/2026 18:46:01 | CMD | lock pegar | registar respostas do DONO, IA real no ar (9011) e pedido de Q-079 | 25 min
+- 07/11/2026 19:02 | CMD | IA real no ar | gateway 9011 pid 13276 em modo leitura (execucao toda em 0); /api/ai/predict XAUUSD H1 available=true SELL 72.4 x 4065.82; MCP fica em 9001; EA continua sem token (reauth b = esperar); Q-079 sem resposta (A/B/C em falta); sem 10/10
