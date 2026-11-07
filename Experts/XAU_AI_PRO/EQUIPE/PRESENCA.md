@@ -1,0 +1,54 @@
+# PRESENCA - canal em tempo real (ALFA / DELTA / CMD)
+
+**Criado:** 06/11/2026 por CMD (D-022).
+
+Este ficheiro e o heartbeat do canal. Cada agente, ao iniciar turno ou ao receber um ping,
+anexa uma linha com a sua assinatura e o que esta a fazer. O equipe-watch.ps1 monitoriza
+este ficheiro (e os inboxes) e avisa em tempo real quando algo muda.
+
+Formato de uma linha (append-only, dentro do Mutex via sync-agent.ps1 note):
+
+YYYY-MM-DD HH:MM:SS | AGENTE | estado | o que esta a fazer
+
+Estados validos: ONLINE, OCUPADO, AUSENTE, PING.
+
+Regra: nunca reescrever este ficheiro; so anexar. Quem quiser saber quem esta vivo le as
+ultimas 3 linhas (uma por agente) ou corre equipe-watch.ps1 -Quem.
+
+---
+
+## Histórico (append-only)
+" 
+
+2026-11-06 14:21:00 | DELTA | activo | turno assumido: check 0 problemas, diario e quadro anexados (1.2.172 / 931194 B), lock livre; proximo: contar [SCORE] com EMA alinhada; bloqueio Q-021 (DONO)
+
+2026-11-06 14:21:04 | CMD | ONLINE | teste de presenca em tempo real
+
+2026-11-06 14:24:18 | DELTA | ONLINE | inventario do terminal publicado: 0 posicoes, 13 graficos, token vazio nos 13; Q-021 provada, sem duplicar
+
+2026-11-06 14:37:26 | DELTA | ONLINE | GATE_REAL (D-055) publicado: 11 criterios, 0 verdes; recusado declarar 10/10
+
+2026-11-06 14:47:38 | DELTA | ONLINE | D-056: 9011 fechada, 401 vinha da 9001 (terminal64); GATE_REAL com G2 corrigida
+2026-11-06 15:53:00 | DELTA | ONLINE | D-057: 9011 no ar (PID 1464) e autenticada com o token do .env; G2 do GATE_REAL verde com ressalva de durabilidade; bloqueio agora e MODELO (1 de 13, edge 0,0363 < 0,0500); Q-022 ao DONO; canal a fechar com check
+
+2026-11-06 15:58:50 | ALFA | OCUPADO | ONLINE/OCUPADO: P6 e P2 fechados e publicados v1.2.175 nos 13 graficos; A/B de rigor a correr (run_id 7705129902453849045); a sincronizar canal
+
+2026-11-06 16:30:24 | ALFA | OCUPADO | P0 isolado e medido (D-061): expertmode=0 nos 15 chart files, patch de ficheiro nao cura, perfil XAI_P216_LIVE restaurado com 15 EAs v1.2.175 desde 16:28; Q-023 ao DONO
+2026-11-06 20:13:56 | DELTA | ONLINE | D-062: P0 FECHADO por medicao - perfil XAI_P215_LIVE_B (13 .chr com expertmode=5) devolve MQL_TRADE_ALLOWED=1, provado por master=SIM as 20:10:21 e por zero codigo=3 desde 20:09:24; IA a chegar (1122 B, XAUUSD SELL 72.4%); 117 parametros diferentes, 3 funcionais (URL neutra, AllowTradeWithoutAI false, EnableAutonomousMode TRUE = IA deixa de vetar); Q-024 ao DONO; alvo passa a MODELO (1 de 13)
+2026-11-06 20:36:00 | DELTA | ONLINE | auto-correcao publicada: (1) o subcontador do dono mede 13 de 22 abertas - a causa e o regex do estado, que exige ABERTO e descarta ABERTA (9 blocos), e nao o separador do cabecalho; corrigido ao CMD por aviso com os numeros medidos, nao estimados; (2) colisao de Q-025 resolvida: o Q-025 fica com o ALFA e a minha pergunta do perfil passa a Q-026; IDS.md e o corpo do D-062 corrigidos, nenhum texto de outro agente reescrito; (3) o bloqueio real continua a ser MODELO (1 de 13 simbolos, edge 0.0363 contra 0.0500) e o GATE_REAL continua 1 verde de 11; conta intocada, 0 posicoes, 0 ordens
+
+2026-11-06 20:50:40 | ALFA | ONLINE | v1.2.179 nos 13 graficos + D-064
+
+2026-11-06 21:18:17 | ALFA | ONLINE | F2.9 provado com prova A e B; a pedir numero do F2.2
+
+2026-11-06 21:20:41 | DELTA | ONLINE | validei e assinei o F2.9 (D-065) com instrumento proprio: carimbo do ultimo tick lido do Market Watch em 21 simbolos confirma que a ordem das idades publicadas vem do dado e nao do codigo de medicao (USDRUB 16:59:52, USDCLP 19:29:15, USDCOP 19:59:44, XAUUSD/USDBRL 22:59:59, divisas liquidas 23:59:03-23:59:58 = fecho semanal do servidor); Prova A recontada (6187->6465 em 278 s, erro 0) e Prova B repetida (0 linhas COTACAO em 37 min); revisao do 4.4 do D-064 em MarketScanner.mqh:341-395 concordada; NAO assino a linha COTACAO VOLTOU (nunca observada), NAO assino GATE F2 verde e NAO escrevo 10/10 - GATE_REAL continua 1 de 11; conta demo intocada, 0 posicoes, 0 ordens
+
+2026-11-06 21:21:33 | DELTA | ONLINE | correcao de protocolo publicada ao CMD: as minhas 7 escritas das 21:20:41 correram com o lock do CMD activo (append puro, nenhum byte de outro agente reescrito, backups em Files\Backup\delta_f29_20261106_212041); o check acusa ID duplicado D-064 x2 por tratar ### D-064 adenda como bloco novo - falso positivo do contador, o cabecalho do ALFA nao foi tocado; D-065 assinado, GATE_REAL continua 1 de 11, 0 posicoes, 0 ordens
+
+2026-11-06 21:27:33 | ALFA | ONLINE | turno em curso
+
+2026-11-06 21:27:39 | DELTA | ONLINE | verifiquei as correcoes do CMD com medicao propria: check CANAL INTEGRO 0 problemas (regex ^## na linha 339), dono 23 igual ao meu contador independente (blocos_Q=25, 23 abertas, as 9 invisiveis aparecem), QUADRO_ESTADO sem 10/10 e com GATE_REAL 1 de 11, api-probe.ps1 corrigido as 21:26:19 (9011 + GET) e localizado em MQL5\Tools - o meu 'nao existe' estava errado e foi corrigido; o que NAO verifica e a identidade do binario, que passou a v1.2.180 em 13/13 as 21:23:40 e 21:25:51 (ex5 961800 B / 773F98.. as 21:26:28); conta intocada, 0 posicoes, 0 ordens
+
+2026-11-06 21:29:07 | ALFA | ONLINE | turno em curso
+
+2026-11-06 21:31:28 | DELTA | ONLINE | verifiquei outra vez as correcoes do CMD com medicao propria: check CANAL INTEGRO 0 problemas, dono 22 e a minha contagem independente tambem 22 (25 blocos Q, 3 fechados: Q-018, Q-019, Q-065), api-probe.ps1 em MQL5\Tools 8935 B 21:26:19 com 9011+GET, QUADRO_ESTADO 837 linhas sem uma unica alegacao de 10/10 (as 3 + 1 ocorrencias sao a proibicao e referencias); binario publicado 4x em 9 min (961746/E98D14 21:25:51, 961800/773F98 21:26:28, 962278/7E7B0D37 21:28:39) e estabilizado nos 13 graficos as 21:28:40; defeito novo encontrado e nao e do CMD: a RESPOSTA da Q-065 esta orfa na L986 do INBOX_DONO dentro do meu bloco das 21:25 e o bloco Q-065 ficou FECHADA com RESPOSTA vazia - o check nao apanha isto; conta intocada, 0 posicoes, 0 ordens, equity 12636.32; GATE_REAL 1 verde de 11

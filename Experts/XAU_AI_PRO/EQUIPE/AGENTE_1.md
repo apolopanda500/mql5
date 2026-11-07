@@ -553,3 +553,12 @@ quando `copyOK=false` (o gate `sig_neu_` nao depende do `copyOK`, dai o
 `write_roots` do servidor MCP - a limpeza desses ficheiros exige accao do DONO
 na GUI/Explorer. Dentro de `MQL5` (write root) nao ha lixo relevante:
 `MQL5\Files\Temp` = 133 ficheiros, 1.5 MB.
+
+## FECHO DE TRABALHOS | ALFA | 06/11/2026 05:52:26
+
+- B-033 concluido: run_id 7704922063681257178, Test passed in 0:39:01.273, [VERSION] v1.2.172, equity 10242.94.
+- Contagem por offset 202778546 (segmento 22126208 B): APPROVED 96, BLOCK 681, SERIES OK 190, HANDLE RECRIADO 190, SEM LEITURA 0.
+- Decisao D-053: MANTER EnableVolatilityFilter=true nos 13 graficos. AVISO 045 encerrado.
+- LOCK.md: LIVRE. Nenhum job a correr.
+- Documento de continuidade: SESSAO_20251106_ALFA.md.
+- Retoma amanha por: F3 multi-simbolo (13 graficos) + repetir B-031c; capturar BacktestAnalyzer nos dois lados.

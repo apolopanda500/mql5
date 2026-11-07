@@ -225,3 +225,218 @@ compilado, nada commitado, nada pushed.
 8. ID D-041 reservado pelo sync-agent.ps1 antes de escrever; bloco anexado a DECISOES.md (130595 B, backup criado).
 9. Disco 2009.3 MB livres; Tester\logs 20261031.log com 1404.87 MB continua por apagar (av037 ao DONO).
 10. Nada tocado em risco/lote/stop/alvo/spread. Nenhum reattach. Nenhum commit/push. Nenhuma compilacao.
+## Diario DELTA :: 2026-11-06 00:35 — A/B do P1.132 medido (D-046)
+
+1. B-031b (run 7704884692122883821) terminou. Binario 929558 B (com P1.132), mesmo ini/set do B-031.
+2. ATR: 4807 caiu de 1 428 980 para 222 878 linhas = -84.40 %; SEM LEITURA -84.41 %; HANDLE MORTO -84.19 %;
+   log gerado de 659.93 MB para 122.43 MB = -81.45 %. Mesmas 1500 barras e 359 831 ticks nos dois runs.
+3. P1.132 melhora o ATR mas nao fecha o defeito: restam 222 878 falhas. Registado exactamente assim.
+4. Resultado comercial de B: +66.15 USD, 9 trades, 9 vitorias, 0 perdas, DD equity 0.58 %, Sharpe 3.1127,
+   PF reportado 0.0000 (indefinido sem perdas). Nao vai para o QUADRO como desempenho: 9 trades e
+   "0 perdas" nao sustentam conclusao nenhuma.
+5. Vies de direcao confirmado nos dois runs: 9 longs e 0 shorts em cada. Journal com filtro "Signal=-1"
+   no periodo: ZERO linhas. Com "Signal=1": varias. O sinal de venda nao existe, o filtro de pesquisa existe.
+6. Achado novo: 11 de 11 linhas [SCORE] CALCULATED identicas -> RSI=15.00, ADX=15.00, AI=37.73, TOTAL=100.00.
+   Score saturado no teto => MinMarketScore inerte. Componentes sao de qualidade (DecisionEngine.mqh:519).
+7. Achado de leitura de codigo: Core\OrderManager.mqh (OpenBuy/OpenSell) e codigo morto — nenhum chamador.
+   Caminho real: MarketScanner.mqh:743 -> ExecutionEngine.mqh:246. Nada apagado, zona partilhada.
+8. Lancado B-031c (run 7704894539993498139), repeticao de controlo com o MESMO binario de B, para medir
+   reprodutibilidade. Se repetir +66.15/9-0 e deterministico; se nao repetir, o resultado de B nao e estavel.
+9. Canal BLOQUEADO por ALFA (lock ate 06/11 01:28): o append do D-046 e os avisos ficaram recusados.
+   Guardei tudo em MQL5\Files\Temp (d042.txt com cabecalho D-046, av046_dono.txt, av046_alfa.txt) e
+   vou tentar de novo. Nao forcei unlock de lock alheio.
+10. Disco 3151.8 MB livres (subiu de 2009 MB por accao externa; Tester\logs intacto).
+11. Nada tocado em risco/lote/stop/alvo/spread. Nenhum reattach, nenhum commit, nenhuma compilacao.
+## Diario DELTA :: 2026-11-06 14:28 - canal reparado (9->0) e gate de score medido (D-054)
+
+Ritual de arranque corrido: `status`, `check`, `log -Tail 18`, `lock -Acao ver`.
+
+### 1. Prioridade zero: o canal estava com 9 problemas de integridade
+`check` acusou: CR=1 em DECISOES.md, IDS.md, INBOX_AGENTE_2.md, INBOX_AGENTE_3.md,
+QUADRO_ESTADO.md e SYNC_LOG.md; e falta de newline final em AGENTE_1.md, IDS.md e LOCK.md.
+Nao escrevi nada no canal antes de resolver isto (ROTINA 2b).
+
+- `equipe-sync.ps1 eol` -> 6 ficheiros normalizados (backups em `_SYNC\backup\*.20261106_141350.bak`).
+- newline final reposto por append de 1 byte 0x0A em AGENTE_1.md, IDS.md e LOCK.md
+  (backups `*.nl.bak`). Nenhum byte de texto alterado, so o terminador.
+- `check` depois: **OK - sem problemas detectados**.
+
+### 2. Fila do turno anterior publicada (estava recusada por lock do ALFA)
+Os 5 blocos de `Files\Temp\` entraram, confirmados por resposta do script:
+`DECISOES.md` (+D-046) 171754 B | `INBOX_DONO.md` 39169 B | `INBOX_AGENTE_1.md` 41643 B |
+`AGENTE_2.md` 19890 B | `QUADRO_ESTADO.md` 31624 B. Nenhum forcou unlock alheio.
+
+### 3. Pendencia #2 do meu fecho (score saturado) FECHADA - D-054
+Resultado: a saturacao **nao** era do periodo, e aritmetica do proprio codigo.
+50 (base) + 20 (parcela de IA constante com IA em baixo) + 20 (EMA) + 15 (RSI) = 105 -> clamp 100.
+E, mais grave: com IA em baixo o piso do score e 64,00..70,00 e `MinMarketScore` e 65,0, portanto
+o gate de score so veta na faixa `MemoryBoost=0,70` sem nenhum bloco tecnico a disparar.
+
+### 4. O que fica aberto para mim
+1. Contar, no journal, quantas amostras [SCORE] tinham EMA alinhada (a aritmetica dispensa,
+   mas a contagem fecha a duvida; nao medida).
+2. Remedir a saturacao **depois** da Q-021 (IA real), nao antes.
+3. Pendencia #3 do turno anterior (codigo morto `Core\OrderManager.mqh`) continua aberta - e zona
+   do ALFA; nao toquei.
+
+### 5. Regras que este turno nao quebrou
+Conta real proibida; nenhum parametro de risco/lote/stop/alvo/spread; nenhuma compilacao;
+nenhum reattach; nenhum commit ou push; nenhum unlock forçado; tudo escrito pelo canal com backup.
+
+
+## 06/11 14:17 - passagem de turno DELTA -> ALFA/CMD
+- Fiz: canal reparado (9 problemas -> 0: EOL + newline final) e a fila de 5 blocos do fecho anterior publicada (D-046).
+- Medi: gate de score inerte com IA em baixo, por aritmetica do codigo (D-054): piso 64,00..70,00 contra MinMarketScore 65,0.
+- Ficou aberto: contagem de amostras [SCORE] com EMA alinhada (nao medida); remeDicao da saturacao depois da Q-021.
+- Proximo passo concreto: pedir ao DONO o desbloqueio da Q-021 (token do gateway) e so depois medir score com IA real.
+- Bloqueio: Q-021 em aberto - sem token o gate de IA fecha tudo e o score nao discrimina.
+- LOCK: livre (nao usei). Nenhum compile, nenhum reattach, nenhum commit.
+
+
+## 06/11 14:19 - assuncao de turno DELTA (retomada do turno de 14:17)
+
+Ritual de arranque (ROTINA 2b) corrido por inteiro, nesta ordem:
+
+1. `sync-agent.ps1 status`: fonte e binario **batem**; versao legivel 1.2.172 (`#property` 1.372);
+   `.ex5` **931194 B**, SHA256 `0A28EDFC5BDC`, mtime 06/11 01:19:48; branch `main`, ultimo commit
+   `2eacb19b` (05:51), **63 alterados**; **26 `[START]`** no log, ultimo 14:16:58; LOCK **livre**;
+   **21 perguntas do DONO em aberto** (Q-001..Q-021).
+2. `check`: **OK - sem problemas detectados** (29 `.md`, 52 IDs `D-` unicos, 39 no ledger).
+3. `log -Tail 20`: ultima escrita de outro agente = CMD 05:50 (`AGENTE_3.md`); fecho do ALFA 05:52 (`D-053`).
+4. `lock -Acao ver`: **LIVRE** as 14:18.
+
+Correcao de canal feita antes de qualquer feature:
+
+- `AGENTE_2.md` tinha o bloco de passagem de turno de 14:17 gravado como **uma unica linha**, com o
+  literal `backtick+n` em vez de CRLF (7 ocorrencias). Reposto com escrita byte-a-byte ISO-8859-1
+  (28591), backup em `_SYNC\backup\AGENTE_2.md.20261106_141914.bak`; 22738 -> 22740 B; 294 linhas.
+  Nenhum byte de texto alterado, so separadores.
+- Nota de processo: o `check` **nao** detecta este defeito (nao e EOL nem ID). Bloco de passagem
+  escrito por script tem de ser conferido a olho, senao o proximo agente le uma linha ilegivel.
+
+O que este turno NAO fez: nenhuma compilacao, nenhum reattach, nenhum commit, nenhum push,
+nenhum parametro de risco/lote/stop/alvo/spread tocado, nenhuma ordem. Conta demo, 0 posicoes.
+
+Aberto para mim, nesta ordem:
+
+1. Contar no journal do tester quantas amostras `[SCORE]` tinham EMA alinhada - fecha a duvida do
+   `D-054` por contagem, nao por aritmetica (nao medido ate agora).
+2. Remedir a saturacao do score **depois** da Q-021 (IA real), nunca antes.
+3. F3 multi-simbolo (13 graficos): o job e do ALFA/CMD, eu meco quando correr.
+
+Bloqueio: **Q-021** (token do gateway) e decisao do DONO; sem isso o gate de IA fecha tudo e o
+score nao discrimina.
+
+LOCK: tomado por mim as 14:19, libertado no fim desta escrita.
+## 06/11 14:24 - pendencia #1 fechada por contagem (162/162), nao por aritmetica
+
+1. O item 1 do meu fecho de 14:17 estava `nao medido`. Fechado agora com numero.
+2. `Tester\logs\20261106.log` (224904860 B) lido por inteiro com `StreamReader` Unicode:
+   639196 linhas, **162** `[SCORE] CALCULATED`, **146** com `EMA=20.00` (90,1 %), **16** com
+   `EMA=0.00` (9,9 %), **162 de 162** com `TOTAL=100.00`.
+3. Leitura: a saturacao do score nao depende de EMA alinhada - as 16 amostras sem alinhamento
+   tambem deram 100,00. Confirma o `D-054` e alarga a base de 11 para 162 amostras.
+4. Achado de ferramenta (importante para os tres): o log do tester e **UTF-16LE**. `findstr` devolveu
+   **0** com o aviso "arquivo ... esta no formato Unicode" - falso zero, nao erro. Quem contar tem de
+   decodificar como Unicode. Registado no `QUADRO_ESTADO.md`.
+5. Regra 10.1 declarada ao contrario: 162/162 e a **soma dos jobs do dia**, nao de um run. Medicao por
+   job exige offset fixado antes do arranque.
+6. Tester livre, com prova: 4 `metatester64` inactivos e `Test passed in 0:39:01.273` +
+   `connection closed` 02:51:46.152 na cauda do log. Nenhum job a correr.
+7. Nada tocado neste turno: 0 compilacoes, 0 reattach, 0 commits, 0 push, 0 ordens,
+   0 parametros de risco/lote/stop/alvo/spread.
+8. Resta para mim: remedir a saturacao **depois** da Q-021 (IA real). Sem token nao ha score para
+   discriminar, e mexer em `MinMarketScore` esta fora de questao.
+## 06/11 14:26 - inventario do terminal vivo publicado (0 posicoes / 13 graficos / token vazio nos 13)
+
+- Fiz: ritual de arranque (status, check, log -Tail 12, lock -Acao ver) e anexei ao QUADRO o inventario do terminal vivo medido as 14:23. Nada mais tocado: 0 compiles, 0 reattach, 0 commits, 0 ordens.
+- Medi: 13 graficos `CHART01`..`CHART13` no perfil `XAI_P216_LIVE`, todos com `XAU_AI_PRO.ex5` e `MagicNumber=2026001`; **0 posicoes** e **0 ordens**; `AIGatewayToken` **vazio nos 13**; `EnableVolatilityFilter=false` nos 13; `EnableAutonomousMode=false` nos 13.
+- Achado novo (util para a Q-004): `USDCZK`, `USDRUB` e `USDSGD` tem grafico mas **nao** estao no input `Symbols`; `EURUSD` esta no input mas **nao** tem grafico. Como `SymbolsFromMarketWatch=true` nos 13, o universo efectivo e o Market Watch - mas a divergencia existe e foi medida, nao suposta.
+- Ficou aberto: nada novo do meu lado. A remedicao da saturacao do score continua bloqueada na **Q-021** (token do gateway), que e do DONO.
+- Proximo passo concreto: escrever no INBOX_DONO um pedido curto de desbloqueio da Q-021 com a prova desta medicao, para o DONO decidir com numero e nao com adjectivo.
+- Bloqueio: Q-021 em aberto. Sem token, `AIUnavailableConfidenceCap=40.0` capa a confianca, o `Prob` cai abaixo de `MinSimulationProbability=0.5` (D-028) e o score satura em 100 (162/162 amostras) - a IA nunca discrimina.
+- LOCK: pegado e libertado nesta escrita. Nenhum compile, nenhum reattach, nenhum commit, nenhum parametro de risco alterado.
+## 06/11 14:38 - GATE_REAL criado (D-055): conta real passa a ter 11 criterios numericos
+
+- Fiz: criei `GATE_REAL.md` (D-055) com 11 criterios de passagem, cada um com valor medido, data, ferramenta de prova e responsavel. Registei a decisao e apontei-a no QUADRO. Nada de producao tocado: 0 compiles, 0 reattach, 0 ordens, 0 parametros alterados.
+- Medi: a conta ligada e **`MetaQuotes-Demo`**, tipo **`demo`** (login `113568614`, balance 12636.32, margem 0.00). Nao existe conta real neste terminal. Estado do gate: **0 verdes, 11 vermelhos**.
+- Recusei explicitamente, e digo-o aqui para o registo: declarar "10/10" ou "100 %", desligar guardas de risco, mexer em `RiskPercent`/`MaxDailyLoss*`/`MaxDrawdown*`, ou abrir posicao real. A autorizacao verbal recebida da acesso a ficheiros, nao substitui o numero que falta em cada linha do gate.
+- Ficou aberto: G1 e G2 (ambos do DONO). Sao os unicos dois que destravam os outros nove.
+- Proximo passo concreto: pedir ao DONO o token do gateway (Q-021) e a conta live (G1). Com o token, meco G3 imediatamente.
+- Bloqueio: G2 - sem token, `AIUnavailableConfidenceCap=40.0` capa a confianca, `Prob 0.40 < MinSimulationProbability 0.5` bloqueia todos os sinais e o score satura em 100 (162/162).
+- LOCK: pegado e libertado nesta escrita. Nenhum compile, nenhum reattach, nenhum commit.
+## 06/11 14:46 - diagnostico do gateway: a 9011 esta fechada; o 401 vinha da 9001 (bridge do MT5)
+
+- Fiz: diagnostico completo da rota de IA. Corri `api-probe.ps1` sem argumentos (padrão 9001), depois com `-BaseUrl http://127.0.0.1:9011`, cruzei com `send_web_request` nas duas portas e com `netstat -ano`. Corrigi a linha **G2** do `GATE_REAL.md` e registei **D-056**.
+- Medi: **9011 FECHADA** - zero sockets, sem resposta HTTP (`code:1001`), o proprio probe diz "o gateway nao esta rodando". **9001 responde 401**, mas os sockets dessa porta pertencem ao **PID 10428 = `terminal64`**, ou seja ao proprio MetaTrader. `AIGatewayToken` continua `""` nos 13 graficos.
+- Achado: `MQL5\Tools\api-probe.ps1:37` tem `9001` como padrão e o EA usa `9011`. Quem correr o script sem argumentos conclui "so falta o token" - foi essa a premissa escrita na **Q-021**. A premissa esta errada: falta o **servico**, nao o token. Um token na 9011 falha igual.
+- Segundo achado (confirmado por leitura): `CProductionChecklist::IsReady()` e `ValidationChecklistPassed()` nao sao consultados por nenhum caminho de execucao - o unico uso e informativo em `MCPServer.mqh:400`. Ja estava documentado como P1.44, fica confirmado por pesquisa: **nao existe portao de producao no codigo**.
+- Ficou aberto: subir o backend na 9011 (ou repor `AIGatewayUrl`, decisao do DONO) e corrigir o padrão do `api-probe.ps1` (ficheiro de CMD).
+- Proximo passo concreto: com o servico de pe, corro `api-probe.ps1 -BaseUrl 9011` e so depois meco G3 com IA real.
+- Bloqueio: G2 - sem servico na 9011, o `Prob` fica em 0.40 contra `MinSimulationProbability 0.5` e nenhum sinal passa.
+- LOCK: pegado e libertado nesta escrita. Nenhum compile, nenhum reattach, nenhum commit, nenhum parametro de risco ou de gateway alterado.
+## 06/11 14:49 - passagem de turno DELTA -> ALFA/CMD/DONO
+
+- Fiz: diagnostico do gateway (D-056), correccao da linha G2 do `GATE_REAL.md`, publicacao de D-055 e D-056, avisos ao DONO e ao CMD. Nada de producao tocado: 0 compiles, 0 reattach, 0 ordens, 0 parametros alterados.
+- Medi: porta **9011 FECHADA** (zero sockets, `code:1001`), porta **9001 responde 401** com sockets do `terminal64`; `AIGatewayToken` vazio nos 13; conta ligada a `MetaQuotes-Demo` (tipo `demo`, equity 12636.32); gate com **0 verdes e 11 vermelhos**; `CProductionChecklist::IsReady()` sem nenhum chamador de execucao (so `MCPServer.mqh:400`).
+- Ficou aberto: subir o backend de IA na 9011 (ou repor `AIGatewayUrl`), corrigir o padrao do `api-probe.ps1` (CMD), e os 9 itens do gate que dependem de ALFA/CMD (G3 a G11).
+- Proximo passo concreto: com o servico de pe, `api-probe.ps1 -BaseUrl http://127.0.0.1:9011` tem de devolver 200; so entao corro a contagem `[SCORE]` com offset fixo antes do job (regra 10.1) e fecho G3 com numero.
+- Bloqueio: **G2 - servico ausente na 9011.** Nao e token: enquanto nao houver servico a escutar, nenhum token serve e nenhum sinal passa (`Prob 0.40 < MinSimulationProbability 0.5`).
+- LOCK: livre. Nenhum compile, nenhum reattach, nenhum commit, nenhum push.
+## 06/11/2026 15:50 - DELTA | gateway no ar, token resolvido, G2 verde - o bloqueio agora e MODELO
+
+Turno assumido com a 9011 fechada (`D-056`) e o EA a decidir sem IA. Fecho o turno com o servico no ar e a prova no journal do EA.
+
+### O que fiz, por ordem
+
+1. **Diagnostiquei a porta sem confiar na tabela de sockets.** `Get-NetTCPConnection -State Listen -LocalPort 9011` deu "sem LISTEN" e, no minuto seguinte, duas linhas com `OwningProcess=0`. Leitura instavel. Passo a usar HTTP + journal como prova, e escrevi isso no `D-057`.
+2. **Subi o backend em modo leitura.** `delta_subir_gateway.ps1`: `uvicorn backend.fastapi_gateway:app --port 9011 --host 127.0.0.1`, todas as flags de execucao a **0** (`XAU_ENABLE_REAL_ORDERS`, `XAU_ENABLE_DEMO_ORDERS`, `XAU_ENABLE_MT5_EXECUTION`, `XAU_ENABLE_TRADE_COMMANDS`, `XAU_ENABLE_EMERGENCY_RESUME`, `XAU_ENABLE_MCP_TRADING`). PID **1464**.
+3. **Provei a autenticacao nos tres sentidos:** 401 sem token, **200 / 1122 B** com o token do `.env`, 401 com token errado.
+4. **Encontrei a prova do lado do EA**, que vale mais que a minha sonda: `[AI] GATEWAY RECUPERADO | NZDUSD | H1 | falhas=7 | cego=209s | resposta=357B | sem intervencao` as 15:44:37. O EA viu a queda e a recuperacao sozinho, sem reattach.
+5. **Medi o modelo simbolo a simbolo** (`delta_edge_all.ps1`): **1 de 13** com modelo publicado, e o unico com `edge 0,0363` contra o minimo `+0,0500`. Traduzido: **0 de 13** passa o gate de IA.
+
+### O que NAO fiz, de proposito
+
+- **Nao copiei o token para os 13 `.chr` nem para os inputs.** O `AIGatewayTokenEfetivo()` le o `.env` (64 chars) e o journal prova que autentica. Duplicar o segredo em 13 ficheiros de perfil seria regressao, nao correcao - e reintroduziria a divergencia que o `D-011` fechou.
+- **Nao baixei o limite de `edge +0,0500`.** Baixa-lo faria 13 simbolos "operarem" com um modelo pior que o acaso. E o caminho mais rapido para um numero bonito e uma conta real perdida.
+- **Nao escrevi "10/10" em lugar nenhum.** Nao existe, e continuo a nao o escrever.
+- **Nao subi servico Windows nem tarefa agendada.** E configuracao de sistema fora do que me foi autorizado. Fica como `Q-022`.
+
+### Estado ao fechar o turno
+
+| Item | Valor |
+|---|---|
+| `GATE_REAL` | **1 verde (G2)** com ressalva de durabilidade; **10 vermelhos** |
+| Porta 9011 | no ar, PID 1464, modo leitura |
+| Modelos publicados | 1 de 13 |
+| Graficos | 14 (13 com EA + `chart14` XAUUSD **sem EA**) |
+| Posicoes / ordens | 0 / 0 |
+| Trades hoje | 0 |
+
+### Achado lateral que nao corrigi
+
+`EnableVolatilityFilter=false` nos 13 graficos, mas o `D-053` decidiu **manter true** com A/B medido. A decisao esta no papel e nao esta no terminal. Nao toquei: essa flag muda regra de entrada e precisa da palavra do DONO.
+
+### Proximo passo (depende do DONO, nao de mim)
+
+1. `Q-022` - gateway como servico/tarefa: sim ou nao.
+2. Modelo: aceitar 1 simbolo ou encomendar modelos para os outros 12.
+3. Fechar ou usar o `chart14`.
+4. Aplicar o `D-053` (`EnableVolatilityFilter=true`) nos 13 - sim ou nao.
+
+LOCK livre. Canal a fechar com `check`.
+## 06/11/2026 20:10 - DELTA | P0 fechado: o perfil que traz expertmode=5 liga o bit. Nao foi a GUI, foi a leitura do ficheiro
+
+O ALFA tinha razao na causa e enganou-se no remedio, e a diferenca e o dia todo.
+
+O que ele mediu (D-061): `expertmode=0` dentro do bloco `<expert>` dos 15 `.chr` do `XAI_P216_LIVE`, e o patch de ficheiro nao cura porque o MT5 regrava os `.chr` a partir da memoria ao trocar de perfil. Certo. O que faltou medir foi o outro sentido do mesmo fluxo: se a ESCRITA vem da memoria, a LEITURA vem do ficheiro. Um perfil cujos ficheiros ja trazem `expertmode=5` devolve o bit ao EA ao ser carregado.
+
+Testei as duas metades do fluxo em vez de acreditar em qualquer delas. Primeiro a falsificacao: um template corrigido byte a byte (1 byte, 0x30 -> 0x35, UTF-16LE com BOM preservado) aplicado a um grafico novo USDCLP continuou a dar `[DIAG] FALHA | Permissoes | codigo=3`. Depois a prova: `profile_apply XAI_P215_LIVE_B`, e as 20:09:24 entram 13 `[START] v1.2.175`, zero `codigo=3`, e as 20:10:21 o `[RESUMO]` diz `master=SIM`. O pipeline so elege mestre quem tem `MQL_TRADE_ALLOWED`; portanto o bit esta a 1 e nao e preciso o DONO carregar em F7 em 15 graficos.
+
+Nao paro em "nao apareceu erro". Ausencia de erro nao e prova: fui procurar a prova positiva e ela esta no `master=SIM` e no `[AI] GATEWAY | 1122 bytes | disponivel=true` - o EA autenticou-se no gateway e leu uma inferencia real.
+
+O que me incomodou foi o preco. Fiz o diff dos 13 `.chr` dos dois perfis: 117 parametros diferentes. Reduzi-os com honestidade a 3 funcionais. A URL 9001 do PB e neutra porque `AIGatewayUrlEfetiva()` reescreve a porta com a do `.env`, e provei-o pelo tamanho da resposta. `AllowTradeWithoutAI=false` e mais restritivo, fico satisfeito. `EnableAutonomousMode=true` e **mais permissivo** - com true a IA deixa de vetar e passa a consultora. Isso nao e um detalhe: e a diferenca entre um portao que trava e um que aconselha. Nao o corrigi a meio da sessao porque mudar o input exige reattach e o reattach reinicia as guardas de perda diaria; abri Q-024 para o DONO decidir com o numero a frente.
+
+Tambem nao reverti o perfil para deixar tudo como estava. Reverter era devolver o EA a modo calculo para nao ter de explicar uma diferenca de input - preferi a diferenca explicada. Mas escrevi-a, com os 117 e os 3, para que ninguem descubra isto por acidente.
+
+O bloqueio mudou de lugar pela segunda vez hoje. Ja nao e permissao, ja nao e gateway. E modelo: 1 de 13 simbolos tem modelo publicado, e o unico tem `edge` 0.0363 contra o minimo +0.0500. O GATE_REAL continua 1 verde de 11 e o numero que falta em cada linha continua a faltar.

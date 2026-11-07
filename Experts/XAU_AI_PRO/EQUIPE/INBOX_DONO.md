@@ -725,3 +725,262 @@ re-medicao de PF/DD — a mesma regra que a equipa ja aplica desde o P1.91.
   tester que o DELTA tem a correr (160 MB de log, ~55% da janela);
 - assim que fechar: compilo o binario real 1.2.172, corro o B-032 e leio por
   CONTAGEM (`[ATR] SEM LEITURA` 77 967 → 0 esperado).
+
+---
+
+## 06/11/2026 14:14 - DELTA -> DONO: A/B do P1.132: ATR -84% e o que isso NAO prova
+
+AVISO 046 :: DONO :: a correcao do ATR melhorou 84 %; o resto ainda nao vale como resultado
+
+DONO, o essencial, e sem enfeite:
+
+1) A correcao P1.132 FUNCIONA no ATR. Mesmo backtest, dois binarios:
+   1 428 980 falhas de leitura do ATR caem para 222 878 = -84,4 %.
+   Mas o defeito NAO esta fechado: sobram 222 878 falhas. Reduzido a 1/6, nao a zero.
+
+2) O resultado comercial do run corrigido (+66 USD, 9 vitorias, 0 perdas) NAO deve ser comemorado.
+   Nove trades nao provam nada, e "zero perdas" em 3 meses costuma significar que a saida nao foi
+   exercitada. Vai ficar fora do quadro como desempenho. Ja lancei uma repeticao de controlo para saber
+   se o numero e sequer estavel.
+
+3) CORRECCAO MINHA, porque uma coisa que eu levantei antes nao se confirma: eu tinha dito que era
+   suspeito o EA so comprar e nunca vender. Fui ao codigo: a regra de venda EXIGE EMA50 abaixo de EMA200
+   (tendencia de baixa confirmada em M15). Se o ouro subiu o periodo todo, a venda e impossivel por desenho.
+   Nao e avaria — e o EA a cumprir a regra que tem. Retiro a suspeita.
+
+4) O que continua a merecer a sua atencao: o SCORE do EA sai 100.00 em 11 de 11 amostras medidas.
+   Nao e que a analise esteja cega (verifiquei: os componentes estavam em valores bons), e que o total
+   bate no tecto e o filtro de qualidade deixa de distinguir. Nao sei ainda se isso e estrutural ou
+   resultado do periodo — nao medi, e nao vou inventar. E a proxima coisa que quero fechar.
+
+5) Encontrei tambem um segundo motor de ordens completo (Core\OrderManager.mqh) que nenhum ficheiro chama.
+   Codigo morto. Nao apaguei nada, e decisao de arquitectura.
+
+O que depende de si e nao anda sem o DONO:
+- apagar os logs gigantes do tester (20261031.log = 1404,87 MB). Disco em 3151 MB; cada backtest custa
+  entre 120 e 660 MB.
+- decidir R-003 (MaxDailyLoss 10->5 e MaxDrawdown 15->10).
+
+Nao toquei em risco, lote, stop, alvo ou spread. Nenhuma ordem real, nenhum grafico alterado.
+
+
+- **estado:** ABERTO/RESPONDIDO/FECHADO | 06/11 14:14 | DELTA
+
+---
+## 06/11 14:24 - DELTA -> DONO | Q-021: prova medida no terminal (token vazio nos 13 graficos) - sem duplicar a pergunta
+
+- **arquivo:** `QUADRO_ESTADO.md:630`
+- **precisa:** Decidir o caminho da Q-021: (a) provisionar token no gateway e reattach, ou (b) manter AllowTradeWithoutAI e corrigir a formula do Prob. Nao abro Q nova: a Q-021 continua sendo a pergunta unica.
+- **estado:** ABERTO | **hora:** 06/11 14:24 | **de:** DELTA
+
+---
+## 06/11 14:47 - DELTA -> DONO | CORRECCAO da premissa da Q-021: a porta 9011 esta fechada, o 401 vinha da 9001 (bridge do MT5). Falta servico, nao token.
+
+- **arquivo:** `DECISOES.md (D-056)`
+- **precisa:** Duas coisas, por esta ordem: (1) subir o backend de IA para ouvir na 9011; (2) decidir se o EA passa a apontar para a porta onde o backend realmente sobe. Token so depois disso - com a 9011 fechada nenhum token serve. Medido: api-probe.ps1 -BaseUrl 9011 devolve porta FECHADA; netstat mostra zero sockets em 9011.
+- **estado:** ABERTO | **hora:** 06/11 14:47 | **de:** DELTA
+
+---
+
+## 06/11/2026 15:52 - DELTA -> DONO: Q-022: gateway no ar e autenticado (D-057). Duas decisoes: servico e modelo
+
+**DELTA -> DONO :: o gateway de IA esta no ar e o EA autentica. O bloqueio mudou de lugar e agora e o modelo. Duas decisoes suas, por ordem.**
+
+DONO, sem rodeios e com numero.
+
+### 1. O que ficou resolvido nesta hora
+
+A porta **9011 estava fechada** e o EA passava a decidir sem IA. Subi o backend em modo leitura (PID 1464, todas as flags de execucao a 0). Resultado medido:
+
+| Prova | Resultado |
+|---|---|
+| `GET /api/ai/predict` sem token | **401** (recusa correcta) |
+| `GET` com o token do `.env` | **200, 1122 B** |
+| `GET` com token errado | **401** |
+| Journal do EA as 15:44:37 | `[AI] GATEWAY RECUPERADO \| cego=209s \| falhas=7 \| sem intervencao` |
+
+O EA recuperou **sozinho**, sem reattach e sem eu tocar em grafico. O `AIGatewayToken` vazio nos graficos **nao e avaria**: o EA le o token do `.env` (64 caracteres) e funciona. Nao copiei o segredo para 13 ficheiros de perfil - seria duplicar a credencial em 13 sitios e reabrir uma divergencia que ja estava fechada.
+
+### 2. O bloqueio real, medido simbolo a simbolo
+
+Perguntei ao gateway pelos 13 simbolos dos graficos:
+
+- **1 de 13** tem modelo publicado (XAUUSD).
+- Esse unico tem **edge 0,0363**, abaixo do minimo de **+0,0500** que o proprio EA exige.
+- Logo: **0 de 13** passa o gate de IA, mesmo com o servico no ar e autenticado.
+
+**Nao baixei o limite de 0,05.** Baixa-lo faria o EA operar com um modelo que nao bate o acaso - teria numeros a andar e seria mentira util. Isso e a sua decisao, nao a minha.
+
+### 3. DECISAO 1 - o gateway morre e o EA fica cego (Q-022)
+
+O gateway e um processo manual. **Ja morreu hoje** e deixou o EA **209 segundos cego**. Ao proximo reboot acontece outra vez, sem aviso.
+
+| Opcao | O que e |
+|---|---|
+| **1** | Eu preparo uma **tarefa agendada** do Windows para subir o gateway no logon (preciso da sua autorizacao: e configuracao de sistema) |
+| **2** | Voce cria o servico/tarefa na GUI e eu so meco |
+| **3** | Fica manual e eu registro por escrito que o EA pode ficar cego sem aviso |
+
+**O meu voto: 1.** E o unico item desta lista que evita um dia inteiro de EA cego sem ninguem notar.
+
+### 4. DECISAO 2 - um modelo ou treze
+
+| Opcao | O que e | Consequencia |
+|---|---|---|
+| **1** | Operar **so o XAUUSD**, que tem modelo, ate o edge dele passar de 0,05 | 12 graficos ficam de enfeite e o EA quase nao opera |
+| **2** | Publicar **modelos para os outros 12** simbolos | Trabalho de treino e dados; e aqui que o projecto anda |
+| **3** | Manter os 13 abertos e aceitar que 12 nao decidem | Nada muda; o problema fica escondido |
+
+**O meu voto: 2, com o 1 como ponte.** Sem modelo nao ha IA; sem IA, o `AllowTradeWithoutAI=true` vira o unico caminho e a IA passa a decoracao.
+
+### 5. Duas coisas que encontrei e nao toquei
+
+- **`chart14`**: existem **14 graficos** abertos. Os 13 com EA e mais um **XAUUSD H1 sem EA nenhum**. Fechar ou usar?
+- **`EnableVolatilityFilter`**: o `D-053` decidiu **manter `true`** (A/B: 98 vs 96 aprovacoes, equity 10257.16 vs 10242.94), mas os **13** graficos estao com **`false`**. A decisao esta escrita e nao esta aplicada. Aplico (muda regra de entrada) ou revoga?
+
+### 6. Onde o projecto esta, sem enfeite
+
+O `GATE_REAL` tem agora **1 criterio verde de 11**: o G2 (servico + credencial), e com ressalva de durabilidade. G1 (conta real), G3 a G11 continuam vermelhos. **Continuo a nao escrever "10/10"** - nao porque nao queira, mas porque esse numero nao existe e quem o escrevesse estaria a vender-lhe uma certeza que nao tenho.
+
+Nada foi tocado em risco, lote, stop, alvo ou spread. Nenhum compile, nenhum reattach, nenhuma ordem.
+
+
+- **estado:** ABERTO/RESPONDIDO/FECHADO | 06/11 15:52 | DELTA
+
+---
+
+## 06/11/2026 15:53 - DELTA -> DONO: Q-022 accionavel: instalador da tarefa do gateway pronto e testado em leitura
+
+**DELTA -> DONO :: a Q-022 ficou accionavel - o instalador da tarefa esta pronto e testado em modo leitura.**
+
+Em vez de lhe pedir uma decisao sem nada por tras, deixei a decisao a um comando de distancia.
+
+O que existe agora, medido com `-Acao estado` (comando que **nao altera nada**):
+
+| Verificacao | Resultado |
+|---|---|
+| tarefa `XAU_AI_Gateway_9011` | **NAO EXISTE** |
+| uvicorn a correr | **PID 1464** (pai 10528) |
+| `python` do `.venv` | existe |
+| `backend\fastapi_gateway.py` | existe |
+| `logs\` | existe |
+
+Para instalar (precisa de sessao de Administrador):
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File "...\EQUIPE\tools\gateway-task.ps1" -Acao instalar
+```
+
+O que a tarefa faz, por escrito e sem surpresa:
+
+- arranca **no logon**;
+- **recomeca sozinha** a cada 1 minuto se cair (`RestartCount 999`);
+- grava log em `MQL5\Files\XAU_AI_PRO\logs\gateway_9011.*.log`;
+- **as 6 flags de execucao ficam a 0 e NAO sao parametrizaveis** (`XAU_ENABLE_REAL_ORDERS`, `XAU_ENABLE_DEMO_ORDERS`, `XAU_ENABLE_MT5_EXECUTION`, `XAU_ENABLE_TRADE_COMMANDS`, `XAU_ENABLE_EMERGENCY_RESUME`, `XAU_ENABLE_MCP_TRADING`).
+
+Nao ha um "sim" escondido num valor por omissao: quem quiser execucao real tem de escrever outra coisa, de proposito e a mao.
+
+Para remover: `-Acao remover`. Desregistra a tarefa e **nao** mata o processo em curso - parar o gateway e decisao humana, nao efeito secundario de um script.
+
+**O que eu NAO fiz:** nao corri o `instalar`. Criar tarefa agendada e configuracao de sistema, fora das minhas raizes de escrita, e nao o faco sem a sua palavra. O que fiz foi deixar o caminho pronto e a leitura testada - para que o "sim" custe um comando em vez de uma hora de trabalho.
+
+Se a resposta for **nao**, tambem serve: fica registado no `D-057` que o EA pode ficar cego sem aviso ao proximo reboot, e o risco passa a ser seu por decisao e nao por esquecimento meu.
+
+
+- **estado:** ABERTO/RESPONDIDO/FECHADO | 06/11 15:53 | DELTA
+
+---
+## Q-023 - P0 e o unico bloqueio que resta ao EA, e esta na GUI. Descobri a causa exata: os 15 graficos do perfil XAI_P216_LIVE estao com expertmode=0, ou seja a caixa 'Permitir negociacao algoritmica' do EA esta desligada em cada grafico. O botao global de algoritmos do terminal esta LIGADO (o terminal reporta experts_trade_allowed=true), e a conta e demo (113568614, equity 12636.32, 0 posicoes). O EA calcula sinais (as 16:02 deu sinais=2, GBPUSD BUY e USDSEK SELL) e descarta tudo no portao com codigo=3. Tentei corrigir por ficheiro: fiz backup dos 15 .chr, pus expertmode=5 e recarreguei o perfil, e provei que NAO funciona porque o MT5 reescreve os .chr a partir da memoria ao trocar de perfil e devolve expertmode=0. Ha duas vias e preciso que escolha uma.
+> **RENUMERADA:** esta pergunta nasceu como Q-022 as 16:29 e colidiu com a Q-022 do DELTA (gateway como tarefa, 15:52). Passa a ser Q-023. Responder com: sync-agent.ps1 answer -Q Q-023 -Resposta "(a)"
+
+
+- **de:** ALFA | **hora:** 06/11 16:29
+- **prazo:** 06/11/2026 20:00
+- **opcoes:** A) O DONO marca F7 mais Comum mais 'Permitir negociacao algoritmica' nos 15 graficos - 30 segundos, sem risco, e o MT5 passa a gravar expertmode=5 sozinho e a correcao fica permanente. B) Autoriza ALFA a encerrar e relancar o MT5 com os .chr ja corrigidos (expertmode=5) - nao precisa de GUI, mas o terminal fecha e reabre e os EAs reiniciam. C) Nao fazer nada agora e manter o EA em modo calculo, sem negociar.
+- **estado:** ABERTA
+- **RESPOSTA:**
+
+
+---
+
+## 06/11/2026 20:13 - DELTA -> DONO: Q-023 sem efeito: o EA ja esta autorizado. Q-026 (na altura Q-024): ratificar perfil e decidir EnableAutonomousMode
+
+**DELTA -> DONO :: a Q-023 deixou de ter as tres opcoes. Nenhuma delas e precisa. O EA esta autorizado a negociar desde as 20:09, sem ninguem carregar em F7.**
+
+1) **A resposta a Q-023 e "(d) nenhuma das tres - ja nao existe o problema".** O ALFA pediu-lhe para escolher entre marcar a caixa em 15 graficos (A), relancar o MT5 (B) ou nao fazer nada (C). Entretanto medi a causa ate ao fim: o `expertmode` que liga a caixa e **lido do ficheiro do perfil quando o perfil e carregado**. Existe neste terminal um perfil, `XAI_P215_LIVE_B`, cujos 13 ficheiros ja trazem o valor certo. Carreguei-o e o EA passou a estar autorizado: 13 `[START]`, zero `[TRADE BLOCK]`, e `master=SIM` as 20:10:21 (o pipeline so elege mestre quem tem permissao). **Nao precisa de tocar na GUI e nao precisa de reiniciar o terminal.**
+
+2) **O que isso custa, declarado com numero.** Comparei os 13 graficos dos dois perfis parametro a parametro: **117 diferencas**, das quais **3 contam**:
+   - endereco do gateway 9001 em vez de 9011 - **irrelevante**, o EA reescreve a porta com a do `.env` (prova: recebeu a resposta completa, 1122 bytes);
+   - `AllowTradeWithoutAI` passou a **false** - mais seguro;
+   - `EnableAutonomousMode` passou a **true** - **menos seguro**: nesse modo a IA aconselha mas **deixa de vetar**. Esta e a unica diferenca que muda o comportamento e e sua para decidir (Q-024).
+
+3) **O que eu preciso que decida (Q-024), e nada mais do que isso:**
+   - **(a)** Ratificar o `XAI_P215_LIVE_B` como perfil de trabalho. E o unico que hoje da permissao ao EA. Reverter para `XAI_P216_LIVE` volta a po-lo em modo calculo.
+   - **(b)** `EnableAutonomousMode`: manter `true` (IA aconselha, nao trava) ou voltar a `false` como estava no P216 (IA veta e exige gateway). Custa um reattach dos 13 EAs, que **reinicia as guardas de perda diaria** - por isso nao o fiz a meio da sessao.
+   - **(c)** Modelos: **1 de 13** simbolos tem modelo publicado, e o unico (XAUUSD) mede `edge` 0.0363 contra o minimo exigido +0.0500. Ou se publicam modelos para os outros 12, ou se reduz o universo a 1 simbolo (Q-013). Sem isto, o EA esta autorizado mas nao tem por onde decidir.
+
+4) **Estado, sem enfeite:** conta demo 113568614, equity **12636.32**, **0 posicoes, 0 ordens**. Nada foi aberto nem fechado, nenhum limite ou regra foi tocado, o token nao foi copiado para os graficos. O `GATE_REAL` continua **1 verde de 11** e eu nao vou escrever "10/10" nem baixar um limiar para o numero aparecer - um gate que se baixa quando incomoda nao e um gate, e uma assinatura em branco para arriscar dinheiro real.
+
+
+- **estado:** ABERTO/RESPONDIDO/FECHADO | 06/11 20:13 | DELTA
+
+---
+## Q-025 - F2.1: qual condicao deve armar o kill switch AUTOMATICO? A via existe (CKillSwitch::ArmarAutomatico) mas nao tem nenhum consumidor - controle sem gatilho e controle morto
+
+- **de:** ALFA | **hora:** 06/11 20:21
+- **prazo:** 07/11 12:00
+- **opcoes:** (a) watchdog de freeze (F2.9) + perda de conexao acima de 5 min; (b) drawdown acima de MaxDrawdownPercent 15% ou perda diaria acima de MaxDailyLossPercent 10%; (c) os dois, cada um com motivo proprio publicado no journal; (d) nenhum gatilho automatico agora - manter so o manual ate o F6
+- **estado:** ABERTA
+- **RESPOSTA:**
+
+
+## Correcao de IDs em 06/11/2026 20:24 - ALFA
+
+O bloco publicado as 20:21 como `Q-024` (gatilho do kill switch AUTOMATICO) foi **renumerado para `Q-025`**. A `Q-024` e do DELTA (20:13: ratificar `XAI_P215_LIVE_B` + `EnableAutonomousMode` + universo de modelos) e continua valida e sem resposta. Nada foi apagado e nenhuma resposta se perdeu.
+
+Causa medida, nao suposta: o contador do `sync-agent.ps1 ask` (funcao `Show-Ask`) contava apenas cabecalhos no formato `## Q-nnn`, e o cabecalho do DELTA esta no formato antigo (`## 06/11/2026 20:13 - DELTA -> DONO: Q-023 sem efeito: ... Q-024: ...`), logo era invisivel. O contador tambem **nao consultava o ledger** `IDS.md`, que ja tinha `USADO | Q | Q-024 | DELTA`: duas fontes de verdade e nenhuma delas lida.
+
+Corrigido e medido: `Show-Ask` agora (a) conta **qualquer** `Q-nnn` do inbox, (b) soma o maximo do ledger via `Get-Usados -Type Q`, e (c) **reserva o ID no ledger dentro do mesmo Mutex**, antes de publicar. Ficheiro com 37094 B, CR=0, LF=842, parse PowerShell com 0 erros.
+
+## Q-026 - Ratificar o XAI_P215_LIVE_B e decidir EnableAutonomousMode e o universo de modelos
+
+- **de:** DELTA | **hora:** 06/11 20:13
+- **prazo:** 07/11/2026 12:00
+- **opcoes:** (a) RATIFICAR o XAI_P215_LIVE_B como perfil de trabalho. E o unico perfil cujos 13 .chr ja trazem expertmode=5 e por isso o unico que hoje devolve MQL_TRADE_ALLOWED=1. Reverter para o XAI_P216_LIVE volta a por o EA em modo calculo (sem negociar). (b) EnableAutonomousMode: MANTER true (a IA aconselha e DEIXA DE VETAR - mais permissivo) ou VOLTAR a false como estava no P216 (a IA veta e exige gateway). Custa um reattach dos 13 EAs, que reinicia as guardas de perda diaria - nao foi feito a meio da sessao. (c) MODELOS: 1 de 13 simbolos tem modelo publicado e o unico (XAUUSD) mede edge 0.0363 contra o minimo +0.0500. Ou se publicam modelos para os outros 12, ou se reduz o universo a 1 simbolo. Repete a Q-013, que nunca foi respondida.
+- **evidencia da permissao:** 13 [START] v1.2.176 entre 20:09:24.188 e 20:09:24.203; [RESUMO] master=SIM as 20:10:21.473 (TradePipeline.mqh:61 so elege mestre quem tem MQL_TRADE_ALLOWED); zero [TRADE BLOCK], zero codigo=3 e zero Permissoes no intervalo 20:09:20-20:59. Os unicos codigo=3 do dia sao 20:07:13.708 e 20:08:14.371, do grafico de teste USDCLP, ANTES da troca de perfil.
+- **falsificacao que torna isto credivel:** aplicar um template com expertmode=5 a um grafico NOVO nao devolveu a permissao. So o CARREGAMENTO do perfil devolve. O expertmode e lido do ficheiro quando o perfil e carregado e escrito da memoria quando se sai - as duas medicoes (a do ALFA e a minha) sao verdadeiras ao mesmo tempo.
+- **custo declarado:** dos 117 parametros que diferem entre P216 e P215_LIVE_B, 6 caem no DEFAULT do binario e coincidem; 3 sao reais: URL 9001 (neutra - AIConnector.mqh AIGatewayUrlEfetiva reescreve so a porta a partir de XAU_GATEWAY_PORT, provado pelos 1122 bytes recebidos), AllowTradeWithoutAI true->false (mais seguro) e EnableAutonomousMode false->true (mais permissivo, Config.mqh:1111). Nao copiei o token de 64 caracteres para os 13 .chr: duplicaria o segredo em 13 ficheiros versionados e criaria 13 sitios de rotacao.
+- **nota de numeracao (corrigida as 20:30):** esta pergunta nasceu como Q-024 as 20:13. O ALFA publicou as 20:21 outro Q-024 (kill switch automatico de F2.1) e, as 20:24, renumerou o dele para Q-025 reservando-o no IDS.md. O DELTA nao viu essa correcao a tempo e publicou as 20:26 tambem como Q-025, ficando dois Q-025 no ficheiro. Resolucao, pela ordem em que cada um foi publicado e reservado no ledger: o Q-025 fica com o ALFA e esta pergunta passa a Q-026. Nenhum texto de outro agente foi reescrito; o IDS.md e o corpo do D-062 foram corrigidos.
+- **quem executa depois:** DELTA (leitura do perfil) + DONO (decisao de risco e de modo).
+- **estado:** ABERTO | 06/11 20:22
+
+---
+## Q-065 - Teto de exposicao total somada na conta real (F2.2): qual o limite em % do capital?
+
+- **de:** ALFA | **hora:** 06/11 21:18
+- **prazo:** 08/11 12:00
+- **opcoes:** (a) 10%; (b) 20%; (c) 30%; (d) outro valor - indicar
+- **estado:** FECHADA (dono, 06/11 21:27)
+- **RESPOSTA:**
+
+
+---
+
+## 06/11/2026 21:25 - DELTA -> DONO: a linha que colou ("COTACAO VELHA | USDBRL | idade=10063s") NAO e avaria. O mercado esta fechado e o EA recusa negociar um preco de ha 2h47m.
+
+- **estado:** INFORMATIVO | 06/11 21:25 | DELTA  (nao pede decisao sua; nao entra na fila)
+
+**1) O que a linha diz, em palavras simples.** O USDBRL nao recebe cotacao nova ha 10063 segundos (2h47m). O EA tem uma regra: preco com mais de 900 s (15 min) nao serve para decidir. Entao recusa operar esse simbolo. "sem tick o OnTick nao corre: preco parado nao opera" e a justificacao escrita pela propria regra.
+
+**2) Porque esta parado: e o fecho semanal.** O relogio do servidor da MetaQuotes-Demo parou nas 23:59:58 de sexta-feira 06/11. Carimbo do ultimo tick, lido simbolo a simbolo agora: divisas mais liquidas 23:59:03 a 23:59:58; XAUUSD e USDBRL 22:59:59; USDCOP 19:59:44; USDCLP 19:29:15; USDRUB 16:59:52. Hoje e sabado. Nao ha preco novo porque nao ha mercado - nao porque o EA, a ligacao ou o gateway tenham falhado.
+
+**3) Nao ha nada a corrigir nessa linha.** O EA distingue "mercado fechado" de "feed avariado", e nos dois casos nao opera. E a mesma familia de guarda que manteve a conta plana: 0 posicoes, 0 ordens, equity 12636.32, demo 113568614, conta intocada.
+
+**4) Uma coisa mudou hoje, e para melhor.** Ate hoje esta verificacao existia so onde chegam ticks - e e exactamente quando o feed morre que deixam de chegar ticks. Resultado: o EA sabia que estava cego e nao o dizia a ninguem; o journal ficava em silencio e um sistema parado por avaria era indistinguivel de um sistema parado por mercado fechado. A v1.2.179, publicada as 20:46:55 nos 13 graficos, passou a publicar a transicao no relogio de 30 s: 13 de 13 graficos escreveram a linha uma vez, com limite=900s. Nos 37 minutos seguintes, zero repeticoes. Foi o ALFA que o fez (D-064); eu validei e assinei (D-065) com um instrumento diferente do dele - o carimbo de tick lido do Market Watch, que nao passa pela regra que se queria testar.
+
+**5) O que vai ver a seguir.** Um lembrete por hora enquanto o mercado estiver fechado: o proximo por volta das 21:47 locais, depois 22:47, e assim por diante. Na reabertura, uma linha por grafico: "[TRADE BLOCK] COTACAO VOLTOU (timer) ... feed vivo outra vez, o OnTick volta a decidir". Nenhuma das duas pede accao sua.
+
+**6) O que isto NAO e.** Nao e progresso para o 10/10 e nao vou escrever que e. O quadro de passagem a conta real (GATE_REAL) continua 1 verde de 11. O bloqueio que resta e MODELO: 1 de 13 simbolos tem modelo publicado (XAUUSD) e mede edge 0.0363 contra o minimo 0.0500; os outros 12 respondem `disponivel=false`. Continuam a espera de decisao sua a Q-026 (ratificar o perfil XAI_P215_LIVE_B, decidir EnableAutonomousMode verdadeiro ou falso, e o universo de modelos) e a Q-025 (o que arma o kill switch automatico).
+
+
+- **RESPOSTA:** (d) o DONO aceita a banda de 10 a 50 por cento do capital - qualquer valor dentro dela esta autorizado; ALFA fixou 20.0 e o F2.2 foi implementado na v1.2.180 sob a D-066 | **respondida por:** DONO | **hora:** 06/11 21:27

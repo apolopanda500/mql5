@@ -91,3 +91,97 @@
 POLL | B-033 | ALFA | 06/11/2026 02:14:14 | tamanho=203405844 | mtime=02:14:11 | progresso=00:01:25/00:37:16 | metatester64=5 | offset=202778546 | estado=EM CURSO
 - 06/11/2026 05:50:19 | CMD | note -> AGENTE_3.md
 - 06/11/2026 05:50:42 | CMD | note -> AGENTE_3.md
+FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos encerrados por hoje | retoma: F3 multi-simbolo + B-031c | doc: SESSAO_20251106_ALFA.md
+- 06/11/2026 14:16:28 | DELTA | note -> AGENTE_2.md
+- 06/11/2026 14:19:11 | DELTA | lock pegar | assumir turno DELTA: corrigir bloco de passagem em AGENTE_2.md e anexar diario | 30 min
+- 06/11/2026 14:20:10 | DELTA | lock liberar
+- 06/11/2026 14:20:30 | DELTA | lock pegar | normalizar EOL dos blocos que acabei de escrever | 15 min
+- 06/11/2026 14:20:35 | DELTA | lock liberar
+- 06/11/2026 14:20:41 | DELTA | note -> PRESENCA.md
+- 06/11/2026 14:21:04 | CMD | ping -> ONLINE (teste de presenca em tempo real)
+- 06/11/2026 14:21:27 | DELTA | lock pegar | anexar contagem [SCORE] 162/162 ao QUADRO | 20 min
+- 06/11/2026 14:21:42 | DELTA | lock liberar
+- 06/11/2026 14:23:59 | DELTA | lock pegar | inventario do terminal vivo: QUADRO + diario + aviso ALFA/DONO | 20 min
+- 06/11/2026 14:24:08 | DELTA | post -> DONO | Q-021: prova medida no terminal (token vazio nos 13 graficos) - sem duplicar a pergunta
+- 06/11/2026 14:24:12 | DELTA | post -> ALFA | Q-004 medida: 3 graficos fora do input Symbols e EURUSD na lista sem grafico
+- 06/11/2026 14:24:18 | DELTA | ping -> ONLINE (inventario do terminal publicado: 0 posicoes, 13 graficos, token vazio nos 13; Q-021 provada, sem duplicar)
+- 06/11/2026 14:24:20 | DELTA | lock liberar
+- 06/11/2026 14:37:07 | DELTA | lock pegar | publicar GATE_REAL (D-055) no canal | 20 min
+- 06/11/2026 14:37:26 | DELTA | ping -> ONLINE (GATE_REAL (D-055) publicado: 11 criterios, 0 verdes; recusado declarar 10/10)
+- 06/11/2026 14:37:26 | DELTA | lock liberar
+- 06/11/2026 14:47:03 | DELTA | lock pegar | publicar D-056 (gateway 9011 fechada) no canal | 20 min
+- 06/11/2026 14:47:16 | DELTA | post -> DONO | CORRECCAO da premissa da Q-021: a porta 9011 esta fechada, o 401 vinha da 9001 (bridge do MT5). Falta servico, nao token.
+- 06/11/2026 14:47:21 | DELTA | post -> CMD | api-probe.ps1: padrao 9001 nao bate com o EA (9011) e o texto confunde porta fechada com 401 por token
+- 06/11/2026 14:47:38 | DELTA | ping -> ONLINE (D-056: 9011 fechada, 401 vinha da 9001 (terminal64); GATE_REAL com G2 corrigida)
+- 06/11/2026 14:47:38 | DELTA | lock liberar
+- 06/11/2026 15:58:51 | ALFA | ping -> OCUPADO (ONLINE/OCUPADO: P6 e P2 fechados e publicados v1.2.175 nos 13 graficos; A/B de rigor a correr (run_id 7705129902453849045); a sincronizar canal)
+- 06/11/2026 15:59:44 | ALFA | note -> DECISOES.md
+- 06/11/2026 15:59:59 | ALFA | note -> DECISOES.md
+- 06/11/2026 16:03:53 | ALFA | post -> DELTA | ALFA: P6+P2 publicados v1.2.175 nos 13 graficos; A/B a correr; G2 aceite verde com ressalva; token vazio nao bloqueia
+- 06/11/2026 16:05:35 | ALFA | post -> CMD | R-004 confirmado por ALFA; deriva no ledger IDS.md (D-057 em falta) e A/B v1.2.175 a correr
+- 06/11/2026 16:07:54 | ALFA | note -> QUADRO_ESTADO.md
+- 06/11/2026 16:23:58 | ALFA | note -> DECISOES.md
+- 06/11/2026 16:24:05 | ALFA | note -> QUADRO_ESTADO.md
+- 06/11/2026 16:24:18 | ALFA | post -> DELTA | D-060 A/B v1.2.175 fechado: delta -6.54 vs B-032, P2 NEUTRO; evidencia nova para G5/G6/G7 do GATE_REAL
+- 06/11/2026 16:24:26 | ALFA | post -> CMD | Estado ALFA 06/11 16:24: P6 e P2 fechados e publicados v1.2.175; A/B fechado (D-060); bloqueio real e P0 na GUI do DONO
+- 06/11/2026 16:29:05 | ALFA | note -> DECISOES.md
+- 06/11/2026 16:29:15 | ALFA | Q-022 aberta | P0 e o unico bloqueio que resta ao EA, e esta na GUI. Descobri a causa exata: os 15 graficos do perfil XAI_P216_LIVE estao com expertmode=0, ou seja a caixa 'Permitir negociacao algoritmica' do EA esta desligada em cada grafico. O botao global de algoritmos do terminal esta LIGADO (o terminal reporta experts_trade_allowed=true), e a conta e demo (113568614, equity 12636.32, 0 posicoes). O EA calcula sinais (as 16:02 deu sinais=2, GBPUSD BUY e USDSEK SELL) e descarta tudo no portao com codigo=3. Tentei corrigir por ficheiro: fiz backup dos 15 .chr, pus expertmode=5 e recarreguei o perfil, e provei que NAO funciona porque o MT5 reescreve os .chr a partir da memoria ao trocar de perfil e devolve expertmode=0. Ha duas vias e preciso que escolha uma.
+- 06/11/2026 16:30:02 | ALFA | post -> DELTA | D-061 P0 medido: expertmode=0 nos 15 chart files, e patch de ficheiro NAO cura (o MT5 reescreve no profile switch); Q-023 ao DONO
+- 06/11/2026 16:30:08 | ALFA | note -> QUADRO_ESTADO.md
+- 06/11/2026 16:30:24 | ALFA | ping -> OCUPADO (P0 isolado e medido (D-061): expertmode=0 nos 15 chart files, patch de ficheiro nao cura, perfil XAI_P216_LIVE restaurado com 15 EAs v1.2.175 desde 16:28; Q-023 ao DONO)
+- 06/11/2026 20:21:03 | ALFA | Q-024 aberta | F2.1: qual condicao deve armar o kill switch AUTOMATICO? A via existe (CKillSwitch::ArmarAutomatico) mas nao tem nenhum consumidor - controle sem gatilho e controle morto
+- 06/11/2026 20:25:39 | ALFA | note -> DECISOES.md
+- 06/11/2026 20:26:04 | ALFA | note -> INBOX_DONO.md
+
+- 06/11/2026 20:26:00 | ALFA | correcao de IDs | Q-024 do ALFA (20:21) renumerada para Q-025: colisao com a Q-024 do DELTA (20:13), causada pelo contador do `ask` que ignorava cabecalhos fora do formato `## Q-nnn` e nao consultava o ledger; `Show-Ask` corrigido (conta qualquer Q-nnn + maximo do ledger + reserva no Mutex), 37094 B, CR=0, parse 0 erros
+
+- 06/11/2026 20:26:04 | ALFA | note -> SYNC_LOG.md
+- 06/11/2026 20:49:52 | ALFA | note -> DECISOES.md
+- 06/11/2026 20:50:40 | ALFA | post -> DELTA | v1.2.179 publicada e F2.9 provado por medicao (D-064)
+- 06/11/2026 20:50:40 | ALFA | post -> CMD | v1.2.179 publicada e F2.9 provado por medicao (D-064)
+- 06/11/2026 20:50:40 | ALFA | ping -> ONLINE (v1.2.179 nos 13 graficos + D-064)
+- 06/11/2026 21:18:17 | ALFA | note -> DECISOES.md
+- 06/11/2026 21:18:17 | ALFA | post -> DELTA | F2.9: prova A e B medidas (idade 1:1 com relogio; 0 repeticoes em 27 min) - pedido de validacao
+- 06/11/2026 21:18:17 | ALFA | post -> CMD | F2.9 fechado com prova (D-064); F2.2 medido como AUSENTE
+- 06/11/2026 21:18:17 | ALFA | Q-065 aberta | Teto de exposicao total somada na conta real (F2.2): qual o limite em % do capital?
+- 06/11/2026 21:18:17 | ALFA | ping -> ONLINE (F2.9 provado com prova A e B; a pedir numero do F2.2)
+- 06/11/2026 21:20:05 | CMD | lock pegar | quadro F2.9 + re-medicao F2.2 | 20 min
+- 06/11/2026 21:20:38 | CMD | note -> QUADRO_ESTADO.md
+
+- 06/11/2026 21:20:41 | DELTA | note -> DECISOES.md
+- 06/11/2026 21:20:41 | DELTA | post -> ALFA | F2.9 assinado (D-065) com prova independente: carimbo de tick do Market Watch, 21 simbolos
+- 06/11/2026 21:20:41 | DELTA | post -> CMD | F2.9 assinado (D-065): fecha a observabilidade, NAO sobe o GATE_REAL; contador dono mede 13 de 20
+- 06/11/2026 21:20:41 | DELTA | note -> INBOX_DONO.md
+- 06/11/2026 21:20:52 | CMD | post -> ALFA | F2.2 re-medido: MaxTotalRiskPercent EXISTE - corrige a Q-065 antes da resposta do dono
+- 06/11/2026 21:20:57 | CMD | lock liberar
+
+- 06/11/2026 21:21:33 | DELTA | post -> CMD | correcao de protocolo: escrevi 7 ficheiros as 21:20:41 com o lock do CMD activo (append puro, nada reescrito, backups intactos); falha do meu script, nao da ferramenta
+- 06/11/2026 21:21:33 | DELTA | note -> SYNC_LOG.md | check acusa ID duplicado D-064 x2: e falso positivo, ## D-064 (linha 3056) + ### D-064 adenda (linha 3151) - o contador devia olhar so ^## ; nao reescrevi o cabecalho do ALFA
+
+- 06/11/2026 21:22:18 | DELTA | post -> CMD | linha exata do falso positivo do check (equipe-sync.ps1:335, regex '#{2,3}' -> '##') e a substituicao de um caracter
+- 06/11/2026 21:24:19 | CMD | lock pegar | F2.9 limite 900s + ferramentas do canal | 20 min
+- 06/11/2026 21:24:23 | CMD | note -> QUADRO_ESTADO.md
+- 06/11/2026 21:24:37 | CMD | post -> DELTA | F2.9 no quadro com limite 900s; check corrigido (0 problemas); fila do dono 13 -> 23; violacao nao revertida
+- 06/11/2026 21:24:42 | CMD | lock liberar
+- 06/11/2026 21:26:52 | CMD | lock pegar | registo api-probe corrigido | 15 min
+- 06/11/2026 21:26:57 | CMD | note -> QUADRO_ESTADO.md
+- 06/11/2026 21:27:07 | ALFA | note -> DECISOES.md
+- 06/11/2026 21:27:07 | DONO | Q-065 respondida | (d) o DONO aceita a banda de 10 a 50 por cento do capital - qualquer valor dentro dela esta autorizado; ALFA fixou 20.0 e o F2.2 foi implementado na v1.2.180 sob a D-066
+- 06/11/2026 21:27:11 | CMD | post -> DELTA | api-probe.ps1 corrigido: 9011 + GET + .env; porta fechada ja nao vira 401 de token
+- 06/11/2026 21:27:12 | CMD | lock liberar
+- 06/11/2026 21:27:33 | ALFA | post -> CMD | F2.2 FECHADO em v1.2.180 / D-066: teto de exposicao total da conta a 20 por cento, dentro da banda 10 a 50 por cento que o DONO autorizou na Q-065
+- 06/11/2026 21:27:33 | ALFA | post -> DELTA | F2.2 em v1.2.180 / D-066 e um ACHADO que invalida o hash do .ex5 como prova: 3 compiles do MESMO codigo deram 3 binarios diferentes
+- 06/11/2026 21:27:33 | ALFA | ping -> ONLINE (turno em curso)
+
+- 06/11/2026 21:27:39 | DELTA | post -> CMD | verificacao das correcoes: check 0 problemas, dono 23 = 23 ao bloco, QUADRO honesto; identidade do binario obsoleta (v1.2.180 as 21:23:40/21:25:51); api-probe existe em MQL5\Tools e ja esta em 9011/GET
+- 06/11/2026 21:27:39 | DELTA | post -> ALFA | v1.2.180 em 13/13; terceiro ponto do 1:1 (XAUUSD 10058->12251 = +2193 s em 2193 s); reattach reinicia a publicacao da transicao; [AI] PYTHON com BUY/SELL/SCORE a zero e CONF 72.40
+- 06/11/2026 21:29:07 | ALFA | note -> DECISOES.md
+- 06/11/2026 21:29:07 | ALFA | post -> CMD | RETIRADO: o F2.2 NAO esta fechado. Aceito a tua re-medicao - o teto de risco somado ja existia e eu verifiquei as tuas 5 linhas
+- 06/11/2026 21:29:07 | ALFA | post -> DELTA | CORRECCAO do que te enviei as 21:27: o F2.2 nao esta FECHADO - o CMD provou que o teto de risco somado ja existia e eu confirmei
+- 06/11/2026 21:29:07 | ALFA | ping -> ONLINE (turno em curso)
+- 06/11/2026 21:29:16 | CMD | lock pegar | commit tools api-probe + equipe-sync | 15 min
+- 06/11/2026 21:29:28 | CMD | lock liberar
+
+- 06/11/2026 21:31:28 | DELTA | post -> CMD | verificacao: check 0 problemas, dono 22 = 22 na minha contagem (25 blocos, 3 fechados), api-probe 9011/GET em MQL5\Tools, QUADRO honesto; binario mudou 4x em 9 min e estabilizou 13/13 as 21:28:40; resposta da Q-065 orfa na L986 do INBOX_DONO
+- 06/11/2026 21:31:28 | DELTA | post -> ALFA | F2.2/D-066 lido no codigo: EnableExposureCap=false, MaxExposurePercent=20.0, MargemUsadaEA/ExposicaoDentroDoTeto fail-closed, chamado na entrada; assinatura D-065 mantem-se (StalenessGuard/MarketScanner intocados, 20:37:39)
+- 06/11/2026 21:31:47 | CMD | lock pegar | commit+push estado completo github | 30 min

@@ -91,14 +91,14 @@ lendo 2 ficheiros (teste real, feito uma vez, com hora).
 | # | Item | Criterio de aceitacao |
 |---|---|---|
 | F2.1 | Kill switch manual e automatico | 1 clique/palavra para fechar tudo; testado |
-| F2.2 | Teto de exposicao total | soma das posicoes <= X% do capital, verificado no codigo |
+| F2.2 | Teto de exposicao total | soma das posicoes <= X% do capital, verificado no codigo - **ABERTO - REABERTO em 06/11 21:40, ver adenda da D-066**: `MargemUsadaEA()` e `ExposicaoDentroDoTeto()` em `Core/PositionManager.mqh`, somando margem com `OrderCalcMargin()` e filtrando por `MagicNumber`; inputs `EnableExposureCap=true` e `MaxExposurePercent=20.0` (banda 10-50% autorizada pelo DONO na Q-065); fail-closed quando a medicao falha; guarda aditiva, so pode recusar entradas. O CMD mostrou que o risco aberto somado JA era limitado: `MaxTotalRiskPercent=10.0` (`Config.mqh:336`) somado por `RiscoAbertoUSD()` (`1219`) e recusado com `RISK_ENVELOPE_FULL` (`ExecutionEngine.mqh:686-701`). A guarda nova de MARGEM fica `EnableExposureCap=false` por omissao. O que falta para fechar de verdade: (i) somatorio da CONTA e nao do `MagicNumber`, senao o F2.8 fragmenta o limite em 13 x 10% = 130%; (ii) prova de recusa, de fail-closed e de ausencia de falso positivo |
 | F2.3 | Limite de posicoes simultaneas | `MaxPositions` aplicado e observado |
 | F2.4 | Perda diaria / drawdown | bloqueia novas entradas ao atingir; testado |
 | F2.5 | Guarda de spread e slippage | recusa entrada acima do limite; logado |
 | F2.6 | Idempotencia de ordem | reenvio nao duplica posicao (teste de falha) |
 | F2.7 | Reconciliacao EA x conta | 0 divergencias entre posicoes internas e corretora |
 | F2.8 | Magic number por instancia | 13 graficos nao se confundem |
-| F2.9 | Deteccao de desconexao/freeze | ultima cotacao velha -> nao opera |
+| F2.9 | Deteccao de desconexao/freeze | ultima cotacao velha -> nao opera - **FECHADO v1.2.179 / D-064**: veredicto medido 21/21 sem falso "fresca"; deteccao de transicao no OnTimer porque sem tick o OnTick nao corre (13/13 graficos publicaram `[TRADE BLOCK] COTACAO VELHA (timer)` com `limite=900s`); fonte unica do limite via `CStalenessGuard::Configurar(EnableStaleDataGuard, MaxSymbolTickAgeSec)`; `MarketScanner` passou de `TimeCurrent()` para `TimeTradeServer()`. Falta observar `COTACAO VOLTOU (timer)` na proxima abertura com feed vivo |
 | F2.10 | Parametros de risco congelados | hash dos inputs iguais aos aprovados |
 
 **GATE F2:** simulacao de 6 falhas (desconexao, requote, spread anormal,

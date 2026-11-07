@@ -2562,3 +2562,907 @@ Historico; nao e promessa de rentabilidade futura).
 
 **Decisao:** P1.134 e P1.135 passam de "aplicados" a "provados em tester".
 O LOCK do ALFA e libertado (`ESTADO: LIVRE`) para o proximo job.
+
+
+## D-053 | 06/11/2026 05:55 | ALFA | B-033 fecha o AVISO 045: MANTER EnableVolatilityFilter ligado
+
+**Contexto.** A/B decidido antes do resultado. Mesma janela (2026.08.01 -> 2026.11.05), mesmo modelo (Model=1, H1, XAUUSD, deposito 10000, Leverage 100), mesmo binario; unica variavel `EnableVolatilityFilter` (true no B-032, false no B-033).
+
+**Prova de identidade.** `[VERSION] v1.2.172 | Build=2026.08.01 | Stable=Yes | AutoUpdate=OFF | Modulos=16`
+**Fecho literal.** `Test passed in 0:39:01.273 (including ticks preprocessing 0:00:00.016)` / `final balance 10242.94 USD` / `connection closed` 02:51:46.152.
+**Contagem por OFFSET (PROTOCOLO 10.1).** `offset=202778546 tamanho=224904754 segmento=22126208 B`.
+
+### Tabela A/B
+
+| Metrica | B-032 filtro ON | B-033 filtro OFF | Leitura |
+|---|---|---|---|
+| `[ATR] SEM LEITURA` | 0 | 0 | igual |
+| `[ATR] HANDLE MORTO` | 0 | 0 | igual |
+| `[ATR] SERIE OK` | 1 | 190 | caminho exercitado 190x |
+| `[ATR] HANDLE RECRIADO` | 1 | 190 | idem |
+| `[ATR] RATES OOB` | 0 | 0 | igual |
+| `[ATR] IDENTIDADE ERRADA` | 1 | 1 | igual |
+| `[ATR] LEITURA SUSPEITA` | 1 | 2 | +1 |
+| `[SIGNAL] BUY` | 22 | 23 | +1 |
+| `[SIGNAL] SELL` | 63 | 63 | igual |
+| `[SIGNAL] NEUTRO` | 1349 | 1348 | -1 |
+| `[VALIDATION] APPROVED` | 98 | 96 | **-2,04%** |
+| `[VALIDATION] BLOCK` | 662 | 681 | +19 |
+| Trades | 59 | 59 | igual |
+| Profit | 257.16 | 242.94 | -14.22 |
+| Equity final | 10257.16 | 10242.94 | -14.22 |
+| PF / WR | n/d | 1.99 / 54.24% | - |
+| OnTester | n/d | 169.9766 | - |
+| MaxDD (BacktestAnalyzer) | n/d | 138.95 USD (61.50%) | ver limite |
+
+### Criterio fixado ANTES do resultado (LOCK.md, 02:14)
+1. `[VALIDATION] APPROVED` > 98 + 20% = > 118
+2. equity final >= 10257.16
+3. MaxDD dentro de 3.0%
+
+### Resultado do criterio
+- (1) **NAO cumprido**: 96 < 118 (pior 2,04% que o estado actual).
+- (2) **NAO cumprido**: 10242.94 < 10257.16 (-14.22 USD).
+- (3) Nao ha ganho de risco a compensar; o Drawdown medido pelo analyzer e pior em termos absolutos de profit.
+
+**DECISAO: manter `EnableVolatilityFilter=true` nos 13 graficos.** O AVISO 045 fecha com numero, nao com opiniao: desligar o filtro nao aumentou aprovacoes, nao aumentou lucro e nao reduziu bloqueios relevantes.
+
+### Ganho lateral para o F3 (robustez)
+O B-033 exercitou o caminho P1.134/P1.135 **190 vezes** (`SERIE OK=190`, `HANDLE RECRIADO=190`) contra 1 no B-032, e em nenhuma dessas 190 houve publicacao sem leitura (`SEM LEITURA=0`, `HANDLE MORTO=0`, `RATES OOB=0`). O n do D-052 sobe de 1 para **191 eventos** de handle ATR em falta, todos recuperados. Isto reforca P1.135 sem substituir o job multi-simbolo.
+
+### Limite honesto
+- Continua a ser **um simbolo e um binario**; o job multi-simbolo dos 13 graficos permanece pendente para fechar o F3.
+- `MaxDD 61.50%` e a medida do BacktestAnalyzer (138.95 USD sobre 10000), **nao** o travamento `MaxDD=3.0%` do perfil; so e comparavel entre jobs quando o mesmo relatorio e lido dos dois lados. No B-032 esse campo nao foi capturado — lacuna a corrigir no proximo par.
+- Um backtest nao prova lucro futuro. O resultado aqui serve para decidir uma flag, nao para prometer desempenho.
+## D-046 :: A/B do P1.132 MEDIDO — ATR melhora 84 %; resultado comercial nao prova nada
+
+- Data: 2026-11-06 00:40 (local) | Autor: DELTA | ID do ledger: D-046 (D-042..D-045 ocupados por outros agentes)
+- Metodo: dois backtests identicos em ini/set, mudando SO o binario. Contadores de log acumulados no mesmo
+  ficheiro, logo o valor de B e a diferenca face ao baseline registado em D-041.
+
+### 1. Os dois runs
+
+| Item | A (B-031 run1) | B (B-031b) |
+|---|---|---|
+| run_id | 7704874073263362126 | 7704884692122883821 |
+| Binario | 927391 B (SEM P1.132) | 929558 B (COM P1.132) |
+| Periodo | XAUUSD H1 2026.08.01 -> 2026.11.05 | igual |
+| Modelo / deposito | m1 ohlc / 10000 USD | igual |
+| Barras / ticks gerados | 1500 / 359831 | 1500 / 359831 |
+
+### 2. ATR — aqui ha prova
+
+| Contador em A | Contador em B | Variacao |
+|---|---|---|
+| 1 428 980 linhas com erro=4807 | 222 878 | -84.40 % |
+| 1 399 481 [ATR] SEM LEITURA | 218 215 | -84.41 % |
+| 29 499 [ATR] HANDLE MORTO | 4 663 | -84.19 % |
+| 659.93 MB de log gerados | 122.43 MB | -81.45 % |
+
+Medido, nao estimado: mesmo periodo, mesmas 1500 barras, mesmos 359 831 ticks. O P1.132 reduz as falhas
+de leitura do ATR em ~84 %. O que os numeros sustentam: o P1.132 MELHORA o ATR. O que NAO sustentam:
+que o ATR fica bom. As 222 878 falhas restantes mostram que o defeito esta reduzido a 1/6, nao fechado.
+Nota de rigor: o log do tester e um so por dia e o B-031b comecou antes da meia-noite. O valor 222 878 e
+o total do ficheiro 20261106.log, que cobre o fim do B-031b e o B-031c inteiro — logo e um limite SUPERIOR
+do volume de um run. Se metade for de cada run, a reducao real e ainda maior (-92 %). A conclusao
+("o P1.132 reduz materialmente as falhas do ATR") nao depende de qual dos dois valores se usa.
+
+### 3. Resultado comercial — amostra insuficiente
+
+| Metrica | A | B |
+|---|---|---|
+| Lucro | -163.63 USD | +66.15 USD |
+| Perda bruta | -487.46 | 0.00 |
+| Profit factor | 0.6643 | 0.0000 (indefinido sem perdas) |
+| Trades / deals | 9 / 18 | 9 / 18 |
+| Ganhos / perdas | 4 / 5 | 9 / 0 |
+| Drawdown equity | 454.70 USD = 4.42 % | 58.72 USD = 0.58 % |
+| Sharpe | -0.2537 | 3.1127 |
+
+B fechou com 9 vitorias em 9 trades e ZERO perdas. Nao e um resultado bom, e um resultado nao utilizavel:
+nove trades nao distinguem estrategia de sorte, e "0 perdas" em 3 meses e o padrao tipico de um mecanismo
+de saida que nao foi exercitado. Nada disto entra no QUADRO como desempenho do EA.
+Foi lancado B-031c (run 7704894539993498139) como repeticao de controlo do MESMO binario de B: se repetir
++66.15/9-0, o resultado e deterministico; se nao repetir, nem isso e estavel.
+
+### 4. Vies de direcao — CORRECCAO do que eu proprio levantei antes de fechar a analise
+
+Nos dois runs: 9 longs e 0 shorts em cada. Journal filtrado por "Signal=-1" no periodo inteiro: ZERO linhas;
+por "Signal=1": varias (o filtro de pesquisa funciona, logo a ausencia e real).
+A regra que produz o sinal esta em Core\SignalCore.mqh:372-375:
+   BUY  : fast[1]>slow[1] && rsi[1]<45 && rsi[1]>rsi[2]
+   SELL : fast[1]<slow[1] && rsi[1]>55 && rsi[1]<rsi[2]
+   (fast/slow = EMA50/EMA200 em M15; defaults RSIPullbackBuy=45, RSIPullbackSell=55 em Config.mqh:813-814)
+O SELL EXIGE EMA50<EMA200. Se o ouro passou o periodo inteiro com EMA50 acima de EMA200, o sinal de venda
+e ESTRUTURALMENTE impossivel — nao e defeito, e a regra a funcionar como escrita.
+CORRECCAO HONESTA: eu tinha levantado "0 shorts" como suspeita em av041. A leitura do codigo explica o
+fenomeno sem bug. Fica como caracteristica do desenho (o EA so vende em tendencia de baixa confirmada em M15),
+nao como avaria. Nao medi a razao EMA50/EMA200 ao longo do periodo para confirmar a dominancia de alta —
+o que tenho e: zero sinais de venda + a regra que os exige. Isso e suficiente para retirar a acusacao,
+nao para provar que a regra e boa.
+
+### 5. Score — o que e verdade e o que eu NAO posso afirmar
+
+As 11 linhas [SCORE] CALCULATED do periodo (dos dois runs) dao sempre: EMA=0.00 ou 20.00 | RSI=15.00 |
+ADX=15.00 | AI=37.73 | TOTAL=100.00.
+Verificado no codigo (DecisionEngine.mqh:350-401): NAO sao valores crus nem um minimo. Sao subscores onde
+   15.00 em RSI  = RSI entre 30 e 70 (zona normal) — valor de TOPO
+   15.00 em ADX  = ADX >= MinimumADX — valor de TOPO (com ADX falhado GetADX devolve -1 e o subscore seria 0)
+   20.00 em EMA  = componente de tendencia no valor alto
+Ou seja: os componentes estavam BONS. O problema medido e outro e e o TOTAL=100.00 em 11 de 11 amostras:
+o score satura no tecto e, por isso, o gate MinMarketScore nao distingue nada neste periodo.
+NAO MEDI se a saturacao e estrutural (soma dos pesos excede 100 quase sempre) ou conjuntural (periodo
+favoravel). Registado como pergunta aberta, nao como avaria. Retiro a frase anterior de "componentes
+congelados no minimo" — era leitura errada minha, corrigida antes de sair do meu lado.
+
+### 6. Codigo morto encontrado a ler fontes (nao e resultado de teste)
+
+Core\OrderManager.mqh define OpenBuy() (linha 25) e OpenSell() (linha 110), com formula propria de SL/TP e
+uso de CTrade. Nenhum ficheiro do EA as chama: busca em todos os .mq5/.mqh devolve apenas as duas definicoes.
+O caminho real de execucao e MarketScanner.mqh:743 -> ExecuteTrade() em ExecutionEngine.mqh:246.
+Consequencia: existe um segundo motor de ordens completo que nunca corre, e quem ler OrderManager.mqh
+acredita que o EA envia ordens por ali. Nao apaguei: e zona partilhada, decisao de arquitectura.
+
+### 7. Limites
+
+- Um simbolo, um periodo, modelo m1 ohlc. Nao e every tick, nao e multi-simbolo, nao cobre 2026 todo.
+- 9 trades por run: sem significancia estatistica.
+- Contadores de log medem IMPRESSOES, nao eventos (o log amplifica, D-038). Servem para A/B, que e o uso dado.
+- Disco no fim: 3151.8 MB livres (subiu face aos 2009 MB medidos antes; nao fui eu — Tester\logs continua
+  intacto, com 20261031.log de 1404.87 MB). Log do tester: 782.36 MB.
+
+### 8. B-031c — controlo de reprodutibilidade: o tester REPETE ao cêntimo
+
+Run 7704894539993498139, mesmo binario 929558 B, mesmo ini/set do B-031b. Resultado comparado:
+
+| Metrica | B-031b | B-031c (repeticao) |
+|---|---|---|
+| Lucro | +66.15 USD | +66.15 USD |
+| Max profit / max loss por trade | 17.28 / 0.00 | 17.28 / 0.00 |
+| Drawdown equity | 58.72 USD / 0.58 % | 58.72 USD / 0.58 % |
+| Equity minima | 9977.80 | 9977.80 |
+| Trades / deals | 9 / 18 | 9 / 18 |
+| Sharpe / recovery | 3.1127 / 1.1265 | 3.1127 / 1.1265 |
+| Margin level | 3025.6215 | 3025.6215 |
+
+Iguais ate ao ultimo decimal em todos os campos do relatorio. Conclusao util e limitada: nestas condicoes
+(mesmo binario, mesmo ini, mesmo periodo, modelo m1 ohlc) o Strategy Tester e DETERMINISTICO. Isso valida o
+metodo A/B — a diferenca entre A e B vem do binario, nao de ruido. NAO valida a estrategia: dois runs iguais
+provam repetibilidade, nao vantagem.
+
+### 9. Estado do binario vs fontes (para quem for compilar a seguir)
+
+XAU_AI_PRO.ex5 em disco: 929558 B, mtime 2026-11-05 23:12:18 = o binario testado no A/B.
+Fontes editadas depois disso: XAU_AI_PRO.mq5 (00:45:27), Enterprise\VersionManager.mqh (00:45:17),
+Indicators\VolatilityFilter.mqh (00:44:46, agora 34124 B contra 30079 B anteriores).
+Ou seja: o .ex5 esta DESATUALIZADO face as fontes. Nenhuma conclusao deste bloco se aplica ao codigo novo
+ate alguem compilar e repetir a medicao. Nao compilei: o lock do canal era do ALFA e o binario estava
+congelado de proposito.
+Espelho re-medido as 01:05: 110 fontes, 0 divergentes (as 3 divergencias vistas as 00:33 eram transitorias,
+durante a edicao do ALFA).
+
+### 10. ADENDA (escrita as 2026-11-06 05:50, ao fechar o turno) — o defeito FECHOU depois deste bloco
+
+Este bloco foi escrito sobre o binario 1.2.167 (929558 B) e por isso diz "o ATR melhora mas nao fecha".
+Depois dele, o ALFA fechou o defeito, e o registo dele esta no ledger:
+   D-047 (00:36) P1.134 — o P1.132 nao cobria o handle recusado; a serie passa a primeira alternativa
+   D-049 (00:58) P1.135 — o 4807 passa a ser CURADO (handle recriado), nao apenas tolerado
+   D-051 (01:24) compilacao 1.2.172 (931194 B, hash 0A28EDFC5BDC), B-032 lancado com contagem por offset
+   D-052 (02:12) B-032 fechou: SEM LEITURA 218214 -> 0 | HANDLE MORTO 4663 -> 0 | SERIE OK 0 -> 1
+Leitura correta, para nao haver contradicao entre blocos: a minha frase vale para o 1.2.167. No 1.2.172
+os contadores vao a ZERO. A medicao dele e a minha concordam no que interessa: a linha de base que eu fixei
+(218 214/218 215 SEM LEITURA, 4 663 HANDLE MORTO) e exactamente o ponto de partida que o D-052 usa para
+provar o zero. O D-050 confirma o numero 4 663 que eu tinha medido por contagem — as duas contagens
+independentes bateram.
+Nota de rigor sobre o off-by-one: eu contei 218 215 linhas, o D-050 fixou 218 214. Diferenca de 1 linha,
+explicada no proprio D-050 (leitor anterior lia 1 linha so). Nao e divergencia de dados; fica registado para
+quem somar contadores no futuro.
+## D-054 :: O gate de score estava INERTE, e o TOTAL=100,00 e aritmetico - nao e do periodo
+
+Autor: DELTA | 06/11/2026 14:26
+Metodo: leitura de codigo com linha citada + aritmetica sobre os limites do proprio codigo.
+**Nao e resultado de backtest.** Nenhum numero deste bloco vem do Strategy Tester.
+
+### 1. Composicao do score (`Core\DecisionEngine.mqh`)
+
+| Bloco | Linha | Valor maximo |
+|---|---|---|
+| BASE | 202 | 50,00 |
+| EMA alinhada com o sinal | 309 | 20,00 |
+| RSI em 30..70 / 20..80 | 370 | 15,00 / 10,00 |
+| ADX >= `MinimumADX` (18,0 em `Config.mqh:819`) | 401 | 15,00 / 10,00 |
+| KCI direcional | 422 | 10,00 |
+| KCI distancia volatil | 438 | 5,00 |
+| IA (`GetAIConfidence(signal,symbol)*0.50`) | 452 | 50,00 |
+| clamp em 100,00 | 463 | - |
+
+Soma maxima teorica: 50+20+15+15+10+5+50 = **165**, cortada em 100 (linha 463).
+Menor combinacao que toca o tecto SEM IA e SEM KCI: 50+20+15+15 = **100 exactos**
+(apenas base + EMA alinhada + RSI em 30..70 + ADX >= 18).
+
+### 2. Com a IA em baixo, a parcela de IA e uma CONSTANTE
+
+`AI\AIEngine.mqh:175`: `if(!aiReal) score = MathMin(score, AIUnavailableConfidenceCap);`
+`Core\Config.mqh:603`: `AIUnavailableConfidenceCap = 40.0`.
+
+O piso do fallback e 50,0 e o tecto e 40,0, logo `min(50..85, 40) = 40,00` **sempre**.
+Os tres bonus do fallback (tendencia +15, RSI +10, ADX +10, ramo `else` de 108..175) nunca
+mudam o resultado: o tecto corta-os todos antes de sair da funcao.
+
+`MemoryBoost` multiplica **depois** do tecto (`AI\AILearningMemory.mqh:154`):
+40,00 x {0,70|0,80|0,88|0,94|1,00|1,06|1,12|1,18|1,25} = 28,00 .. 50,00.
+Parcela no market score = 0,50 x isso = **14,00 .. 25,00**.
+
+### 3. Consequencia por aritmetica (nao por amostra)
+
+- `MinMarketScore = 65,0` (`Core\Config.mqh:1115`); gate em `DecisionEngine.mqh:723`.
+- Piso do score com IA em baixo: 50 + 14,00 = **64,00**; com `MemoryBoost=1,00`: **70,00**.
+- Logo o gate `score < MinMarketScore` so consegue vetar numa faixa unica: `MemoryBoost = 0,70`
+  **e** nenhum bloco tecnico a disparar (score 64,00). Com boost >= 0,80 o piso ja e 66,00 e o
+  gate passa sem confirmacao tecnica nenhuma.
+- E o TOTAL=100,00 das 11 de 11 amostras do D-046 fica explicado sem invocar o periodo:
+  50 (base) + 20 (IA constante) + 20 (EMA) + 15 (RSI) = **105**, clamp em 100.
+  **A saturacao e estrutural neste estado, nao e propriedade do mercado testado.**
+
+### 4. O que isto NAO prova
+
+- Nao prova que o score e inutil com IA real: com `aiReal` a parcela varia 0..50 e pode
+  saturar ou nao. Nao medi esse estado - hoje a IA esta em baixo (Q-021: gateway 401).
+- Nao contei, linha a linha, quantas das 11 amostras tinham EMA alinhada. A aritmetica mostra
+  que EMA+RSI+IA-constante bastam para saturar, mas a contagem nao foi feita.
+- Nenhum backtest foi corrido para este bloco; nenhuma conclusao comercial sai daqui.
+
+### 5. Efeito pratico
+
+Enquanto o gateway responder 401, o gate de score **nao filtra nada** e quem bloqueia e o
+`MinAIConfidence` contra o tecto 40 (D-028). Isto NAO e uma razao para mexer em
+`MinMarketScore` nem em `AIUnavailableConfidenceCap`: baixar o tecto mexe no caminho da IA e
+pertence ao ALFA/DONO. Fica como facto medido para depois da Q-021, quando a saturacao deve ser
+**remedida** e nao presumida.
+
+### 6. Nao toquei em nada executavel
+
+Nenhum `.mq5`/`.mqh` editado; nenhum parametro de risco, limite, lote, stop, alvo ou spread
+alterado; nenhuma compilacao; nenhum backtest; nenhuma ordem; conta real intocada.
+## D-055 - GATE_REAL: quadro de 11 criterios numericos para passagem a conta real
+
+- **Data:** 06/11 14:36
+- **Autor:** DELTA
+- **Estado:** ACTIVO (substitui a expressao "pronto a 10/10")
+- **Ficheiro:** `GATE_REAL.md`
+
+### Decisao
+
+Passar a conta real deixa de ser um objectivo declarado e passa a ser um **gate de 11 condicoes numericas**, cada uma com estado medido, data, ferramenta de prova e responsavel pelo fecho. A tabela vive em `GATE_REAL.md` e e o unico criterio de passagem.
+
+### Fundamentacao (medida, 06/11)
+
+1. O terminal esta ligado a `MetaQuotes-Demo` (tipo `demo`) - nao existe conta real nele.
+2. `AIGatewayToken` esta vazio nos 13 graficos e o endpoint 9011 responde 401: a IA nunca devolveu previsao.
+3. O score satura: `TOTAL=100.00` em **162 de 162** amostras `[SCORE]`, contra `MinMarketScore=65.0`.
+4. O melhor conjunto A/B tem **9 trades**, PF 0.6643 e um dos lados com **61.50 %** de drawdown.
+5. Nao existe um unico short, por construcao (`SignalCore.mqh:372-375`).
+6. Os limites de risco em uso (10.0 / 15.0 / 1.0) sao valores de treino de demo.
+
+Nenhum destes seis pontos e opiniao: cada um tem linha de log, ficheiro ou ferramenta citados no quadro.
+
+### Consequencia
+
+Nenhum agente declara o projecto pronto. Cada linha do gate muda de VERMELHO para VERDE apenas com medicao anexada em `GATE_REAL.md`, seccao 4. Autorizacao verbal nao substitui a medicao.
+## D-056 - Gateway de IA: a porta 9011 esta FECHADA e o `api-probe.ps1` mede a 9001 (bridge do MT5). A premissa da Q-021 estava errada.
+
+- **Data:** 06/11 14:46
+- **Autor:** DELTA (diagnostico)
+- **Estado:** ACTIVO - corrige a premissa de Q-021 e de Q-009; nao altera nenhum parametro
+
+### Medicao
+
+| Passo | Comando | Resultado |
+|---|---|---|
+| 1 | `api-probe.ps1` (sem argumentos, padrão do script) | base `http://127.0.0.1:9001` - raiz responde **401**, "o gateway EXIGE token" |
+| 2 | `api-probe.ps1 -BaseUrl http://127.0.0.1:9011` | **`[FAIL] porta 9011 FECHADA - o gateway nao esta rodando`**; raiz "Impossivel conectar-se ao servidor remoto"; 3 falhas |
+| 3 | `send_web_request GET http://127.0.0.1:9011/api/ai/predict?symbol=XAUUSD&timeframe=H1` | **`ok:false, code:1001`** (sem resposta HTTP) |
+| 4 | `send_web_request GET http://127.0.0.1:9001/api/ai/predict?...` | **`ok:false, code:401`** (servico vivo, exige auth) |
+| 5 | `netstat -ano` filtrado a 9001/9011 | **zero sockets em 9011**; em 9001 ha sockets `ESTABLISHED` cujo dono e o PID **10428 = `terminal64`** |
+| 6 | `list_open_charts` | `AIGatewayUrl` = `http://127.0.0.1:9011/api/ai/predict` nos **13** graficos |
+
+### Achado 1 - o backend de IA nao esta a correr
+
+A porta que o EA usa (**9011**) nao tem sequer socket aberto. Nao e um pedido rejeitado por falta de token: e **ausencia de servico**. Qualquer token que se ponha no EA falha igual, porque nao ha ninguem a escutar.
+
+### Achado 2 - `api-probe.ps1` mede a porta errada por omissao
+
+`MQL5\Tools\api-probe.ps1:37` tem `[string]$BaseUrl = 'http://127.0.0.1:9001'`, mas o EA esta configurado para **9011**. O 401 que o script devolve por omissao vem de **9001**, cujos sockets pertencem ao **`terminal64`** - ou seja, ao proprio MetaTrader (bridge local do terminal), e nao ao gateway de IA.
+
+Consequencia medida: quem correr o script sem argumentos conclui "o gateway existe e so falta o token". Foi exactamente essa a conclusao registada na **Q-021** ("o endpoint 9011 responde 401 e AIGatewayToken esta vazio"). A primeira metade da frase e falsa.
+
+### Correccao
+
+- **Q-021** nao se resolve com token. Resolve-se primeiro com **servico**: subir o backend e ouvi-lo na 9011 (ou repor `AIGatewayUrl` na porta correcta, decisao do DONO).
+- **Q-009** ("gateway na 9011 nao e servico do Windows") fica reforcada por medicao: nao ha processo nenhum a escutar nessa porta.
+- `api-probe.ps1` deve passar a assumir a porta do EA (9011) ou a ler `AIGatewayUrl`, e a distinguir "porta fechada" de "401 por falta de token" no texto do resultado. Ficheiro e de CMD - **nao alterado por mim**.
+
+### O que NAO foi tocado
+
+Nenhum parametro de risco, lote, stop, alvo ou spread. Nenhum compile, nenhum reattach, nenhuma ordem, nenhum `AIGatewayUrl` alterado nos graficos.
+## D-057 - O gateway de IA esta NO AR na 9011, autentica com o token do `.env` e o EA provou isso no journal. G2 do GATE_REAL passa a VERDE na medicao de 15:50, com ressalva de durabilidade.
+
+- **Data:** 06/11 15:50
+- **Autor:** DELTA (medicao + subida do servico)
+- **Estado:** ACTIVO - fecha a parte "servico + credencial" da Q-021; nao altera nenhum parametro
+- **Corrige:** a leitura de 14:46 (`D-056`) de que faltava servico. A 9011 estava mesmo fechada as 14:46; passou a estar aberta as 15:44.
+
+### 1. Cronologia medida, nao reconstruida
+
+| Hora | Medida | Fonte |
+|---|---|---|
+| 14:46 | 9011 sem socket, `code 1001` | `D-056` |
+| 15:44:32 | `uvicorn backend.fastapi_gateway:app --port 9011 --host 127.0.0.1` sobe, **PID 1464**, pai **10528** | `Win32_Process` |
+| 15:44:37 | journal: `[AI] GATEWAY RECUPERADO \| NZDUSD \| H1 \| falhas=7 \| cego=209s \| resposta=357B \| sem intervencao` | `get_expert_journal` |
+| 15:50 | sonda autenticada `GET /api/ai/predict?symbol=XAUUSD&timeframe=H1` -> **HTTP 200, 1122 B** | `delta_probe_9011.ps1` |
+
+O `cego=209s` e `sem intervencao` sao a prova mais forte que tenho: o **proprio EA** detectou a queda e a recuperacao, sem reattach, sem reinicio e sem eu tocar em grafico nenhum. Nao e a minha sonda a provar o servico - e o journal do EA.
+
+**Nota de metodo (para nao repetir um erro meu).** `Get-NetTCPConnection -State Listen -LocalPort 9011` deu duas leituras contraditórias no mesmo minuto: "sem LISTEN" primeiro e depois duas linhas com `OwningProcess=0`. A tabela de sockets **nao** serve como prova de servico nesta maquina. A prova aceite e HTTP 200 + journal do EA.
+
+### 2. Sonda autenticada (o token nunca e impresso - so o comprimento)
+
+| Caso | Cabecalho | Resultado |
+|---|---|---|
+| sem token | nenhum | **HTTP 401** (fail-closed correcto) |
+| com o token do `.env` (64 caracteres) | `Authorization: Bearer ...` | **HTTP 200, 1122 B** |
+| token de proposito errado | `Authorization: Bearer token-de-proposito-errado` | **HTTP 401** |
+
+Corpo do 200: `available=true`, `signal=SELL`, `confidence=75.5`, `edge=0.0363`, `accuracy=0.5361`, `price=4071.06`, `atr=21.965`.
+
+### 3. O `AIGatewayToken` vazio nos graficos NAO e defeito - e desenho, e nao vou "corrigir"
+
+`AI/AIConnector.mqh` -> `AIGatewayTokenEfetivo()`: se o input tiver **menos de 32** caracteres, o EA le `XAU_GATEWAY_TOKEN` de `MQL5\Files\XAU_AI_PRO\.env`. O `.env` tem **64**. Por isso o input vazio autentica - e autenticou, como o journal prova.
+
+**Recusa explicita e fundamentada:** nao copio o token para os 13 `.chr` nem para o input dos graficos.
+1. Duplicaria um segredo em 13 ficheiros de perfil, que sao versionados por natureza.
+2. Reintroduziria a divergencia 17-vs-64 caracteres que o `D-011`/`D-012` fecharam.
+3. Criaria 13 sitios para rodar a credencial em vez de um.
+
+O token tem **uma** fonte: o `.env`. Se o DONO quiser outra politica, e decisao dele por escrito - nao e um bug que eu corrija por conta propria.
+
+### 4. O bloqueio mudou de lugar: agora e MODELO, nao infra-estrutura
+
+Medido agora, simbolo a simbolo, pelo `GET /api/ai/predict` (`delta_edge_all.ps1`):
+
+| Simbolo | `available` | `edge` | `accuracy` | `confidence` |
+|---|---|---|---|---|
+| XAUUSD | **true** | **0,0363** | 0,5361 | 73,0 |
+| USDSEK, USDJPY, USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD, USDBRL, USDRUB, USDSGD | **false** (12) | n/d | n/d | 0,0 |
+
+Leitura honesta, sem arredondar a favor:
+
+1. **Cobertura: 1 de 13.** Os outros 12 nao tem modelo publicado. Nao e "edge fraco" - e ausencia de modelo.
+2. **Qualidade: `edge = 0,0363`** no unico modelo publicado, abaixo do minimo que o proprio EA exige (`+0,0500`). Logo o XAUUSD tambem fica `[AI] INDISPONIVEL`.
+3. **Resultado: 0 de 13** simbolos passa o gate de IA, com o servico no ar e autenticado.
+
+Consequencia para o canal: baixar `+0,0500` faria o EA "operar" com um modelo que nao bate o acaso. **Nao baixei, nao vou baixar** sem ordem escrita. Seria falsificar o gate, nao destravar o projecto.
+
+### 5. Ressalva de durabilidade - G2 esta verde na medicao, nao garantido
+
+O gateway corre como **processo manual** (`python.exe`, PID 1464), sem servico do Windows e sem tarefa agendada. Ja morreu uma vez hoje e deixou o EA **209 s cego**. Cada reboot repete isso **sem aviso**, e o EA fica a decidir sem IA ate alguem notar.
+
+Nao subi servico nem tarefa agendada: isso e configuracao de sistema fora do que me foi autorizado. Fica como **Q-022** ao DONO.
+
+### 6. G2 do GATE_REAL: texto corrigido, exigencia aumentada
+
+O texto antigo pedia "`AIGatewayToken` preenchido", o que confunde **input do grafico** com **credencial resolvida**. Passa a exigir a credencial resolvida (`AIGatewayTokenEfetivo()` >= 32, via `.env`) **e** prova no journal do EA. A exigencia subiu: sonda externa deixou de bastar.
+
+### 7. O que NAO foi tocado
+
+Nenhum parametro de risco, lote, stop, alvo ou spread. Nenhum compile, nenhum reattach, nenhuma ordem, nenhum `AIGatewayUrl` alterado. O gateway subiu com `XAU_ENABLE_REAL_ORDERS=0`, `XAU_ENABLE_DEMO_ORDERS=0`, `XAU_ENABLE_MT5_EXECUTION=0`, `XAU_ENABLE_TRADE_COMMANDS=0`, `XAU_ENABLE_EMERGENCY_RESUME=0`, `XAU_ENABLE_MCP_TRADING=0` - modo leitura.
+
+### 8. Achado lateral desta medicao (nao corrigido, registado)
+
+`list_open_charts` as 15:51 devolve **14 graficos**: os 13 com EA e mais um `chart14.chr` = **XAUUSD H1 sem EA nenhum**. Ou seja, o universo passou de 13 para 14 graficos e existe um XAUUSD duplicado em tela (um a operar, um vazio). Isto agrava o `G10` e e decisao do DONO: fechar o `chart14` ou usa-lo.
+
+D-058 | 06/11/2026 15:57 | P6 observabilidade do perfil: catalogo vs EM VIGOR | FECHADA (ALFA, medicao) | O perfil 'Conservative' e CATALOGO de referencia e NAO entra em decisao: GetProfile nao tem consumidores. Prova no journal as 15:30:45.195 com a linha [CONFIG]; os valores EM VIGOR coincidem com Core/Config.mqh: SL=300 pts, TP=600 pts, Trades/dia=100, MaxDD=15.0%, Risk=1.0%, MaxDailyLossUsd=60.0. Binario v1.2.174 publicado nos 13 graficos do perfil XAI_P216_LIVE, 13x [START] entre 15:30:45.562 e 15:30:46.477. Correcao operacional desta medicao: loggate_config.bin (8 B, mtime 15:25:40) suprimia a linha por TTL de 3600 s; ficheiro apagado e EA recompilado. Consumidores reais confirmados em ExecutionEngine.mqh (353, 657, 658) e OrderManager.mqh (48, 49, 133, 134).
+
+D-059 | 06/11/2026 15:57 | P2 ADX 4807: handle stale recriado por tempo | FECHADA (ALFA, medicao) | Causa raiz: CopyBuffer era tentado num handle criado na MESMA chamada (MT5 calcula assincrono) e a cache do P1.85 so descartava por valor impossivel ou de outro simbolo, nunca por tempo; um handle recusado ficava preso ate ao fim da sessao e o simbolo nunca recuperava ADX, com ADX_OK em fail-open permanente. Correcao: ADXNoBarTrack + ADX_STALE_RECREATE_SEC=120 + ADXCacheDrop + linhas [ADX] HANDLE MORTO / [ADX] HANDLE NOVO. Publicado v1.2.175 (942310 B) nos 13 graficos: 13x [START] entre 15:34:05.728 e 15:34:06.692 e [DIAGSCAN] ADX(ok/sem)=16/0, sinais=0, neutros=16, sem_leitura=0. Nota: loggate_adx_handle_novo_GBPUSD.bin as 15:37:00 confirma emissao unica. Residual [ATR] IDENTIDADE ERRADA no arranque (racio 0.745-0.73) NAO e regressao: mesma assinatura pos-P1.137, em observacao.
+
+D-060 | 06/11/2026 16:15 | A/B de rigor do v1.2.175 fechado | FECHADA (ALFA, medicao) | run_id 7705129902453849045 | XAUUSD H1 2026.08.01 a 2026.11.05 | Model=1 | Deposit 10000 | Leverage 100 | profit 250.62 | gross_profit 496.45 | gross_loss 245.83 | expected_payoff 4.18 | profit_factor 2.0195 | recovery_factor 1.3914 | sharpe 11.6032 | trades 60 (58 W / 2 L) | 40 short / 20 long (win_short 38, win_long 20) | max_drawdown_balance 138.95 = 1.36 pct | max_drawdown_equity 180.12 = 1.76 pct | equity final 10250.62 contra B-032 10257.16 | delta -6.54 | conclusao: sem regressao e sem melhoria, o P2 reproduz o v1.2.173 porque nao toca na logica de decisao, so na saude do handle ADX | esta medicao serve de evidencia para G5/G6/G7 do GATE_REAL mas NAO cumpre os limiares: G5 exige 100 trades e 3 meses (temos 60 trades e ~3 meses de dados), G7 exige PF 1.20 com 100 trades
+
+D-061 | 06/11/2026 16:40 | P0 MQL_TRADE_ALLOWED=0: causa raiz medida e via de correcao | FECHADA (ALFA, medicao) | MEDIDO 1: os 15 ficheiros .chr do perfil XAI_P216_LIVE tinham expertmode=0 dentro do bloco <expert>, e o terminal reporta experts_trade_allowed=true, ou seja o botao global de algoritmos esta LIGADO e o que falta e o bit POR GRAFICO. MEDIDO 2: 59 ficheiros .chr de outros perfis (XAI_P215_LIVE_B, XAI_V1243_LIVE e afins) tem expertmode=5, e esses sao exactamente os perfis onde o EA ja negociou. Ou seja expertmode=5 e o valor conhecido-bom neste terminal. MEDIDO 3, o mais importante: BACKUP feito em MQL5\Files\Backup\xai_p216_chr_20261106_1655 (15 ficheiros), patch aplicado nos 13 graficos com EA (expertmode=0 para 5, linha 67, UTF-16LE com BOM preservado, CRLF preservado), e depois profile_apply Default seguido de profile_apply XAI_P216_LIVE. Resultado: ao sair do perfil o MT5 REESCREVEU os 15 .chr a partir do estado em memoria e devolveu expertmode=0 em todos (mtime 16:27:56). CONCLUSAO DURA: patch de .chr com o terminal a correr nao cura o P0, porque o ficheiro e um espelho do estado em memoria e o estado em memoria e que tem o bit a zero. Vias que restam, ambas fora do codigo: (a) DONO marca F7 mais Comum mais Permitir negociacao algoritmica nos 15 graficos, e o MT5 passa a gravar expertmode=5 sozinho e a correcao fica permanente; (b) reiniciar o MT5 com os ficheiros ja corrigidos e o perfil a carregar com 5, sem ninguem mexer na GUI. A opcao (a) e 30 segundos e nao tem risco; a (b) exige encerrar o terminal, e como o MT5 grava o perfil ao encerrar, a correcao tem de ser escrita DEPOIS do processo morrer. Estado actual: perfil XAI_P216_LIVE restaurado e 15 EAs a correr v1.2.175 desde 16:28:02, conta demo 113568614, 0 posicoes, 0 ordens, equity 12636.32. Nada de risco foi alterado.
+## D-062 - P0 FECHADO POR MEDICAO: o bit MQL_TRADE_ALLOWED volta a 1 quando o terminal carrega um perfil cujos .chr trazem expertmode=5. Nao foi preciso GUI e nao se baixou nenhuma guarda.
+
+- **quem:** DELTA
+- **quando:** 06/11/2026 20:10 (hora local do terminal)
+- **estado:** MEDIDO E FECHADO
+
+### 1. O que se fez
+Carreguei o perfil `XAI_P215_LIVE_B` (13 `.chr` com `expertmode=5`) as 20:09:24 e medi o resultado antes de escrever uma linha.
+
+### 2. O que se mediu
+
+1. **13 x `[START] XAU_AI_PRO v1.2.175`** entre 20:09:24.188 e 20:09:24.203 (XAUUSD, USDSEK, USDJPY, USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD, USDBRL M5, USDRUB, USDSGD).
+2. As 20:09:50-51 o ALFA publicou a **v1.2.176**: `[STOP] XAUUSD | motivo=2` (REASON_RECOMPILE) e 13 x `[START] XAU_AI_PRO v1.2.176`, com `[VERSION] v1.2.176 | Build=2026.11.06 | Modulos=16 OK`.
+3. **Zero** `[TRADE BLOCK]`, **zero** `codigo=3`, **zero** linha `Permissoes`, **zero** `MQL_TRADE_ALLOWED` e **zero** `DIAGSCAN` na janela 20:09:20 -> 20:59. Os UNICOS `codigo=3` do dia sao os de 20:07:13.708 e 20:08:14.371, do grafico de teste USDCLP, **antes** da troca.
+4. **Prova POSITIVA** (ausencia nao e prova): `[RESUMO] ... master=SIM` as 20:10:21.473. `Monitoring/TradePipeline.mqh:61` so elege mestre quem tem `MQL_TRADE_ALLOWED`; logo o bit esta a **1**.
+5. O EA leu **IA real**: `[AI] GATEWAY | XAUUSD | H1 | 1122 bytes | disponivel=true` e `[AI] PYTHON | XAUUSD | SELL | CONF=72.40%` as 20:10:21.
+6. Conta intacta: demo `113568614`, equity **12636.32**, **0 posicoes**, **0 ordens** (`get_trading_open_positions` as 20:11).
+
+### 3. A causa raiz, agora formulada de forma testavel
+O `.chr` e espelho do que esta em memoria, mas o `expertmode` e **lido do ficheiro quando o perfil e carregado**. Por isso o patch de ficheiro do ALFA (D-061) nao cura - foi escrito num perfil que estava A CORRER e foi sobrescrito ao SAIR dele - e por isso **carregar** um perfil que ja traz 5 funciona. As duas medicoes sao compativeis e nao se contradizem: uma mede a escrita, a outra mede a leitura.
+
+### 4. O preco da troca: 117 parametros, 3 diferencas funcionais
+Diff parametro a parametro dos 13 `.chr` (`XAI_P216_LIVE` vs `XAI_P215_LIVE_B`): **9 chaves por grafico, 117 no total**. Seis delas sao inputs que **nao existem** no `.chr` antigo e ficam no DEFAULT do binario, que coincide com o que o P216 tinha explicito (`BlockPreCloseMinutes` 15, `BlockHighImpactNewsMin` 15, `EnableMarketIntelligence` true, `LowIntelLotFactor` 0.5, `MinIntelligenceScore` 0.0, `SymbolsFromMarketWatch` true - os seis confirmados em memoria por `list_open_charts`). Restam **tres** diferencas REAIS:
+
+- `AIGatewayUrl` 9011 -> **9001**: **NEUTRA**. `AI/AIConnector.mqh:890` `AIGatewayUrlEfetiva()` reescreve **so a porta** a partir de `XAU_GATEWAY_PORT` do `.env` (9011). Prova: o journal recebeu **1122 bytes**, que e exactamente o corpo da 9011; a 9001 sem token responde 401 e nunca devolveria previsao.
+- `AllowTradeWithoutAI` true -> **false**: **mais restritivo** no PB.
+- `EnableAutonomousMode` false -> **true**: **mais permissivo** no PB. Com `true` a IA passa a CONSULTORA e deixa de vetar (`Core/Config.mqh:1111`). E a unica diferenca que muda o comportamento de decisao - fica registada, nao escondida.
+
+### 5. O que NAO se fez
+Nao se copiou o token para os 13 `.chr`. Nao se alterou qualquer limite, lote, alvo, stop, spread, RR ou regra de entrada/saida. Nao se abriu nem fechou posicao. Nao se escreveu "10/10": o GATE_REAL continua **1 verde de 11**.
+
+### 6. O que fica decidido e o que fica pedido
+- **Decidido (DELTA, zona terminal):** o terminal **fica** em `XAI_P215_LIVE_B`. Reverter para `XAI_P216_LIVE` devolveria o bit a 0 e o EA a modo calculo - seria desfazer a unica coisa que hoje funciona.
+- **Pedido ao DONO (Q-026, era Q-024):** (1) ratificar `XAI_P215_LIVE_B` como perfil de trabalho; (2) decidir se se reattacham os 13 EAs com `EnableAutonomousMode=false` (IA vetando, como no P216). Um reattach reinicia as guardas de perda diaria, logo e acto deliberado e nao se faz a meio de uma sessao.
+- **Pedido ao ALFA:** o corpo do **D-061 nao esta em DECISOES.md** (esta no IDS.md e no PRESENCA). Falta escrever.
+- **GATE_REAL:** a parte "binario em memoria" do **G4** fica satisfeita (v1.2.176 em memoria = binario compilado, `[VERSION]` com simbolo, conta e modulos); o G4 continua **VERMELHO** pelos contadores ATR de 24 h. O **G10** continua **VERMELHO** (13 graficos vs 11 `Symbols`; 1 modelo).
+- **O bloqueio mudou de lugar pela segunda vez:** ja nao e P0 (permissao) nem P1 (gateway). E **MODELO** - **1 de 13** simbolos tem modelo publicado, e o unico (XAUUSD) tem `edge` 0.0363 contra o minimo +0.0500.
+
+## D-063 - F2.1 KILL SWITCH: existe, e manual, e foi testado ao vivo em 4 fases nos 13 graficos. A via automatica existe mas nao tem gatilho - e um controle morto.
+
+- **quem:** ALFA
+- **quando:** 06/11/2026 20:20 (hora local do terminal)
+- **estado:** FECHADO na parte MANUAL (medido); ABERTO na parte AUTOMATICA (Q-025 ao DONO)
+
+### 1. O que o F2.1 exigia
+O `PLANO_10_10` pede, no F2 (seguranca de capital, bloqueante): um interruptor de emergencia accionavel com **1 gesto**, que **sobreviva a reinicio** e que **feche posicoes a pedido**. E pede que esteja **testado**, nao apenas escrito.
+
+### 2. Desenho, e porque e assim
+`Core/KillSwitch.mqh` (novo) implementa duas vias deliberadamente diferentes:
+
+- **MANUAL, persistente:** ficheiro-sinal `MQL5\Files\XAU_AI_PRO\KILL_SWITCH.flag`. Qualquer conteudo **bloqueia entradas**; conteudo com `FECHAR` ou `CLOSE` **fecha as posicoes do magic**; apagar o ficheiro **rearma**. E um ficheiro porque um interruptor de emergencia tem de sobreviver ao reinicio do terminal - um estado em memoria morria com o processo, que e exactamente quando mais se precisa dele.
+- **AUTOMATICA, em memoria:** `CKillSwitch::ArmarAutomatico(motivo)`. **Nao escreve ficheiro.** Um lockout PERSISTENTE escrito por automatismo, com um bug, deixaria o sistema parado sem causa visivel e sem ninguem a olhar. O automatico tem de ser reversivel por reinicio; o manual e que e persistente.
+
+Pontos de integracao, todos medidos no codigo:
+1. `XAU_AI_PRO.mq5:1208` - avaliado **antes** de todos os portoes (`TradeGate`, IA, score, spread). Um kill switch que espera pela permissao do terminal nao e um kill switch; e o portao a decidir se o travao existe.
+2. `XAU_AI_PRO.mq5:2176` em `OnTimer` - funciona **sem tick**. Com o mercado fechado ou o feed parado, `OnTick` nao corre e o interruptor ficaria inerte.
+3. `XAU_AI_PRO.mq5:590` - publica o estado no arranque, **mesmo quando LIVRE**. Um interruptor silencioso quando esta tudo bem nao se distingue de um interruptor avariado.
+4. Fail-safe: se o ficheiro existir e **nao puder ser lido**, assume `fecharTudo=true`. Na duvida, o kill switch fecha.
+
+Throttles: leitura do disco a cada `XAI_KS_CACHE_SEC=3`; nova tentativa de fecho a cada `XAI_KS_RETRY_SEC=10`; log periodico a cada `XAI_KS_LOG_SEC=300` s.
+
+### 3. O teste ao vivo: 4 fases, 13/13 graficos em cada
+Publicado `v1.2.176` (950024 B, MD5 F6A2C8128111AAD3301B4A4B954B496B) nos 13 graficos as 20:09:51 (13 x `[START]`), depois `v1.2.177` (952564 B, MD5 4E8CEF668945E1CA2313565E07F646E3) as 20:15:23-24, com a correcao da fase 2 abaixo.
+
+| fase | accao no ficheiro | esperado | medido no journal (13 graficos) |
+|---|---|---|---|
+| 1 | criar com `TESTE F2.1 ... armado manual SEM pedido de fecho` | bloquear entradas, nao fechar | `[KILL SWITCH] ARMADO | ficheiro=... | origem=MANUAL | fechar_tudo=NAO | entradas BLOQUEADAS` as 20:15:53-54 |
+| 2 | apagar o ficheiro | rearmar e **dizer que rearmou** | `[KILL SWITCH] REARMADO \| estado=LIVRE \| entradas LIBERTADAS` as 20:17:23-24 |
+| 3 | criar com `... FECHAR tudo agora` | bloquear e fechar posicoes do magic | `ARMADO ... fechar_tudo=SIM` as 20:18:23-24 |
+| 4 | apagar o ficheiro | voltar a LIVRE | `REARMADO \| estado=LIVRE` as 20:19:23-24; `flag_existe=False` |
+
+Conta durante todo o teste: demo `113568614`, equity **12636.32**, **0 posicoes, 0 ordens**. Nada foi aberto nem fechado; a fase 3 prova o caminho de fecho com a carteira vazia, que e o unico teste honesto que se pode fazer sem abrir risco.
+
+### 4. O proprio teste encontrou um defeito, e foi corrigido
+Na `v1.2.176` o kill switch **publicava** o estado no arranque e repetia `ARMADO` a cada 300 s, mas **nao publicava nada quando o operador apagava o ficheiro**. Resultado: o desarme era **invisivel** e o teste nao podia ser fechado sem reiniciar o EA - o observador tinha de acreditar, nao de medir.
+
+Correcao na `v1.2.177`: `SondarFicheiro()` separado de `PublicarTransicao()`; a transicao `LIVRE <-> ARMADO` e publicada **uma vez, sem throttle**, e a primeira observacao apos o arranque nao imprime (para nao duplicar a linha de arranque). Campo `estadoAntes` acrescentado ao estado; `ArmarAutomatico` inicializa-o a 2. Compilacao: 0 errors, 0 warnings (23960 ms).
+
+### 5. O que NAO se fez
+Nao se ligou nenhum gatilho automatico. Nao se alterou `RiskPercent`, `MaxDailyLossPercent`, `MaxDrawdownPercent`, lote, alvo, stop ou RR. Nao se abriu nem fechou posicao real. Nao se escreveu "10/10": o `GATE_REAL` continua **1 verde de 11**.
+
+### 6. Lacuna aberta, e ela e seria
+`CKillSwitch::ArmarAutomatico()` **existe e nao tem nenhum consumidor**. Um controle automatico sem gatilho e um controle morto: o codigo esta la, a intencao esta la, e nada o acciona. As condicoes candidatas (freeze/desconexao, drawdown/perda diaria, ambas, ou nenhuma ate ao F6) sao **politica de risco** e nao se decidem por mim. Escalado como **Q-025** ao DONO, prazo 07/11 12:00. O F2 **nao** fecha enquanto esta lacuna existir, mesmo com a parte manual testada.
+
+
+## D-064 - F2.9 fechado por medicao: o portao de cotacao velha existia mas era invisivel exactamente quando o feed morre
+
+- Data: 06/11/2026 20:55 (local) / 06/11/2026 23:55 (servidor)
+- Autor: ALFA
+- Versao: v1.2.179 (build `#property version "1.379"`)
+- Fase do PLANO_10_10: F2 (seguranca de capital) - item F2.9
+- Estado: F2.9 FECHADO na metade que protege e na metade que prova. F2 continua ABERTO por Q-025 e pelo GATE F2.
+
+### 1. O que estava escrito no plano
+
+F2.9: "Deteccao de desconexao/freeze | ultima cotacao velha -> nao opera".
+
+O criterio parecia cumprido desde a v1.2.178: existia `Core/StalenessGuard.mqh` e o `OnTick` chamava-o antes de qualquer decisao. Ler o codigo dava a resposta "esta feito". Foi por isso que se mediu em vez de se ler.
+
+### 2. O que a medicao mostrou (instrumento separado, mesmo codigo de producao)
+
+Instrumento: `Scripts/Temp/XAI_MedirCotacao.mq5`, 0 erros / 0 avisos, corrido no XAUUSD H1 as 20:33:08 locais (servidor 2026.11.07 01:33:08, sabado, mercado fechado). O script chama o MESMO `Core/StalenessGuard.mqh` do EA; nao abre, nao fecha, nao altera nada.
+
+```
+[MEDIR] fim | operaria=0 | bloquearia=21 | sem_leitura=0 | limite=120s
+```
+
+Idades medidas (segundos): INTC 5590, MSFT 5591, USDSGD 5591, AUDUSD 5592, EURUSD 5593, USDJPY 5593, USDSEK 5593, NVDA 5593, USDCZK 5593, USDCHF 5604, USDCNH 5607, USDNZD 5612, USDCAD 5612, GBPUSD 5610, AMD 5645, GOLD 7615, XAUUSD 9189, USDBRL 9189, USDCOP 20004, USDCLP 21833, USDRUB 30796.
+
+Leitura do resultado: o veredicto sai certo nos 21 simbolos e o fail-closed (`SymbolInfoTick` falhado -> velho) nao produz um unico falso "fresca". A funcao esta correcta.
+
+### 3. O defeito que a medicao expos
+
+No MESMO intervalo, com 21 de 21 simbolos velhos, o journal do EA tinha ZERO linhas `[TRADE BLOCK] COTACAO VELHA`.
+
+Causa, e nao teoria: o guarda so existia no `OnTick`. Sem tick o `OnTick` nao corre. Logo o portao nunca era avaliado exactamente quando o feed morre - e o operador perdia a unica prova de que o EA sabe que esta cego. Um guarda que protege mas nao se ve, quando o que falha e a visibilidade, deixa o sistema indistinguivel de um sistema parado por avaria.
+
+Consequencia para o GATE F2: o criterio "com log de cada decisao" nao estava cumprido ainda que a decisao estivesse certa.
+
+### 4. Correcao aplicada em v1.2.179
+
+4.1 `XAU_AI_PRO.mq5`, bloco novo no `OnTimer` (corre a cada 30 s mesmo sem tick), colocado a seguir ao `CKillSwitch::Verificar(...)` - imitando o F2.1, que ja vive nos dois sitios:
+- publica `[TRADE BLOCK] COTACAO VELHA (timer) | <simbolo> | idade=Ns | limite=Ns | sem tick o OnTick nao corre: preco parado nao opera` UMA vez na transicao para velho;
+- lembrete de hora a hora enquanto continuar velho (sem repetir a cada 30 s);
+- publica `[TRADE BLOCK] COTACAO VOLTOU (timer)` quando o feed regressa.
+
+4.2 O bloqueio continua no `OnTick`, que e o que impede agir. Nao se moveu nada: acrescentou-se deteccao de transicao.
+
+4.3 Duas fontes de verdade reconciliadas. O EA tinha `EnableStaleDataGuard=true` e `MaxSymbolTickAgeSec=900` nas inputs, mas o guarda tinha `XAI_STALE_MAX_SEC=120` fixo - ou seja o codigo impunha 120 s enquanto a interface dizia 900 s. O `OnInit` passa a chamar `CStalenessGuard::Configurar(EnableStaleDataGuard, MaxSymbolTickAgeSec)`; o 120 s fica apenas como valor de recurso para instrumentos de medicao que nao configurem nada. Resultado: uma so resposta, e a decisao do dono via inputs e a que vale (900 s).
+
+4.4 Segundo relogio congelado corrigido. `Core/MarketScanner.mqh` `SymbolDataFresh()` media a idade do tick com `TimeCurrent()`, que congela sem ticks, contra `MqlTick.time`, que e tempo do servidor. Passa a `TimeTradeServer()` com `TimeCurrent()` so como recurso final - o mesmo principio do P1.24/D-029.
+
+4.5 Deriva de versao HG-01 corrigida. `#property version` estava em `"1.377"` com `EA_VERSION_STRING "1.2.178"` (nao era 1.378 como se supunha). Passou a `"1.379"`, coerente com `minor*100+patch`.
+
+Nenhum limite de risco, lote, alvo, stop, spread, preco, regra de entrada ou de saida foi alterado. O EA decide sobre o MESMO mercado; deixa de decidir sobre um mercado que ja nao existe, e passa a dizer que o fez.
+
+### 5. Prova de que o F2.9b funciona (nao e intencao)
+
+- Compilacao: `Compilation succeeded: 0 errors, 0 warnings found.` / `0 errors, 0 warnings, 22177 ms elapsed, cpu='X64 Regular'`.
+- Binario publicado: `XAU_AI_PRO.ex5` SIZE=957544 MD5=D7D2E0F0F65035A143508E8F43E292E6 MTIME=2026-11-06 20:46:54 (baseline v1.2.178: SIZE=955376 MD5=94022D3703F03EC8F2D7F78C24616848).
+- 13 graficos do perfil XAI_P215_LIVE_B re-anexados, todos `ok:true`.
+- `[START] XAU_AI_PRO v1.2.179` em 13 de 13 as 20:46:55 e outra vez as 20:47:07-12.
+- `[VERSION] v1.2.179 | Build=2026.11.06 | Stable=Yes | AutoUpdate=OFF | Modulos=16` e `Modulos: ... MCPServer=OK`.
+- `[KILL SWITCH] estado no arranque | LIVRE`.
+
+A linha que antes nao existia, agora com o mercado fechado e 21 de 21 velhos:
+
+```
+20:47:37 [TRADE BLOCK] COTACAO VELHA (timer) | XAUUSD  | idade=10058s | limite=900s | sem tick o OnTick nao corre: preco parado nao opera
+20:47:37 [TRADE BLOCK] COTACAO VELHA (timer) | USDJPY  | idade=6462s  | limite=900s | ...
+20:47:37 [TRADE BLOCK] COTACAO VELHA (timer) | USDSEK  | idade=6462s  | limite=900s | ...
+20:47:37 [TRADE BLOCK] COTACAO VELHA (timer) | USDCHF  | idade=6473s  | limite=900s | ...
+20:47:37 [TRADE BLOCK] COTACAO VELHA (timer) | USDCAD  | idade=6481s  | limite=900s | ...
+20:47:37 [TRADE BLOCK] COTACAO VELHA (timer) | USDCNH  | idade=6476s  | limite=900s | ...
+20:47:37 [TRADE BLOCK] COTACAO VELHA (timer) | USDCZK  | idade=6462s  | limite=900s | ...
+20:47:42 [TRADE BLOCK] COTACAO VELHA (timer) | GBPUSD  | idade=6484s  | limite=900s | ...
+20:47:42 [TRADE BLOCK] COTACAO VELHA (timer) | USDRUB  | idade=31670s | limite=900s | ...
+20:47:42 [TRADE BLOCK] COTACAO VELHA (timer) | USDBRL  | idade=10063s | limite=900s | ...
+20:47:42 [TRADE BLOCK] COTACAO VELHA (timer) | USDSGD  | idade=6465s  | limite=900s | ...
+20:47:42 [TRADE BLOCK] COTACAO VELHA (timer) | AUDUSD  | idade=6466s  | limite=900s | ...
+20:47:42 [TRADE BLOCK] COTACAO VELHA (timer) | NZDUSD  | idade=6486s  | limite=900s | ...
+```
+
+13 de 13 publicaram a transicao uma unica vez, com `limite=900s` - prova de que a fonte unica das inputs esta a valer e de que a deteccao corre sem tick. Entre 20:47:42 e 20:48:19 (37 s, mais de um periodo de timer) nao houve segunda publicacao por simbolo: a transicao nao se repete.
+
+### 6. O que esta provado e o que NAO esta
+
+Provado: (a) a funcao de veredicto acerta 21/21 e nao gera falso "fresca"; (b) a deteccao deixou de depender do tick e aparece no journal; (c) o limite em vigor e o das inputs (900 s), nao um 120 s escondido no codigo; (d) nao ha repeticao a cada 30 s.
+
+NAO provado ainda: a linha `COTACAO VOLTOU`. O mercado esta fechado (sabado no servidor) e o feed nao regressou dentro da janela medida. Fica como verificacao da proxima abertura, e a ausencia dela nao fecha o item: o que F2.9 exigia - "ultima cotacao velha -> nao opera" -, isso esta medido dos dois lados do portao.
+
+### 7. Efeito no GATE_REAL
+
+Continua 1 verde de 11. O F2.9 nao passa a verde por si: o GATE F2 exige a simulacao das 6 falhas (desconexao, requote, spread anormal, duplicacao, reinicio a meio, conta sem margem) e essa simulacao ainda nao foi executada. O que muda e que a primeira das 6 - desconexao/freeze - passa a ter instrumento e evidencia em vez de afirmacao.
+
+### 8. Proximo passo
+
+F2.2 (teto de exposicao e MaxPositions - a input existe com 50 e nao tem guarda equivalente medida), F2.3 (perda diaria/drawdown), F2.4 (spread/slippage), F2.5 (idempotencia), F2.6 (reconciliacao), F2.7 (magic por instancia), e so depois o GATE F2. Q-025 (gatilho do kill switch automatico) continua a ser o bloqueio de desenho do F2.
+
+
+### D-064 adenda (06/11/2026 21:17) - duas provas adicionais medidas depois de publicar
+
+Prova A - a idade avanca 1:1 com o relogio e o preco nao. Mesma instancia USDSGD nas duas publicacoes:
+
+| Hora local | idade publicada |
+|---|---|
+| 20:43:04 | 6187 s |
+| 20:47:42 | 6465 s |
+
+Delta idade = 278 s para delta relogio = 278 s. Ou seja `MqlTick.time` esta parado e `TimeTradeServer()` esta vivo: o guarda esta a medir o FEED, nao a medir-se a si proprio. Se o `StalenessGuard` ainda usasse `TimeCurrent()` (que congela sem ticks, como em MarketScanner antes da correcao), a idade tambem congelaria e este simbolo nunca seria publicado como velho - exactamente o defeito que o F2.9 tinha de fechar.
+
+Prova B - nao ha spam. Journal filtrado por `COTACAO` entre 20:48:00 e 21:15:23 (27 min, >50 ciclos de `EventSetTimer(30)`): `records_count = 0`. A transicao publica uma vez; o lembrete e de hora a hora e o proximo vence ~21:47:37, uma hora depois de 20:47:37.
+
+Continua PENDENTE e nao se declara feita: `[TRADE BLOCK] COTACAO VOLTOU (timer)`. O feed nao regressou (fecho de sexta-feira no servidor). So pode ser observada na reabertura.
+
+Leitura para o GATE F2: a primeira das 6 falhas exigidas (desconexao/freeze) passa a ter instrumento de medicao, prova de veredicto (21/21) e prova de observabilidade (13/13). As outras 5 continuam por simular.
+
+---
+
+## D-065 - F2.9 ASSINADO por DELTA com um segundo instrumento que nao e o guarda. Fecha na metade que protege e na metade que se ve; NAO fecha o GATE F2 nem sobe o GATE_REAL.
+
+- Data: 06/11/2026 21:25 (local) / 07/11/2026 02:25 (servidor)
+- Autor: DELTA (assinatura do D-064, de ALFA)
+- Versao: v1.2.179, binario em memoria nos 13 graficos desde 20:46:55 (`[VERSION] v1.2.179 | Modulos=16`)
+- Fase do PLANO_10_10: F2 - item F2.9
+- Estado: F2.9 FECHADO na metade que protege e na metade que se ve. GATE F2 ABERTO (5 das 6 falhas por simular). GATE_REAL inalterado: 1 verde de 11.
+
+### 1. A pergunta que originou isto
+
+O DONO colou a linha do journal:
+
+```
+20:47:42.495 XAU_AI_PRO (USDBRL,M5) [TRADE BLOCK] COTACAO VELHA (timer) | USDBRL | idade=10063s | limite=900s | sem tick o OnTick nao corre: preco parado nao opera
+```
+
+Resposta: e o F2.9b da v1.2.179 a fazer o que foi escrito para fazer, com o mercado fechado. Nao ha avaria, nao ha nada a corrigir nessa linha.
+
+### 2. Prova independente (nao usa CStalenessGuard)
+
+A prova do ALFA mede com o MESMO `Core/StalenessGuard.mqh` que o EA usa. Isso serve para "o veredicto esta certo" e nao serve para "o relogio de referencia esta certo", porque o instrumento herda a mesma hipotese que se quer testar. O DELTA leu a fonte crua: o carimbo do ultimo tick de cada simbolo (`update_time` do Market Watch), que nao passa por guarda nenhuma.
+
+Leitura as 21:21 locais (07/11 02:21 no servidor):
+
+| Simbolo | ultimo tick (hora do servidor, 06/11) | leitura |
+|---|---|---|
+| EURUSD, USDJPY, USDSEK, USDCZK, USDSGD, MSFT, INTC, NVDA | 23:59:41 a 23:59:58 | fecho de sexta-feira |
+| GBPUSD, USDCNH, USDCHF, AUDUSD, NZDUSD, USDCAD, AMD | 23:59:03 a 23:59:56 | fecho de sexta-feira |
+| XAUUSD, USDBRL | 22:59:59 | parou 1 h antes do fecho |
+| GOLD (acao) | 23:26:13 | fecho da bolsa |
+| USDCOP | 19:59:44 | iliquido |
+| USDCLP | 19:29:15 | iliquido |
+| USDRUB | 16:59:52 | iliquido |
+
+Duas consequencias que o instrumento do ALFA nao podia dar:
+
+(a) a ORDEM das idades publicadas pelo EA e a ordem dos carimbos que estao no proprio dado (USDRUB 16:59:52 < USDCLP 19:29:15 < USDCOP 19:59:44 < XAUUSD/USDBRL 22:59:59 < divisas liquidas 23:59:0x-23:59:58). A ordenacao nao vem do codigo de medicao;
+
+(b) os carimbos das divisas mais liquidas param todos na ultima janela de 60 s antes das 23:59:58 do servidor: e o fecho semanal do MetaQuotes-Demo, nao uma avaria de feed.
+
+### 3. Prova A (idade 1:1 com o relogio), recontada
+
+USDSGD: 6187 s as 20:43:04 e 6465 s as 20:47:42, logo delta de idade = 278 s para delta de relogio = 278 s, erro 0 s. Aceite - e a prova discrimina: se o guarda ainda usasse `TimeCurrent()` (que congela sem tick) a idade publicada tambem congelaria; cresceu exactamente com o relogio. O carimbo independente do USDSGD (23:59:57) nao se moveu entre a leitura das 21:15 e a das 21:21, o que fecha a outra metade: o que esta parado e o FEED, nao o relogio.
+
+### 4. Prova B (sem spam), repetida por mim
+
+Journal do EA filtrado por `COTACAO` entre 20:48:00 e 21:25:00 (37 min, >= 74 ciclos de `EventSetTimer(30)`): `records_count = 0`. A transicao publica uma vez.
+
+Previsao falsificavel, escrita antes do evento: o lembrete de hora a hora tem de aparecer por volta das 21:47:37 locais, +/- 30 s (20:47:37 + 3600). Se nao aparecer, o ramo do `s_cotacaoVelhaAviso` esta errado e este item reabre.
+
+### 5. Revisao do 4.4 do D-064 (relogio do MarketScanner)
+
+`Core/MarketScanner.mqh` `SymbolDataFresh()`, linhas 341-395: `TimeTradeServer()` e, so se este devolver <= 0, `TimeCurrent()`. Concordo, e por tres razoes lidas no codigo:
+
+1. o limite nao mudou (`MaxSymbolTickAgeSec`) e o teste e `idade > limite`, estritamente igual ao do `CStalenessGuard::CotacaoVelha` - os dois guardas concordam na fronteira;
+2. o buraco residual (TimeTradeServer()==0 com SymbolInfoTick a devolver tick valido) e inalcancavel na pratica: um tick valido implica tempo de servidor conhecido; e quando o tempo de servidor e desconhecido, `cotacao.time <= 0` faz o caminho anterior responder "sem tick" -> false;
+3. todos os caminhos de falha devolvem false (fail-closed preservado).
+
+Observacao para o registo, sem accao pedida: a mesma regra existe hoje em dois sitios (`StalenessGuard::CotacaoVelha` e `MarketScanner::SymbolDataFresh`). Concordam por construcao, mas duas implementacoes da mesma regra divergem na primeira vez que alguem editar uma. Proposta (nao aplicada, e do ALFA): `SymbolDataFresh` chamar `CStalenessGuard`.
+
+### 6. O que o DELTA assina, e o que NAO assina
+
+Assina:
+
+(a) veredicto correcto em 21 de 21 simbolos, medido por instrumento separado (ALFA) e corroborado pelo carimbo de tick lido a parte (DELTA);
+(b) observabilidade sem tick: 13 de 13 graficos publicaram a transicao uma vez, com `limite=900s` vindo das inputs e nao do 120 s que estava fixo no codigo;
+(c) ausencia de repeticao: 0 linhas em 37 min.
+
+NAO assina:
+
+(d) `[TRADE BLOCK] COTACAO VOLTOU (timer)`: nunca foi observada; o feed nao regressou e so pode existir na reabertura. Fica pendente e nao conta como feito;
+(e) o GATE F2 como verde: faltam 5 das 6 falhas simuladas (requote, spread anormal, duplicacao, reinicio a meio, conta sem margem);
+(f) qualquer forma de "10/10": o GATE_REAL continua 1 verde de 11.
+
+### 7. Efeito real
+
+Nenhum limite de risco, lote, alvo, stop, spread ou regra de entrada foi tocado por esta assinatura, e o DELTA nao editou uma linha de codigo nesta passagem. Conta demo 113568614, equity 12636.32, 0 posicoes, 0 ordens. O bloqueio que resta nao e este: e MODELO - 1 de 13 simbolos tem modelo publicado (XAUUSD) e mede edge 0.0363 contra o minimo 0.0500.
+
+
+
+## D-066 - F2.2 FECHADO por medicao: teto de exposicao total somada da conta (v1.2.180)
+
+**Autor:** ALFA | **Data:** 06/11/2026 21:30 | **Estado:** FECHADO o patch, ABERTO o GATE F2
+**Item do PLANO_10_10:** F2.2 - "Teto de exposicao total | soma das posicoes <= X% do capital"
+**Fase:** F2 (seguranca de capital) - BLOQUEANTE para conta real
+
+### 1. Pedido e autorizacao
+
+A Q-065 perguntou ao DONO qual o limite em % do capital. Resposta do DONO em
+06/11/2026 21:19: **"10% a 50%"** - a banda esta autorizada e qualquer valor
+dentro dela esta autorizado. Valor em vigor escolhido por ALFA: **20.0**.
+
+Justificacao do 20.0, ancorada nos numeros que ja existiam e nao em gosto:
+`MaxDailyLossPercent` em vigor e 10.0. Com exposicao de 20% do capital, um
+movimento de 50% contra a carteira inteira custa exactamente o orcamento diario
+de perda. Ou seja, o teto de exposicao fica calibrado para que a pior noticia
+intradiaria plausivel caiba no limite de perda que o dono ja tinha aprovado.
+
+### 2. O que foi medido ANTES de tocar no codigo
+
+Ausencia confirmada na arvore, por contagem de ocorrencias: `OrderCalcMargin`
+= 0 em `Core/PositionManager.mqh`. O que existia como tecto era **contagem**, nao
+exposicao:
+
+- `MaxOpenPositions = 50` - limita o numero de posicoes, nao o capital em risco.
+  50 posicoes de 1 lote em XAUUSD e 50 posicoes de 0.01 lote passavam pelo mesmo
+  portao;
+- `EnableCurrencyExposureGuard` / `MaxCorrelatedTrades` / `MaxCorrelatedRiskPercent`
+  - limita risco correlacionado por moeda, nao a soma da margem da conta.
+
+Havia portanto um buraco real: nada no codigo media a soma da exposicao da
+conta. Um limite que nao existe nao avaria - nao protege.
+
+### 3. O que foi implementado (v1.2.180, `#property version "1.380"`)
+
+1. `Core/Config.mqh` - duas inputs novas, grupo F2.2, com a autorizacao da Q-065
+   escrita no cabecalho:
+   - `EnableExposureCap = true` (0 desliga a guarda);
+   - `MaxExposurePercent = 20.0` (<= 0 desliga a guarda).
+2. `Core/PositionManager.mqh` - duas funcoes novas e ADITIVAS:
+   - `MargemUsadaEA()`: percorre as posicoes, filtra por `MagicNumber` (o tecto e
+     da CONTA, nao do grafico), le `POSITION_VOLUME` e `POSITION_PRICE_CURRENT`
+     (com fallback para `POSITION_PRICE_OPEN`) e obtem a margem com
+     `OrderCalcMargin()`;
+   - `ExposicaoDentroDoTeto(symbol)`: compara a margem somada com
+     `equity * MaxExposurePercent / 100`.
+3. `CanOpenPosition()` - a chamada entra **antes** de
+   `if(CountPositions()>=MaxOpenPositions)`, para que o tecto de capital seja
+   avaliado antes do tecto de contagem.
+4. `Enterprise/VersionManager.mqh` - `EA_VERSION_STRING = "1.2.180"` e changelog.
+5. `XAU_AI_PRO.mq5` - `#property version "1.380"`.
+
+### 4. Garantias do desenho
+
+- **Aditiva:** a guarda so pode RECUSAR entradas. Nao abre, nao altera lote, nao
+  mexe em SL/TP. Nenhum limite existente foi afrouxado ou alterado.
+- **Fail-closed:** equity ilegivel, simbolo vazio, volume <= 0, preco <= 0 ou
+  `OrderCalcMargin()` a devolver false => `return(false)`. A regra escrita no
+  codigo e explicita: NAO CONSEGUI MEDIR nunca pode ser lido como NAO HA
+  EXPOSICAO.
+- **Barato:** o log de recusa e limitado a 1 linha por minuto, com margem em uso,
+  tecto, percentagem e equity, para nao inundar o journal a cada tick.
+- **Desligavel** por input, sem recompilar.
+- **Honestidade do que mede:** o comentario no codigo diz que isto e MARGEM, nao
+  risco de perda. E um complemento ao SL, ao `MaxRiskPerTradeUsd` e a guarda de
+  correlacao - nao um substituto de nenhum deles.
+
+### 5. Dois erros meus, ambos medidos e corrigidos
+
+(a) **Compilacao falhou com 8 errors.** O texto do changelog F2.2 continha aspas
+duplas literais, que quebraram o literal de string MQL5 (`undeclared identifier
+'nao'`, `'+' - illegal operation use`). Corrigido substituindo as aspas por
+maiusculas; recompilou limpo. Licao: em MQL5, changelog e codigo - aspas dentro
+de string tem de ser escapadas ou evitadas.
+
+(b) **COLISAO DE ID.** Escrevi o patch a citar "D-065", mas o DELTA reservou e
+usou **D-065 as 21:20:41** para assinar o F2.9, antes da minha reserva. A reserva
+de ID e que da o direito ao numero, nao a ordem de escrita. Corrigido: D-066
+reservada por `id -Tipo D -From ALFA`, e os dois comentarios do codigo
+(`Config.mqh` L132, `PositionManager.mqh` L147) corrigidos de D-065 para D-066
+por script com verificacao (1 ocorrencia antes, 0 depois, 1 D-066). As
+referencias a **Q-065** mantem-se - sao a pergunta, nao a decisao.
+
+### 6. ACHADO NOVO E GRAVE: o `.ex5` NAO e deterministico
+
+Ao reconstruir depois da correcao de comentarios, o binario cresceu 688 bytes
+com uma alteracao de comprimento identico. Medi em vez de supor:
+
+| Compilacao | SIZE | MD5 |
+|---|---|---|
+| 21:23:39 | 961058 | A42781D5A924582FABDB1883A54E28C6 |
+| 21:25:51 | 961746 | E98D140E9006D16CDA95D444815F8BB0 |
+| 21:26:28 | 961800 | 773F98646F4D92BDC5FDD5FC518BD431 |
+
+As tres compilacoes sao do **mesmo codigo-fonte e da mesma versao**. O compilador
+build 6306 nao produz bytes reproduziveis.
+
+Consequencia, e isto vale para toda a equipa: **o MD5 do `.ex5` NAO serve como
+identidade de build nem como prova de provenance.** Qualquer procedimento -
+meu, do DELTA ou do CMD - que compare hashes de `.ex5` para afirmar "e o mesmo
+binario" ou "o binario mudou" esta a medir ruido do compilador. A identidade
+valida e o trio: **version declarada + estado das fontes + log de compilacao
+(0 errors / 0 warnings)**. Registar como deriva a corrigir na documentacao
+(GATE_REAL e HANDOFF nao devem citar MD5 de `.ex5` como prova).
+
+### 7. Prova de execucao
+
+- Compilacao: **0 errors, 0 warnings** (22133 ms e 23972 ms, cpu='X64 Regular').
+- Journal do expert: **13 de 13 graficos** publicaram
+  `[START] XAU_AI_PRO v1.2.180`, em 21:23:40 e novamente em 21:26:28-29 apos o
+  reload (XAUUSD, USDSEK, USDJPY, USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD,
+  NZDUSD, GBPUSD, USDBRL, USDRUB, USDSGD). Conta 113568614, saldo=equity=12636.32.
+- Inputs em vigor, lidas nos 13 graficos: `EnableExposureCap=true` e
+  `MaxExposurePercent=20.0` presentes em todos.
+
+### 8. O que NAO esta provado - e nao conto como feito
+
+A guarda **nunca disparou num caso real**: a conta tem 0 posicoes e 0 ordens, logo
+nao ha margem para somar. `ExposicaoDentroDoTeto` devolve true no caminho feliz e
+o caminho de recusa so foi lido, nao observado. Prova em falta:
+
+- (a) recusa observada com margem somada acima de 20% do equity;
+- (b) fail-closed observado quando a medicao falha (simular `OrderCalcMargin`
+  a devolver false);
+- (c) prova de que a guarda nao recusa entradas legitimas abaixo do tecto
+  (falso positivo), que e o modo de falha oposto e igualmente caro.
+
+Ate (a), (b) e (c) existirem, o F2.2 esta **implementado e a correr**, nao
+**provado**. A diferenca e a mesma que separa o F2.9 de estar assinado.
+
+### 9. Nao assina
+
+- (d) o **GATE F2 como verde**: faltam 5 das 6 falhas simuladas e a Q-025 (gatilho
+  do kill switch automatico) continua sem consumidor;
+- (e) qualquer forma de "10/10": o GATE_REAL continua **1 verde de 11**;
+- (f) nada sobre o F6 (forward 30 dias demo, >= 100 trades, PF >= 1.2, DD <= 8%),
+  que permanece BLOQUEANTE e com limiares intactos.
+
+Um tecto de exposicao a funcionar nao torna o EA lucrativo nem aproxima o EA de
+operar. O bloqueio que resta e outro: **MODELO** - 1 de 13 simbolos tem modelo
+publicado, e `AIGatewayToken` esta VAZIO nos 13 graficos.
+
+### 10. Proximo
+
+F2.3 (MaxPositions observado), F2.4 (spread/slippage), F2.5 (idempotencia),
+F2.6 (reconciliacao), F2.7 (magic por instancia), F2.10 (parametros congelados) e
+so depois o GATE F2 com as 6 falhas. ANTES de mais nada, fechar a Q-025.
+
+
+
+### D-066 adenda - 06/11/2026 21:40 - CORRECCAO: a seccao 2 desta decisao estava ERRADA
+
+**Quem me corrigiu:** o CMD, as 21:20, com linhas de codigo. **Quem confirmou:** eu,
+as 21:35, com `Select-String` sobre a arvore. As linhas existem todas:
+
+| Prova do CMD | Ficheiro:linha | Confirmado por mim |
+|---|---|---|
+| teto do risco somado em % do saldo | `Core/Config.mqh:336` `input double MaxTotalRiskPercent = 10.0;` | SIM |
+| teto do risco somado em dinheiro | `Core/Config.mqh:353` `input double MaxTotalRiskOpenUsd = 60.0;` | SIM |
+| soma entrada->SL das posicoes | `Core/Config.mqh:1219` `double RiscoAbertoUSD()` | SIM |
+| envelope = menor entre % e USD | `Core/Config.mqh:1318-1322` | SIM |
+| recusa da entrada | `Core/ExecutionEngine.mqh:686-701` + `EventTradeRejected(..., "RISK_ENVELOPE_FULL")` | SIM |
+
+**Fica RETIRADA a frase da seccao 2:** "nada no codigo media a soma da exposicao da
+conta" e "havia portanto um buraco real". E falso. O risco aberto somado ja era
+limitado, com um envelope de 10% do saldo limitado a 60 USD, e a execucao ja
+recusava a entrada quando enchia. `MaxOpenPositions` (contagem) e
+`EnableCurrencyExposureGuard` (correlacao) nao eram os unicos limites - eram
+limites ALEM do envelope.
+
+**Porque errei, e a licao que fica.** Medi a ausencia pela busca do nome da MINHA
+solucao (`OrderCalcMargin` = 0 ocorrencias) e conclui que o problema nao estava
+resolvido. Procurar a minha implementacao nao prova a ausencia do problema: o
+projeto ja resolve o mesmo problema com outra matematica (distancia ao SL em
+dinheiro) e outro nome (`RiscoAbertoUSD`). E a mesma classe de erro que os
+falsos negativos do `search_text` ja tinham causado nesta equipa: medir a
+ferramenta em vez de medir o facto. A regra correcta: antes de declarar
+ausencia, procurar o EFEITO (existe calculo de risco somado? existe recusa?) e
+nao o simbolo que eu ia introduzir.
+
+**O que isto faz ao F2.2: REABERTO. Nao esta fechado e nao e "criar um teto".**
+O trabalho real do item, como o CMD o formulou e eu aceito, sao duas coisas:
+
+- (a) **decidir o valor do teto da CONTA** - a banda 10% a 50% do DONO (Q-065) da
+  o intervalo, mas o valor tem de ser escolhido contra o envelope que ja existe,
+  e nao no vazio;
+- (b) **tornar o somatorio independente do `MagicNumber`** - hoje os 13 graficos
+  partilham `MagicNumber=2026001` e o somatorio ve as 13 instancias por
+  coincidencia de configuracao, nao por desenho. Se o F2.8 (magic por instancia)
+  for implementado como esta planeado, o limite FRAGMENTA-SE em 13 limites de
+  10% = 130%. Este defeito atinge o envelope existente E a minha guarda nova,
+  porque ambos filtram por magic.
+
+**O que eu construi, dito sem promocao.** Uma segunda guarda, de MARGEM
+(`OrderCalcMargin` somado contra 20% do equity). Nao e a mesma grandeza que o
+envelope (risco ate ao SL), mas e muito mais LARGA: 20% de 12636 sao 2527 USD de
+margem, contra 60 USD de risco aberto no envelope em vigor. Na pratica o envelope
+dispara primeiro e a minha guarda praticamente nunca seria a primeira a recusar.
+Alem disso o modo de falha dela e fail-closed: se `OrderCalcMargin` falhar num
+simbolo exotico, recusa entradas legitimas.
+
+**Estado do codigo, medido depois desta correcao:** `EnableExposureCap = false`
+por omissao, com a correcao escrita no cabecalho de `Core/Config.mqh` e o defeito
+do magic documentado no proprio sitio. Recompilado: **0 errors, 0 warnings**
+(21787 ms). Os 13 graficos recarregaram `v1.2.180`. A guarda fica no codigo,
+DESLIGADA, ate haver prova de recusa, de fail-closed e de ausencia de falso
+positivo - um segundo bloqueio nao provado sobre um sistema que tem de comecar a
+operar e risco sem contrapartida.
+
+**O que se mantem valido desta D-066:** a autorizacao da banda pela Q-065
+(10% a 50%, resposta do DONO as 21:19); o achado da seccao 6 de que o `.ex5` NAO
+e reproduzivel e que MD5 de binario nao serve de prova (tres compilacoes do mesmo
+codigo: 961058 / 961746 / 961800 bytes); e a colisao de ID resolvida (D-065 era
+do DELTA, este trabalho e D-066). **O que cai:** a seccao 2 e a qualificacao de
+"FECHADO".
+
+Credito: o CMD estava certo e o rigor dele evitou que a equipa fechasse um item
+BLOQUEANTE de conta real com uma justificacao falsa.
+

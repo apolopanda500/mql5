@@ -71,6 +71,7 @@ O `memory` nao depende da config: o `.jsonl` fica no repo do canal.
 | Ficheiro | Papel | Escreve? |
 |---|---|---|
 | `EQUIPE/tools/sync-agent.ps1` | **unico** caminho de escrita no canal: Mutex + ledger + `LOCK.md` + fila do DONO | sim |
+| `EQUIPE/tools/equipe-watch.ps1` | monitor em tempo real: observa inboxes, PEDIDOS.md, LOCK.md, PRESENCA.md e avisa quando mudam; `-Quem` lista presenca | so leitura |
 | `EQUIPE/tools/equipe-sync.ps1` | leitura, `check`, `dono`, `snapshot`, `eol` | so em `_SYNC/` e reparo com backup |
 | `Tools/equipe-audit.ps1` | auditor externo: UTF-8 estrito, artefactos, **hash EA x espelho**, estado dos 2 repos | **nunca** |
 | `Tools/agent-toolkit.ps1` | ciclo: `status`, `check`, `compile`, `commit`, `push`, `deploy` | sim (git/compilador) |
