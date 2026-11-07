@@ -634,7 +634,7 @@ input double MinAIConfidence    = 60.0;
 // `true` existe para o Strategy Tester, onde o pipeline Python nao roda.
 // Nesse modo o fallback e CAPADO em `AIUnavailableConfidenceCap`, para que o
 // numero nao volte a mentir sobre a existencia de uma IA.
-input bool   AllowTradeWithoutAI           = false;
+input bool   AllowTradeWithoutAI           = true;    // v1.2.186: D-088 #6 (DONO 07/11/2026) OPERAR TODOS
 
 //==================================================
 // CONFLITO IA x TECNICO (v1.2.10 - 29/10/2026)
@@ -1166,6 +1166,25 @@ input bool   EnableAutonomousMode = false;   // IA real: veta e exige gateway (e
 // Piso do MarketScore aplicado em AllowTrade (DecisionEngine). Era 60.0 fixo
 // no codigo; agora e ajustavel sem recompilar.
 input double MinMarketScore       = 65.0;
+
+//==================================================
+// PISO CONDICIONAL DO MARKETSCORE (v1.2.186 - P1.2341 / D-088 #5)
+//==================================================
+// O MarketScore e 100 x pontos / maxScorePoints (115). As parcelas TECNICAS
+// somam no maximo 65 pontos:
+//   20 EMA + 15 RSI + 15 ADX + 10 KCI_direcao + 5 KCI_volume = 65
+// e a parcela da IA vale ate 50 (50 x confianca). Sem o modelo o teto e
+// 65/115 = 56,52 de 100 - ABAIXO do piso de 65,0. Consequencia:
+// `AllowTradeWithoutAI=true` sozinho NAO abre nenhuma entrada; quem decide
+// e o piso. Por isso existe este segundo piso.
+//
+//   * com leitura de IA real (AILeituraReal() == true) -> vale MinMarketScore
+//   * sem leitura de IA                               -> vale MinMarketScoreNoAI
+//
+// 45,0 = 79,6% do teto tecnico sem IA (56,52). Referencias: 50,0 = 88,5%
+// (mais rigoroso) e 40,0 = 70,8% (mais permissivo). O numero e do DONO
+// (D-088 #5 = REVER); muda por input, sem recompilar.
+input double MinMarketScoreNoAI   = 45.0;
 
 //----------------------------------------------
 // VETO DE SCORE ZERO DA IA AVANCADA (29/10/2026)

@@ -741,14 +741,18 @@ bool AllowTradeEx(
 
 
    if(
-      score<MinMarketScore
+      // v1.2.186 - P1.2341 (D-088 #5): piso CONDICIONAL. Com leitura de IA
+      // real continua MinMarketScore (65,0); sem IA vale MinMarketScoreNoAI
+      // (default 45,0), porque as parcelas tecnicas somam no maximo 56,52 de
+      // 100 e 65 nunca seria atingido sem o modelo.
+      score<(AILeituraReal() ? MinMarketScore : MinMarketScoreNoAI)
    )
    {
       reason=
          "SCORE "+
          DoubleToString(score,2)+
          " < MinMarketScore "+
-         DoubleToString(MinMarketScore,2);
+         DoubleToString(AILeituraReal() ? MinMarketScore : MinMarketScoreNoAI,2);
 
       if(allowLogOnce)
          Print(
@@ -761,7 +765,7 @@ bool AllowTradeEx(
             ),
             " | Min=",
             DoubleToString(
-               MinMarketScore,
+               (AILeituraReal() ? MinMarketScore : MinMarketScoreNoAI),
                2
             )
          );

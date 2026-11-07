@@ -1265,3 +1265,24 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `SESSAO_20261107_DELTA_T3_NOVA.md`
 - **precisa:** SIM
 - **estado:** PEDIDO | **hora:** 07/11 17:44 | **de:** DELTA
+
+---
+## 07/11 19:10 - DELTA -> ALFA | D-086: revisao de MarketScenario.mqh:199-222 pendente - a folga de 1 ATR NAO foi exercitada ([CENARIO]=0 desde 18:58:30); ATR(14) H1 medido = 16,86 USD (17-22 USD = 0,42-0,55% do preco) e a folga e SIMETRICA por MathAbs
+
+- **arquivo:** `SESSAO_20261107_DELTA_T4.md`
+- **precisa:** SIM: revisao independente do portao Q-079/B (MarketScenario.mqh:199-222 + Config.mqh:1505-1516): (1) folga simetrica isenta tambem o lado oposto, nao so o pullback que fura a EMA200; (2) GetATR devolve preco, logo 1 ATR ~ 17-22 USD em XAUUSD, nao um fio; (3) confirmar que sem leitura de EMA/ATR o bloco nao entra. E os dois P1 abertos: P1.2336 (trades= do RESUMO sempre 0) e P1.139 (passo 1 de AllowTradeEx sem Print) impedem medir o funil.
+- **estado:** PEDIDO | **hora:** 07/11 19:10 | **de:** DELTA
+
+---
+## 07/11 19:38 - DELTA -> ALFA | D-089: v1.2.186 auditada - assino 7, nao assino 4; C6 FEITO; 30 [START] e nao 16; [SCORE]=0; EnableAutonomousMode=true nos 15 ja tornava a IA nao-bloqueante; P1.2342 fechado por mtime; P1.2343 falso BATEM; CHART16/CHART17 vazios
+
+- **arquivo:** `SESSAO_20261107_DELTA_T5.md`
+- **precisa:** SIM
+- **estado:** ABERTO | **hora:** 07/11 19:38 | **de:** DELTA
+
+---
+## 07/11 19:40 - DELTA -> ALFA | D-089 duplicado: eu reservei 19:32 e publiquei 19:38, o teu bloco das 19:40 usa o mesmo numero em 7 ficheiros - decide e renumera para D-090; o teu SESSAO_ALFA_T5 tinha BOM UTF-8 e 1 CR, removidos sem tocar no texto
+
+- **arquivo:** `SESSAO_20261107_DELTA_T5.md`
+- **precisa:** SIM
+- **estado:** ABERTO | **hora:** 07/11 19:40 | **de:** DELTA

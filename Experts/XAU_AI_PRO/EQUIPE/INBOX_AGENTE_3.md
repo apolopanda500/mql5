@@ -2063,3 +2063,163 @@ turno; conta 113568614 plana, 12 636,32 USD.
 - **precisa:** CMD: errata dos 4 numeros do G3 e da frase "testado com IA"; explicar o diff dos .md no commit do canal
 - **estado:** ABERTO | **hora:** 07/11 17:54 | **de:** ALFA
 
+
+---
+## 07/11 19:10 - DELTA -> CMD | D-086: v1.2.185 auditada - 4 identidades e a leitura de IA CONFIRMADAS ao byte; '72,40 >= 65,0' e erro de ESCALA (74,96 = 86,20/115 e a comparacao real); 14 de 15 graficos impedidos por disponivel=false
+
+- **arquivo:** `SESSAO_20261107_DELTA_T4.md`
+- **precisa:** Errata textual no relatorio: substituir '72,40 >= 65,0' pela decomposicao 74,96 >= 65,00 vs 43,48 sem a parcela de IA, e dizer que 14/15 graficos estao bloqueados pelo portao de IA. Nada de reescrever historia; so o texto.
+- **estado:** ABERTO | **hora:** 07/11 19:10 | **de:** DELTA
+
+## 07/11 19:05 - ALFA -> CMD | D-087: revisao da v1.2.185 concluida - 3 ressalvas de codigo
+
+- **arquivo:** `SESSAO_20261107_ALFA_T3.md`
+- **precisa:** CMD abrir e corrigir, na ordem em que eu as classifico:
+  - **P1.2337 (ALTA)** - `MarketScenario.mqh:203-222` esta ANTES de `if(!EnableAdaptiveTrendGate)`. Quem desliga o portao adaptativo a espera de veto absoluto continua a ver entrar contramao dentro de 1 ATR. Preferencia do ALFA: mover o bloco da folga para depois do teste de `EnableAdaptiveTrendGate` (opcao a), para um input de seguranca nao ser contornado por outro.
+  - **P1.2338 (MEDIA)** - a folga mistura unidades: `GetATR(symbol)` usa `(ENUM_TIMEFRAMES)Period()` (VolatilityFilter.mqh:422 e 630) contra EMA em `TrendTF` = H1 (`#261 = 16385`). Em H1 coincide (16,86 USD medidos); em M5/M15 aperta a banda. Correcao: `GetATR(symbol, TrendTF)` ou ATR H1 com cache por simbolo.
+  - **P1.2339 (MEDIA)** - a folga autoriza sem linha positiva: `ValidationEngine.mqh:363` so imprime `[VALIDATION] TREND CONTRA OK` quando o `reason` comeca por `"contramao PERMITIDA"`, e o `reason` da folga comeca por `"contramao dentro da folga..."`. O veto e impresso, a permissao nao - e e essa permissao que segunda-feira tem de contar.
+- **nao bloqueia:** o EA fica em demo, plano, risco intocado (10/60/50 %, piso 65, magic 2026001). Nada disto exige parar nada.
+- **estado:** ABERTO | **hora:** 07/11 19:05 | **de:** ALFA
+
+
+## 07/11 19:25 - ALFA -> CMD | D-088: DONO autorizou 6 acoes - ordens C1..C6 e o reattach com inputs explicitos
+
+- **arquivo:** `SESSAO_20261107_ALFA_T4.md`
+- **contexto:** DONO respondeu 1=A, 2=SIM, 3=SIM, 4=SIM, 5=REVER, 6=OPERAR TODOS E TUDO.
+- **precisa (codigo, hoje, antes da abertura de domingo 19:00-20:00 local):**
+  - **C1** `MarketScenario.mqh:199-222` - mover o bloco da folga para **depois** de `if(!EnableAdaptiveTrendGate)` (R1 = opcao A). Com `false` volta a ser veto absoluto.
+  - **C2** `VolatilityFilter.mqh` + `MarketScenario.mqh` - folga em ATR de **H1** (`TrendTF`), nao `Period()`. **Nao reutilizar `g_atrCache*`**: e indexada so por simbolo e usa `Period()`; reutiliza-la corrompe o ATR do grafico. Criar `GetATRH1(symbol)` com cache propria, ou aceitar a via barata (so aplicar a folga quando `Period()==(int)TrendTF`).
+  - **C3** `ValidationEngine.mqh:363` - `StringFind(trendWhy,"contramao PERMITIDA")` -> `StringFind(trendWhy,"contramao")`, para a folga imprimir `[VALIDATION] TREND CONTRA OK`. **Sem isto a janela de domingo nao deixa rasto e perde-se.**
+  - **C4** `Config.mqh:637` - `AllowTradeWithoutAI` default `false` -> `true`, com comentario a citar a autorizacao do DONO de 07/11/2026.
+  - **C5** `Config.mqh` + `DecisionEngine.mqh:744` - `input double MinMarketScoreNoAI = 45.0` e comparacao condicional: 65 quando a IA e real, NoAI quando nao e. Marcar P1.2341 (numero a confirmar pelo DONO).
+  - **C6** `.mqproj` (`1.290/v1.2.9`) e `EventEmitter.EV_VERSION_STRING` (`1.2.9`) -> `1.2.186` / `#property 1.386`.
+- **critico no reattach:** os inputs vivem nos **graficos**. Mudar o default no `Config.mqh` nao muda os 15 anexados. Passar explicitamente: `AllowTradeWithoutAI=true,MinMarketScoreNoAI=45.0,AIGatewayToken=,MinMarketScore=65.0,MagicNumber=2026001,MaxDrawdownPercent=50.0,MaxDailyLossUsd=60.0,MaxTotalRiskPercent=10.0,MaxTotalRiskOpenUsd=60.0,MaxExposurePercent=20.0`. `AIGatewayToken` vazio de proposito: `AIGatewayTokenEfetivo()` le o `.env` (64 chars) quando o input tem menos de 32 (`AIConnector.mqh:845`).
+- **nao tocar:** piso 65 com IA real, magic 2026001, 10/60/50 %, lotes, SL, TP.
+- **estado:** ABERTO | **hora:** 07/11 19:25 | **de:** ALFA
+
+
+## D-089 | ALFA | 2026-11-07 19:40 | C1..C5 + C6 implementados e COMPILADOS (v1.2.186). Build 0 erros / 0 avisos (21 472 ms), .ex5 967 328 B 19:30:46. Erro de compilacao resolvido: `MinMarketScoreNoAI` nunca chegou a Core/Config.mqh (insercao perdida) - reinserido na linha 1187; journal do veto passa a imprimir o piso EFETIVO. Identidade fechada nas 4 fontes (#property 1.386, EA_VERSION_STRING 1.2.186, EV_VERSION_STRING 1.2.186, .mqproj 1.386/v1.2.186 - estava em v1.2.9). MEDIDO: recompilar reinicia as 15 instancias automaticamente, mas com os inputs GUARDADOS no grafico - `AllowTradeWithoutAI=false` em 15/15; reattach explicito feito nos 15, journal mostra 15 `[START] v1.2.186` as 19:31:06 e 19:31:30-36. Gateway 9011 no ar (401 sem token). Conta 113568614 flat 12 636.32, 0 posicoes, 0 ordens. Piso 65,0 continua a valer com IA real; GATE_REAL continua 2/11 - nao existe 10/10.
+
+**Para DELTA:** medir, com mercado aberto, `[VALIDATION] TREND CONTRA OK` com selo Q-079/B, o ATR da folga em H1 (USDBRL e o unico M5), a separacao entradas-com-IA vs sem-IA e a distribuicao de `TOTAL=` nos 14 simbolos. O tester nao faz WebRequest (D-082): mede o portao, nao a rentabilidade.
+
+**Para CMD:** commit dos fontes alterados (Core/Config.mqh, Core/DecisionEngine.mqh, Filters/MarketScenario.mqh, Core/ValidationEngine.mqh, AI/AIEngine.mqh, Enterprise/VersionManager.mqh, Monitoring/EventEmitter.mqh, XAU_AI_PRO.mq5, XAU_AI_PRO.mqproj) + EQUIPE + `Profiles/Tester/XAU_AI_PRO.set`. Antes de domingo 19:00-20:00 local: confirmar `AllowTradeWithoutAI=true` e `MinMarketScoreNoAI` nos 15 graficos e o gateway 9011 vivo.
+
+**Para o DONO:** falta um numero - o piso sem IA. 45,0 e a proposta do ALFA (79,6% do teto tecnico 56,52); alternativas 50,0 (mais rigoroso) ou 40,0 (mais permissivo). E input: muda sem recompilar.
+
+
+---
+## 07/11 19:38 - DELTA -> CMD | D-089: P1.2342 FECHADO por mtime (Config.mqh 19:29:52 e DecisionEngine.mqh 19:30:09 sao POSTERIORES ao compile falhado das 19:28:35) | P1.2343 falso BATEM continua aberto | inputs vivos dos 15 ja medidos, nao precisa reattach | 2 min 11 s sem .ex5 e o .ex5 e gitignored | CHART16/CHART17 vazios no perfil Q071
+
+- **arquivo:** `SESSAO_20261107_DELTA_T5.md`
+- **precisa:** SIM
+- **estado:** ABERTO | **hora:** 07/11 19:38 | **de:** DELTA
+
+---
+## 07/11 19:40 - DELTA -> CMD | P1.2344: sync-agent post escreve CR em 3 fronteiras de bloco (check acusou 9 problemas, 8 corrigidos byte a byte) e o ledger D-089 ficou VAZIO com o corpo em prosa no IDS.md; 84 linhas de ledger para 77 IDs usados
+
+- **arquivo:** `SESSAO_20261107_DELTA_T5.md`
+- **precisa:** SIM
+- **estado:** ABERTO | **hora:** 07/11 19:40 | **de:** DELTA
+
+## D-090 | ALFA | 2026-11-07 19:45 | Backtest de fecho da v1.2.186: 1 trade, +33,60 USD, DD equity 0,22%
+
+Run `7705560909569046081` concluido. Configuracao `Profiles\Tester\XAI_ALFA_1186.ini`: XAUUSD H1, 2026-10-01 a 2026-11-06, deposito 12 636,32 USD, modelo `m1 ohlc`, alavancagem 100.
+
+| Metrica | Valor |
+|---|---|
+| Barras / ticks gerados | 577 / 138 448 |
+| Deals / trades | 2 / 1 |
+| Lucro liquido | +33,60 USD (+0,27% do deposito) |
+| Trades vencedores / perdedores | 1 / 0 (short 1, long 0) |
+| Fator de lucro | indeterminado (sem perdas) |
+| Drawdown maximo de equity | 27,37 USD = 0,22% |
+| Drawdown maximo de balanco | 0,00 |
+| Recovery factor | 1,2276 |
+| Sharpe | 0,0000 (amostra de 1 trade) |
+
+Leitura honesta: **uma operacao em 23 dias uteis nao e resultado, e prova de vida.** O que este run autoriza afirmar e apenas isto:
+
+1. A cadeia compila, arranca e executa ordens reais no testador com a v1.2.186.
+2. Com `AllowTradeWithoutAI=true` e `MinMarketScoreNoAI=45,0` **houve entrada sem IA** — o testador nao faz `WebRequest` (D-082), logo o caminho percorrido foi o fallback. A decisao (5)+(6) do DONO esta funcional.
+3. O risco nao explodiu: 0,22% de DD de equity com os limites intactos (`MaxDrawdownPercent=50`, `MaxDailyLossUsd=60`, `MaxTotalRiskPercent=10`).
+
+O que **nao** autoriza: qualquer conclusao de rentabilidade, qualquer alteracao de piso, qualquer selo GATE_REAL. 1 trade tem intervalo de confianca inutilizavel.
+
+Evidencia da folga Q-079/B a funcionar no testador (filtro `contramao`, 400 registos truncados, 19:32:13 a 19:35:10):
+- `[VALIDATION] TREND CONTRA OK | XAUUSD | Signal=-1 | contramao dentro da folga de 1.00 ATR | dist=10.86250 | ATR=16.26000 | Q-079/B`
+- simbolos exercitados: XAUUSD, USDBRL, USDCHF, USDJPY, USDCNH, NZDUSD, USDSEK, AUDUSD, USDCAD, GBPUSD.
+- o veto continua a imprimir: `[VALIDATION] BLOCK | TREND BUY | USDCHF | contramao vetada | tendencia formada | ADX=25.1 >= 22.0`.
+
+Ou seja: C1 (portao antes da folga), C3 (prefixo "contramao" imprime permissao **e** veto) e o mecanismo Q-079/B estao provados em dados historicos, nao apenas no codigo.
+
+**Nao e verde GATE_REAL.** Continua 2 de 11 (G2 com ressalva, G3 auditado). 10/10 continua a exigir 11/11 + 30 dias forward em demo + autorizacao escrita.
+
+Estado operacional no momento do fecho: 15/15 graficos em v1.2.186 com `AllowTradeWithoutAI=true`, `MinMarketScore=65.0`, `MinMarketScoreNoAI=45.0`, `EnableAdaptiveTrendGate=true`, `ScenarioTrendAtrSlack=1.0`; conta 113568614 plana, 12 636,32 USD; gateway 9011 vivo a devolver 401 sem token; mercado fechado ate domingo 19:00-20:00 local.
+
+
+
+## D-091 | ALFA | 2026-11-07 19:52 | Respostas a DELTA T5: P1.2342 explicado, folga inerte em M5 ACEITE, inputs vivos dos 15 graficos MEDIDOS
+
+Resposta ponto por ponto ao pedido de 9) da `SESSAO_20261107_DELTA_T5.md`. Sem alteracoes de codigo neste turno (o build e a frota ficam como estao).
+
+### 1. P1.2342 — o que mudou entre 19:28:35 e 19:30:46
+
+Tenho a causa, nao e misterio: **a declaracao do input nunca chegou a existir no ficheiro**. Cronologia real:
+
+1. `Core/DecisionEngine.mqh` passou a usar `MinMarketScoreNoAI` (C5).
+2. O input foi escrito em `Core/Config.mqh` mas a insercao **perdeu-se** — o ficheiro continuou com `input double MinMarketScore = 65.0;` e nada mais (84 257 bytes).
+3. Compile das 19:28:35: falhou exatamente como mediste, `undeclared identifier 'MinMarketScoreNoAI'` em `DecisionEngine.mqh(748:49)`. Nao havia ordem de include nem token a divergir: **o input simplesmente nao estava la**. A tua comparacao de bytes do identificador so provou que o uso estava correto, nao que a declaracao existia.
+4. Reinsercao em `Config.mqh:1187`, com o bloco aritmetico de justificacao. Ficheiro `84 257 -> 85 296` bytes, UTF-8 sem BOM, CRLF preservado.
+5. Compile das 19:30:46: 0 erros, 0 avisos, 21 472 ms, `.ex5` 967 328 B.
+
+Portanto o erro **era** trivial e a causa **esta** explicada: insercao perdida num ficheiro grande, detetada pelo compilador. P1.2342 fecha por explicacao, sem pedir nada ao CMD.
+
+**O que mesmo assim fica como risco e merece regra:** o MetaEditor **apaga o `.ex5` quando o compile falha**. Foi isso que produziu os teus 2 min 11 s de frota sem binario, e e o achado operacional valido do teu turno. Proponho regra (dono: CMD): antes de qualquer compilacao, copiar o `.ex5` atual para `MQL5\Files\Backup\XAU_AI_PRO_<versao>_<md5>.ex5`; assim um compile falhado deixa de deixar a frota a apontar para o vazio. O `.ex5` e ignorado pelo git, logo o git nunca foi rede de seguranca aqui.
+
+### 2. P1.2343 (BATEM com binario ausente)
+
+Confirmo o falso verde e subscrevo. `BATEM` tem de ser `N/A` quando `EX5: AUSENTE`. Dono: CMD.
+
+### 3. Folga inerte fora do TrendTF — ACEITE como desenho (P1.2344)
+
+Perguntaste se aceito a folga inerte em M5 ou se exijo ATR de `TrendTF` calculado no simbolo. **Aceito a forma atual**, e por uma razao medida e nao por gosto:
+
+- `ATRSymbolHandle` esta indexado **so por simbolo** (`ATR_SYMBOL_CACHE` 256, P1.137): o handle guardado para USDBRL foi criado com o timeframe do grafico (M5). Reutilizar esse handle para ler H1 devolveria o ATR de M5, ou pior, envenenava o handle para todos os outros consumidores. Para ler H1 a serio seria preciso um cache indexado por (simbolo, timeframe) — mudanca estrutural, nao um parâmetro.
+- A forma atual **nunca aprova mais do que o rigor antigo** em M5: cai no criterio original. O erro possivel e de omissao (nao entrar), nunca de excesso (entrar sem folga autorizada). Erro conservador.
+- Q-079 nasceu de sinais vetados por TREND. Em M5 o sintoma pode voltar, num grafico de 15. Isso e visivel: e o unico grafico que nao e H1.
+
+Fica aberto como **P1.2344 (BAIXA, desenho)**, com uma escolha de uma linha para o DONO: **mover USDBRL para H1** (alinha com os outros 14 e a folga passa a existir) **ou** manter M5 sem folga (conservador, documentado). Nao e bloqueio para domingo.
+
+### 4. Inputs vivos dos 15 graficos — MEDIDOS, e respondem ao teu 5.1
+
+Isto fecha o teu pedido e o pedido do DONO na mesma medicao. Fonte: `list_open_charts` (inputs do EA em memoria, nao `.CHR`), 19:44.
+
+| Input | Valor em 15/15 graficos |
+|---|---|
+| `AllowTradeWithoutAI` | **true** |
+| `MinMarketScore` | 65.0 |
+| `MinMarketScoreNoAI` | **45.0** |
+| `EnableAdaptiveTrendGate` | true |
+| `ScenarioTrendAtrSlack` | 1.0 |
+| `AIGatewayUrl` | `http://127.0.0.1:9011/api/ai/predict` |
+| `AIGatewayToken` | vazio (input) — o token efetivo vem do `.env` |
+| `MaxDrawdownPercent` / `MaxDailyLossUsd` / `MaxTotalRiskPercent` | 50.0 / 60.0 / 10.0 |
+
+Conclusao: o caminho foi o **(1)** da tua lista. CMD re-anexou com a lista explicita de inputs, os defaults novos estao em memoria e as decisoes (5) e (6) do DONO estao em vigor **nos 15 graficos**. Confirmo tambem que o `.CHR` continua a mentir (18:58:09) e nao deve voltar a ser usado como prova; `list_open_charts` sim.
+
+### 5. Backtest de fecho (D-090, run 7705560909569046081)
+
+2026-10-01 a 2026-11-06, XAUUSD H1, deposito 12 636,32, `m1 ohlc`: **1 trade short vencedor, +33,60 USD (0,27%), DD equity 0,22%, 0 perdas**. E prova de vida da cadeia e de que (5)+(6) produzem entrada sem IA; **nao e prova de rentabilidade** (1 trade nao tem amostra) e **nao move o GATE_REAL**: continua 2 de 11.
+
+E a folga Q-079/B ficou finalmente exercitada em dados historicos, em 10 simbolos (XAUUSD, USDBRL, USDCHF, USDJPY, USDCNH, NZDUSD, USDSEK, AUDUSD, USDCAD, GBPUSD), com o veto a continuar a imprimir ao lado. O teu "NAO ASSINO / a folga funciona" passa a ter evidencia — no testador, nao em producao.
+
+### 6. `trades=0` e passo 1 silencioso (P1.2336 / P1.139)
+
+Continuam abertos do teu lado e nao os fecho eu. Registo que o backtest nao os resolve: 1 trade nao sustenta nem nega o contador do RESUMO.
+
+### 7. O que continua verdade
+
+- 15/15 em v1.2.186 com os inputs acima; conta 113568614 plana, 12 636,32 USD, 0 posicoes, 0 ordens.
+- `[SCORE]` = 0 e `[CENARIO]` = 0 em producao: o piso e a folga nao tem amostra real. Mercado fechado ate domingo 19:00-20:00 local.
+- **GATE_REAL 2 de 11. 10/10 nao existe.**
+

@@ -108,3 +108,23 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 18:57 | CMD | ONLINE | Q-079=B implementado e compilado: v1.2.185, 0/0, ex5 964998 B; B1 autoriza reattach com token (o token ja vem do .env); ALFA deve rever o codigo; GATE_REAL 2 de 11.
 
 2026-11-07 19:00 | CMD | ONLINE | B1 executado: reinicio limpo, 15/15 em v1.2.185, IA real em uso (XAUUSD SELL 72.40). Mercado fechado: sem [CENARIO] e sem sinais. GATE_REAL 2 de 11; DELTA deve validar a leitura.
+
+2026-11-07 19:05 | ALFA | ONLINE | D-087: revisao independente da v1.2.185 concluida - ACEITE COM 3 RESSALVAS (R1 folga passa por cima de EnableAdaptiveTrendGate=false; R2 ATR da folga em Period() e nao H1; R3 folga autoriza sem linha no journal); Q-079/B correta no essencial (guarda intacta, risco intocado, reversivel por input); folga NAO exercitada (Q-079/B=0 no journal); 15 graficos = 1 instrumento (XAUUSD); GATE_REAL 2 de 11.
+
+
+2026-11-07 19:25 | ALFA | ONLINE | D-088 registado: DONO decidiu 1=A, 2=SIM, 3=SIM, 4=SIM, 5=REVER, 6=OPERAR TODOS. Ordens C1..C6 escritas (folga respeita o portao adaptativo; ATR da folga em H1; linha positiva no journal; AllowTradeWithoutAI=true; MinMarketScoreNoAI=45,0 a confirmar; identidades 1.2.186). Aviso: sem IA o maximo e 56,52 < 65, logo 6 sem 5 nao entra. GATE_REAL 2 de 11; conta plana.
+
+
+## D-089 | ALFA | 2026-11-07 19:40 | C1..C5 + C6 implementados e COMPILADOS (v1.2.186). Build 0 erros / 0 avisos (21 472 ms), .ex5 967 328 B 19:30:46. Erro de compilacao resolvido: `MinMarketScoreNoAI` nunca chegou a Core/Config.mqh (insercao perdida) - reinserido na linha 1187; journal do veto passa a imprimir o piso EFETIVO. Identidade fechada nas 4 fontes (#property 1.386, EA_VERSION_STRING 1.2.186, EV_VERSION_STRING 1.2.186, .mqproj 1.386/v1.2.186 - estava em v1.2.9). MEDIDO: recompilar reinicia as 15 instancias automaticamente, mas com os inputs GUARDADOS no grafico - `AllowTradeWithoutAI=false` em 15/15; reattach explicito feito nos 15, journal mostra 15 `[START] v1.2.186` as 19:31:06 e 19:31:30-36. Gateway 9011 no ar (401 sem token). Conta 113568614 flat 12 636.32, 0 posicoes, 0 ordens. Piso 65,0 continua a valer com IA real; GATE_REAL continua 2/11 - nao existe 10/10.
+
+**Para DELTA:** medir, com mercado aberto, `[VALIDATION] TREND CONTRA OK` com selo Q-079/B, o ATR da folga em H1 (USDBRL e o unico M5), a separacao entradas-com-IA vs sem-IA e a distribuicao de `TOTAL=` nos 14 simbolos. O tester nao faz WebRequest (D-082): mede o portao, nao a rentabilidade.
+
+**Para CMD:** commit dos fontes alterados (Core/Config.mqh, Core/DecisionEngine.mqh, Filters/MarketScenario.mqh, Core/ValidationEngine.mqh, AI/AIEngine.mqh, Enterprise/VersionManager.mqh, Monitoring/EventEmitter.mqh, XAU_AI_PRO.mq5, XAU_AI_PRO.mqproj) + EQUIPE + `Profiles/Tester/XAU_AI_PRO.set`. Antes de domingo 19:00-20:00 local: confirmar `AllowTradeWithoutAI=true` e `MinMarketScoreNoAI` nos 15 graficos e o gateway 9011 vivo.
+
+**Para o DONO:** falta um numero - o piso sem IA. 45,0 e a proposta do ALFA (79,6% do teto tecnico 56,52); alternativas 50,0 (mais rigoroso) ou 40,0 (mais permissivo). E input: muda sem recompilar.
+
+2026-11-07 19:46 | ALFA | ONLINE | D-090 registado: backtest de fecho v1.2.186 concluido (1 trade, +33,60 USD, DD 0,22%). Fila ALFA vazia: codigo compilado, 15/15 religados, backtest medido, canais sincronizados. Proximo passo e do CMD (commit) e do DONO (numero do piso).
+2026-11-07 19:53 | ALFA | ONLINE | D-091 registado: auditoria do DELTA respondida, P1.2342 fechado com causa, inputs vivos dos 15 graficos medidos e confirmados. Fila ALFA: nada bloqueado. Depende de CMD (commit + backup pre-compile + P1.2343) e do DONO (P1.2344: USDBRL M5 sem folga ou mover para H1).
+
+2026-11-07 20:20 | CMD | ONLINE | entrega do v1.2.186: 9 fontes + canal commitados; P1.2343 corrigido; compile-ea.ps1 com backup adoptado; .set nao commitado (piso 45,0 pendente do DONO); canal OK; GATE_REAL 2 de 11.
+2026-11-07 20:22 | ALFA | ONLINE | A/B do piso na fila do tester (40/50). Bloqueio momentaneo: DELTA ocupa o tester com corrida de deposito 0,00 (P1.2345 aberto). Aguardando liberacao para floor40 e floor50.

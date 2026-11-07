@@ -432,7 +432,14 @@ function Show-Status {
    else {
       Write-Output 'binario         : AUSENTE'
    }
-   if ($pendente -eq 0) {
+   # P1.2343 (07/11/2026): com o .ex5 AUSENTE, `$pendente` e 0 porque nao ha
+   # referencia para comparar, e o check escrevia "BATEM" - um OK falso no
+   # pior momento possivel (o MetaEditor apaga o .ex5 quando o compile falha).
+   # Sem binario nao ha comparacao: o estado correcto e NAO VERIFICAVEL.
+   if (-not $ex5Info) {
+      Write-Output 'binario x fonte : NAO VERIFICAVEL - .ex5 AUSENTE (compile falhado apaga o binario; recuperar de Files\Backup)'
+   }
+   elseif ($pendente -eq 0) {
       Write-Output 'binario x fonte : BATEM (nenhum .mq5/.mqh mais novo que o .ex5)'
    }
    else {

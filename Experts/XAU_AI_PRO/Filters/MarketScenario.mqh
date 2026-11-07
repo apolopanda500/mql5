@@ -200,7 +200,19 @@ bool ScenarioTrendGate(string symbol, int signal, string &reason)
    // distancia continua a ser contramao e segue as regras abaixo (ADX e
    // cenario). Sem leitura de EMA ou de ATR, o rigor antigo fica intacto.
    //==================================================
-   if(ScenarioTrendAtrSlack > 0.0)
+   if(!EnableAdaptiveTrendGate)
+   {
+      reason = "contramao vetada (EnableAdaptiveTrendGate=false)";
+      return(false);
+   }
+
+   // v1.2.186 - P1.2338: a folga so vale quando o ATR lido e do MESMO timeframe
+   // da EMA de referencia (`TrendTF`, H1). `GetATR(symbol)` usa
+   // `(ENUM_TIMEFRAMES)Period()`, ou seja o periodo do GRAFICO: num grafico M5
+   // a folga compararia 1 ATR de M5 com uma distancia medida em H1 e valeria
+   // uma fraccao do que o parametro diz. Sem coincidencia de timeframe nao se
+   // aplica folga - fica o rigor antigo.
+   if(ScenarioTrendAtrSlack > 0.0 && Period() == TrendTF)
    {
       double emaRef = 0.0;
       double bidRef = SymbolInfoDouble(symbol, SYMBOL_BID);
