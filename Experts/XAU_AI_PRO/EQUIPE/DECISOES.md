@@ -4084,3 +4084,211 @@ descritivo (`## HG-01 - ...`, `## HG-01b - ...`, `## F2.8 - ...`) e sao
 colide com uma decisao ja assinada. Este bloco nasce com cabecalho `## D-076 |`
 de proposito, para poder ser contado. A correcao do contador e' do CMD (dono da
 ferramenta); deixo a proposta escrita no INBOX dele.
+
+## D-077 | P1.138 / GATE_REAL G3: o MarketScore deixa de saturar em 100.00 (ALFA, 07/11/2026 16:25)
+
+**Reserva:** `D-077` no ledger. O contador `P1` do ledger devolveu `P1.1206`
+(valor inicial da serie, porque nunca houve reservas `P1` registadas); o codigo
+usa **`P1.138`**, que e o numero seguinte ao `P1.137` da v1.2.183. Divergencia
+registada de proposito: o ledger nao tem serie `P1` e isso e um defeito do
+contador, nao uma escolha minha.
+
+### 1) A causa raiz, medida na aritmetica e nao deduzida
+
+`Core/DecisionEngine.mqh`, `CalculateMarketScore()`, antes desta versao:
+
+```
+score = 50.0                       // BASE SCORE
+     + 20.0   EMA alinhada         // +20 se fast>slow no sentido do sinal
+     + 15.0   RSI em 30..70        // +10 em 20..80
+     + 15.0   ADX >= MinimumADX    // +10 em 0.8*MinimumADX
+     + 10.0   KCI direcional
+     +  5.0   KCI volatilidade
+     + 50.0   IA (0.50 * confianca, 0..100)
+     ---------
+     maximo 165 -> cortado em 100.0
+```
+
+As tres primeiras parcelas **nao sao bonus: sao condicoes de existir sinal**
+(EMA alinhada, RSI na banda, `ADX >= MinimumADX = 18.0` em `Config.mqh:872`).
+Logo, para qualquer sinal que chegasse ao score, a soma ja era
+
+```
+50 + 20 + 15 + 15 = 100.00
+```
+
+**antes** da IA e do KCI, e o corte em 100 nunca era o que limitava. O piso
+`MinMarketScore = 65.0` (`Config.mqh:1168`, comparado em `DecisionEngine.mqh:723`)
+aprovava tudo o que chegasse. Isto explica, sem interpretacao, as **162 de 162**
+amostras `[SCORE]` com `TOTAL=100.00` medidas pelo DELTA em 06/11 (GATE_REAL G3):
+o piso estava morto e o score nao distinguia sinal bom de sinal fraco.
+
+### 2) A correcao
+
+Sai a base arbitraria de 50.0 e o total passa a ser a **fracao dos pontos
+possiveis**, em escala 0..100:
+
+```
+maxScorePoints = 115.0   // 20+15+15+10+5 + 50 (IA a 100%)
+score = 100.0 * score / maxScorePoints
+```
+
+Nenhuma parcela mudou de peso relativo; muda a escala em que um piso que ja
+existia e comparado. O piso continua **65.0** - nao foi tocado.
+
+### 3) Consequencia aritmetica, escrita antes de medir
+
+| Cenario | Pontos | Score | Piso 65.0 |
+|---|---|---|---|
+| EMA + RSI + ADX, sem IA | 50 | **43.48** | recusa |
+| EMA + RSI + ADX + IA 72.4% | 86.2 | **74.96** | passa |
+| EMA + RSI + ADX + KCI dir + KCI vol, sem IA | 65 | **56.52** | recusa |
+| Sinal fraco (ADX abaixo do minimo, RSI fora da banda) | 20..30 | **17..26** | recusa |
+| Tudo no maximo | 115 | **100.00** | passa |
+
+Leitura: o piso passa a exigir, na pratica, confirmacao da IA ou do KCI. Com
+`AllowTradeWithoutAI=false` (padrao em `Config.mqh:637`) e o gateway a responder,
+isto **nao reduz o universo** - filtra os sinais fracos dentro dos que a IA ja
+aprovou. Sem IA, o caminho ja estava bloqueado a montante.
+
+### 4) O que mudou no journal
+
+`[SCORE] CALCULATED` passa a imprimir `PTS` (pontos brutos) ao lado de `TOTAL`
+(escala normalizada), para que a mudanca de escala fique visivel em cada linha:
+
+```
+[SCORE] CALCULATED | Symbol=... | Signal=... | EMA=... | RSI=... | ADX=... | AI=... | WARMUP=... | PTS=86.20 | TOTAL=74.96
+```
+
+### 5) Estado medido deste turno
+
+- **Compile: 1** (janela unica, lock tomado por ALFA as 16:21:15, TTL 40 min).
+  `0 errors, 0 warnings`, 27 614 ms, `cpu='X64 Regular'`.
+- **Binario:** `XAU_AI_PRO.ex5` **964 056 B**, mtime **07/11 16:23:11**,
+  MD5 `931459A39634DD7A95ED1EA74D412FC4`.
+- **Versao alinhada (HG-01):** `#property version "1.384"` (`XAU_AI_PRO.mq5:22`)
+  contra `EA_VERSION_STRING "1.2.184"` (`Enterprise/VersionManager.mqh:14`) -
+  coerente com `minor*100+patch`. Entrada `v1.2.184` no changelog do
+  `VersionManager`, com o texto desta decisao.
+- **Conta 113568614 intocada:** 0 posicoes, 0 ordens, saldo = equity =
+  12 636,32 USD, margem 0,00. Nenhuma ordem foi enviada.
+- **Nenhum parametro de risco alterado:** `RiskPercent`, `MaxDailyLossPercent`,
+  `MaxDrawdownPercent`, `StopLossPoints`, `MaxExposurePercent`, `MinMarketScore`
+  e `MinAIConfidence` ficaram exactamente como estavam.
+
+### 6) O que NAO esta provado (e fica declarado)
+
+1. **A distribuicao nova de `[SCORE]` ainda nao foi medida.** A correcao e
+   aritmetica e a consequencia esta calculada acima, mas o criterio G3 exige
+   medicao: `> 50%` das amostras diferentes de 100.00 e desvio-padrao `> 5`.
+   Falta correr o tester com o binario novo e contar as linhas.
+2. **O impacto em trades, PF e DD nao foi medido.** Um backtest de referencia
+   com o binario **anterior** (v1.2.183) esta a correr nesta janela do tester,
+   na mesma configuracao do relatorio de 04/11 (`XAUUSD H1`, `2026.09.01` a
+   `2026.11.01`, `m1 ohlc`, deposito 10 000). So depois de o comparar com uma
+   corrida identica do binario novo se pode dizer se a mudanca melhora ou piora
+   o resultado. **Nao afirmo que melhora.**
+3. **Os 15 graficos ainda nao recarregaram** o binario novo no momento em que
+   este bloco foi escrito (o tester esta a ocupar o terminal). Quando
+   recarregarem, a prova e 15 linhas `[START] XAU_AI_PRO v1.2.184`.
+4. **GATE_REAL continua 1 verde de 11.** Este bloco nao fecha G3 e nao escreve
+   `10/10`; o que ele faz e remover a causa medida do G3 e deixar o criterio
+   mensuravel.
+
+### 7) Para o DONO, em portugues simples
+
+O "score" do EA era uma nota de 0 a 100 que devia separar sinal bom de sinal
+fraco. Ele comecava em 50 e somava pontos; quando havia sinal, a nota ja chegava
+a 100 antes de olhar para a IA. Resultado: a nota era sempre 100 e o filtro
+minimo de 65 nunca reprovava nada. Agora a nota e a percentagem dos pontos
+possiveis: um sinal sem confirmacao da IA fica em ~43 e e recusado; com a IA a
+72% fica em ~75 e passa. Nada no risco mudou - mudou o criterio que ja existia
+e que estava aprovando tudo.
+
+
+## D-078 | O tester multi-simbolo le a EMA200 de OUTRO instrumento 15 639 vezes, e o portao de tendencia decide com ela (ALFA, 07/11/2026 16:36)
+
+**Papel:** ALFA. **Compile neste turno: 0.** Nenhum ficheiro de codigo alterado
+neste bloco; o que segue e medicao com numeros e uma proposta para decisao.
+
+### 1. O que foi medido
+
+Fonte: `Tester\logs\20261107.log` (21 104 262 B, runs de hoje, incluindo o de
+**16:12:54** com a **v1.2.183**, XAUUSD H1, 01/09 a 01/11/2026, m1 ohlc,
+10 000 USD). Contagem por `Select-String -SimpleMatch` sobre o ficheiro
+inteiro:
+
+| Linha | Ocorrencias |
+|---|---|
+| `[TREND] LEITURA SUSPEITA` | **15 639** |
+| `[VALIDATION] BLOCK \| TREND` | **2 126** |
+| `[VALIDATION] APPROVED` | **598** |
+| `[SIGNAL] BUY` | **136** |
+| `[SIGNAL] SELL` | **186** |
+| `TRADE EXECUTADO` | **6** |
+
+Amostras de `[TREND] LEITURA SUSPEITA` (simbolo estrangeiro):
+`GBPUSD | EMA=9.76645 | bid=1.33747` e `AUDUSD | EMA=6.71136 | bid=0.71308`.
+9.76645 nao e a EMA200 do GBPUSD e 6.71136 nao e a EMA200 do AUDUSD: o handle
+e valido e a serie nao e a do simbolo pedido.
+
+### 2. Porque isto acontece (leitura do codigo, nao hipotese)
+
+`Filters/TrendFilter.mqh`: `TrendSymbolHandle(symbol)` cria
+`iMA(symbol, TrendTF, 200, ...)` com `TrendTF=PERIOD_H1`. No Strategy Tester o
+terminal so constroi series para o **simbolo do grafico**; para os outros 10
+simbolos do scan o handle existe mas nao tem serie propria. `GetTrendEMA(value,
+symbol)` publica a linha, chama `TrendCacheDrop(symbol)` e devolve `false` -
+e a leitura **seguinte** volta com o mesmo valor (medido: a mesma linha sai a
+cada 20 s, com o mesmo `EMA=` a variar no 5.Âº decimal, ao longo de horas de
+teste). Ou seja: o descarte nao sara nada neste contexto.
+
+### 3. Consequencia aritmetica (o que isto custa)
+
+`GetTrendEMA` falso -> `TrendBuy()` e `TrendSell()` falsos ->
+`ScenarioTrendGate()` cai no ramo "contramao" -> com
+`EnableAdaptiveTrendGate=true`, `ADX>=ScenarioCounterTrendMaxADX=22.0` veta.
+Resultado medido: **2 126 bloqueios de tendencia contra 598 aprovacoes**, ou
+seja **78% dos sinais que chegam ao portao sao bloqueados** - e o criterio de
+"alinhado" foi decidido, em 15 639 leituras, por uma serie que nao e a do par.
+
+### 4. O que isto NAO e
+
+- **Nao e risco de capital.** O portao falha-fechado: sem leitura -> contramao
+  -> veto. Nenhuma ordem saiu por causa disto.
+- **Nao e a causa do G8 (0 shorts).** Os sinais sao de dois lados: 136
+  `[SIGNAL] BUY` para 186 `[SIGNAL] SELL`. O G8 fica depois do sinal; a
+  assimetria medida esta na proporcao de bloqueios, nao na geracao de sinal.
+- **Nao invalida o G3.** O `[SCORE]` e calculado com EMA/RSI/ADX do proprio
+  simbolo do sinal e da IA, nao com esta EMA200 de tendencia.
+- **Nao esta provado** que a serie lida pertenca a um par especifico. O que
+  esta provado e que a leitura esta fora de Â±50% do preco do proprio simbolo
+  (limite `TREND_EMA_MAX_DEVIATION_PCT`) e que o descarte nao a corrige.
+
+### 5. Consequencia para o GATE_REAL
+
+**G5/G6/G7 tem de ser medidos num simbolo so.** O criterio fala de ">= 100
+trades no par que vai a real" e, num backtest, so o simbolo do grafico tem
+tick e serie: com `EnableMultiSymbol=true` o resultado descreve 1 simbolo a
+operar e 10 a decidir com leitura invalida. Proposta, para o DONO/DELTA
+decidirem (nao decidida por mim):
+
+1. medicao de A/B do P1.138 **mantem** a configuracao de referencia
+   (`EnableMultiSymbol=true`) para ser comparavel com a v1.2.127/v1.2.183;
+2. medicao de **G5/G6/G7** passa a correr com `EnableMultiSymbol=false` e
+   `Symbols=XAUUSD`, que e o par que vai a real;
+3. fica registado como defeito de ambiente (nao de logica) que o tester
+   multi-simbolo nao pode ser usado como prova de qualidade de estrategia.
+
+### 6. Estado
+
+- Codigo: **nenhuma alteracao** neste bloco. `XAU_AI_PRO.ex5` 964 056 B,
+  16:23:11, MD5 `931459A39634DD7A95ED1EA74D412FC4` (v1.2.184), inalterado.
+- Backtest de referencia (v1.2.183, binario anterior ao P1.138) a correr no
+  tester; sem janela de resultado as 16:31.
+- GATE_REAL continua **1 verde de 11**. Este bloco nao fecha nenhum criterio.
+
+
+C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\d080_alfa.txt
+
+C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\d081_alfa.txt

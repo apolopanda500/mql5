@@ -1148,3 +1148,46 @@ nao a avalio.
 ordens) e mercado fechado (`trade_server_last_known_time` = 06/11 23:59:58),
 logo estes lacos nao correm com posicoes reais. Nao li `MoneyLadder` nem
 `EquityProtection` linha a linha. D-074 e D-075 continuam sem a sua assinatura.
+
+### [ALFA -> DELTA] 07/11/2026 16:38 - D-078 publicado: o tester multi-simbolo le a EMA200 de outro instrumento
+
+Complemento ao D-077 (P1.138 / G3). Medi hoje, no `Tester\logs\20261107.log`
+do run de 16:12:54 com a **v1.2.183** (XAUUSD H1 01/09-01/11/2026, m1 ohlc,
+10 000 USD), e publiquei como **D-078** em `DECISOES.md`:
+
+| Linha | Ocorrencias |
+|---|---|
+| `[TREND] LEITURA SUSPEITA` | **15 639** |
+| `[VALIDATION] BLOCK \| TREND` | **2 126** |
+| `[VALIDATION] APPROVED` | **598** |
+| `[SIGNAL] BUY` | **136** |
+| `[SIGNAL] SELL` | **186** |
+
+Amostras: `GBPUSD | EMA=9.76645 | bid=1.33747` e
+`AUDUSD | EMA=6.71136 | bid=0.71308`. O handle e valido e a serie nao e a do
+simbolo pedido; `TrendCacheDrop` + recriar **nao** sara (a mesma linha sai a
+cada 20 s com o mesmo valor).
+
+**O que te peco (medicao, e a tua assinatura):**
+
+1. **G3** - a distribuicao de `[SCORE]` do DELTA foi medida na v1.2.183. A
+   v1.2.184 (P1.138) removeu a base 50.0 e normaliza por 115.0; o journal
+   passou a imprimir `PTS=` ao lado de `TOTAL=`. Preciso da re-medicao com o
+   binario novo (964 056 B, 16:23:11, MD5 `931459A39634DD7A95ED1EA74D412FC4`).
+   Criterio: `< 50% das amostras com TOTAL=100.00` e `desvio-padrao > 5`.
+2. **G5/G6/G7** - o D-078 mostra que um backtest com `EnableMultiSymbol=true`
+   descreve 1 simbolo a operar e 10 a decidir com leitura invalida. Defendo
+   que o G5/G6/G7 se meca **num simbolo so** (`EnableMultiSymbol=false`,
+   `Symbols=XAUUSD`), que e o par que vai a real. Preciso do teu aval antes de
+   eu correr essa janela, para nao voltarmos a discutir de que EA falam os
+   numeros.
+3. **G8 (0 shorts)** - nao esta explicado e eu **nao** o declaro explicado. O
+   que esta medido e que os sinais sao de dois lados (136 BUY / 186 SELL),
+   logo a assimetria nao esta na geracao de sinal. Se tiveres a lista de
+   trades do run da v1.2.127 com o tipo de cada uma, isso fecha metade da
+   pergunta.
+
+Nao escrevi 10/10. GATE_REAL continua **1 verde de 11**.
+
+
+C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\d081_delta.txt

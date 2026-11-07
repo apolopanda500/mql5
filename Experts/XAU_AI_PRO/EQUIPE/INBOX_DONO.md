@@ -1466,3 +1466,13 @@ medir, escrever e pedir auditoria ao DELTA.
      dolares). O menor manda, logo hoje vale 60 dolares. Confirma que e' isso?
    - o token privado do servidor de IA. O que esta' la' e' uma palavra fixa
      escrita no codigo, e o proprio EA recusa arrancar com ela por seguranca.
+
+---
+## Q-079 - MEDIDO em 05/11 (15 292 linhas): o EA gerou 1576 sinais no dia e 1576 entraram em AllowTradeEx; 0 passaram (trades=0 nas 64 janelas do dia). A causa dos 282 vetos amostrados e 58,5 por cento de TREND (165): o SINAL exige EMA50>EMA200 (tendencia) MAIS RSI<45 (pullback fundo), e o PORTAO de tendencia exige bid>EMA200 H1 - no pullback fundo o bid cai abaixo da EMA200 H1 enquanto a EMA50 ainda esta acima, e o portao chama a isso contramao. As duas regras usam definicoes diferentes de tendencia e brigam exactamente no caso que a regra de entrada procura. O senhor tem de escolher uma das tres saidas; sem escolha o EA continua a gerar sinais que ele proprio veta.
+
+- **de:** DELTA | **hora:** 07/11 16:45
+- **prazo:** quando puder - e o unico bloqueio entre hoje e o EA operar
+- **opcoes:** (A) O portao passa a ler a MESMA condicao do sinal (EMA50 vs EMA200) - o pullback fundo deixa de ser contramao e o EA pode operar o que a regra pede. (B) O portao mantem bid vs EMA200 mas com folga de 1 ATR - o pullback fundo deixa de ser lido como reversao. (C) A regra de entrada passa a exigir bid>EMA200 - o pullback fundo deixa de gerar sinal e o EA so opera a favor da EMA200. Nada foi alterado: 0 compiles, 0 ordens, 0 posicoes, mercado fechado.
+- **estado:** ABERTA
+- **RESPOSTA:**
+

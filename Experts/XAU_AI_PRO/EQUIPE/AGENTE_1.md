@@ -562,3 +562,53 @@ na GUI/Explorer. Dentro de `MQL5` (write root) nao ha lixo relevante:
 - LOCK.md: LIVRE. Nenhum job a correr.
 - Documento de continuidade: SESSAO_20251106_ALFA.md.
 - Retoma amanha por: F3 multi-simbolo (13 graficos) + repetir B-031c; capturar BacktestAnalyzer nos dois lados.
+
+
+## 07/11/2026 16:25 - ALFA - turno 6: G3 tem causa medida e a causa foi removida (v1.2.184, P1.138)
+
+**Papel:** ALFA. **Compile neste turno: 1** (janela unica, lock tomado as 16:21:15,
+TTL 40 min). Nenhum parametro de risco tocado, nenhuma ordem enviada.
+
+### O que medi antes de escrever codigo
+
+`Core/DecisionEngine.mqh::CalculateMarketScore()` comecava em `50.0` e somava
+EMA +20, RSI +15, ADX +15, KCI dir +10, KCI vol +5 e IA +0.50*conf. As tres
+primeiras parcelas sao condicoes de **existir** sinal, logo a soma era
+`50+20+15+15 = 100.00` antes da IA e do KCI, e o corte em 100 nao limitava nada.
+`MinMarketScore = 65.0` (`Config.mqh:1168`, comparado em `DecisionEngine.mqh:723`)
+aprovava tudo. Isto explica as 162/162 amostras em `TOTAL=100.00` do DELTA sem
+nenhuma hipotese adicional.
+
+### O que mudei
+
+- `Core/DecisionEngine.mqh`: sai a base 50.0; o total passa a `100*score/115`
+  (115 = 20+15+15+10+5+50). Peso relativo das parcelas intacto. O log
+  `[SCORE] CALCULATED` ganhou `PTS=` ao lado de `TOTAL=`.
+- `XAU_AI_PRO.mq5`: `#property version "1.384"`.
+- `Enterprise/VersionManager.mqh`: `EA_VERSION_STRING "1.2.184"` + entrada no
+  changelog com o texto da decisao.
+
+### Estado medido
+
+- Compile **0 errors / 0 warnings**, 27 614 ms, X64 Regular.
+- `XAU_AI_PRO.ex5` **964 056 B**, **16:23:11**, MD5
+  `931459A39634DD7A95ED1EA74D412FC4`.
+- Conta 113568614 plana: 0 posicoes, 0 ordens, equity 12 636,32.
+- Registo: `D-077` (reserva do ledger) + `P1.138` (sequencia do codigo; o
+  contador `P1` do ledger devolveu `P1.1206` porque nunca teve serie - defeito
+  registado no proprio bloco).
+
+### O que falta provar (nao afirmo que melhora)
+
+1. Distribuicao nova de `[SCORE]` no tester (criterio G3: >50% fora de 100.00 e
+   desvio-padrao >5). **Ainda nao medido.**
+2. Comparacao de trades/PF/DD contra o binario anterior na mesma janela. O
+   backtest de referencia (v1.2.183, `XAUUSD H1`, 01/09 a 01/11, `m1 ohlc`,
+   10 000 USD) estava a correr no tester as 16:23 no dia 2026.09.21.
+3. Recarga dos 15 graficos: ainda **0** linhas `[START] XAU_AI_PRO v1.2.184`
+   as 16:25 - o tester esta a ocupar o terminal.
+4. GATE_REAL continua **1 verde de 11**. Este turno remove a causa do G3 e
+   deixa o criterio mensuravel; nao fecha o G3 e nao escreve 10/10.
+
+
+C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\alfa_diario_1725.txt

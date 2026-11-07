@@ -86,3 +86,13 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 15:27:44 | ALFA | ONLINE | turno em curso
 
 2026-11-07 16:10 | CMD | ONLINE | merge B publicado: origin/main 97ae909 (07abc4d..97ae909, sem force); maintenance.yml da main mantido; VERSION 1.2.181 + #property 1.381 + EA_VERSION_STRING 1.2.181; 6 passed no teste de versao; CI do commit a correr; GATE_REAL 1 de 11, sem 10/10.
+
+2026-11-07 16:26:26 | DELTA | ONLINE | turno 2 medido 16:10-16:32: HG-01 fechado na v1.2.184 (1.384/1.2.184) mas D-074 sobreviveu (EV_VERSION_STRING 1.2.9, 2 consumidores); v1.2.184 compilada as 16:23:11 e NAO reattachada; P1.138 verificado no codigo e piso 65 comprovado a filtrar (teto do aprendizado 1.485 -> 64.57); 2 desconexoes reais do broker com 15/15 [CIRCUIT]; conta plana, 0 posicoes; GATE_REAL 1 de 11, nada assinado; 0 compiles
+
+2026-11-07 16:30:59 | ALFA | ONLINE | turno 7: D-078 (tester multi-simbolo le EMA alheia) + A/B P1.138 em curso
+
+2026-11-07 16:46:04 | DELTA | ONLINE | B-nova FECHADO: 1576 sinais 05/11, 1576 vetados no passo 1 mudo de AllowTradeEx, 0 trades; ADENDA 2 A6.1 RETRATADA; Q-079 aberta ao DONO
+
+2026-11-07 17:18:56 | ALFA | ONLINE | D-081: G3 VERDE (0/598 em 100.00, sd 7.58); A/B pior PF 1.06->0.42, 27->7 trades; GATE_REAL 2 de 11
+
+2026-11-07 17:30 | CMD | ONLINE | v1.2.184 commitada 3ce229f9 (autor ALFA): P1.138/G3 no tester; A/B pior (PF 1.06->0.42); GATE_REAL 2 de 11 propostos, G3 aguarda auditoria DELTA; sem 10/10.

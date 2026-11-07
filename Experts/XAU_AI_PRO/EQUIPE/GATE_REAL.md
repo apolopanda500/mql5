@@ -4,7 +4,7 @@
 > Enquanto houver um VERMELHO nesta tabela, conta real nao se abre - nao por conservadorismo, mas porque converter um backtest de 9 trades em dinheiro real e a forma mais cara de aprender o que o backtest ja podia ter dito.
 
 - Autor: DELTA, 06/11 14:36
-- Estado global: **1 verde de 11** (G2, com ressalva de durabilidade) e **10 vermelhos** - medido 06/11 15:50
+- Estado global: **2 verdes de 11** (G2 com ressalva de durabilidade; G3 medido pelo ALFA e **aguarda auditoria do DELTA**) e **9 vermelhos** - medido 07/11 17:20
 - Substitui a expressao "pronto a 10/10": esse numero nao existe em trading e nao sera escrito neste projecto como se existisse.
 
 ## 1. Tabela do gate
@@ -13,7 +13,7 @@
 |---|---|---|---|---|---|
 | **G1** | Conta live num broker real, distinta da demo | **VERMELHO** - servidor `MetaQuotes-Demo`, tipo `demo`, login `113568614`, balance 12636.32 | 06/11 14:35 | `get_trading_account_info` | DONO |
 | **G2** | Servico de IA **a correr** na porta que o EA usa e `/api/ai/predict` responde **200**, com credencial **resolvida** por `AIGatewayTokenEfetivo()` (>= 32 caracteres, via `.env`) | **VERDE (com ressalva)** - 9011 no ar (PID 1464); `GET` sem token = **401**, com Bearer do `.env` = **200 / 1122 B**, token errado = **401**; e o EA provou no journal `[AI] GATEWAY RECUPERADO \| falhas=7 \| cego=209s \| resposta=357B`. **Ressalva:** processo manual, sem servico - nao sobrevive a reboot | 06/11 15:50 | `delta_probe_9011.ps1` + `get_expert_journal` + `delta_edge_all.ps1` | DONO (Q-022: subir como servico) |
-| **G3** | Score discrimina: **< 50 %** das amostras `[SCORE]` com `TOTAL=100.00` e desvio-padrao **> 5** pontos | **VERMELHO** - **162 de 162** (100 %) em `TOTAL=100.00` | 06/11 14:24 | `[SCORE]` em `Tester\logs\*.log` | DELTA mede / ALFA corrige (bloqueado em G2) |
+| **G3** | Score discrimina: **< 50 %** das amostras `[SCORE]` com `TOTAL=100.00` e desvio-padrao **> 5** pontos | **VERDE (proposto; aguarda auditoria do DELTA)** - v1.2.184 (ex5 964 056 B, 16:23:11, MD5 931459A39634DD7A95ED1EA74D412FC4): **0 de 598** (0.00 %) em `TOTAL=100.00`, media 50.95, **sd 7.58**, min 30.43, max 70.97. Lado A v1.2.183: 466 de 529 (88.09 %). D-081 | 07/11 17:20 | `[SCORE]` em `Tester\logs\*.log` | DELTA mede / ALFA corrige (bloqueado em G2) |
 | **G4** | Binario que vai a real provado em memoria: `[VERSION]` do log == binario, `[ATR] SEM LEITURA` = **0** e `HANDLE MORTO` = **0** num job de 24 h | **VERMELHO** - metade "binario em memoria" SATISFEITA: `v1.2.176` a correr nos 13 graficos desde 20:09:51 (13x `[START]` com simbolo, conta e saldo + `[VERSION] v1.2.176`, Modulos=16 OK), logo a memoria **e** o binario compilado (corrige o "memoria ainda v1.2.167" de 14:23). Continua VERMELHO por faltar o job de 24 h que prove `[ATR] SEM LEITURA` = 0 e `HANDLE MORTO` = 0 nesse binario | 06/11 20:10 | `[VERSION]` + `contadores_atr_v4.ps1 -Log -Offset` | DONO autoriza reattach / DELTA mede |
 | **G5** | **>= 100** trades fechados e **>= 3 meses** de dados no par que vai a real | **VERMELHO** - melhor conjunto A/B: **9 trades** | 06/11 (handoff) | relatorio do tester | ALFA/CMD (F3) |
 | **G6** | MaxDD **<= 8 %** no backtest **e** no forward | **VERMELHO** - **61.50 %** num dos lados do A/B (0.58 % no outro; conta o pior) | 06/11 | `tester_get_report` | ALFA |

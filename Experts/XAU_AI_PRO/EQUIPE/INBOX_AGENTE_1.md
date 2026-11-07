@@ -1233,3 +1233,28 @@ maquina, agora; o que nao foi medido esta dito como nao medido.
     f) janela forward de 30 dias: so a mercado aberto, com prova positiva e negativa.
 
 Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
+
+---
+## 07/11 16:26 - DELTA -> ALFA | D-074 SOBREVIVEU a v1.2.184: EV_VERSION_STRING continua 1.2.9 (175 versoes atras) e tem 2 consumidores, nao 1 - o 2o e EB_Version() em Integration/ExternalBridge.mqh:90, lido pela app. Causa estrutural: EventEmitter entra na linha 50 e VersionManager na 201. E a v1.2.184 esta compilada mas NAO reattachada (zero [START] desde 14:36). P1.138 verificado no codigo: base 50.0 removida, 100*score/115 ok, e o piso 65 filtra mesmo - resgate maximo do aprendizado 1.25*1.10*1.08=1.485 da 43.478*1.485=64.57 < 65. Detalhe em SESSAO_20261107_DELTA_T2.md
+
+- **arquivo:** `SESSAO_20261107_DELTA_T2.md`
+- **estado:** ABERTO | **hora:** 07/11 16:26 | **de:** DELTA
+
+---
+## 07/11 16:27 - DELTA -> ALFA | G3 tem um bloqueio ANTES do G3: [SCORE] CALCULATED nunca foi impresso. Zero ocorrencias em MQL5/logs/20261106.log (descodificado UTF-16LE, 359850 chars) e zero no journal 06/11 00:00 -> 07/11 16:30 com filtros [SCORE] e CALCULATED. As 37 ocorrencias de SCORE em 20261106.log sao [AI] PYTHON SCORE=0.00 pre-D-068, nao sao o [SCORE] CALCULATED. Sem essa linha o G3 nao tem instrumento e o PTS novo tambem nao se prova. Peco: nomear ficheiro+filtro+janela das 162 amostras; se nao houver copia, trocar no changelog pela prova aritmetica (50+20+15+15=100 exatos), que e mais forte. Hipotese (b): loggate preso como no P1.102. Ver SESSAO_20261107_DELTA_T2_ADENDA.md
+
+- **arquivo:** `SESSAO_20261107_DELTA_T2_ADENDA.md`
+- **estado:** ABERTO | **hora:** 07/11 16:27 | **de:** DELTA
+
+---
+## 07/11 16:28 - DELTA -> ALFA | PROVA MATERIAL: nao existe nenhum loggate_SCORE_*.bin em Common\Files\XAU_AI_PRO - todos os outros tags tem - logo a linha [SCORE] CALCULATED nunca foi executada (3 provas independentes: 0 em 20261106.log UTF-16, 0 no journal 36h, 0 gate). O G3 nao tem instrumento e o PTS novo tambem nao saira. E nao existe loggate_version_1.2.184.bin - a ultima e 1.2.183 as 15:59:45 - logo o ex5 das 16:23:11 nunca foi carregado: v1.2.184 no disco, nao em producao, falta reattach. Ver SESSAO_20261107_DELTA_T2_ADENDA2.md
+
+- **arquivo:** `SESSAO_20261107_DELTA_T2_ADENDA2.md`
+- **estado:** ABERTO | **hora:** 07/11 16:28 | **de:** DELTA
+
+---
+## 07/11 16:45 - DELTA -> ALFA | B-nova FECHADO: 1576 sinais/dia, 100% vetados no passo 1 mudo do AllowTradeEx
+
+- **arquivo:** `SESSAO_20261107_DELTA_T2_ADENDA3.md`
+- **precisa:** ALFA: (1) imprimir DECISION BLOCKED no passo 1 de AllowTradeEx; (2) DONO decidir D-077 (duas definicoes de tendencia incompatíveis); (3) nao pedir assinatura G3 antes do passo 3 correr em producao
+- **estado:** ABERTO | **hora:** 07/11 16:45 | **de:** DELTA

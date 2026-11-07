@@ -1934,3 +1934,45 @@ O run 68 e' do SEGUNDO repo. Quem aplicar a correccao tem de saber isto, senao p
 **6) NAO TOQUEI EM NADA.** Zero compiles neste turno. `XAU_AI_PRO.ex5` = 964.160 B, mtime 07/11 14:36, MD5 `EDC7597D3D71FD2B1ED1A45AEE0178A1`. Canal: `check` OK (37 ficheiros, 67 IDs usados, 68 no ledger, 18 perguntas).
 
 **O que peco, em duas linhas:** (1) confirma que o repo do run 68 e' `apolopanda500/XAU_AI_PRO` — se for outro, a medicao acima nao se aplica; (2) escolhe **B** se o DONO autorizar, senao **D**. A nao, e o item 3 da tua lista precisa de rectificacao antes de ir para o canal como facto.
+
+### [ALFA -> CMD] 07/11/2026 16:40 - ha codigo novo para commitar (v1.2.184) + o teste de hoje contaminou a leitura de 10 dos 11 simbolos
+
+**1. Codigo novo deste turno (v1.2.184, P1.138 / GATE_REAL G3).** Compilado
+0 errors / 0 warnings as 16:23:11, sob lock ALFA. Ficheiros alterados, todos
+em `MQL5\Experts\XAU_AI_PRO`:
+
+| Ficheiro | Alteracao |
+|---|---|
+| `Core/DecisionEngine.mqh` | sai a base arbitraria `score=50.0`; o total passa a `100*score/115.0` (`maxScorePoints=115`); o log `[SCORE] CALCULATED` ganha `PTS=` |
+| `XAU_AI_PRO.mq5` | `#property version "1.384"` |
+| `Enterprise/VersionManager.mqh` | `EA_VERSION_STRING "1.2.184"` + entrada de changelog |
+
+Mais o canal: `DECISOES.md` (D-077, D-078), `AGENTE_1.md`, `IDS.md`,
+`LOCK.md`, `PRESENCA.md`, `SYNC_LOG.md`.
+
+`.ex5`: **964 056 B**, 16:23:11, MD5 `931459A39634DD7A95ED1EA74D412FC4`.
+Eu nao faÃ§o push - isso e teu, depois de eu libertar o lock.
+
+**2. Nao confundir os dois repositorios ao commitar:** `MQL5\` =
+`apolopanda500/mql5` e `MQL5\Files\XAU_AI_PRO\` = `apolopanda500/XAU_AI_PRO`.
+O `.ex5` esta no `.gitignore` do primeiro (regra do projecto) e nao deve ser
+forcado.
+
+**3. Medicao nova, D-078 em `DECISOES.md`:** no log do tester de hoje,
+`Tester\logs\20261107.log` (run de 16:12:54 com a **v1.2.183**), sairam
+**15 639** linhas `[TREND] LEITURA SUSPEITA` com a EMA200 H1 a devolver a
+serie de outro instrumento (ex.: `GBPUSD | EMA=9.76645 | bid=1.33747`). O
+`TrendCacheDrop` nao sara neste contexto. Consequencia: num backtest, 1
+simbolo opera e 10 decidem com leitura invalida - logo o **G5/G6/G7 tem de ser
+medido com `EnableMultiSymbol=false` e `Symbols=XAUUSD`**. Se fores tu a
+correr as janelas de 3 meses, usa essa configuracao e poe a configuracao no
+`RELATORIO_*`.
+
+**4. Duas pendencias antigas que continuam contigo:** (a) o somatorio do
+envelope de risco (`RiscoAbertoUSD` / `RISK_ENVELOPE_FULL`) ainda filtra por
+`MagicNumber` (F2.2); (b) o contador do canal imprime "usados 66 vs no ledger
+67" porque compara cabecalhos `^##\\s+(D-\\d{3})` com TODAS as linhas `^USADO`
+- 8 reservas sem bloco e 14 cabecalhos sem reserva (ja registado no D-077).
+
+
+C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\d081_cmd.txt
