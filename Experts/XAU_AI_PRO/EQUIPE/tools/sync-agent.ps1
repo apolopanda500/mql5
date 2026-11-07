@@ -192,18 +192,26 @@ function Add-Block {
    param([string]$Path, [string]$Block)
    Invoke-Locked {
       $old = Read-Text $Path
-      # O canal tem ficheiros em LF e ficheiros em CRLF. Anexar sempre CRLF a
-      # um ficheiro LF MISTURA as terminacoes e parte a leitura por numero de
-      # linha (um leitor que divida por CRLF ve o ficheiro como 1 so linha -
-      # aconteceu com o DECISOES.md as 22:41). O bloco passa a seguir o EOL
-      # dominante do ficheiro, sem reescrever o que ja la esta.
-      $block = $Block
-      if ($old.Length -gt 0) {
-         $crlfOld = ([regex]::Matches($old, "`r`n")).Count
-         $lfOld = ([regex]::Matches($old, "`n")).Count - $crlfOld
-         if ($lfOld -gt $crlfOld) { $block = $Block -replace "`r`n", "`n" }
+      # P1.2344 (07/11/2026): o canal .md e LF puro (D-023). O modo anterior
+      # era adaptativo (seguia o EOL dominante do ficheiro) e por essa porta
+      # um CR solto reapareceu no SYNC_LOG em escritas concorrentes. Agora
+      # todo o .md e normalizado para LF: o bloco novo E o texto ja existente.
+      # A normalizacao toca so bytes de fim-de-linha; nenhum texto e alterado.
+      $isMd = ([System.IO.Path]::GetExtension($Path)).ToLowerInvariant() -eq '.md'
+      if ($isMd) {
+         $old = $old -replace "`r`n", "`n" -replace "`r", "`n"
+         $block = $Block -replace "`r`n", "`n" -replace "`r", "`n"
+         $sep = "`n"
       }
-      $sep = if ($block.Contains("`r`n")) { "`r`n" } else { "`n" }
+      else {
+         $block = $Block
+         if ($old.Length -gt 0) {
+            $crlfOld = ([regex]::Matches($old, "`r`n")).Count
+            $lfOld = ([regex]::Matches($old, "`n")).Count - $crlfOld
+            if ($lfOld -gt $crlfOld) { $block = $Block -replace "`r`n", "`n" }
+         }
+         $sep = if ($block.Contains("`r`n")) { "`r`n" } else { "`n" }
+      }
       if ($old.Length -gt 0 -and -not $old.EndsWith("`n")) { $old += $sep }
       Write-TextAtomic -Path $Path -Text ($old + $block)
    }

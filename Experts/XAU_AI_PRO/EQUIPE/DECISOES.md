@@ -4944,3 +4944,81 @@ declara a colisao. Nao renumerei o bloco do ALFA: o ID ja estava publicado em
   sem autorizacao.
 
 **GATE_REAL continua 2 de 11.** Nada nesta entrega e 10/10.
+
+---
+
+## D-093 | CMD | 2026-11-07 20:48 | P1.2344 fechado no `sync-agent`, colisao P1.2344/P1.2346 declarada, prontidao de domingo medida
+
+**Papel:** CMD (infra/entrega). **Compile:** ZERO. **Reattach:** ZERO.
+**Ordens:** ZERO. **Risco:** intocado. Relatorio completo em
+`SESSAO_20261107_CMD_T8.md`.
+
+### 1. P1.2344 - o `Add-Block` deixou de reintroduzir CR
+
+O `Add-Block` era adaptativo: so convertia `CRLF -> LF` quando o ficheiro ja
+era LF-dominante e nunca limpava um CR solto ja presente no texto. Uma escrita
+concorrente reintroduzia o defeito (1 CR em `SYNC_LOG.md` as 20:22).
+
+Corrigido em `EQUIPE/tools/sync-agent.ps1`: para `.md`, o bloco **e** o texto
+existente passam a ser normalizados para LF em cada escrita (`CRLF -> LF` e
+`CR -> LF`; so bytes de fim-de-linha). Ficheiros que nao sejam `.md` mantem o
+comportamento adaptativo.
+
+Teste pelo caminho real (`note`), nao por copia da funcao: antes 1 CR + 1 CRLF
+em 45 B; depois **0 CR + 0 CRLF** em 85 B (o bloco entrou). Ficheiro de teste
+apagado. `check` -> **OK - sem problemas detectados** (55 `.md`, 80 IDs D
+unicos, 19 perguntas abertas).
+
+### 2. Colisao de ID: P1.2344 fica com o DELTA, o item do ALFA passa a P1.2346
+
+| Origem | Hora | Item |
+|---|---|---|
+| DELTA | 19:40:32 | `sync-agent post` reintroduz CR + ledger D-089 vazio |
+| ALFA | 19:52 | folga inerte em USDBRL M5 (desenho conservador) |
+
+Regra aplicada: **quem publicou primeiro fica com o numero**. DELTA mantem
+`P1.2344`; o item do ALFA passa a `P1.2346` (proximo livre depois do `P1.2345`
+da corrida de deposito 0,00). Registado no `IDS.md`. O texto do ALFA **nao foi
+reescrito** - os documentos dele continuam a dizer P1.2344 ate ele corrigir; a
+colisao fica declarada no ledger.
+
+### 3. Prontidao de domingo (pedido do D-089)
+
+Medido neste turno, sem tocar em graficos:
+
+| Prova | Resultado |
+|---|---|
+| porta TCP 9011 | aceita conexao |
+| raiz HTTP | **401** (vivo, fail-closed) |
+| predicao com token do `.env` | **200**, `available=true`, `SELL`, `confidence=72.4` |
+| processo | `uvicorn` **PID 2608** (manual) |
+| tarefa agendada `XAU_AI_GATEWAY_9011` | **NAO EXISTE** |
+| `[START] XAU_AI_PRO v1.2.186` as 20:40:01 | **15** graficos |
+| inputs nos 15 `.chr` (perfil Q071, mtime 20:29:34) | `AllowTradeWithoutAI=true`, `MinMarketScoreNoAI=45.0`, `MinMarketScore=65.0`, `EnableAutonomousMode=true`, `expertmode=5` em 15/15 |
+| conta 113568614 | 12 636,32 / 12 636,32, 0 posicoes, 0 ordens |
+| binario | 967 328 B, 19:30:46, fonte x binario BATEM |
+
+Os inputs estao **gravados em disco** e sobreviveram ao reinicio das 20:40 -
+fecha o pedido "confirmar antes de domingo".
+
+### 4. Bloqueio: duracao do gateway (Q-022 / Q-009)
+
+O reinicio das ~20:40 **matou o gateway**: journal com **2 linhas
+`[AI] GATEWAY | HTTP 1001 ... corpo=0B`** as 20:25:59 e 20:40:34; o EA ficou
+cego ate o processo ser levantado a mao (PID 2608). `gateway-task.ps1 -Acao
+estado` confirma que a tarefa nao existe.
+
+**Nao instalei a tarefa:** `-Acao instalar` exige Administrador e a Q-022
+(opcao 1) **nao tem resposta do DONO**; instalar configuracao de sistema sem
+essa resposta seria decidir por ele. E o unico bloqueio operacional conhecido
+para domingo.
+
+### 5. `.set` continua fora do commit
+
+`Profiles/Tester/XAU_AI_PRO.set` esta alterado (mtime 20:29:35) pelo ultimo run
+do tester, com `AllowTradeWithoutAI=false`, `Symbols=XAUUSD` e
+`EnableVolatilityFilter=false`. **Nao e o estado de producao** e e evidencia da
+corrida P1.2345 (deposito 0,00). Mantido **nao commitado**, como no turno 7.
+
+**GATE_REAL continua 2 de 11.** Nada neste turno move um criterio: foram
+ferramenta, colisao de ID e medicoes de prontidao. Nao existe 10/10.

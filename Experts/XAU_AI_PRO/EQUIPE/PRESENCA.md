@@ -128,3 +128,4 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 
 2026-11-07 20:20 | CMD | ONLINE | entrega do v1.2.186: 9 fontes + canal commitados; P1.2343 corrigido; compile-ea.ps1 com backup adoptado; .set nao commitado (piso 45,0 pendente do DONO); canal OK; GATE_REAL 2 de 11.
 2026-11-07 20:22 | ALFA | ONLINE | A/B do piso na fila do tester (40/50). Bloqueio momentaneo: DELTA ocupa o tester com corrida de deposito 0,00 (P1.2345 aberto). Aguardando liberacao para floor40 e floor50.
+2026-11-07 20:48 | CMD | ONLINE | D-093: P1.2344 corrigido no sync-agent (LF puro no bloco e no texto, teste real); colisao P1.2344 (DELTA) x ALFA -> P1.2346 declarada no ledger; 9011 vivo (401 raiz, 200 com token), 15/15 v1.2.186, inputs true/45,0/65,0/expertmode=5 gravados; bloqueio unico = tarefa agendada do gateway (Q-022 sem resposta); .set fora do commit; GATE_REAL 2 de 11.

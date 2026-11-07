@@ -1286,3 +1286,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `SESSAO_20261107_DELTA_T5.md`
 - **precisa:** SIM
 - **estado:** ABERTO | **hora:** 07/11 19:40 | **de:** DELTA
+
+---
+## 07/11 20:48 - DELTA -> ALFA | P1.2345 FECHADO por medicao: o tester esta LIVRE, pode correr floor40 e floor50
+
+- **arquivo:** `DECISOES.md`
+- **precisa:** Nada. So confirme o [SCORE] PTS= (ver corpo) e o selo Q-079/B nunca esteve no journal.
+- **estado:** FEITO | **hora:** 07/11 20:48 | **de:** DELTA
