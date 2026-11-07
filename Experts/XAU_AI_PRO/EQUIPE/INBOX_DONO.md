@@ -1389,3 +1389,80 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **estado:** ABERTO | **hora:** 07/11 06:02 | **de:** ALFA
 
 Fecho de hoje. O registo completo - o que o DONO autorizou (com as palavras dele), o que foi medido com prova, o que NAO foi provado, e a sequencia como o proximo ciclo corre ate ao fim (commit, push, deploy, nota, salvar, documentar, testar, simular, aprovar, validar e 30 dias em demo) - esta em EQUIPE/SESSAO_20261107_ALFA.md. Estado honesto no fecho: GATE_REAL 1 verde de 11, nenhum 10/10, conta demo 113568614 intocada com 0 posicoes e 0 ordens. Ficam 18 perguntas abertas na sua caixa, incluindo Q-017 (limite de perda diaria, hoje 10.0).
+
+---
+## 07/11 14:43 - ALFA -> DONO | turno 2: o bloqueio dos modelos nao e o piso de qualidade, e o tipo de alvo com que foram treinados (87 modelos medidos)
+
+- **arquivo:** `SESSAO_20261107_ALFA_T2.md`
+- **precisa:** nada a decidir hoje; Q-017 continua aberta (perda diaria tem dois numeros: 10.0%% e 60.0 USD, manda o menor)
+- **estado:** ABERTO | **hora:** 07/11 14:43 | **de:** ALFA
+
+---
+## 07/11 14:50 - ALFA -> DONO | O ficheiro de prova do forward tem a versao e a data erradas (D-074)
+
+- **estado:** ABERTO | **hora:** 07/11 14:50 | **de:** ALFA
+
+Uma coisa que o senhor precisa de saber. Nao ha nada para decidir hoje e nao e risco de capital.
+
+O ficheiro que vai servir de prova dos 30 dias de forward - MQL5\Files\Data\forward_test_events.csv - tem o campo da versao congelado em "1.2.9" ha cerca de 182 versoes. Os arranques de hoje, que sao o v1.2.183, ficaram escritos como 1.2.9. Na pratica: se amanha alguem quiser provar que o forward correu num build especifico, esse ficheiro nao serve para isso - 3682 dos 6082 arranques dizem 1.2.9 e nao ha uma unica linha com 1.2.18x.
+
+O segundo ponto e pior, e tambem e medido: o ficheiro foi escrito hoje as 14:36:56 e nao tem uma unica linha com a data de hoje. Os 15 arranques de hoje entraram carimbados como 2026.11.06 23:59:58, a hora do ultimo tick, porque o mercado fechou. Ou seja, o registo de eventos nao consegue datar um arranque quando o feed morre - que e exactamente quando interessa saber que o EA arrancou.
+
+O que isto NAO e: nao toca lote, stop, alvo, spread, preco, risco nem nenhuma guarda. O EA decide exactamente igual. O que esta mal e a prova - e o protocolo do 10/10 assenta em prova.
+
+Esta registado como D-074, com a medicao completa em DECISOES.md, e o DELTA assina. Nao pedi compile porque a janela de hoje ja gastou o compile do HG-01.
+
+Situacao que continua a precisar do senhor, sem alteracao: a Q-017 (a perda diaria tem dois numeros hoje, 10.0 por cento e 60 USD, e vence o menor - falta o senhor dizer qual quer) e o token privado do MCP (o actual e literal e publico, por isso o MCP ficou DESATIVADO).
+
+O canal esta limpo: 66 IDs usados, 66 no ledger, check sem problemas.
+
+---
+## 07/11 14:56 - ALFA -> DONO | Um limite de 60 dolares que pode cair por arrumacao (D-075)
+
+- **estado:** ABERTO | **hora:** 07/11 14:56 | **de:** ALFA
+
+Uma nota curta, em portugues simples, sobre um limite de dinheiro que hoje o protege e que pode desaparecer sem ninguem dar por isso.
+
+O robô tem hoje um tecto de risco: no maximo 60 dolares de risco somado em posicoes abertas ao mesmo tempo. Verifiquei hoje no codigo (Core\Config.mqh) que esse tecto e da CONTA: ele soma as posicoes dos 15 graficos antes de deixar entrar uma nova. Esta correcto e e conservador.
+
+O que descobri: ha uma proposta tecnica no projecto - dar a cada grafico um numero de identificacao proprio (o "magic") - que parece uma arrumacao, mas que faria cada grafico passar a ver so as suas proprias posicoes. Se isso fosse feito sem mais nada, os 60 dolares deixariam de ser o limite da conta e passariam a ser 60 dolares POR GRAFICO, ou seja ate 900 dolares no conjunto. O limite nao seria mudado por decisao sua: cairia por arrumacao.
+
+Nao fiz nada. Nao mexi no magic de nenhum grafico, nao mexi no tecto, nao compilei nada. A conta esta plana (0 posicoes, 0 ordens, 12.636,32 USD).
+
+Fica registado como D-075 no ficheiro de decisoes, com as linhas exactas do codigo. Se algum dia alguem lhe propuser "numerar os graficos para os distinguir", a resposta certa e: so no mesmo passo em que o somatorio passar a somar todos os graficos.
+
+As perguntas que esperam por si continuam as mesmas: a Q-017 (a perda diaria tem dois numeros, 10% e 60 USD, manda o menor) e o token privado para a IA - sao 18 perguntas na sua caixa.
+
+---
+## 07/11 14:59 - ALFA -> DONO | Medi hoje: os 15 graficos gerem as posicoes uns dos outros; a escolha do magic tem custo nos dois lados
+
+- **estado:** ABERTO | **hora:** 07/11 14:59 | **de:** ALFA
+
+Senhor, tres paragrafos e um pedido.
+
+1) O QUE ACONTECEU. O senhor tem 15 graficos abertos e todos usam o mesmo numero
+de identificacao interno (o "magic"). Isso tem uma consequencia que ninguem
+tinha medido: cada grafico, quando vai proteger as posicoes, olha para as
+posicoes de TODOS os outros e mexe nelas. Um grafico do ouro pode mexer no stop
+de uma posicao de outra moeda que nao esta' a ver no ecra dele. Nao fecha nada
+por engano, mas mexe, e 15 graficos a mexer no mesmo sitio ao mesmo tempo e' o
+tipo de coisa que so aparece quando ha' dinheiro aberto.
+
+2) O QUE ISSO FAZ A SUA ESCOLHA. No D-075 eu escrevi que, se cada grafico passar
+a ter o seu proprio magic, o limite de 60 dolares de risco aberto deixa de ser
+60 na conta e passa a ser 60 por grafico (ate' 900 no total). Hoje medi o
+contrario do mesmo problema: se mantiver o magic unico, o limite de 60 dolares
+fica certo, mas os 15 graficos continuam a gerir as posicoes uns dos outros.
+Ou seja, a escolha que o senhor tem de fazer nao tem lado gratis: as duas
+opcoes precisam de codigo, e nao de uma simples mudanca de parametro.
+
+3) O QUE NAO FIZ. Nao escolhi por si. Nao toquei em nenhum ficheiro do EA, nao
+compilei nada e nao mexi em risco, lote, stop, alvo ou regra de entrada. A conta
+continua plana: zero posicoes e zero ordens, 12636.32 dolares. O que fiz foi
+medir, escrever e pedir auditoria ao DELTA.
+
+4) O QUE CONTINUA A ESPERA DE SI, e sao as duas coisas que travam mais:
+   - Q-017: o limite de perda diaria tem dois numeros no EA (10 por cento e 60
+     dolares). O menor manda, logo hoje vale 60 dolares. Confirma que e' isso?
+   - o token privado do servidor de IA. O que esta' la' e' uma palavra fixa
+     escrita no codigo, e o proprio EA recusa arrancar com ela por seguranca.

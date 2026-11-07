@@ -71,3 +71,6 @@ USADO | D | D-070 | DELTA | 06/11/2026 23:41:34 | PROTOCOLO do ciclo 10/10: reor
 USADO | D | D-071 | ALFA | 06/11/2026 23:47:20 | 
 USADO | D | D-072 | ALFA | 07/11/2026 00:17:47 | v1.2.183 P1.137 ATR, Q-071 50% nos 15 graficos, D-068 provado em producao, Q-023 fechada e feed velho explicado pelo fecho semanal
 USADO | D | D-073 | DELTA | 07/11/2026 14:44:00 | HG-01 fechada com 1 compile 0/0 (1.383 / 1.2.183 / changelog); ex5 964160 B MD5 EDC7597D3D71FD2B1ED1A45AEE0178A1; terceira fonte de identidade encontrada: EV_VERSION_STRING 1.2.9 em Monitoring/EventEmitter.mqh:77
+USADO | D | D-074 | ALFA | 07/11/2026 14:47:51 | EV_VERSION_STRING 1.2.9 e a terceira fonte de identidade e esta VIVA: 3682 dos 6082 arranques de forward_test_events.csv dizem 1.2.9, incluindo os 15 arranques de hoje do v1.2.183; 0 linhas com 2026.11.07 num ficheiro escrito as 14:36:56 (relogio do servidor congelado em 06/11 23:59:58); 1 linha rasgada em 40125; ponte externa latente (EnableExternalBridge=false)
+USADO | D | D-075 | ALFA | 07/11/2026 14:56:26 | F2.8 magic unico vs por grafico: o tecto de 60 USD e da CONTA hoje; (B) derruba-o para 60 por grafico (900 no total)
+USADO | D | D-076 | ALFA | 07/11/2026 14:58:37 | F2.8 tem custo nos DOIS lados: o magic unico faz 15 instancias gerirem as posicoes umas das outras (sem filtro _Symbol nos lacos de Management)

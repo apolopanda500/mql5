@@ -74,3 +74,15 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 
 2026-11-07 05:59:00 | ALFA | AUSENTE | fecho de 07/11 registado em SESSAO_20261107_ALFA.md: v1.2.183/P1.137 compilado 0/0, Q-071 a 50% em 15/15 .chr (0 diferencas em 321 inputs), D-068 provado em producao, Q-023 fechada, Q-072(a) ja implementada sem compile, cotacao velha = fecho semanal; GATE_REAL 1 de 11, nada assinado, nenhum 10/10; conta 113568614 intocada (0 posicoes, 0 ordens, equity 12636.32); 7 ficheiros por commitar pelo CMD
 2026-11-07 14:44:00 | DELTA | ONLINE | HG-01 FECHADA com 1 compile: #property version 1.383 = EA_VERSION_STRING 1.2.183 (formula minor*100+patch) + entrada v1.2.183 no changelog do VersionManager; compile 0 errors / 0 warnings (49848 ms); ex5 964160 B | 2026-11-07 14:36:53 | MD5 EDC7597D3D71FD2B1ED1A45AEE0178A1; journal: 15/15 graficos recarregaram [START] XAU_AI_PRO v1.2.183 entre 14:36:54 e 14:36:56 (conta 113568614, saldo=equity=12636.32); GATE_REAL segue 1 verde de 11; conta intocada: 0 posicoes, 0 ordens, nenhum parametro de risco alterado
+
+2026-11-07 14:43:29 | ALFA | ONLINE | turno 2 (14:35-14:50): 2 pendencias fechadas por medicao - [CONFIG] EM VIGOR provado no journal (MaxDD 50.0) e P1.137 ATR provado em 3 arranques; reconciliacao dos 87 modelos medida (o piso 0.05 nao e o bloqueio, o schema do alvo e) e F2.8 medido (30 .chr, magic 2026001, risco latente); zero compiles; doc em SESSAO_20261107_ALFA_T2.md
+
+2026-11-07 14:50:41 | ALFA | ONLINE | D-074 medido e registado: terceira fonte de identidade viva no CSV de eventos; 3 posts feitos; zero compiles
+
+2026-11-07 14:56:50 | ALFA | ONLINE | D-075: tecto de 60 USD e da conta; opcao (B) do F2.8 derrubava-o para 60 por grafico; 4 posts, zero compiles
+
+2026-11-07 14:59:50 | ALFA | ONLINE | D-076 entregue; contador do canal diagnosticado e provado; correccao das 8 reservas enviada ao CMD
+
+2026-11-07 15:27:44 | ALFA | ONLINE | turno em curso
+
+2026-11-07 16:10 | CMD | ONLINE | merge B publicado: origin/main 97ae909 (07abc4d..97ae909, sem force); maintenance.yml da main mantido; VERSION 1.2.181 + #property 1.381 + EA_VERSION_STRING 1.2.181; 6 passed no teste de versao; CI do commit a correr; GATE_REAL 1 de 11, sem 10/10.

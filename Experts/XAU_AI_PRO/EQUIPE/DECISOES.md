@@ -3803,3 +3803,284 @@ A decisao anterior deixava o patch do parser **sem ID**, a reservar na segunda-f
 - **Integridade do canal:** `equipe-sync.ps1 check` -> `CANAL INTEGRO :: 0 problemas`, antes e depois do compile.
 - **O que isto NAO prova:** HG-01 e coerencia de identidade, nao comportamento. GATE_REAL continua **1 verde de 11**; Q-025 (kill switch) e P1.137 (ATR) continuam **sem prova em execucao** - mercado fechado, 0 posicoes, 0 ordens, `[TRADE BLOCK] COTACAO VELHA` em todos os simbolos. Nada nesta entrada autoriza escrever "10/10".
 - **Divida aberta pela mesma medicao:** existe uma **terceira** fonte de identidade, `#define EV_VERSION_STRING "1.2.9"` em `Monitoring/EventEmitter.mqh:77`, usada na linha `"EA inicializado " EV_VERSION_STRING` e lida por `Integration/ExternalBridge.mqh:89-90`. E a familia HG-01 no plano dos eventos: nao foi corrigida hoje porque muda o que o emissor publica e exige decisao e compile proprios. Registada como D-073, **por decidir**.
+
+---
+
+## HG-01b - TERCEIRA FONTE DE IDENTIDADE: MEDIDA, VIVA E MAIS ANTIGA DO QUE SE PENSAVA (ALFA, D-074, 07/11/2026)
+
+O DELTA registou em D-073 a existencia de `EV_VERSION_STRING`. O ALFA mediu agora o alcance. O resultado **nao e "divida por decidir": e um defeito activo, com prova em ficheiro de producao**, e a fonte esta congelada ha muito mais tempo do que a nota sugeria.
+
+### 1. As tres fontes, medidas lado a lado
+
+| # | Fonte | Valor | Ficheiro:linha | Coerente com 1.2.183 |
+|---|-------|-------|----------------|----------------------|
+| 1 | `#property version` | `"1.383"` | `XAU_AI_PRO.mq5:22` | **SIM** (minor*100+patch = 383) |
+| 2 | `EA_VERSION_STRING` | `"1.2.183"` | `Enterprise/VersionManager.mqh:14` | **SIM** |
+| 3 | `EV_VERSION_STRING` | `"1.2.9"` | `Monitoring/EventEmitter.mqh:77` | **NAO - 174 patches atras** |
+
+O comentario da linha 76 explica a origem: `// Versao local (nao depende de VersionManager)`. A fonte 3 nasceu para evitar uma dependencia e ficou congelada em `1.2.9`, que pela formula do projecto e **v1.2.09**.
+
+### 2. Onde a fonte 3 e consumida
+
+Medido com `findstr /S /N` na arvore do EA (nao por leitura da nota do D-073):
+
+- `Monitoring/EventEmitter.mqh:233` - `"EA inicializado " EV_VERSION_STRING`, dentro de `EventSystemStart()`;
+- `XAU_AI_PRO.mq5:1009` - `EventSystemStart("mode=live chart=" + _Symbol)`, chamado no **OnInit**, portanto em todas as 15 instancias;
+- `Integration/ExternalBridge.mqh:87-90` - `EB_Version()` devolve `EV_VERSION_STRING` (com `#ifdef`, e `"desconhecida"` sem ela);
+- `Integration/ExternalBridge.mqh:182` - entra em `EB_StatusText()` como `version=%s`;
+- `Integration/ExternalBridge.mqh:201` - entra em `EB_WriteAck()` como `"version":"%s"` de **cada** ACK.
+
+### 3. Prova de que esta VIVO
+
+`MQL5/Files/Data/forward_test_events.csv` - 8287322 B, mtime **2026-11-07 14:36:56**, exactamente o arranque do v1.2.183. Cabecalho `Time,Event,Symbol,TF,Ticket,Severity,Module,Message,Value,Status`.
+
+- 40125 linhas;
+- **6082** linhas com `EA inicializado`;
+- versoes distintas nessas linhas: **`1.2.0` (2397)** e **`1.2.9` (3682)**, mais 1 linha rasgada; **6080** parseaveis e **2** sem versao legivel;
+- **zero** linhas com `1.2.18x` (medido com a expressao `1\.2\.18[0-9]`).
+
+Leitura: o campo de versao do ledger de eventos **nao distingue nenhum build desde o 1.2.9**. O ficheiro que vai servir de evidencia dos 30 dias de forward tem uma coluna de identidade decorativa ha cerca de 182 builds - e a evidencia e exactamente aquilo em que o protocolo do 10/10 assenta.
+
+### 4. Dois achados NOVOS que a nota do D-073 nao tinha
+
+**(a) O relogio dos eventos esta congelado.** O ficheiro foi escrito hoje as 14:36:56 e tem **zero** linhas com `2026.11.07`. Os 15 arranques de hoje entraram com o carimbo `2026.11.06 23:59:58` - a hora do ultimo tick (sabado, mercado fechado; `get_time_information` devolve `trade_server_last_known_time=2026-11-06T23:59:58`). Ha **663** linhas acumuladas nesse mesmo carimbo. Consequencia pratica: **o ledger de eventos nao consegue datar um arranque quando o feed morre** - que e precisamente o estado em que o operador precisa de saber quando o EA arrancou.
+
+**(b) Tres linhas rasgadas em 40125 - escrita nao atomica confirmada no CSV compartilhado.** Os tres casos, todos com o separador de registo perdido:
+
+```
+2026.11.06 01:50:57,SYSTEM_START,USDCNH,...,EA inicializado 1.2.92026.11.06 01:50:57,FORWARD_TEST_START,USDCHF,...
+2026.10.26 00:48:45,SYSTEM_START,XAUUSD,...,EA inicializado ,INFO,FT,Forward test iniciado,...
+2026.10.26 00:56:14,SYSTEM_START,XAUUSD2026.10.26 00:56:14,,EA inicializado 1,USD,mo,PERIOD_H1,...
+```
+
+Um `SYSTEM_START` e um `FORWARD_TEST_START` fundidos na mesma linha; na segunda o campo da versao ficou vazio; na terceira o simbolo ficou corrompido (`XAUUSD2026.10.26...`). 3 em 40125 e a **mesma familia de escrita nao atomica** ja medida no triplo `[CONFIG]` das 14:27:49.969 e no rebentar de `[STOP]` do v1.2.124. Frequencia baixa, mas corrompe evidencia.
+
+### 5. Alcance da ponte externa: LATENTE, nao activo
+
+`Integration/ExternalBridge.mqh:67` sai cedo se `!EnableExternalBridge`, e `Core/Config.mqh:80` declara `input bool EnableExternalBridge = false`. Medido no disco: **nao existe** `XAU_AI_PRO_command_ack.json` nem qualquer `ea-*` em `MQL5/Files`. Logo `EB_StatusText()` e `EB_WriteAck()` nunca produziram nada. Se a ponte for ligada, o app externo passa a ler `version=1.2.9` em cada estado e em cada ACK.
+
+### 6. Porque NAO foi corrigido agora
+
+Corrigir a fonte 3 muda o que o emissor publica em dois sitios (CSV de eventos e ACK externo) e exige compile. A janela de hoje ja teve o compile unico do HG-01 (D-073), e a regra e **um compile por janela**. Fica registada com criterio, para um compile proprio com assinatura do DELTA - quem faz nao assina.
+
+Decisao pendente, duas opcoes:
+
+- **(A)** `Monitoring/EventEmitter.mqh` passa a incluir `Enterprise/VersionManager.mqh` e define `#define EV_VERSION_STRING EA_VERSION_STRING`. Uma fonte de verdade para sempre; custo: a dependencia que o comentario da linha 76 quis evitar.
+- **(B)** `EventSystemStart()` deixa de usar a constante e passa a receber a versao de quem chama (`XAU_AI_PRO.mq5:1009` ja tem `EA_VERSION_STRING` em escopo) e `EB_Version()` le a mesma via. Mantem o emissor sem dependencia; custo: a assinatura da funcao muda.
+
+O ALFA nao escolhe: a escolha altera o contrato do emissor de eventos e o do ACK externo.
+
+### 7. O que isto NAO prova
+
+- **Nao prova decisao errada.** `EV_VERSION_STRING` **nao entra em nenhum caminho de decisao**: nao toca lote, stop, alvo, spread, preco, risco, portao de permissoes nem kill switch. E identidade e observabilidade.
+- Nao move o GATE_REAL: continua **1 verde de 11**. Q-025, P1.137 e F2.2 ficam como estavam.
+- As 3682 ocorrencias de `1.2.9` **nao dizem** que os builds eram 1.2.9: dizem que o campo foi escrito com a constante congelada.
+- Os achados (a) e (b) foram medidos no ficheiro de hoje; nao foram reproduzidos em laboratorio.
+- Nada foi compilado neste turno. Zero ficheiros de codigo alterados, zero parametros de risco tocados.
+
+---
+
+### ADENDA ao D-074 (ALFA, 07/11/2026 14:58) - causa das linhas rasgadas e prova de que o binario NAO foi contaminado
+
+Duas medicoes novas, feitas depois de o bloco acima ter sido escrito. A primeira fecha a causa; a segunda **confirma** o fecho do HG-01 em vez de o reabrir.
+
+#### A. A fonte 3 nao e um define solto: a identidade congelada esta espalhada
+
+Medido com `findstr /S /N`:
+
+- **22 ficheiros** trazem `// XAU_AI_PRO v1.2.9` no cabecalho (linha 1) ou na caixa do titulo: `Indicators/{ATR,MarketPulse,RSI,TrendStrength,VolatilityFilter}.mqh`, `Integration/ExternalBridge.mqh:1`, `Management/{BreakEven,DailyRisk,EquityProtection,PortfolioManager}.mqh`, `Monitoring/{AuditLog,BacktestAnalyzer,Dashboard,Diagnostics,Logger,PerformanceAnalyzer,ReplayEngine,Statistics,SystemStatus}.mqh`, e ainda `EventEmitter.mqh:4`, `EventLock.mqh:4`.
+- `Integration/ExternalBridge.mqh:39` mostra o exemplo do ACK num comentario ja com `"version":"1.2.9"`, ou seja o proprio contrato documentado esta a ensinar o valor errado.
+- Mais grave em forma: **duas** declaracoes `#property version "1.290"` (com o comentario `// 1.2.9 no formato xxx.yyy`), em `Monitoring/ProductionChecklist.mqh:8` e `Monitoring/ValidationChecklist.mqh:9`.
+
+O ponto que exigia medicao: esses dois ficheiros **sao incluidos** pelo EA. `XAU_AI_PRO.mq5:181` inclui `ProductionChecklist.mqh` e `:182` inclui `ValidationChecklist.mqh`, ambos **depois** do `#property version "1.383"` da linha 22. Se o compilador ficasse com a ultima declaracao processada, o `.ex5` publicaria `1.290` e o HG-01 estaria aberto outra vez, com o D-073 a ter fechado sobre uma premissa falsa.
+
+#### B. Prova no binario: 1.383, e 1.290 nao existe
+
+Sonda de leitura sobre o proprio artefacto do D-073 (`XAU_AI_PRO.ex5`, 964160 B, MD5 `EDC7597D3D71FD2B1ED1A45AEE0178A1`), sem compilar e sem tocar no ficheiro:
+
+| Literal | Ocorrencias em UTF-16LE |
+|---|---|
+| `1.383` | **1**, no offset **340** |
+| `1.290` | **0** |
+| `1.2.183` | 0 |
+| `1.2.9` | 0 |
+
+Controlo do metodo, para nao ler ausencia como prova: `EA inicializado`, `XAU_AI_PRO` e `COTACAO VELHA` tambem dao **0** em UTF-16LE, apesar de existirem no codigo. Ou seja, as constantes de codigo nao ficam como texto simples no `.ex5`, e o unico acerto em UTF-16 e `1.383` no offset 340 - que e a zona de cabecalho/propriedades do ficheiro, nao a tabela de strings.
+
+**Veredicto: as duas declaracoes `"1.290"` NAO sobrepoem o `"1.383"` do ficheiro principal.** O HG-01 do D-073 fica de pe com prova no binario, nao so no codigo-fonte. As duas linhas sao uma armadilha cosmetica, nao um defeito activo - mas devem ser limpas quando se tocar nesses dois ficheiros, porque dependem de uma precedencia que ninguem documentou e que um compilador futuro pode inverter.
+
+O que esta sonda NAO prova: nao verifica o campo `#property description`, `#property copyright` nem qualquer outra propriedade; nao le a versao que a GUI mostra (File > Properties), que continua a ser verificacao manual do operador; e o offset 340 foi inferido por contexto, nao por parsing do formato `.ex5`.
+
+#### C. Causa medida das 3 linhas rasgadas: o lock rouba o lock a um dono vivo
+
+O emissor ja tem serializacao (`Monitoring/EventLock.mqh`, F4). O mecanismo e `GlobalVariableSetOnCondition` sobre `XAI_PRO_EVENT_LOCK` (CAS atomico: `0.0` -> token unico por instancia), com `EV_LOCK_RETRIES=20` e `Sleep(1)`. No caminho de falha **nao escreve**: conta `g_ev_lock_timeouts` e devolve false, e `EventEmit` incrementa `g_ev_dropped` e sai. Logo o caminho de timeout nao produz linha rasgada.
+
+O defeito esta no ramo de **TTL anti-orfao** (`EventLock.mqh:74`):
+
+```
+if(cur > 0.0 && touched > 0 && (TimeCurrent() - touched) > EV_LOCK_TTL_SEC)
+   if(GlobalVariableSetOnCondition(EV_LOCK_NAME, token, cur))   // rouba o lock
+```
+
+Duas consequencias, ambas reais:
+
+1. **O TTL e de 2 segundos e nunca e renovado enquanto o dono escreve.** Se uma instancia demorar mais de 2 s dentro do ciclo `FileOpen -> FileSeek(END) -> FileWrite -> FileFlush -> FileClose` sobre um CSV de 8 MB (e no arranque as 15 instancias abrem o MESMO ficheiro ao mesmo tempo), uma segunda instancia le `cur`, ve o TTL expirado e faz CAS `cur -> tokenB` **com sucesso**, apesar de o dono A continuar vivo e a meio da escrita. Passam a haver **dois escritores dentro da seccao critica** - exactamente o que produz uma linha com dois registos fundidos e o separador perdido.
+2. **O TTL e medido com `TimeCurrent()` (linha 74)**, que congela quando nao ha ticks. E a mesma classe de defeito que este projecto ja rejeitou no D-029/P1.24, quando `Core/MarketScanner.mqh SymbolDataFresh()` passou de `TimeCurrent()` para `TimeTradeServer()` precisamente por isto. Aqui a regra sobreviveu intacta num ficheiro que nunca foi revisto.
+
+Leitura das 3 ocorrencias, coerente com a causa: `26/10 00:48:45` e `26/10 00:56:14` (arranque de domingo para segunda, 15 instancias em simultaneo) e `06/11 01:50:57` (arranque nocturno). Sao 3 em 40125 porque o intervalo de vulnerabilidade e estreito - precisa que o dono passe dos 2 s com o lock, o que no regime normal nao acontece.
+
+Correccao candidata, para a mesma janela do D-074 (nao aplicada): renovar o carimbo do lock durante a escrita **ou** subir `EV_LOCK_TTL_SEC` para um valor folgado face ao pior caso medido (8 MB / 40125 linhas), **e** trocar o teste de expiracao de `TimeCurrent()` para `TimeTradeServer()` com `GetTickCount()` como alternativa monotona, que nao congela com o feed. O `GetTickCount()` e o relogio certo para medir "ha quanto tempo" - `TimeCurrent` e o relogio do mercado e para quando o mercado para.
+
+#### D. Nota de honestidade sobre a contagem
+
+`6082` linhas com `EA inicializado` = `6080` com versao legivel (`1.2.0` 2397, `1.2.9` 3682, `1.2.92026` 1 rasgada) + `2` sem versao legivel, ambas rasgadas (`26/10 00:48:45` com o campo vazio, `26/10 00:56:14` com o simbolo corrompido em `XAUUSD2026.10.26...`). Total de linhas rasgadas: **3**. O numero foi fechado porque a soma nao batia a primeira leitura; nao ficou nenhum resto por explicar.
+
+Nada foi compilado. `.ex5` continua em 964160 B, MD5 `EDC7597D3D71FD2B1ED1A45AEE0178A1` - o artefacto do DELTA, byte a byte.
+
+## F2.8 - MAGIC UNICO OU MAGIC POR GRAFICO: O ACOPLAMENTO QUE A ESCOLHA ESCONDE (ALFA, D-075, 07/11/2026)
+
+**Estado:** por decidir. Nada alterado em codigo, nada compilado, nada aplicado aos graficos.
+**Pergunta que fecha:** o envelope de risco de 60 USD e da CONTA ou de cada grafico?
+
+### 1. A escolha do F2.8, como estava posta
+
+O F2.8 tem duas vias e nenhuma foi escolhida:
+
+- **(A) recusar arranque** quando o par `(magic, symbol)` ja pertence a outra instancia viva;
+- **(B) derivar o magic por grafico** (`2026001 + indice`), para que cada instancia seja
+  distinguivel.
+
+O argumento que estava a favor de (B) era o de que, com magic unico, as instancias nao se
+distinguem. Medido: hoje as **15 instancias partilham `MagicNumber = 2026001`**
+(`Core/Config.mqh:17`, `input long`) e os 15 graficos do perfil tem **15 simbolos distintos**,
+portanto nao ha hoje duas instancias no mesmo simbolo. O defeito de (B) e o de (A) sao
+portanto potenciais, nao activos.
+
+### 2. O que eu medi agora e que muda o custo de (B)
+
+`RiscoAbertoUSD()` (`Core/Config.mqh:1253`) percorre a **conta inteira** e filtra por magic:
+
+```
+1257:   for(int i = PositionsTotal() - 1; i >= 0; i--)
+1259:      ulong tk = PositionGetTicket(i);
+1264:      if(PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+```
+
+`RiscoPorTradeUsd()` (`Core/Config.mqh:1344-1362`) monta o tecto e compara com esse somatorio:
+
+```
+1352:    double envelope = balance * MaxTotalRiskPercent / 100.0;      // 10.0 % -> 1.263,63 USD
+1355:    if(MaxTotalRiskOpenUsd > 0.0 && MaxTotalRiskOpenUsd < envelope)
+1356:       envelope = MaxTotalRiskOpenUsd;                              // 60.0 USD manda
+1358:    double sobra    = envelope - RiscoAbertoUSD();
+```
+
+e `Core/ExecutionEngine.mqh:694-699` recusa a entrada com `RISK_ENVELOPE_FULL` quando a sobra
+e zero.
+
+**Consequencia medida:** como as 15 instancias tem o MESMO magic, `RiscoAbertoUSD()` soma as
+posicoes das 15. O tecto de **60 USD e hoje um tecto da CONTA, unico, e nao 15 x 60**. Uma
+frase que circula nas caixas (`INBOX_AGENTE_3.md:1242`) diz que "o envelope ve uma so instancia
+e o tecto real fica 15x maior". **Isso nao esta medido e nao e verdade com o codigo que esta
+em disco:** a premissa dessa frase e um magic diferente por instancia, que e precisamente o
+que (B) faria.
+
+**E e por isso que (B) nao e uma limpeza, e uma alteracao de risco:** no instante em que cada
+grafico passar a ter o seu magic, `RiscoAbertoUSD()` deixa de ver as posicoes dos outros 14. O
+teto efectivo passa de 60 USD na conta para 60 USD **por grafico**, ou seja ate **900 USD** nos
+15. E o unico limite de exposicao somada que existe hoje, e ele cai por 15 sem que ninguem
+tenha escrito um numero novo.
+
+### 3. O que isto obriga
+
+Se (B) for escolhida, tem de entrar no MESMO passo uma alteracao a `RiscoAbertoUSD()` /
+`RiscoPorTradeUsd()` para somar as posicoes do EA por **conjunto de magics** e nao por um magic
+unico - senao a escolha "para distinguir as instancias" desarma o tecto sem o declarar. Se (A)
+for escolhida, o envelope fica como esta e nada disto se aplica.
+
+Nao escolho entre (A) e (B): (B) muda o que o EA pode expor e o risco e do DONO, nao do agente.
+Fica registado com os numeros para que a escolha seja feita com o custo a vista.
+
+### 4. O que NAO esta provado aqui
+
+- Nao medi em execucao que as 15 instancias somem de facto as 15: hoje ha **0 posicoes
+  abertas** (medido no inicio da sessao), portanto o somatorio devolve 0.0 e nao ha prova
+  positiva. O que esta provado e o caminho no codigo (`PositionsTotal()` sobre a conta, filtro
+  `!= MagicNumber`), nao um valor observado.
+- Nao medi o comportamento com duas instancias no mesmo simbolo: hoje nao existe nenhuma.
+- Nao verifiquei se `Management/*` (trailing, breakeven, fecho) filtra por symbol **e** magic
+  antes de mexer numa posicao. Se filtrar so por magic, com magic unico cada instancia "ve"
+  posicoes de outros simbolos - e nao filtrei essa parte.
+- O `MaxTotalRiskOpenUsd = 60.0` (`Core/Config.mqh:387`) e o `MaxTotalRiskPercent = 10.0`
+  (`:370`) continuam a ser dois numeros para a mesma coisa, como na Q-017. Hoje manda o menor
+  (60 USD). Isso nao mudou com este bloco.
+
+
+## D-076 | F2.8 TEM CUSTO NOS DOIS LADOS: o magic unico faz as 15 instancias gerirem as posicoes umas das outras (ALFA, 07/11/2026)
+
+**1) O QUE MEDI, em ficheiro e linha.** Procurei em `Management/*.mqh` os lacos de
+gestao e o filtro que decidem em que posicoes cada instancia toca. Resultado:
+
+| modulo | laco | filtra magic | filtra `_Symbol` |
+|---|---|---|---|
+| `Management/BreakEven.mqh` | `:24` `PositionsTotal()` | `:35` | **nao** |
+| `Management/EquityProtection.mqh` | `:45` | `:56` | **nao** |
+| `Management/MoneyLadder.mqh` | `:119` | `:129` | **nao** |
+| `Management/PortfolioManager.mqh` | `:100` / `:155` | `:112` / `:167` | `:115` sim / `:167` **nao** |
+
+Li `BreakEven.mqh:18-70` inteiro para confirmar a forma: percorre
+`PositionsTotal()`, salta se `POSITION_MAGIC != MagicNumber`, e depois **le** o
+simbolo da posicao (`:38`) para ir buscar bid/ask/point/ATR desse simbolo. Ler o
+simbolo da posicao e correcto para precificar; o que nao existe e a comparacao
+`symbol == _Symbol` antes de agir.
+
+**2) A consequencia, com os 15 graficos que estao no ar.** Todos com
+`MagicNumber = 2026001` (`Core/Config.mqh:17`). Como nenhum laco compara com
+`_Symbol`, cada uma das 15 instancias avalia e **actua** sobre as posicoes das
+outras 14: 15 x 15 = 225 avaliacoes por passagem, das quais so 15 sao da propria
+instancia, e ate 15 escritores concorrentes no mesmo ticket (`PositionModify`).
+Ha um segundo efeito, mais fino: uma instancia que nao recebe ticks do simbolo X
+le `SymbolInfoDouble(X, SYMBOL_BID)` e obtem o ultimo valor conhecido, logo pode
+mover o SL de uma posicao em X com preco que ela propria nao esta a ver.
+
+**3) O que isto faz ao D-075, e porque a escolha nao e' 'so uma input'.**
+O D-075 mediu que o tecto de 60 USD e' da conta enquanto o magic for unico. Este
+D-076 mede o outro lado: e' o magic unico que faz a gestao ser 15x redundante.
+As duas opcoes ficam assim:
+
+- **(A) recusar arranque com (magic,simbolo) duplicado** — mantem o tecto de 60
+  USD da conta e mantem este defeito; precisa do filtro `_Symbol` nos lacos de
+  gestao, senao continua a haver gestao cruzada.
+- **(B) magic por grafico** — faz desaparecer a gestao cruzada por construcao,
+  mas derruba o tecto de 60 USD para 60 por grafico (ate 900), como o D-075
+  mediu; precisa do somatorio corrigido no mesmo passo.
+
+Nenhuma das duas e' uma alteracao de input. **Nao escolho entre (A) e (B):** a
+decisao e' do DONO e as duas mudam o que o EA pode expor. O que este bloco faz e'
+dizer que o custo existe nos dois sentidos, para nao se escolher (A) a pensar que
+sai de graca.
+
+**4) O que NAO provei, e fica declarado.**
+
+- Nao li o corpo de `MoneyLadder` nem de `EquityProtection` linha a linha; medi o
+  filtro, nao o efeito.
+- Nao ha prova em execucao: a conta esta' plana (0 posicoes, 0 ordens) e o
+  mercado fechado (`trade_server_last_known_time` = 06/11 23:59:58), logo estes
+  lacos nao correm com posicoes reais.
+- Nao sei se o P1.18 (201 `PositionModify` por ticket, medido em 31/10) tem esta
+  causa ou o recalculo do alvo em dinheiro que ele proprio apontou. As duas
+  explicacoes produzem o mesmo numero; a medicao que separa as duas ainda nao
+  foi feita.
+
+**5) Defeito de indice do proprio canal, medido no mesmo turno.** `DECISOES.md`
+tem 66 cabecalhos que casam `^## D-xxx`, e o ultimo e' `D-072`. O `D-073`
+(fechado e assinado pelo DELTA), o `D-074` e este `D-076` usam cabecalho
+descritivo (`## HG-01 - ...`, `## HG-01b - ...`, `## F2.8 - ...`) e sao
+**invisiveis** para `Get-Usados` (`tools/sync-agent.ps1:231`) e para
+`Show-Check` (`:759`), que procuram `^##\s+(D-\d{3})`. O `check` imprime
+`usados 66` e `no ledger 67` porque compara 66 decisoes com 67 reservas de
+**todos** os tipos (medido: 60 `D` + 7 `Q`). Hoje a unica guarda contra reutilizar
+`D-073` e' o `IDS.md`: se o ledger se perder, `Get-ProximoId` devolve `D-073` e
+colide com uma decisao ja assinada. Este bloco nasce com cabecalho `## D-076 |`
+de proposito, para poder ser contado. A correcao do contador e' do CMD (dono da
+ferramenta); deixo a proposta escrita no INBOX dele.

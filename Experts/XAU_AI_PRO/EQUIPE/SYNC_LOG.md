@@ -287,3 +287,28 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 14:43:32 | ALFA | post -> CMD | turno 2: reconciliacao dos modelos medida - o que os 7 ficheiros por commitar NAO precisam de mudar
 - 07/11/2026 14:43:36 | ALFA | post -> DELTA | turno 2: duas provas positivas que faltavam ao fecho (CONFIG em vigor e P1.137) e a medicao do F2.8 que a tua assinatura pode usar
 - 07/11/2026 14:43:38 | CMD | lock liberar
+- 07/11/2026 14:43:39 | ALFA | post -> DONO | turno 2: o bloqueio dos modelos nao e o piso de qualidade, e o tipo de alvo com que foram treinados (87 modelos medidos)
+- 07/11/2026 14:49:21 | ALFA | note -> DECISOES.md
+- 07/11/2026 14:50:35 | ALFA | post -> DELTA | D-074: terceira fonte de identidade MEDIDA e VIVA; pede assinatura e decisao A ou B
+- 07/11/2026 14:50:35 | ALFA | post -> CMD | D-074 registado: nao inclua o fix da fonte 3 no lote atual; canal 66/66
+- 07/11/2026 14:50:36 | ALFA | post -> DONO | O ficheiro de prova do forward tem a versao e a data erradas (D-074)
+- 07/11/2026 14:50:41 | ALFA | ping -> ONLINE (D-074 medido e registado: terceira fonte de identidade viva no CSV de eventos; 3 posts feitos; zero compiles)
+- 07/11/2026 14:53:21 | ALFA | note -> DECISOES.md
+- 07/11/2026 14:55:22 | ALFA | post -> DELTA | Adenda ao D-074: o seu HG-01 sai mais forte; causa das linhas rasgadas medida; 22 cabecalhos com v1.2.9
+- 07/11/2026 14:56:39 | ALFA | note -> DECISOES.md
+- 07/11/2026 14:56:39 | ALFA | post -> DELTA | D-075: a opcao (B) do F2.8 derruba o tecto de 60 USD da conta para 60 por grafico; pede auditoria
+- 07/11/2026 14:56:39 | ALFA | post -> CMD | D-075 registado: nao derive magic por grafico sem alterar o somatorio do RiscoAbertoUSD no mesmo passo
+- 07/11/2026 14:56:39 | ALFA | post -> DONO | Um limite de 60 dolares que pode cair por arrumacao (D-075)
+- 07/11/2026 14:56:50 | ALFA | ping -> ONLINE (D-075: tecto de 60 USD e da conta; opcao (B) do F2.8 derrubava-o para 60 por grafico; 4 posts, zero compiles)
+- 07/11/2026 14:59:11 | ALFA | note -> DECISOES.md
+- 07/11/2026 14:59:11 | ALFA | post -> DELTA | D-076: o F2.8 tem custo nos dois lados; magia unica faz 15 instancias gerirem as posicoes umas das outras; 3 decisoes invisiveis ao check
+- 07/11/2026 14:59:11 | ALFA | post -> CMD | check: 66 vs 67 nao e erro de contagem, sao grandezas diferentes; D-073/D-074/D-075 invisiveis ao indice; proposta de 1 linha
+- 07/11/2026 14:59:11 | ALFA | post -> DONO | Medi hoje: os 15 graficos gerem as posicoes uns dos outros; a escolha do magic tem custo nos dois lados
+- 07/11/2026 14:59:46 | ALFA | post -> CMD | CORRECCAO ao meu aviso: sao 8 reservas invisiveis (nao 3) - D-027, D-058..D-061, D-073..D-075; e 14 cabecalhos sem reserva (D-001..D-015)
+- 07/11/2026 14:59:50 | ALFA | ping -> ONLINE (D-076 entregue; contador do canal diagnosticado e provado; correccao das 8 reservas enviada ao CMD)
+- 07/11/2026 15:27:44 | ALFA | post -> CMD | run 68 medido de dentro: 3 falhas = 2 defeitos, e a minha premissa estava na pasta errada
+- 07/11/2026 15:27:44 | ALFA | ping -> ONLINE (turno em curso)
+- 07/11/2026 15:30:31 | CMD | lock pegar | preparar merge B (develop -> main) no repo XAU_AI_PRO, sem push | 45 min
+- 07/11/2026 15:36:57 | CMD | lock liberar
+- 07/11/2026 15:51:00 | CMD | lock pegar | push do merge B em origin/main (XAU_AI_PRO) + registo | 30 min
+- 07/11/2026 16:10 | CMD | merge B publicado | XAU_AI_PRO origin/main 07abc4d..97ae909 (sem force); decisao B do DONO; maintenance.yml identico a main (sem ref:); VERSION/espelho 1.2.181; 31 ficheiros +1567/-46; autorizacao de push registada, mas '10/10' NAO e registado - GATE_REAL 1 verde de 11
