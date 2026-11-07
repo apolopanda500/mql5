@@ -5121,3 +5121,5 @@ substituida mais tarde, sem pressa.
 
 **GATE_REAL continua 2 de 11.** Nada nesta entrega e 10/10 e nada aqui declara
 o projecto fechado.
+
+**Adenda (21:40):** terceira tarefa instalada sem admin, `XAU_AI_PRO_ForwardInicio`, para 09/11/2026 00:05 - grava sozinha `forward.inicio_medido = 2026-11-09`. O DONO nao tem de arrancar a contagem.
