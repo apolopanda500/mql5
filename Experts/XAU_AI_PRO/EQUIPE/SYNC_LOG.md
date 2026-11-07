@@ -364,3 +364,4 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 18:57 | CMD | v1.2.185 | Q-079=B do DONO: folga de 1 ATR no portao de tendencia (ScenarioTrendAtrSlack=1.0); 1 compile 0/0; ex5 964998 B MD5 146BB7FC...; #property 1.385; riscos intocados; sem reattach ainda; GATE_REAL 2 de 11
 - 07/11/2026 19:00 | CMD | B1 executado | reattach por reinicio: 15/15 graficos em v1.2.185; IA real a alimentar o EA (XAUUSD SELL 72.40, 1123 B); 14 simbolos disponivel=false por edge; token do .env, 0 no journal; [CENARIO]=0 (mercado fechado); GATE_REAL 2 de 11
 - 07/11/2026 19:00:41 | CMD | lock liberar
+- 07/11/2026 19:03 | CMD | publicado | 42f10406 (v1.2.185) e adf7ce81 (D-085): CI MQL5 success e CodeQL success nos dois; lock liberto (linha reposta: a primeira tentativa usou caminho relativo e nao escreveu)
