@@ -4551,3 +4551,58 @@ auditado pelo DELTA em D-083, com as ressalvas dele e com esta: **verde de
 tester, amostra troteada, IA constante**). Os outros 9 continuam vermelhos por
 medir.
 
+
+## D-084 | Q-079 = B (DONO, 07/11/2026): portao de tendencia com folga de 1 ATR - v1.2.185 compilada 0/0 (CMD implementa; ALFA reve)
+
+**Decisao do DONO (transcricao literal das duas linhas):** `A) Q-079 = B.`
+`B) A contradicao = B1.`
+
+### 1. O que a opcao B faz
+
+O portao de tendencia (`ScenarioTrendGate`, `Filters/MarketScenario.mqh`) mantem
+a referencia `bid vs EMA200 H1`, mas deixa de tratar como contramao um preco que
+esta a **menos de 1 ATR** da EMA200. Justificacao medida no D-079: o sinal exige
+`EMA50>EMA200` + `RSI<45` (pullback fundo); nesse caso o bid fura a EMA200 H1
+por pouco e o portao lia contramao - o EA vetava exactamente o sinal que a regra
+procura (58,5% dos vetos amostrados eram TREND; 1576 sinais, 1576 em
+AllowTradeEx, 0 passaram).
+
+A guarda **nao** desaparece: acima de `ScenarioTrendAtrSlack` x ATR de distancia,
+o preco continua contramao e seguem as regras de ADX (`ScenarioCounterTrendMaxADX`)
+e de cenario. Sem leitura de EMA ou de ATR, o rigor antigo fica intacto.
+
+### 2. Alteracoes (4 ficheiros, nada mais)
+
+| Ficheiro | Alteracao |
+|---|---|
+| `Core/Config.mqh` | novo input `ScenarioTrendAtrSlack = 1.0` (default B) |
+| `Filters/MarketScenario.mqh` | `ScenarioTrendGate` aceita contramao dentro da folga; `reason` marcada `Q-079/B` |
+| `Enterprise/VersionManager.mqh` | `EA_VERSION_STRING "1.2.185"` + changelog |
+| `XAU_AI_PRO.mq5` | `#property version "1.385"` (2*100+185) |
+
+**Nao mudou:** `MinMarketScore` (65,0), `MagicNumber` (2026001), `MaxDailyLossPercent`
+(10,0), `MaxDailyLossUsd` (60,0), `MaxDrawdownPercent` (50,0), `EnableAdaptiveTrendGate`
+(true), lotes, SL, TP, envelope `MaxTotalRiskPercent`. Nenhuma flag de execucao.
+
+### 3. Compile
+
+`MetaEditor64 /compile`, 1 compile, **0 errors, 0 warnings** (19757 ms).
+`.ex5` novo: **964 998 B**, 18:56:31, MD5 `146BB7FCE9E977E88A49A3AE007C419E`.
+Anterior (v1.2.184): 964 056 B, 16:23:11, MD5 `931459A39634DD7A95ED1EA74D412FC4`.
+
+### 4. B1 - reattach com token: o token ja era lido do .env
+
+O `AIConnector.mqh:845` (`AIGatewayTokenEfetivo`) le `XAU_AI_PRO\.env` sempre que
+o input `AIGatewayToken` tem menos de 32 caracteres. O `.env` tem
+`XAU_GATEWAY_TOKEN` com 64 caracteres. Logo **nao e preciso preencher o input**:
+basta o EA reiniciar para passar a autenticar no gateway 9011. Isto corrige o que
+o turno anterior escreveu ("preencher exige reiniciar"): nao exige preencher,
+exige reiniciar/reanexar - que e o que o DONO autorizou em B1.
+
+### 5. Autoria (quem faz nao assina o que fez)
+
+Implementacao e compile por **CMD**. A revisao independente do codigo e da
+semantica do portao fica para **ALFA** (ou DELTA), antes de tratar a v1.2.185
+como validada. GATE_REAL continua **2 de 11**; esta alteracao nao acrescenta
+nenhum verde - abre a porta para a medicao do piso com IA real, que ainda nao
+aconteceu.

@@ -104,3 +104,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 18:22 | CMD | ONLINE | 67e93e44 publicado: G3 auditado (D-083, 3 ressalvas), P1.2336 retira o '0 trades' do RESUMO, errata dos numeros da v1.2.184; CI e CodeQL verdes; GATE_REAL 2 de 11, sem 10/10.
 
 2026-11-07 19:02 | CMD | ONLINE | respostas do DONO registadas: piso=f (IA real primeiro), reattach=b, magic=A, IA instalada; Q-079 em branco - falta A/B/C; gateway 9011 a ler; EA 1.2.183 sem token; GATE_REAL 2 de 11.
+
+2026-11-07 18:57 | CMD | ONLINE | Q-079=B implementado e compilado: v1.2.185, 0/0, ex5 964998 B; B1 autoriza reattach com token (o token ja vem do .env); ALFA deve rever o codigo; GATE_REAL 2 de 11.

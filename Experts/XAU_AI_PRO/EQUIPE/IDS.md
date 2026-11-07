@@ -84,3 +84,4 @@ USADO | D | D-081 | ALFA | 07/11/2026 17:18:19 |
 USADO | D | D-082 | ALFA | 07/11/2026 17:40:28 | 
 USADO | D | D-083 | DELTA | 07/11/2026 17:42:33 | G3 auditado no log cru: A/B reproduzido ao centavo; G3 CONFIRMADO; RESUMO trades nao conta execucoes
 USADO | P1 | P1.2336 | DELTA | 07/11/2026 17:42:34 | contador trades do SCANNER RESUMO declara 0 com 27 execucoes reais
+USADO | D | D-084 | CMD | 07/11/2026 18:57 | Q-079 = B (DONO): portao de tendencia com folga de 1 ATR (input ScenarioTrendAtrSlack=1.0). v1.2.185 compilada 0/0, ex5 964998 B MD5 146BB7FC..., #property 1.385. Fecha a Q-079; B1 = reattach com token, e o token ja era lido do .env (AIConnector:845) - basta reiniciar. Riscos intocados; GATE_REAL 2 de 11; sem reattach ainda

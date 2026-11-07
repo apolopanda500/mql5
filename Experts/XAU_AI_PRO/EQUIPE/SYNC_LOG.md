@@ -360,3 +360,5 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 19:02 | CMD | IA real no ar | gateway 9011 pid 13276 em modo leitura (execucao toda em 0); /api/ai/predict XAUUSD H1 available=true SELL 72.4 x 4065.82; MCP fica em 9001; EA continua sem token (reauth b = esperar); Q-079 sem resposta (A/B/C em falta); sem 10/10
 - 07/11/2026 18:48:09 | CMD | lock liberar
 - 07/11/2026 19:08 | CMD | publicado | caf10edd: registo das respostas e da IA real; CI MQL5 success, CodeQL success; lock liberto
+- 07/11/2026 18:56:56 | CMD | lock pegar | Q-079=B implementado: compile 1.2.185, registo e reattach com token (B1) | 30 min
+- 07/11/2026 18:57 | CMD | v1.2.185 | Q-079=B do DONO: folga de 1 ATR no portao de tendencia (ScenarioTrendAtrSlack=1.0); 1 compile 0/0; ex5 964998 B MD5 146BB7FC...; #property 1.385; riscos intocados; sem reattach ainda; GATE_REAL 2 de 11

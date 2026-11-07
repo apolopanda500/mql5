@@ -1496,6 +1496,23 @@ input bool   EnableScenarioLog           = true;   // linha [CENARIO] no journal
 input double ScenarioADXStrong           = 25.0;   // ADX >= isto = TENDENCIA_FORTE
 input double ScenarioADXWeak             = 18.0;   // ADX >= isto = TENDENCIA_FRACA
 input double ScenarioCounterTrendMaxADX  = 22.0;   // ADX >= isto VETA contramao
+
+//==================================================
+// Q-079 = B (07/11/2026, decisao do DONO): FOLGA DE 1 ATR
+//
+// MEDIDO em 05/11/2026 (D-079): 1576 sinais, 1576 entraram em AllowTradeEx
+// e 0 passaram; 58,5% dos vetos amostrados eram TREND. O sinal exige
+// EMA50>EMA200 + RSI<45 (pullback fundo) e o portao exigia bid>EMA200(H1).
+// Num pullback fundo o bid fura a EMA200 H1 e o portao lia contramao - o EA
+// vetava o sinal que a propria regra procura.
+//
+// A folga NAO apaga a guarda: um preco a mais de `ScenarioTrendAtrSlack` ATR
+// da EMA200 continua a ser contramao e segue as regras de ADX/cenario. Sem
+// leitura de EMA ou de ATR, o rigor antigo fica intacto. Nenhum limite de
+// risco, lote, SL ou TP muda aqui: `ScenarioLotFactor` e o envelope
+// (`MaxTotalRiskPercent`) continuam a mandar.
+//==================================================
+input double ScenarioTrendAtrSlack      = 1.0;   // Q-079/B: folga em ATR junto a EMA200
 input double ScenarioVolPctMax           = 2.00;   // ATR% >= isto = VOLATILIDADE_ALTA
 
 input double ScenarioLotStrong           = 1.00;   // lote em tendencia forte

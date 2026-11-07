@@ -186,6 +186,42 @@ bool ScenarioTrendGate(string symbol, int signal, string &reason)
       return(true);
    }
 
+   //==================================================
+   // Q-079 = B (07/11/2026, decisao do DONO): FOLGA DE 1 ATR
+   //
+   // MEDIDO em 05/11/2026 (D-079): 1576 sinais, 1576 entraram em
+   // AllowTradeEx e 0 passaram; 58,5% dos vetos amostrados eram TREND.
+   // O sinal exige EMA50>EMA200 + RSI<45 (pullback fundo) e este portao
+   // exigia bid>EMA200(H1): no pullback fundo o bid fura a EMA200 H1 por
+   // pouco e o portao lia contramao - o EA vetava o sinal que a regra
+   // procura. Quanto melhor o pullback pela regra, mais certo o veto.
+   //
+   // A folga NAO apaga a guarda: acima de `ScenarioTrendAtrSlack` ATR de
+   // distancia continua a ser contramao e segue as regras abaixo (ADX e
+   // cenario). Sem leitura de EMA ou de ATR, o rigor antigo fica intacto.
+   //==================================================
+   if(ScenarioTrendAtrSlack > 0.0)
+   {
+      double emaRef = 0.0;
+      double bidRef = SymbolInfoDouble(symbol, SYMBOL_BID);
+      double atrRef = GetATR(symbol);
+
+      if(GetTrendEMA(emaRef, symbol) && bidRef > 0.0 && atrRef > 0.0)
+      {
+         double folga = ScenarioTrendAtrSlack * atrRef;
+
+         if(MathAbs(bidRef - emaRef) <= folga)
+         {
+            reason = "contramao dentro da folga de " +
+                     DoubleToString(ScenarioTrendAtrSlack, 2) +
+                     " ATR | dist=" + DoubleToString(bidRef - emaRef, 5) +
+                     " | ATR=" + DoubleToString(atrRef, 5) +
+                     " | Q-079/B";
+            return(true);
+         }
+      }
+   }
+
    // Daqui para baixo: sinal CONTRA a tendencia de referencia.
    if(!EnableAdaptiveTrendGate)
    {
