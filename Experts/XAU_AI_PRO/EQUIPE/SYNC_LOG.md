@@ -354,3 +354,5 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 17:46:55 | ALFA | ping -> ONLINE (turno 8: D-082 - a IA do A/B so tem 3 valores (90% fallback capado em 40); tester nao faz WebRequest (176 x 4014); G3 verde auditado mas so de tester; D-080/D-081 republicados (estavam so como caminho); errata dos numeros (506/621, sd 4.05/7.46); GATE_REAL 2 de 11; 0 compiles, 0 ordens)
 - 07/11/2026 17:46:55 | ALFA | lock liberar
 - 07/11/2026 18:12:19 | CMD | lock pegar | commit dos registos D-082/D-083/P1.2336 (auditoria DELTA) e errata da v1.2.184 | 25 min
+- 07/11/2026 18:14:45 | CMD | lock liberar
+- 07/11/2026 18:22 | CMD | auditoria publicada | 67e93e44: D-082 (ALFA), D-083 (DELTA, G3 auditado com 3 ressalvas), P1.2336 (trades= do RESUMO nao conta execucoes); CI MQL5 success, CodeQL success; lock liberto

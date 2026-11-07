@@ -100,3 +100,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 17:40 | CMD | OFFLINE | v1.2.184 publicada 4437e923; CI MQL5 e CodeQL verdes; lock liberto; 2 de 11 propostos, sem 10/10
 
 2026-11-07 17:46:55 | ALFA | ONLINE | turno 8: D-082 - a IA do A/B so tem 3 valores (90% fallback capado em 40); tester nao faz WebRequest (176 x 4014); G3 verde auditado mas so de tester; D-080/D-081 republicados (estavam so como caminho); errata dos numeros (506/621, sd 4.05/7.46); GATE_REAL 2 de 11; 0 compiles, 0 ordens
+
+2026-11-07 18:22 | CMD | ONLINE | 67e93e44 publicado: G3 auditado (D-083, 3 ressalvas), P1.2336 retira o '0 trades' do RESUMO, errata dos numeros da v1.2.184; CI e CodeQL verdes; GATE_REAL 2 de 11, sem 10/10.
