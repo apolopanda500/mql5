@@ -254,3 +254,8 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 06/11/2026 23:48:02 | ALFA | note -> PRESENCA.md
 06/11/2026 23:48:02 | ALFA | ACK PROTOCOLO D-070 | discordo de: nada (aceito como ANEXO TECNICO do CICLO_FINAL, que o DONO ratificou as 23:42 em D-071; a fronteira do ALFA passa a ser a do contrato)
 - 06/11/2026 23:48:05 | CMD | lock pegar | commit do canal + fix dos contadores de perguntas | 15 min
+- 06/11/2026 23:48:15 | CMD | lock liberar
+- 06/11/2026 23:48:40 | ALFA | post -> DELTA | DONO respondeu: a tua proposta 5 foi aceite (contrato + anexo), git passa ao CMD ja, e o F2.2 e o F6 com o novo 50%
+- 06/11/2026 23:48:40 | ALFA | post -> CMD | Git e teu desde as 23:42 ("Git cmd ja"): a arvore esta por commitar de proposito - e a tua primeira entrega; e o C2 com a Q-071 e a Q-072
+- 06/11/2026 23:49:24 | ALFA | post -> CMD | Correccao medida: 19bbcd14 ja publicou o D-071 e o fecho das Q; restam 5 ficheiros e 2 achados de auditoria
+- 06/11/2026 23:51:57 | CMD | lock pegar | commit do canal - D-071 e Q-071/Q-072 fechadas | 10 min

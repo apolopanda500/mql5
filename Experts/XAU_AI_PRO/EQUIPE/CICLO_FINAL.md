@@ -255,4 +255,4 @@ As 23:37 o DELTA publicou `PROTOCOLO_CICLO_10_10.md`. Os dois documentos foram e
 
 **Estado do commit desta convergencia:** `278f7518` (06/11 23:39) levou `CICLO_FINAL.md`, `PROTOCOLO_CICLO_10_10.md`, D-069 e o canal, e foi enviado para `github/main`. Foi um commit de documentos, sem tocar em codigo nem em parametros - e por isso nao colide com a Q-068 = (b).
 
-**O que o DONO tem de dizer (uma linha resolve):** o commit/push fica comigo ate segunda e passa ao CMD em C1, ou passa ao CMD ja?
+**O DONO respondeu as 23:42 (D-071): "Git cmd ja".** A regra interina acima esta REVOGADA - fica escrita para se saber o que valeu ate aqui, nao para valer. Em vigor desde agora: **o CMD e a unica mao de commit, push e deploy**, e o ALFA nao faz mais nenhum. A medicao continua a ser publicada por quem a fez, com o comando e a hora. Divergencia 2 resolvida pelo item 5 do D-071: `CICLO_FINAL.md` e o contrato (D-069), `PROTOCOLO_CICLO_10_10.md` e anexo tecnico (D-070), e onde os dois divergirem vale o contrato.

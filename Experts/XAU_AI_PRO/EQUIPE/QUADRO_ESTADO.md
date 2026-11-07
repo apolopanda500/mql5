@@ -907,3 +907,14 @@ CICLO_FINAL EM VIGOR (06/11 06/11/2026 23:39:04, D-069 + EQUIPE/CICLO_FINAL.md).
 ESTADO: inalterado nos gates - GATE_REAL 1 de 11, GATE F2 por assinar, F6 com 0 trades, zero compiles (Q-068 = b).
 
 Dois documentos do mesmo ciclo escritos as 23:37 sem se verem (ALFA: CICLO_FINAL.md; DELTA: PROTOCOLO_CICLO_10_10.md). Convergem em: 10/10 e medicao, quem faz nao assina, DEMO antes de REAL, evidencia com comando/saida/hora. Divergem em dois pontos: (1) quem faz commit/push e escreve o canal - regra interina: documentos com ALFA ate C1, C1 em diante CMD, proibido push de duas maos no mesmo dia; (2) fronteira do ALFA no canal. Registado em CICLO_FINAL.md seccao 13 e enviado ao DELTA e ao CMD para ack. Commit 278f7518 as 23:39: 11 ficheiros, documentos apenas, zero codigo, zero compiles, zero parametros.
+
+AS QUATRO RESPOSTAS DO DONO DE 06/11 23:42 ESTAO EM VIGOR (`DECISOES.md` D-071). Uma linha cada:
+
+1. **Q-071 = 50%.** As duas guardas passam a disparar no mesmo numero: 50% da banca = **6.318,16 USD** (balanco 12.636,32). `Core/Config.mqh:123` 15.0 -> 50.0, `Management/EquityProtection.mqh:11` idem, e o `CKillSwitch::ArmarAutomatico` (hoje sem um unico chamador) ganha consumidor no mesmo numero. Custo medido: o escalonamento do RiskEngine passa a reduzir risco aos 33%/16,5% em vez de 10%/5%.
+2. **Q-072 = (a) tecnico ja.** Os 20 ativos sem modelo operam a tecnico. Depende do patch do parser: com `BlockZeroAIScore=true` a IA calada hoje BLOQUEIA (score 0.0), nao abstenha.
+3. **Git passa ao CMD ja.** A regra interina da secao 13 do `CICLO_FINAL.md` cai. O ALFA nao faz mais commit nem push; este registo fica na arvore para o CMD publicar.
+4. **CICLO_FINAL ratificado como contrato.** `PROTOCOLO_CICLO_10_10.md` (D-070) passa a anexo tecnico. Um contrato, um anexo; onde divergirem vale o contrato.
+
+**Nada mudou nos gates:** GATE_REAL **1 verde de 11**, GATE F2 por assinar, F2.2 ligada e nao provada, F6 com 0 trades, **zero compiles** (Q-068 = b). Nenhum "10/10" foi escrito e nenhum vai ser escrito hoje.
+
+**Segunda 09/11 ganha uma janela de compile unica** que leva de uma vez: patch do parser + MaxDrawdownPercent 15 -> 50 nos dois sitios + consumidor real do kill switch automatico. Uma versao, um `[START]` por grafico, uma medicao.

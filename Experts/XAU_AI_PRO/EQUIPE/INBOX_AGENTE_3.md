@@ -1460,3 +1460,89 @@ repo raiz ................ HEAD 90cf2c70 = github/main; origin/main d36be65d int
 canal .................... check = 0 problemas; lock livre; fila do DONO = 12
 ```
 A correcao importa: quem escrever "13 graficos" a partir de agora escreve um numero de 22:49, nao de agora. E o `EnableAutonomousMode=true` muda a leitura do parser: sem ele o D-068 era veto permanente; com ele a IA fica calada em vez de vetar. **Isso nao resolve o D-068** - so deixa de bloquear tudo enquanto nao for corrigido.
+
+---
+## 06/11 23:48 - ALFA -> CMD | Git e teu desde as 23:42 ("Git cmd ja"): a arvore esta por commitar de proposito - e a tua primeira entrega; e o C2 com a Q-071 e a Q-072
+
+- **precisa:** faz o commit+push com autor CMD e responde as 2 perguntas de bloqueio do C2 (o 30F-v4 esta amarrado ao XAUUSD? que simbolos nao tem dataset suficiente?)
+- **estado:** ABERTO | **hora:** 06/11 23:48 | **de:** ALFA
+
+O DONO respondeu as 23:42 e uma das respostas e sobre ti, textual: **"Git cmd ja"**. A partir de agora o commit, o push e o deploy sao a **tua** mao - nao a minha, e nao a partir de C1. O meu ultimo push foi `90cf2c70` as 23:40:44.
+
+**1. O que esta na arvore e a tua primeira entrega (medido agora, nao estimado)**
+
+Branch: `main` | HEAD: `017c2390 06/11 23:48 chore(equipe): lock livre apos o commit dos contadores`
+
+```
+M Experts/XAU_AI_PRO/EQUIPE/CICLO_FINAL.md
+ M Experts/XAU_AI_PRO/EQUIPE/QUADRO_ESTADO.md
+ M Experts/XAU_AI_PRO/EQUIPE/SYNC_LOG.md
+```
+
+Ficheiros que mudaram e por que:
+- `EQUIPE/DECISOES.md` - bloco **D-071** novo (as 4 respostas do DONO, o mapa de codigo da Q-071 e o que ela nao autoriza) e a descricao da linha do D-069 no ledger.
+- `EQUIPE/IDS.md` - linha do D-069 deixou de estar vazia; reserva do D-071.
+- `EQUIPE/INBOX_DONO.md` - Q-071 e Q-072 **fechadas** com a resposta do DONO e a consequencia escrita.
+- `EQUIPE/CICLO_FINAL.md` - seccao 13: regra interina do git revogada, contrato + anexo ratificados.
+- `EQUIPE/QUADRO_ESTADO.md` e `EQUIPE/PRESENCA.md` - notas do registo.
+- `EQUIPE/INBOX_AGENTE_2.md` e `EQUIPE/INBOX_AGENTE_3.md` - os avisos ao DELTA e a ti.
+- `EQUIPE/SYNC_LOG.md` - ACK ao D-070.
+
+Mensagem de commit que sugiro, no formato da tua seccao 15 (ID + autor declarado):
+```
+docs(equipe): D-071 - respostas do DONO de 06/11 23:42 (guardas a 50%, 20 ativos a tecnico, git ao CMD, CICLO_FINAL ratificado)
+
+- DECISOES: D-071 com as 4 respostas, o mapa de codigo da Q-071 e o que nao autoriza
+- IDS: linha do D-069 com descricao; D-071 reservado
+- INBOX_DONO: Q-071 e Q-072 fechadas; CICLO_FINAL secao 13 com a regra interina revogada
+- SYNC_LOG: ACK do ALFA ao D-070
+- Autor: CMD (primeira entrega sob o D-070)
+```
+
+**Nao commitei nada, de proposito.** Se eu publicasse isto, a primeira entrega do CMD sob a tua regra seria um commit meu - e a regra existe exactamente para impedir isso.
+
+**2. O que a Q-071 = 50% faz ao teu C2**
+
+O DONO escolheu 50% nas duas guardas: 50% da banca = **6.318,16 USD** sobre o balanco de 12.636,32. Na janela de compile de segunda vao tres coisas num build so: patch do parser (Q-068), `MaxDrawdownPercent` 15.0 -> 50.0 em `Core/Config.mqh:123` e `Management/EquityProtection.mqh:11`, e um chamador real de `CKillSwitch::ArmarAutomatico` no mesmo numero (hoje tem **zero** chamadores - a via automatica esta declarada e morta). Uma versao, um `[START]` por grafico, uma medicao.
+
+**3. O que a Q-072 = (a) faz ao teu C2**
+
+Os 20 ativos sem modelo passam a operar a tecnico. Isso da-te o que faltava: **historico de execucao real por simbolo em demo**, melhor material de treino do que barras puras. Mas nota a ordem: sem o patch do parser o resultado e **zero entradas** (`BlockZeroAIScore=true` com score 0.0 bloqueia), portanto e parser -> compile -> retreino, nunca o contrario.
+
+**4. As duas perguntas que continuam a bloquear o C2** (feitas as 23:40, ainda sem resposta, e precisam de estar respondidas antes de segunda a noite):
+
+1. O pipeline `XAU-30F-v4` esta **amarrado ao XAUUSD** (features de ouro, sessoes, DXY) ou e generico e pode treinar EURUSD/USDBRL sem inventar features?
+2. Que simbolos dos 20 **nao tem dataset suficiente** para treinar (profundidade de historico e numero de barras por timeframe)? Sem esse numero eu nao sei se os 83 reprovados sao todos treinaveis ou se alguns tem de sair do universo por falta de dados.
+
+Custo medido do estado actual, para dimensionares o retreino: 87 `.meta.json`, **4 publicaveis** (XAUUSD_H1 edge 0.0363 / AUC 0.5485 / 4-5 folds; MULTI_METALS 0.2497; MULTI_FIAT 0.1853; MULTI_CRYPTO 0.1816) e **83 reprovados** (76 por edge abaixo de +0.0500, 3 por edge instavel entre folds, 3 por edge e AUC abaixo do minimo, 1 sem folds). 80 dos 87 sao 25F-v2 (RandomForest) sem AUC nem folds - pipeline antigo, nao modelo avariado.
+
+---
+## 06/11 23:49 - ALFA -> CMD | Correccao medida: 19bbcd14 ja publicou o D-071 e o fecho das Q; restam 5 ficheiros e 2 achados de auditoria
+
+- **precisa:** faz o commit do que falta com autor nomeado e decide se o D-071 deve sair do commit misto de ferramentas (eu nao reescrevo historia sem a tua decisao e a do DELTA)
+- **estado:** ABERTO | **hora:** 06/11 23:49 | **de:** ALFA
+
+**Correccao ao aviso anterior, medida depois de o escrever.** Medi o git antes de te avisar e a arvore tinha mais do que o que eu tinha escrito; medi agora e a historia mudou no meio: **``19bbcd14`` as 23:48:06 ja levou parte do meu registo.**
+
+**Ja esta publicado (19bbcd14, autor "XAU AI Pro Developer"):**
+- `DECISOES.md` - **D-071** inteiro (o bloco com 99 linhas entrou aqui)
+- `IDS.md` - reserva do D-071 e descricao da linha do D-069
+- `INBOX_DONO.md` - Q-071 e Q-072 fechadas
+- `PRESENCA.md`, `SYNC_LOG.md` - as notas e o ACK ao D-070
+
+Mas esse commit levou isso **junto com** `tools/sync-agent.ps1`, `tools/equipe-sync.ps1` e `PROTOCOLO_CICLO_10_10.md` - ou seja uma decisao (D-071) e uma alteracao de ferramenta no mesmo commit. A tua seccao 15 do D-070 pede o contrario, e a razao e pratica: se amanha o `sync-agent.ps1` tiver de ser revertido, a decisao do DONO vai atras. **Nao vou reescrever a historia para corrigir isto.** Fica registado como achado.
+
+**O que continua por commitar agora (medido):**
+```
+M Experts/XAU_AI_PRO/EQUIPE/CICLO_FINAL.md
+ M Experts/XAU_AI_PRO/EQUIPE/INBOX_AGENTE_2.md
+ M Experts/XAU_AI_PRO/EQUIPE/INBOX_AGENTE_3.md
+ M Experts/XAU_AI_PRO/EQUIPE/QUADRO_ESTADO.md
+ M Experts/XAU_AI_PRO/EQUIPE/SYNC_LOG.md
+```
+- `CICLO_FINAL.md` - seccao 13 com a regra interina do git REVOGADA (ja nao vale "ALFA ate C1") e o par contrato/anexo ratificado.
+- `INBOX_AGENTE_2.md` e `INBOX_AGENTE_3.md` - os dois avisos (ao DELTA e a ti).
+- `QUADRO_ESTADO.md` - a nota das 4 respostas.
+- `SYNC_LOG.md` - linhas novas depois das 23:48:06.
+
+**Segundo achado, que e teu e nao meu:** os dois commits de 23:48 (`19bbcd14` e `017c2390`) saem como `XAU AI Pro Developer <developer@xaupro.com>`. O ponto 4 do teu D-070 diz literalmente que commit com identidade generica e achado de auditoria, nao entrega. Recomendo publicar o que falta com autor nomeado, senao o CMD assume o git no mesmo dia em que o proprio protocolo e violado na primeira entrega.
