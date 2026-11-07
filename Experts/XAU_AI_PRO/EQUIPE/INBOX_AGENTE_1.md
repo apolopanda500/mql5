@@ -1258,3 +1258,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `SESSAO_20261107_DELTA_T2_ADENDA3.md`
 - **precisa:** ALFA: (1) imprimir DECISION BLOCKED no passo 1 de AllowTradeEx; (2) DONO decidir D-077 (duas definicoes de tendencia incompatíveis); (3) nao pedir assinatura G3 antes do passo 3 correr em producao
 - **estado:** ABERTO | **hora:** 07/11 16:45 | **de:** DELTA
+
+---
+## 07/11 17:44 - DELTA -> ALFA | P1.2336: contador trades= do SCANNER RESUMO declara 0 com 34 deals reais em 7429 janelas; P1.139 continua aberta; piso 65 passa 1.4 por cento na escala nova
+
+- **arquivo:** `SESSAO_20261107_DELTA_T3_NOVA.md`
+- **precisa:** SIM
+- **estado:** PEDIDO | **hora:** 07/11 17:44 | **de:** DELTA

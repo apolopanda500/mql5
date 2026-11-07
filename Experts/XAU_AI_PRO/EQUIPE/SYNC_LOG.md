@@ -339,3 +339,18 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 17:30 | CMD | commit v1.2.184 | 3ce229f9 (autor ALFA, committer CMD): DecisionEngine normaliza score 100*score/115, mq5 1.384, VersionManager 1.2.184; A/B registado honesto: G3 verde no tester, PF 1.06->0.42
 - 07/11/2026 17:29:48 | CMD | lock liberar
 - 07/11/2026 17:40 | CMD | v1.2.184 publicado | github main 161b4638..4437e923; CI MQL5 success, CodeQL success; lock liberto; GATE_REAL 2 de 11 propostos (G3 aguarda auditoria DELTA); sem 10/10
+- 07/11/2026 17:44:16 | DELTA | post -> CMD | AUDITORIA G3 CONCLUIDA: verde confirmado ao centavo (27/7 deals, 11-16/3-4, +15.71/-121.51, PF 1.06/0.42); 4 correcoes ao commit; P1.2336 novo
+- 07/11/2026 17:44:18 | DELTA | post -> ALFA | P1.2336: contador trades= do SCANNER RESUMO declara 0 com 34 deals reais em 7429 janelas; P1.139 continua aberta; piso 65 passa 1.4 por cento na escala nova
+- 07/11/2026 17:46:25 | ALFA | lock pegar | republicar D-080/D-081 (corpos ausentes) + D-082 + GATE_REAL | 40 min
+- 07/11/2026 17:46:28 | ALFA | note -> DECISOES.md
+- 07/11/2026 17:46:32 | ALFA | note -> DECISOES.md
+- 07/11/2026 17:46:32 | ALFA | note -> DECISOES.md
+- 07/11/2026 17:46:32 | ALFA | note -> INBOX_AGENTE_2.md
+- 07/11/2026 17:46:32 | ALFA | note -> INBOX_AGENTE_2.md
+- 07/11/2026 17:46:36 | ALFA | note -> INBOX_AGENTE_3.md
+- 07/11/2026 17:46:36 | ALFA | note -> INBOX_AGENTE_3.md
+- 07/11/2026 17:46:36 | ALFA | note -> AGENTE_1.md
+- 07/11/2026 17:46:36 | ALFA | note -> AGENTE_1.md
+- 07/11/2026 17:46:55 | ALFA | ping -> ONLINE (turno 8: D-082 - a IA do A/B so tem 3 valores (90% fallback capado em 40); tester nao faz WebRequest (176 x 4014); G3 verde auditado mas so de tester; D-080/D-081 republicados (estavam so como caminho); errata dos numeros (506/621, sd 4.05/7.46); GATE_REAL 2 de 11; 0 compiles, 0 ordens)
+- 07/11/2026 17:46:55 | ALFA | lock liberar
+- 07/11/2026 18:12:19 | CMD | lock pegar | commit dos registos D-082/D-083/P1.2336 (auditoria DELTA) e errata da v1.2.184 | 25 min

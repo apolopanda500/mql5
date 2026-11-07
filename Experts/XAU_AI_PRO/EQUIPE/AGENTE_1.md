@@ -612,3 +612,94 @@ nenhuma hipotese adicional.
 
 
 C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\alfa_diario_1725.txt
+
+## 07/11/2026 17:25 - ALFA - turno 7: o A/B do P1.138 fechou e o resultado e misto, nao bom
+
+**O que fiz neste turno, por ordem.**
+
+1. Publiquei o **D-080** com o baseline do lado A (v1.2.183) medido no run de 16:12-16:44.
+2. Arranquei o **lado B** (v1.2.184) na mesma janela e mesmo `.ini`: run_id `7705518979854085218`, 16:49:21 a 17:15:51.
+3. Medi o criterio **G3** separando os dois runs no `Tester\logs\20261107.log` por carimbo de tempo.
+4. Publiquei o **D-081** com o A/B e o G3, escrevi a DELTA e ao CMD, actualizei a tabela do `GATE_REAL.md`.
+5. Libertei o LOCK.
+
+**O numero que interessa, e o numero que estraga a festa.**
+
+| | A v1.2.183 | B v1.2.184 |
+|---|---|---|
+| Trades | 27 | 7 |
+| Profit | +15.71 | -121.51 |
+| PF | 1.06 | 0.42 |
+| MaxDD % | 109.56% | 240.64% |
+| Sharpe | 0.15 | -0.73 |
+| `[SCORE]` em 100.00 | 466/529 = 88.09% | **0/598 = 0.00%** |
+| desvio-padrao do score | 10.97 | **7.58** |
+
+**G3 cumpre-se: 0% em 100.00 e sd 7.58 > 5.** O defeito que o criterio descreve esta corrigido e esta medido em 598 amostras, com o binario identificado (964 056 B, 16:23:11, MD5 931459A39634DD7A95ED1EA74D412FC4).
+
+**E ao mesmo tempo o sistema ficou pior.** Menos 20 trades, -137.22 USD de resultado, DD de 109.56% para 240.64%. Escrever "melhorou" seria mentir com um numero ao lado.
+
+**Porque caiu, em aritmetica.** Com a escala nova o maximo medido do score e **70.97** e o piso e `MinMarketScore=65.0`. O piso foi escolhido para uma escala que saturava em 100; agora quase tudo e recusado. Sem IA o tecto e `100*70/115 = 60.87`, abaixo de 65 â€” recusa automatica. Com IA a 72.4% soma 36.2 pontos â†’ `106.2/115 = 92.3`, passa. O funil deixou de ser a soma dos indicadores e passou a ser a confianca da IA.
+
+**O que NAO fiz, de proposito.** Nao varri `MinMarketScore`. E parametro de risco e a varredura precisa de aval do DELTA e do DONO â€” pedi-o no D-081, com a grelha ja preparada (65/55/45/35, mesma janela, mesmo binario). Nao reverti o P1.138: o G3 existe por uma razao e agora esta cumprido.
+
+**Estado do GATE_REAL: 2 verdes de 11** (G2 com ressalva, G3 proposto a aguardar auditoria do DELTA). Nenhum bloco meu escreve 10/10.
+
+**G8 continua sem explicacao.** Medi outra vez e a assimetria nao esta na geracao de sinal: 136 BUY contra 186 SELL, APPROVED Signal=-1:487 contra Signal=1:307, BLOCK TREND SELL:1253 contra BUY:1313.
+
+**Nota de higiene do canal.** Pedi D-079 e o script deu-me D-080; pedi D-080 e deu-me D-081. O contador continua a contar reservas que nao sao minhas. Regra pratica ate o CMD corrigir: usar sempre o ID que o script devolve.
+
+**Conta.** Sem ordens, sem alteracoes de parametros de risco, `.ex5` intocado desde as 16:23:11.
+
+
+## 07/11/2026 17:56 - ALFA - turno 8: a IA do A/B nao era uma IA, e as minhas notas do turno 7 nunca chegaram ao canal
+
+**Duas correcoes minhas, nenhuma melhoria anunciada.**
+
+1. **Os numeros do G3 que eu publiquei estavam mal cortados.** Medi outra vez
+   com a fronteira real dos runs (16:49:11, `expert file added`) e reproduzi o
+   DELTA ao decimal: A **466/506 = 92,09%** (eu tinha escrito 466/529 =
+   88,09%), media 98,81, sd 4,05, min-max 85-100; B **0/621**, media 50,87,
+   sd **7,46**, min-max 30,43-70,97. O criterio continua cumprido - 0% de
+   saturacao e sd > 5 - e o veredicto nao muda. Errata escrita no D-082 Â§6.
+
+2. **O campo `AI=` do `[SCORE]` no tester so tem tres valores** e por isso o
+   G3 e um verde mais estreito do que o D-081 deixava ler: 559 de 621 amostras
+   no run B (90,02%) tem `AI=20.00`, que e o `aiConfidence=40` do fallback
+   capado (`AIUnavailableConfidenceCap`, `Config.mqh:656`), e as 62 restantes
+   vem de **um** `prediction_XAUUSD.json` estatico lido 48 vezes. A causa esta
+   medida: **176** tentativas `[AI] GATEWAY` no run B, todas `erro=4014` -
+   **o Strategy Tester nao faz WebRequest**. Ou seja: no backtest a IA nao e
+   uma medicao, e uma constante de 20 pontos; a escala de 115 nao pode encher
+   (faltam 50 da IA e 15 do KCI) e o tecto real e 70,97. As duas modas que o
+   DELTA mediu explicam-se ao ponto: 47,83 = 55/115 e 60,87 = 70/115, ambas com
+   o mesmo `AI=20`.
+
+   Isto muda a leitura do piso 65,00: nao e "alto para a escala nova", e
+   coerente com uma escala que o backtest nao enche. Nao mexi no piso (e
+   parametro de risco) e nao recomendo baixa-lo com dados de tester. Deixei
+   duas saidas ao DONO/DELTA: denominador condicional quando `aiReal=false`
+   (candidato P1.140) ou medir o piso em demo com gateway vivo.
+
+3. **Defeito do canal, meu.** As notas do turno 7 entraram no `DECISOES.md`,
+   nas duas caixas e no meu diario como **caminho**, nao como corpo: durante
+   ~40 minutos o D-080 e o D-081 estiveram referenciados e ausentes. Reparei
+   neste turno, republicando os corpos por `-Corpo (Get-Content -Raw)` e
+   verificando o titulo no destino. Regra nova: caminho nao e conteudo, e um
+   `note` que so acrescenta um caminho devia ser recusado pelo script.
+
+**Disciplina do turno:** 0 compiles, 0 reattach, 0 ordens, 0 linhas de codigo
+alteradas, `MinMarketScore` intocado, `.ex5` 964 056 B 16:23:11 MD5
+`931459A39634DD7A95ED1EA74D412FC4` intocado, conta 113568614 plana
+(12 636,32 USD, 0 posicoes, 0 ordens). Nenhum ficheiro meu escreve 10/10 e
+nenhum diz "melhorou". GATE_REAL: **2 de 11** (G2 com ressalva, G3 verde
+auditado pelo DELTA com as ressalvas dele mais a minha).
+
+**Proximo passo que eu recomendo, por ordem:** (1) DELTA re-mede o `AI=` por
+run e decide a terceira ressalva do G3; (2) DONO decide Q-079 e a questao do
+piso - e decide **antes** de qualquer reattach, porque cada uma das duas
+decisoes muda o que se mede a seguir; (3) so depois 1 compile e reattach;
+(4) G5/G6/G7 num simbolo so; (5) P1.2336 (contador `trades=` do RESUMO) e
+P1.139 (passo 1 mudo do `AllowTradeEx`), que sao defeitos de observabilidade e
+nao de estrategia.
+

@@ -4292,3 +4292,262 @@ decidirem (nao decidida por mim):
 C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\d080_alfa.txt
 
 C:\Users\Micro\AppData\Roaming\MetaQuotes\Terminal\D0E8209F77C8CF37AD8BF550E51FF075\MQL5\Files\Temp\d081_alfa.txt
+
+## D-080 | Baseline A/B medido: v1.2.183 fecha 27 trades, PF 1.06 e MaxDD 109.56% na janela de referencia (ALFA, 07/11/2026 16:50)
+
+**O que e.** O lado A do A/B do P1.138. Binario `XAU_AI_PRO.ex5` 964 197 B gravado as 16:12:54 (v1.2.183, antes da normalizacao do MarketScore). Run do Strategy Tester iniciado 16:12:54 e terminado 16:44:12.
+
+**Janela (identica a que o lado B vai usar).**
+`XAU_AI_PRO.XAUUSD.H1.20260901_20261101.100.ini`
+
+| Parametro | Valor |
+|---|---|
+| Expert | XAU_AI_PRO\XAU_AI_PRO.ex5 |
+| Symbol / Period | XAUUSD / H1 |
+| Model | 1 = m1 OHLC |
+| FromDate / ToDate | 2026.09.01 / 2026.11.01 |
+| Deposit / Leverage | 10 000 USD / 1:100 |
+| Optimization / Visual | 0 / 0 |
+| EnableMultiSymbol | true (11 simbolos) |
+| RewardRatio / MinRewardRatio | 1.60 / 1.60 |
+| MaxDrawdownPercent | 15.0 |
+| MinMarketScore | 65.0 |
+| EnableAdaptiveTrendGate | true, ScenarioCounterTrendMaxADX 22.0 |
+
+**Resultado medido (lido do `Tester\logs\20261107.log`, nao da API â€” a API devolveu `windows:[]` durante todo o run).**
+
+| Metrica | Valor |
+|---|---|
+| Trades | 27 |
+| Wins / Losses | 11 / 16 |
+| WinRate | 40.74% |
+| Profit | +15.71 USD |
+| Profit Factor | 1.06 |
+| Max Drawdown | 205.09 USD = **109.56%** do capital |
+| Sharpe (por trade) | 0.15 |
+| Expectancy | 0.58 |
+| OnTester | 4.827425131543225 |
+| Trades/dia | 27.00 |
+
+**Veredicto: REPROVADO.** Nao e "quase". Tres leituras independentes reprovam:
+
+1. **G5** pede >= 100 trades fechados e >= 3 meses. Tem 27 trades em 2 meses. Fica a 27% do criterio de amostra.
+2. **MaxDD 109.56%** e drawdown relativo acima de 100% do deposito â€” o capital foi, em algum momento, praticamente todo. Um numero destes num relatorio nao e um resultado marginal, e um resultado que impede capital real.
+3. **PF 1.06** com 27 trades e indistinguivel de zero por ruido amostral. 11/16 num binomial de 27 tem intervalo de confianca largo a atravessar 50%.
+
+**Contexto que qualifica o numero (nao o desculpa).**
+- `[TRADE BLOCK] COTACAO VELHA ... idade=8101s | limite=900s` â€” o guard de dados velhos esteve a bloquear com cotacoes de 2h15 de idade. O tester com m1 OHLC de um so simbolo nao alimenta os outros 10, e o guard dispara.
+- `[SCANNER] RESUMO ... NoSignal=40/44` â€” em 44 visitas, 40 nao produziram sinal.
+- Este run carrega o defeito do **D-078** (o filtro de tendencia le a EMA200 de outro instrumento 15 639 vezes e bloqueia 2 126 validacoes). A e B carregam o mesmo defeito, por isso o A/B continua valido como comparacao do MarketScore â€” mas nenhum dos dois lados e um numero que sirva para G5.
+
+**O que este bloco NAO diz.** Nao diz que a v1.2.183 e melhor ou pior do que a v1.2.184: o lado B esta a correr agora. Nao diz que o P1.138 ajuda ou atrapalha: a unica coisa que o P1.138 muda e a escala do score, e a leitura que interessa e a distribuicao de `[SCORE]`/`PTS`, nao o PF.
+
+**GATE_REAL continua 1 verde de 11** (so G2). Este bloco nao muda nenhum criterio e nao autoriza escrever 10/10.
+
+
+## D-081 | A/B do P1.138 fechado: G3 fica VERDE (0% em 100.00, sd 7.58) e o resultado piora de PF 1.06 para PF 0.42 (ALFA, 07/11/2026 17:20)
+
+**Resumo em uma linha.** O P1.138 fez exactamente o que prometia ao criterio G3 e ao mesmo tempo cortou os trades de 27 para 7 e o resultado de +15.71 para -121.51. As duas coisas sao verdade ao mesmo tempo e nenhuma delas autoriza 10/10.
+
+### 1. Os dois lados, mesma janela, mesmo .ini
+
+Janela: `XAU_AI_PRO.XAUUSD.H1.20260901_20261101.100.ini` â€” XAUUSD H1, m1 OHLC, 2026.09.01 a 2026.11.01, deposito 10 000 USD, 1:100, `EnableMultiSymbol=true` (11 simbolos), `MinMarketScore=65.0`, `RewardRatio=1.60`, `MaxDrawdownPercent=15.0`.
+
+| | **A â€” v1.2.183** | **B â€” v1.2.184** |
+|---|---|---|
+| ex5 | 964 197 B (16:12:54) | 964 056 B (16:23:11, MD5 931459A39634DD7A95ED1EA74D412FC4) |
+| run_id | 7704134350896417964 | 7705518979854085218 |
+| Inicio / fim | 16:12:54 / 16:44:12 | 16:49:21 / 17:15:51 |
+| Trades | 27 | **7** |
+| W / L | 11 / 16 | 3 / 4 |
+| WinRate | 40.74% | 42.86% |
+| Profit | +15.71 | **-121.51** |
+| Profit Factor | 1.06 | **0.42** |
+| MaxDD USD | 205.09 | 207.91 |
+| MaxDD % | 109.56% | **240.64%** |
+| Sharpe | 0.15 | -0.73 |
+| Expectancy | 0.58 | -17.36 |
+| OnTester | 4.827425131543225 | 0 |
+
+### 2. O criterio G3, medido
+
+Criterio do GATE_REAL: *"< 50% das amostras [SCORE] com TOTAL=100.00 e desvio-padrao > 5"*.
+
+Amostras separadas por carimbo de tempo (o log `20261107.log` tem os dois runs).
+
+| Lado | Amostras | Em 100.00 | % em 100.00 | Media | Desvio-padrao | Min | Max |
+|---|---|---|---|---|---|---|---|
+| A â€” v1.2.183 | 529 | 466 | **88.09%** | 96.64 | 10.97 | 47.83 | 100.00 |
+| B â€” v1.2.184 | 598 | **0** | **0.00%** | 50.95 | **7.58** | 30.43 | 70.97 |
+
+**G3 = VERDE no binario novo.** 0.00% < 50% e 7.58 > 5. Nao e um numero de sorte: 598 amostras e nenhuma em 100.00, contra 466 de 529 antes.
+
+E importante dizer tambem o que a tabela revela de ruim: o maximo do lado B e **70.97**, ou seja, o score agora mal passa o piso `MinMarketScore=65.0`. O piso deixou de ser decorativo e passou a ser o filtro mais apertado do sistema â€” e e por isso que os trades caem de 27 para 7.
+
+### 3. Porque os trades caem (aritmetica, nao opiniao)
+
+Antes: base 50 + EMA 20 + RSI 15 + ADX 15 = 100.00 antes de IA e KCI, e o maximo real (165) era cortado em 100. Praticamente todo o sinal aprovava contra um piso de 65.
+Depois: `100 * pontos / 115`. Sem IA o tecto e `100*70/115 = 60.87` â€” abaixo de 65, recusa. Com IA a 72.4% de confianca soma 36.2 pontos â†’ `106.2/115 = 92.3`. Sem IA nao se passa; com IA media passa-se por pouco. O funil passou a ser a confianca da IA, nao a soma dos indicadores.
+
+Isto e coerente com o observado: media 50.95, maximo 70.97, e 7 trades em 2 meses.
+
+### 4. Veredicto, sem maquilhagem
+
+- **G3: VERDE.** O defeito que o criterio descreve â€” saturacao em 100.00 â€” esta medido como corrigido.
+- **G5 continua VERMELHO e pior:** 7 trades (o A tinha 27; o criterio pede >= 100). O lado B afasta-se do criterio, nao se aproxima.
+- **O resultado do lado B e pior em tudo o que conta:** PF 0.42 contra 1.06, -121.51 contra +15.71, DD 240.64% contra 109.56%, Sharpe -0.73 contra 0.15.
+- **Nenhum dos dois lados e apropriado a capital real.** O A tem DD 109.56% (perda total do deposito em algum momento); o B tem 240.64%. Um numero de drawdown acima de 100% nao e um resultado fraco, e um resultado que anula a discussao.
+
+### 5. O que isto muda no plano
+
+O P1.138 nao deve ser revertido â€” o criterio G3 existe por uma razao e agora esta cumprido. O que fica em aberto, e que eu nao decido sozinho, e o piso: com a escala nova, `MinMarketScore=65.0` significa "quase tudo recusado" e nao "qualidade minima". Ha duas leituras possiveis e elas pedem medicoes diferentes:
+
+1. **O piso esta errado para a escala nova** (65 foi escolhido para uma escala que saturava em 100). Entao o trabalho seguinte e calibrar `MinMarketScore` na escala 0..100 real â€” uma varredura simples no tester, com o binario actual.
+2. **O piso esta certo e a estrategia nao tem edge** â€” nesse caso os 7 trades que sobrevivem sao a melhor amostra disponivel e o problema nao e o score, e o sinal.
+
+Nao afirmo qual das duas. A leitura 1 e a mais provavel do ponto de vista aritmetico, mas provar isso exige a varredura, e a varredura de `MinMarketScore` e um parametro de risco que o DONO tem de autorizar antes de eu correr.
+
+### 6. Estado do GATE_REAL
+
+**2 verdes de 11** (G2 e agora G3). Continua proibido escrever 10/10. O G3 fica verde por medicao, nao por declaracao â€” o numero que o sustenta e 0/598 e sd 7.58, e o binario que o produziu esta identificado por tamanho, hora e MD5.
+
+
+## D-082 | A "IA" do A/B nao e uma IA: 90% das amostras sao o fallback capado em 40 e 9,7% um JSON estatico - o gateway e INALCANCAVEL dentro do tester (erro 4014) (ALFA, 07/11/2026 17:50)
+
+**Autor:** ALFA (codigo e medicao). **Nao assina gate nenhum.** Este bloco
+qualifica o G3 que eu proprio propus no D-081 e corrige os numeros errados
+que eu la escrevi. Nao reverte codigo, nao muda risco, nao declara 10/10.
+
+### 1. O que medi (e como)
+
+Fonte: `Tester\logs\20261107.log` (UTF-16LE), os dois runs do A/B de 16:12:54
+(A, v1.2.183) e 16:49:11 (B, v1.2.184), fronteira no `expert file added` do
+run B. Campo `AI=` do `[SCORE] CALCULATED`, que e `aiConfidence*0.50`.
+
+| Run | amostras `[SCORE]` | `AI=20.00` | `AI=50.00` | outros |
+|---|---|---|---|---|
+| A v1.2.183 | 506 (sem campo `PTS`) | 495 (97,83%) | 8 | 35,46 x1 Â· 42,25 x1 Â· 45,60 x1 |
+| B v1.2.184 | 621 (todos com `PTS=`) | **559 (90,02%)** | 60 (9,66%) | 37,73 x2 (0,32%) |
+
+No run B, cruzando com `WARMUP`: `AI=20.00` divide-se em 492 `WARMUP=NAO` +
+67 `WARMUP=SIM`; **todas** as amostras com `AI=50.00` e as 2 com `AI=37.73`
+sao `WARMUP=SIM`.
+
+### 2. Porque so ha tres valores (leitura do codigo)
+
+`AI/AIEngine.mqh:108` (`GetAIConfidence`): `aiReal = LoadAIPrediction(symbol)
+&& AI_Signal != "UNAVAILABLE"` e, no fim, `if(!aiReal) score =
+MathMin(score, AIUnavailableConfidenceCap)` com
+`AIUnavailableConfidenceCap = 40.0` (`Core/Config.mqh:656`).
+
+- **`AI=20.00` = confianca 40,00** = o fallback capado, **por desenho**. Nao e
+  leitura de modelo, e o valor exacto que o P1.125 deixou para o caminho sem IA.
+- **`AI=50.00` = confianca 100,00** = o tecto aritmetico (50 base + 20 sinal
+  alinhado + `AI_Score*0.40` + `probabilidade*0.30`, cortado em 100).
+- **`AI=37,73` = confianca 75,46**, a mesma aritmetica com o multiplicador de
+  memoria a puxar para baixo.
+
+### 3. Porque nao ha IA real no tester (medido, janela 16:45-17:25, 151 854 linhas)
+
+| Linha | Ocorrencias no run B | Leitura |
+|---|---|---|
+| `[AI] GATEWAY` | **176**, todas `erro=4014 | NAO PERMITIDO (URL fora da lista, ou checkbox 'Allow WebRequest' desligado)` | o Strategy Tester **nao faz WebRequest**: a allowlist do terminal nao vale dentro do tester. Zero inferencias. |
+| `[AI] LOAD` `ROOT=COMMON` | 48 | o EA le `Common\Files\Data\prediction_XAUUSD.json` (fallback do P1.137) |
+| `PREDICAO VENCIDA` | **933** (ex.: `EURUSD | AGE=546193s > LIMIT=900s`, ~6,3 dias) | o ficheiro e velho e nao e atualizado pelo pipeline |
+| `[AI] PYTHON` | 2 105 | descrevem **o mesmo** ficheiro: `XAUUSD | SELL | PRICE=4063.84 | BUY=36.35% | SELL=63.65% | SCORE=36.35 | CONF=63.60%` |
+
+Conclusao: as 62 amostras com `AI` diferente de 20 nao sao uma serie de
+inferencias - sao **um ficheiro estatico** lido 48 vezes. No resto do run a IA
+vale exactamente 20,00 sempre.
+
+### 4. O que isto faz ao G3, com a aritmetica a vista
+
+O `[SCORE]` no tester e `(indicadores + IA) / 115`. Com a IA fixa em 20, as
+duas modas que o DELTA mediu (D-083 Â§7.1) explicam-se ao ponto:
+
+```
+47.83 = 55/115 = EMA 20 + RSI  0 + ADX 15 + AI 20
+60.87 = 70/115 = EMA 20 + RSI 15 + ADX 15 + AI 20
+30.43 = 35/115 = EMA  0 + RSI  0 + ADX 15 + AI 20
+70.97 = 70 PTS x 1.0139 do LearningAdjustedScore (o tecto medido)
+```
+
+Ou seja: **no backtest, 65 dos 115 pontos do denominador sao inalcancaveis** -
+50 da IA (a IA real nao existe no tester) e 15 do KCI direccional+volatilidade
+(zero em todas as amostras medidas). O maximo alcancavel e 70 pontos.
+
+- O G3 **continua verde e continua verde auditado** (D-083): 466 saturados em
+  A, **0** em B, sd > 5. O que o P1.138 mudou foi a normalizacao, e a
+  normalizacao mede-se bem no backtest porque e aritmetica pura.
+- Mas o G3 **nao mede a distribuicao de producao**: em producao, com gateway
+  vivo, a IA pode valer ate 50 pontos e a escala chega aos 115. O verde vale
+  para o que foi medido e nao se estende la.
+- E a explicacao do estrangulamento do D-083 Â§7 muda de sentido: o piso 65,00
+  nao e "alto" - e **coerente com uma escala de 115 que a backtest nao
+  consegue encher**. A 1,4% de aprovacao e o piso a competir com um tecto de
+  70,97. Nao e o mesmo que estar mal calibrado para producao.
+
+### 5. Resposta medida a pergunta 2 do DONO (piso/MinMarketScore)
+
+Nao recomendo recalibrar o piso com dados de backtest. A grelha 65/55/45/35 do
+D-081 foi construida sobre uma distribuicao em que a IA e uma constante: baixar
+o piso para 45 aprovaria 91,3% das amostras **de um score a que faltam 65
+pontos possiveis**, e em producao aprovaria outro universo. Duas saidas
+defensaveis, ambas de decisao do DONO/DELTA e nenhuma tomada por mim:
+
+1. **denominador condicional**: quando `aiReal=false`, o denominador desce de
+   115 para 65 (50 de indicadores + 15 de KCI) - o score significa o mesmo em
+   tester e em producao, e o piso 65 deixa de ser um muro invisivel. E uma
+   alteracao de score, exige aval e remedicao propria (candidato P1.140);
+2. **medir o piso onde a IA existe**: demo com gateway vivo, e so ai comparar
+   65 vs 55 vs 45 com a escala completa.
+
+### 6. Errata do meu D-081 (numeros errados, veredicto igual)
+
+O meu corte por carimbo as 16:45 nao e a fronteira dos runs. Repetida a
+medicao com a fronteira correcta (16:49:11 / linha 169565), reproduzo o DELTA
+ao decimal:
+
+| Metrica | D-081 (errado) | Agora |
+|---|---|---|
+| A: saturados / n | 466/529 = 88,09% | **466/506 = 92,09%** |
+| B: saturados / n | 0/598 = 0,00% | **0/621 = 0,00%** |
+| media A / B | 96,64 / 50,95 | **98,81 / 50,87** |
+| sd A / B | 10,97 / 7,58 | **4,05 / 7,46** |
+| min-max A | 47,83-100 | **85,00-100** |
+| min-max B | 30,43-70,97 | 30,43-70,97 (igual) |
+
+O indicador que decide o criterio (0 saturados em B) e 0 nos dois cortes, logo
+o G3 nao muda de veredicto por esta correcao; mudam os numeros que o commit
+`3ce229f9` publicou (a errata do DELTA em D-083 Â§10 e a mesma).
+
+### 7. Defeito do canal descoberto neste turno (e e meu)
+
+As notas do turno 7 - D-080, D-081, diario e as duas mensagens - entraram nos
+ficheiros do canal como **caminho**, nao como corpo: as ultimas linhas do
+`DECISOES.md` eram literalmente
+`...\MQL5\Files\Temp\d080_alfa.txt` e `...\d081_alfa.txt`, sem uma linha do
+texto. Ou seja: durante ~40 minutos o D-080 e o D-081 **nao estiveram
+publicados**, apenas referenciados por um ficheiro que o canal nao le.
+
+Reparacao feita neste turno: os corpos de D-080, D-081 e D-082, o diario e as
+mensagens foram republicados com `-Corpo (Get-Content -Raw)` e verificados por
+`Select-String` do titulo no destino. Regra nova para o canal, para todos:
+**publicar com `-Corpo` lido do ficheiro e verificar o titulo no destino;
+caminho nao e conteudo.** Um `note` que so acrescenta um caminho devia ser
+recusado pelo script (fica como proposta de melhoria do `sync-agent.ps1`).
+
+### 8. O que NAO fiz
+
+0 compiles, 0 reattach, 0 ordens, 0 linhas de codigo tocadas, `MinMarketScore`
+intocado (65,0), `EnableAdaptiveTrendGate` intocado, `.ex5` 964 056 B, 16:23:11,
+MD5 `931459A39634DD7A95ED1EA74D412FC4`, conta 113568614 plana (12 636,32 USD,
+0 posicoes, 0 ordens). Nenhum ficheiro escreve 10/10.
+
+### 9. Estado do GATE_REAL depois deste bloco
+
+**2 verdes de 11**: G2 (com ressalva de durabilidade, do CMD) e G3 (verde
+auditado pelo DELTA em D-083, com as ressalvas dele e com esta: **verde de
+tester, amostra troteada, IA constante**). Os outros 9 continuam vermelhos por
+medir.
+
