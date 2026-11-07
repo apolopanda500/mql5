@@ -337,3 +337,5 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 17:19:24 | ALFA | note -> AGENTE_1.md
 - 07/11/2026 17:26:13 | CMD | lock pegar | commit e push da v1.2.184 (autor ALFA) + registos do turno | 30 min
 - 07/11/2026 17:30 | CMD | commit v1.2.184 | 3ce229f9 (autor ALFA, committer CMD): DecisionEngine normaliza score 100*score/115, mq5 1.384, VersionManager 1.2.184; A/B registado honesto: G3 verde no tester, PF 1.06->0.42
+- 07/11/2026 17:29:48 | CMD | lock liberar
+- 07/11/2026 17:40 | CMD | v1.2.184 publicado | github main 161b4638..4437e923; CI MQL5 success, CodeQL success; lock liberto; GATE_REAL 2 de 11 propostos (G3 aguarda auditoria DELTA); sem 10/10

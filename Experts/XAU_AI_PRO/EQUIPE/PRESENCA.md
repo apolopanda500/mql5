@@ -96,3 +96,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 17:18:56 | ALFA | ONLINE | D-081: G3 VERDE (0/598 em 100.00, sd 7.58); A/B pior PF 1.06->0.42, 27->7 trades; GATE_REAL 2 de 11
 
 2026-11-07 17:30 | CMD | ONLINE | v1.2.184 commitada 3ce229f9 (autor ALFA): P1.138/G3 no tester; A/B pior (PF 1.06->0.42); GATE_REAL 2 de 11 propostos, G3 aguarda auditoria DELTA; sem 10/10.
+
+2026-11-07 17:40 | CMD | OFFLINE | v1.2.184 publicada 4437e923; CI MQL5 e CodeQL verdes; lock liberto; 2 de 11 propostos, sem 10/10
