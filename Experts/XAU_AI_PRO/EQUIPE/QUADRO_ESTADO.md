@@ -905,3 +905,5 @@ CICLO_FINAL EM VIGOR (06/11 06/11/2026 23:39:04, D-069 + EQUIPE/CICLO_FINAL.md).
 - Corte por simbolo com numero: DD do simbolo > 3% do capital, ou PF < 1.0 com >= 20 trades, ou 3 falhas de execucao no mesmo dia.
 - Prazos do DONO: Q-071 e Q-072 ate 09/11 12:00; silencio = conservador (10/15 mantido; so XAUUSD opera).
 ESTADO: inalterado nos gates - GATE_REAL 1 de 11, GATE F2 por assinar, F6 com 0 trades, zero compiles (Q-068 = b).
+
+Dois documentos do mesmo ciclo escritos as 23:37 sem se verem (ALFA: CICLO_FINAL.md; DELTA: PROTOCOLO_CICLO_10_10.md). Convergem em: 10/10 e medicao, quem faz nao assina, DEMO antes de REAL, evidencia com comando/saida/hora. Divergem em dois pontos: (1) quem faz commit/push e escreve o canal - regra interina: documentos com ALFA ate C1, C1 em diante CMD, proibido push de duas maos no mesmo dia; (2) fronteira do ALFA no canal. Registado em CICLO_FINAL.md seccao 13 e enviado ao DELTA e ao CMD para ack. Commit 278f7518 as 23:39: 11 ficheiros, documentos apenas, zero codigo, zero compiles, zero parametros.

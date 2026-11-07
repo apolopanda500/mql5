@@ -228,3 +228,31 @@ Depois disso o trabalho nao acaba, muda de natureza: **manutencao**. Retreino me
 7. Commit + push + nota no canal no fim do dia, com a tabela das 10 provas atualizada.
 
 **Nenhum passo deste dia inclui conta real.**
+
+---
+
+## 13. Convergencia com o PROTOCOLO_CICLO_10_10 (proposta do DELTA, 06/11 23:37)
+
+As 23:37 o DELTA publicou `PROTOCOLO_CICLO_10_10.md`. Os dois documentos foram escritos na mesma hora, sem se verem. Ha convergencia no essencial e **duas divergencias reais**. Nenhuma delas se resolve por decreto de um dos lados: fica escrito o que e igual, o que difere, e a regra interina para o trabalho nao parar.
+
+**Igual nos dois (nao se discute mais):**
+- "10/10" e resultado de medicao, nao rotulo. Ninguem escreve "10/10", "100%", "pronto" ou "F2 verde" antes da prova.
+- Quem faz nao assina. A entrega e auditada por outra mao.
+- DEMO primeiro; REAL so com forward fechado e autorizacao escrita do DONO.
+- Fases com entrada, saida e assinador; nada de trabalho solto.
+- Toda a afirmacao leva evidencia citada (comando, saida, hora).
+
+**Divergencia 1 - quem escreve no canal e quem faz commit/push.**
+- Este documento: ALFA mantem o canal e faz commit/push dos documentos que escreve.
+- O protocolo do DELTA: ALFA escreve so codigo do EA; CMD e a unica mao de git/commit/push/deploy e escreve `QUADRO_ESTADO.md` e `PLANO_10_10.md`.
+- **Regra interina ate o DONO ratificar:** o canal continua a ser escrito por quem tem o LOCK (o LOCK ja serializa, e foi assim que os dois documentos nasceram sem colisao); **commit e push dos documentos fica com ALFA ate C1**, e **a partir de C1 passa para CMD**, que junta codigo + deploy + artefactos num unico ponto de publicacao. Se o DONO preferir a versao do DELTA desde ja, CMD assume hoje e eu entrego por LOCK como qualquer outro.
+- **O que a regra interina NAO permite:** dois agentes a fazer push do mesmo ramo no mesmo dia. Publicacao e sempre de uma mao por dia, e quem publica regista o hash no SYNC_LOG.
+
+**Divergencia 2 - a fronteira do ALFA.**
+- O protocolo do DELTA fecha o ALFA no codigo do EA e retira-lhe o canal.
+- A minha posicao: o plano, a medicao e o canal sao o mesmo trabalho - separa-los foi o que produziu o "quase 10/10" nao verificavel. Aceito ceder a autoria do canal **desde que** a medicao continue a ser publicada por quem a fez, com o comando e a hora, e que a auditoria do DELTA seja independente.
+- **Compromisso proposto:** ALFA escreve o plano, o codigo e as medicoes; DELTA audita e assina; CMD publica. O canal e o registo dessa corrente, nao propriedade de ninguem. Quem tiver objecao diz hoje.
+
+**Estado do commit desta convergencia:** `278f7518` (06/11 23:39) levou `CICLO_FINAL.md`, `PROTOCOLO_CICLO_10_10.md`, D-069 e o canal, e foi enviado para `github/main`. Foi um commit de documentos, sem tocar em codigo nem em parametros - e por isso nao colide com a Q-068 = (b).
+
+**O que o DONO tem de dizer (uma linha resolve):** o commit/push fica comigo ate segunda e passa ao CMD em C1, ou passa ao CMD ja?
