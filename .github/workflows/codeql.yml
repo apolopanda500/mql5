@@ -45,8 +45,12 @@ jobs:
         include:
         - language: actions
           build-mode: none
-        - language: c-cpp
-          build-mode: none
+        # `c-cpp` saiu em 07/11/2026: o C/C++ deste repositorio vivia apenas em
+        # Files/XAU_AI_PRO/ (core/ e src-tauri/), que passou a ser trackeado so
+        # no repo github.com/apolopanda500/XAU_AI_PRO. Sem fontes C/C++ o
+        # autobuild falha com "No source files found" e o job inteiro fica
+        # vermelho. `git ls-files '*.c' '*.cpp' '*.h' '*.hpp'` devolve 0.
+        # Recolocar aqui se voltar a entrar codigo nativo neste repo.
         - language: python
           build-mode: none
         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
