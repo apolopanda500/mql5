@@ -3466,3 +3466,44 @@ do DELTA, este trabalho e D-066). **O que cai:** a seccao 2 e a qualificacao de
 Credito: o CMD estava certo e o rigor dele evitou que a equipa fechasse um item
 BLOQUEANTE de conta real com uma justificacao falsa.
 
+
+## D-067 - F2.2b (v1.2.181): o teto de exposicao passa a medir a MARGEM DA CONTA, nao a soma das posicoes do magic
+
+**Autor:** ALFA | **hora:** 06/11/2026 21:39 (hora medida no momento da escrita; o rascunho dizia 21:43, que ainda nao tinha acontecido - corrigido antes de publicar) | **fonte:** `Core/Config.mqh`, `Core/PositionManager.mqh`, `Enterprise/VersionManager.mqh`, `XAU_AI_PRO.mq5` | **estado:** IMPLEMENTADO E COMPILADO (0 errors, 0 warnings); NAO PROVADO; NAO PUBLICADO nos 13 graficos
+
+### 1. As duas objecoes que esta versao fecha
+Ambas foram levantadas no canal contra a v1.2.180 e as duas estavam certas.
+
+| # | Quem | Objeccao (texto do canal) | Como fica fechada |
+|---|---|---|---|
+| (b) | CMD | "como o somatorio filtra por `MagicNumber`, com os 13 graficos em `2026001` o teto e da conta; no dia em que o F2.8 der magic unico por grafico ele fragmenta-se em 13 tetos" | o somatorio deixa de existir: a fonte passa a ser `ACCOUNT_MARGIN`, que nao tem magic |
+| (3b) | DELTA | "`MargemUsadaEA()` devolve `-1` se **um** simbolo falhar a leitura ... com o magic partilhado de hoje bloqueia os 13" | nao ha laco por posicao nem `OrderCalcMargin` por simbolo: uma leitura unica do servidor |
+
+### 2. O que mudou, linha a linha
+- `Core/PositionManager.mqh` - `MargemUsadaEA()` passa a devolver `AccountInfoDouble(ACCOUNT_MARGIN)`, e `-1.0` apenas se o terminal nao publicar o valor. Sem `PositionsTotal()`, sem `OrderCalcMargin`, sem `POSITION_MAGIC`.
+- `Core/PositionManager.mqh` - nasce `MargemSomadaPosicoes()`, o somatorio antigo, mantido **so como instrumento de medida** e publicado na linha de bloqueio (`soma_posicoes_magic=`), para que a divergencia entre o que o servidor diz que a conta usa e o que as posicoes deste magic justificam fique VISIVEL em vez de suposta.
+- `Core/Config.mqh` - `EnableExposureCap` passa a `true` por omissao. A razao e a troca de fonte e nao um aumento de apetite de risco: o que tornava a guarda indefensavel era o fail-closed por simbolo, e esse modo de falha desapareceu.
+- `Core/Config.mqh` - dois carimbos corrigidos. O comentario dizia `CORRECAO DE 06/11/2026 21:35` com mtime 21:28:14 e citava a Q-065 respondida as `21:19`; passa a `21:28` e `21:27`. Apontado pelo DELTA as 21:31 e aceite sem discussao: um documento que data um evento no futuro deixa de servir de prova.
+- **Terceiro carimbo, o meu.** O rascunho desta nota nasceu datado 21:43 quando o relogio local marcava 21:39-21:40. Corrigido antes de publicar e assumido aqui em vez de varrido: o defeito que o DELTA encontrou no Config.mqh foi o mesmo que eu ia cometer no DECISOES.md. Regra adoptada: **nenhum carimbo escrito a mao - hora lida do relogio no momento da escrita, e se houver duvida, ultima observacao as HH:MM.**
+- `Enterprise/VersionManager.mqh` + `XAU_AI_PRO.mq5` - `EA_VERSION_STRING = 1.2.181`, `#property version "1.381"`, changelog novo com a entrada v1.2.180 preservada.
+
+### 3. O que NAO foi tocado, e porque
+`RiscoAbertoUSD()` e o envelope que ele alimenta (`MaxTotalRiskPercent`, `MaxTotalRiskOpenUsd`, recusa `RISK_ENVELOPE_FULL`) **continuam a filtrar por `MagicNumber`**. A correccao desse filtro altera a semantica de um limite de risco que ja existia e que nao e meu: ficou pedido por escrito ao CMD ("assumo ... ou preferes ser tu a faze-lo por ser risco?") e a pergunta continua sem resposta. Ate ela existir, o defeito esta declarado no codigo e nao corrigido, e o F2.2 nao pode ser dado por fechado.
+
+### 4. Validacao feita
+- `compile_file` sobre `XAU_AI_PRO.mq5`: **0 errors, 0 warnings**, 24643 ms, `cpu='X64 Regular'`.
+- Chaves `{}` balanceadas nos tres ficheiros mexidos (Config 25/25, PositionManager 50/50, VersionManager 16/16), UTF-8 sem BOM, CRLF preservado.
+- `MargemUsadaEA` aparece 1x, `ACCOUNT_MARGIN` 2x, cabecalho `EXPOSICAO TOTAL DA CONTA (D-067)` 1x.
+
+### 5. O que NAO esta provado
+1. **Recusa observada.** A conta tem 0 posicoes e 0 ordens; a margem usada e 0 e a guarda nunca disparou. Nao ha uma unica linha `[EXPOSURE CAP]` no journal.
+2. **Fail-closed observado.** Nao se simulou `ACCOUNT_MARGIN` ilegivel.
+3. **Ausencia de falso positivo** abaixo do teto - nao testada com posicoes reais.
+4. **A publicacao.** Os 13 graficos continuam a correr a v1.2.180, ou seja a implementacao ANTIGA (soma por posicao, fail-closed por simbolo), com `EnableExposureCap=true` nos inputs. O `MT5` preserva os inputs no reload: o default novo (`true`) coincide com o que esta la, mas o CODIGO em memoria e o antigo. Enquanto o binario nao for recarregado, o risco (3b) do DELTA esta vivo nos 13 graficos.
+
+### 6. Decisao que fica com o CMD/DONO
+Republicar a v1.2.181 reinicia os 13 EAs e, com eles, as guardas de perda diaria - e o DELTA pediu explicitamente para nao continuar a republicar (4 publishes em 9 minutos). Mas nao republicar mantem em execucao exactamente o modo de falha que o DELTA descreveu. **A minha leitura: 1 publish unico, assim que houver decisao, e nenhum outro esta noite.** Nao o fiz por mim porque a troca de binario a meio de uma sessao e decisao de risco partilhada.
+
+### 7. Nao assina
+Nao assina o GATE F2 (as 6 falhas simuladas continuam por fazer), nao assina o F2.2 (falta a prova de recusa e o filtro do envelope), nao assina 10/10, nao assina o F6. O `GATE_REAL` continua **1 verde de 11**.
+

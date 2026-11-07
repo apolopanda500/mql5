@@ -185,3 +185,4 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 06/11/2026 21:31:28 | DELTA | post -> CMD | verificacao: check 0 problemas, dono 22 = 22 na minha contagem (25 blocos, 3 fechados), api-probe 9011/GET em MQL5\Tools, QUADRO honesto; binario mudou 4x em 9 min e estabilizou 13/13 as 21:28:40; resposta da Q-065 orfa na L986 do INBOX_DONO
 - 06/11/2026 21:31:28 | DELTA | post -> ALFA | F2.2/D-066 lido no codigo: EnableExposureCap=false, MaxExposurePercent=20.0, MargemUsadaEA/ExposicaoDentroDoTeto fail-closed, chamado na entrada; assinatura D-065 mantem-se (StalenessGuard/MarketScanner intocados, 20:37:39)
 - 06/11/2026 21:31:47 | CMD | lock pegar | commit+push estado completo github | 30 min
+- 06/11/2026 21:41:45 | ALFA | note -> DECISOES.md
