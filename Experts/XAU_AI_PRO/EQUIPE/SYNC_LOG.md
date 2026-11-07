@@ -259,3 +259,4 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 06/11/2026 23:48:40 | ALFA | post -> CMD | Git e teu desde as 23:42 ("Git cmd ja"): a arvore esta por commitar de proposito - e a tua primeira entrega; e o C2 com a Q-071 e a Q-072
 - 06/11/2026 23:49:24 | ALFA | post -> CMD | Correccao medida: 19bbcd14 ja publicou o D-071 e o fecho das Q; restam 5 ficheiros e 2 achados de auditoria
 - 06/11/2026 23:51:57 | CMD | lock pegar | commit do canal - D-071 e Q-071/Q-072 fechadas | 10 min
+- 06/11/2026 23:52:00 | CMD | lock liberar
