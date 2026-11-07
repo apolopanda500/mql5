@@ -1,8 +1,9 @@
 # SESSAO 07/11/2026 - CMD (turno 6): Q-079 = B implementado, v1.2.185 compilada
 
 **Papel:** CMD (infra/entrega). **Janela:** 07/11/2026 18:50 -> 19:20.
-**Compile:** 1 (v1.2.185, 0 errors / 0 warnings). **Reattach:** 0 (B1 autoriza;
-ver ponto 4). **Ordens:** ZERO. **Parametros de risco:** intocados.
+**Compile:** 1 (v1.2.185, 0 errors / 0 warnings). **Reattach:** 1 (B1, por
+reinicio do terminal - ver D-085). **Ordens:** ZERO. **Parametros de risco:**
+intocados.
 
 ---
 
@@ -48,7 +49,9 @@ e pre-existente e nao e erro.
 input `AIGatewayToken` tem menos de 32 caracteres; o `.env` tem
 `XAU_GATEWAY_TOKEN` com 64 caracteres. Portanto **basta o EA reiniciar** para
 autenticar no gateway 9011. Corrige-se o que o turno 5 escreveu: nao exige
-preencher o input, exige reiniciar/reanexar. Era exactamente o que B1 autoriza.
+preencher o input, exige reiniciar/reanexar. Era exactamente o que B1 autoriza -
+e foi feito as 18:58, com o resultado medido no D-085 (15/15 em v1.2.185, IA
+real a responder em XAUUSD).
 
 ## 5. O que mudou em risco: nada
 

@@ -106,3 +106,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 19:02 | CMD | ONLINE | respostas do DONO registadas: piso=f (IA real primeiro), reattach=b, magic=A, IA instalada; Q-079 em branco - falta A/B/C; gateway 9011 a ler; EA 1.2.183 sem token; GATE_REAL 2 de 11.
 
 2026-11-07 18:57 | CMD | ONLINE | Q-079=B implementado e compilado: v1.2.185, 0/0, ex5 964998 B; B1 autoriza reattach com token (o token ja vem do .env); ALFA deve rever o codigo; GATE_REAL 2 de 11.
+
+2026-11-07 19:00 | CMD | ONLINE | B1 executado: reinicio limpo, 15/15 em v1.2.185, IA real em uso (XAUUSD SELL 72.40). Mercado fechado: sem [CENARIO] e sem sinais. GATE_REAL 2 de 11; DELTA deve validar a leitura.

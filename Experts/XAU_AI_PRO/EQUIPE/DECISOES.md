@@ -4606,3 +4606,50 @@ semantica do portao fica para **ALFA** (ou DELTA), antes de tratar a v1.2.185
 como validada. GATE_REAL continua **2 de 11**; esta alteracao nao acrescenta
 nenhum verde - abre a porta para a medicao do piso com IA real, que ainda nao
 aconteceu.
+
+## D-085 | B1 executado: 15 graficos em v1.2.185 e a IA real ja alimenta o EA (CMD executa; veredicto e do DELTA)
+
+**Autorizacao:** DONO, linha `B) A contradicao = B1` - reattach ja, com token,
+para medir o piso com IA real.
+
+### 1. Como o reattach foi feito
+
+Reattach por CLI nao existe no MT5; a via e reiniciar o terminal para recarregar
+o `.ex5`. Fechado o terminal **pid 2852** as **18:58:20** (fecho normal, sem
+matar processo) e arrancado de novo as **18:58:24**, **pid 1176**, mesma conta
+113568614, `terminal64.exe` sem argumentos (como antes).
+
+### 2. O que o journal mede depois do arranque
+
+| Item | Valor |
+|---|---|
+| `[START] XAU_AI_PRO v1.2.185` | **15 de 15** graficos, 18:58:30 |
+| `[VERSION]` | `v1.2.185 | Build=2026.11.06 | Stable=Yes | AutoUpdate=OFF | Modulos=16` |
+| `[START] XAUUSD` | conta 113568614, saldo **12 636,32**, equity **12 636,32** |
+| `[AI] GATEWAY` XAUUSD H1 | **200, 1123 bytes, disponivel=true** |
+| `[AI] PYTHON` XAUUSD H1 | **SELL | PRICE=4065.82 | BUY=27.65% | SELL=72.35% | SCORE=72.40 | CONF=72.40%** |
+| `[AI] GATEWAY` nos outros 14 | **200, 357 bytes, disponivel=false** - o modelo existe mas reprova o criterio de publicacao (`edge` abaixo de +0,0500, ex.: USDSGD +0.0193, USDCHF +0.0253) |
+| Token no journal | **0** ocorrencias de `Bearer` ou `XAU_GATEWAY_TOKEN` - o valor nunca e impresso |
+
+Lido sem ambiguidade: **o EA passou a ler a IA real**. O token nao foi escrito em
+input nenhum; veio do `XAU_AI_PRO\.env` por `AIGatewayTokenEfetivo()`
+(`AIConnector.mqh:845`), com 64 caracteres.
+
+### 3. O que ainda NAO se pode medir
+
+- **Piso do score**: ha **uma** leitura real (XAUUSD 72,40 >= piso 65,0), com o
+  mercado fechado (sabado). Uma amostra num mercado parado nao calibra piso.
+- **Portao Q-079/B em accao**: `[CENARIO]` = **0** linhas e `[VALIDATION] BLOCK`
+  pos-arranque = **0** linhas - sem tick nao ha sinal, logo o ramo da folga de
+  1 ATR ainda nao foi exercitado. A prova da folga exige sessao com mercado
+  aberto.
+- **Veredicto**: esta medicao nao acrescenta verde ao GATE_REAL. Continua
+  **2 de 11**. Quem assina (ou recusa) o criterio de "IA real em uso" e o DELTA,
+  nao quem executou o reattach.
+
+### 4. Riscos e conta
+
+Nenhum parametro alterado pelo reattach (os inputs ficam nos graficos e foram
+recarregados como estavam). Conta **113568614** plana: **0 posicoes, 0 ordens**,
+equity 12 636,32. Gateway 9011 continua **pid 13276**, modo leitura, todas as
+flags de execucao em 0.
