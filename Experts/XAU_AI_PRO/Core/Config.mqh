@@ -120,7 +120,20 @@ input double MaxDailyLossPercent= 10.0;
 // O limite efetivo passa a ser o MENOR entre o de % e o de USD - mesma regra
 // ja usada em `MaxTotalRiskOpenUsd`. `0` desliga este teto e mantem so o de %.
 input double MaxDailyLossUsd    = 60.0;
-input double MaxDrawdownPercent = 15.0;
+// Q-071 (DONO, 06/11 23:42) - 15.0 -> 50.0. MEDIDO antes de tocar no numero:
+// esta input governa DUAS guardas de capital e nao uma.
+//   * Management/EquityProtection.mqh CheckEquityProtection(): DRAWDOWN
+//     CRITICO aos MaxDrawdownPercent -> EmergencyCloseAll(), e DRAWDOWN ALTO
+//     aos MaxDrawdownPercent*0.8.
+//   * Core/RiskEngine.mqh:88-90 e :210-215: a escada de reducao de risco
+//     (100% / 75% / 50% / 25%) e tambem derivada de MaxDrawdownPercent.
+// Com 15.0 o fecho de emergencia da conta disparava aos 1.895,45 USD (15% de
+// 12.636,32) e a escada aos 10,05% e 4,95%. Com 50.0 passa a disparar aos
+// 6.318,16 USD e a escada aos 33,5% e 16,5% - o EA corre a risco cheio por
+// 3,3x mais drawdown. Custo aceito por escrito pelo DONO em DEMO. Em conta
+// REAL o criterio de aceitacao continua a ser o do CICLO_FINAL: drawdown
+// realizado abaixo de 8% no forward de 30 dias, sem alterar criterio.
+input double MaxDrawdownPercent = 50.0;
 input double MinEquityPercent   = 10.0;  // Equity minima (% do balance) para operar
 
 input double MinFreeMargin      = 10.0;  // Margem livre minima (moeda da conta)
