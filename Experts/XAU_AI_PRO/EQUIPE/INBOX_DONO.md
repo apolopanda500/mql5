@@ -1300,3 +1300,92 @@ Assinatura: DELTA, 07/11/2026 00:12 - medido, nao assinado como fecho de gate.
 5) Pedido ao proximo compile: alinhar #property version 1.383 com EA_VERSION_STRING 1.2.183, escrever a entrada v1.2.183 no changelog (procurei e nao a encontrei) e publicar num so passo. Depois disso a prova a exigir e a mesma dos outros: uma linha [ATR] IDENTIDADE por simbolo e nenhuma [ATR] LEITURA SUSPEITA com ATR%=2274.
 
 DELTA, 07/11/2026 00:16 - ultima observacao, medida agora.
+
+## ENCERRAMENTO DELTA :: 07/11/2026, medido as 09:00Z (06:00 no relogio do terminal)
+
+Bloco de fecho do dia. Nao e assinatura de gate. Tudo o que segue foi medido nesta
+maquina, agora; o que nao foi medido esta dito como nao medido.
+
+1) BINARIO - ultima observacao, e a regra do canal outra vez. XAU_AI_PRO.ex5 esta
+   968458 B, mtime 2026-11-07 00:10:05, MD5 C4F85F8B289E1AC0FC2A2AA704DD84F1. As
+   tres leituras de hoje foram minhas e nenhuma foi estimada:
+   966446 B / 00:07:11 / D5917AC6B64A1758D93C8D06C6513A75 (publicada as 00:12);
+   965778 B / 00:07:37 / A5C9F8C3CA2FAC33288921F51E422FC6 (correcao das 00:16);
+   968458 B / 00:10:05 / C4F85F8B289E1AC0FC2A2AA704DD84F1 (agora).
+   MD5 de .ex5 nao e identidade de build. Identidade e a linha [START] no journal.
+
+2) O QUE ESTA PUBLICADO NOS GRAFICOS: 15 linhas [START] XAU_AI_PRO v1.2.183 entre
+   00:10:05.676 (XAUUSD) e 00:10:07.229 (USDSGD), mais reattach pontuais as 00:11:46
+   (XAUUSD) e 00:13:16 (USDCLP, USDCAD, USDSEK, USDCOP). Os ficheiros de perfil tem
+   mtime 00:14.
+
+3) CORRECCAO AO QUE EU PROPRIO ESCREVI AS 00:12 - e o ponto mais importante deste
+   fecho. Escrevi "Q-071 NAO ESTA EM VIGOR NOS GRAFICOS" com base nas entradas
+   guardadas nos .chr, que mediam MaxDrawdownPercent=15.0. A frase era verdadeira
+   as 00:12 e deixou de ser verdadeira as 00:14. Medido agora, de forma exaustiva
+   (30 ficheiros .chr, duas arvores: Profiles\Charts\Default e
+   Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071):
+   MaxDrawdownPercent=50.0 -> 30 de 30 ficheiros
+   AIGatewayUrl=http://127.0.0.1:9001/api/ai/predict -> 30 de 30 ficheiros
+   Consequencia real hoje, nao teorica: o fecho de emergencia da conta
+   (Management/EquityProtection.mqh, CheckEquityProtection) dispara aos 6.318,16 USD
+   de drawdown e nao aos 1.895,45 USD; a escada do RiskEngine reduz risco aos 33,5%
+   e 16,5% e nao aos 10,05% e 4,95%; e o kill switch automatico da Q-025 arma aos
+   40,0% (0,8 x 50,0) e nao aos 12,0%. Quem reescreveu os perfis entre 00:16 e 00:14
+   nao fui eu: eu nao fiz reattach nenhum hoje e o protocolo D-070 reserva a accao de
+   producao a quem a declara. Fica registado como facto medido, sem atribuicao.
+
+4) HG-01 CONTINUA ABERTA e e o bloqueio do proximo compile: #property version
+   "1.382" (XAU_AI_PRO.mq5:22) contra EA_VERSION_STRING "1.2.183"
+   (Enterprise/VersionManager.mqh:14). Pela formula minor*100+patch, 1.2.183 exige
+   1.383. Nao compilei a arvore depois das 00:07:37 e nao compilei agora: publicar
+   outro binario de outro agente pela metade e o defeito que estamos a tentar
+   fechar. Tambem nao encontrei a entrada v1.2.183 no changelog; a de v1.2.182
+   continua na linha 63, intacta.
+
+5) Q-025 FECHADA EM CODIGO, SEM PROVA EM EXECUCAO. O gatilho existe
+   (Management/EquityProtection.mqh, ramo DRAWDOWN ALTO, chama
+   CKillSwitch::ArmarAutomatico) e hoje o limite efetivo e 40,0% de drawdown. Com 0
+   posicoes abertas e o mercado fechado nao existe drawdown para o demonstrar. Nao
+   invento a prova.
+
+6) MERCADO FECHADO - e a explicacao que o DONO pediu, outra vez, em portugues
+   simples. trade_server_last_known_time = 2026-11-06T23:59:58. As 05:12-05:13 o
+   journal publicou 15 linhas "[TRADE BLOCK] COTACAO VELHA (timer, lembrete 1h)"
+   com idades entre 36832s e 62044s contra limite=900s (XAUUSD 40338s, USDBRL
+   40437s, USDRUB 62044s). Nao e avaria: sem tick o OnTick nao corre, o guarda de
+   idade (Core/StalenessGuard.mqh, MaxSymbolTickAgeSec=900) imprime pelo OnTimer e
+   o EA recusa operar com preco parado. Fail-closed, como deve ser.
+   Consequencia: a janela forward de 30 dias nao pode comecar hoje.
+
+7) CONTA INTOCADA: demo 113568614 (MetaQuotes-Demo, Henrique Carvalho), equity
+   12636.32 USD, margin 0.00, 0 posicoes, 0 ordens. Nenhum lote, SL, TP, spread,
+   regra de entrada ou de saida foi alterado por mim hoje. As tres mudancas do dia
+   (D-068 parser, Q-071, Q-025) so podem bloquear ou reduzir atividade.
+
+8) O QUE EU NAO ESCREVO E NAO ASSINO: GATE_REAL continua 1 verde de 11. Nao escrevo
+   10/10, nao escrevo 100%, nao escrevo pronto, nao baixo nenhum criterio para
+   ficar verde. O GATE F2 e o GATE_REAL continuam por assinar.
+
+9) CONFLITO DE INTERESSES, declarado pela segunda vez: hoje escrevi .mq5/.mqh e
+   compilei, accoes que o D-070 reserva ao ALFA, porque a ordem do DONO foi mexer
+   hoje e nao havia segundo agente presente. Este bloco MEDE e NAO ASSINA.
+
+10) PARA A PROXIMA SESSAO, por ordem:
+    a) alinhar HG-01 (1.383 / 1.2.183) e escrever a entrada v1.2.183 no changelog;
+    b) compile unico e publicacao num so passo, depois do alinhamento;
+    c) provar o P1.137 do ALFA: uma linha [ATR] IDENTIDADE por simbolo e nenhuma
+       [ATR] LEITURA SUSPEITA com ATR%=2274.32 (hoje medidas em USDCLP e USDCOP);
+    d) CMD commita e empurra os 7 ficheiros de codigo por commitar (a lista esta em
+       SESSAO_20261107_CMD.md secao 3);
+    e) G1, G3, G4, G5, G6, G7, G8, G9, G10, G11 do GATE_REAL - 10 vermelhos;
+    f) janela forward de 30 dias: so a mercado aberto, com prova positiva e negativa.
+
+Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
+
+---
+## 07/11 06:02 - ALFA -> DONO | fecho 07/11: registo em SESSAO_20261107_ALFA.md
+
+- **estado:** ABERTO | **hora:** 07/11 06:02 | **de:** ALFA
+
+Fecho de hoje. O registo completo - o que o DONO autorizou (com as palavras dele), o que foi medido com prova, o que NAO foi provado, e a sequencia como o proximo ciclo corre ate ao fim (commit, push, deploy, nota, salvar, documentar, testar, simular, aprovar, validar e 30 dias em demo) - esta em EQUIPE/SESSAO_20261107_ALFA.md. Estado honesto no fecho: GATE_REAL 1 verde de 11, nenhum 10/10, conta demo 113568614 intocada com 0 posicoes e 0 ordens. Ficam 18 perguntas abertas na sua caixa, incluindo Q-017 (limite de perda diaria, hoje 10.0).

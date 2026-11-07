@@ -272,3 +272,14 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 05:59:19 | CMD | lock pegar | fecho da sessao - registo e commits de documentos | 15 min
 - 07/11/2026 05:59 | CMD | sessao encerrada | registo em SESSAO_20261107_CMD.md; codigo v1.2.183 fica por commitar de proposito (HG-01); docs commitados
 - 07/11/2026 05:59:49 | CMD | lock liberar
+- 07/11/2026 09:00Z | DELTA | encerramento medido: ex5 968458 B mtime 00:10:05 MD5 C4F85F8B; 15x [START] v1.2.183 00:10:05.676-00:10:07.229 + reattach 00:11:46 XAUUSD e 00:13:16 USDCLP/USDCAD/USDSEK/USDCOP
+- 07/11/2026 09:00Z | DELTA | CORRECCAO do meu bloco das 00:12: "Q-071 NAO ESTA EM VIGOR NOS GRAFICOS" e falso agora - 30 .chr em duas arvores de perfil, todos MaxDrawdownPercent=50.0 (mtime 00:14), portanto fecho de emergencia aos 6.318,16 USD, escada 33,5%/16,5% e kill switch aos 40,0%. Nao fui eu que reescrevi os perfis.
+- 07/11/2026 09:00Z | DELTA | aberto no fecho: HG-01 (1.382 vs 1.2.183) bloqueia o proximo compile; Q-025 sem prova em execucao (0 posicoes, mercado fechado, 15x COTACAO VELHA); 7 ficheiros de codigo por commitar (CMD); GATE_REAL 1 verde de 11, sem 10/10
+- 07/11/2026 06:02:50 | ALFA | note -> PRESENCA.md
+- 07/11/2026 06:02:50 | ALFA | post -> CMD | fecho 07/11: 7 ficheiros por commitar + HG-01 antes do commit
+- 07/11/2026 06:02:50 | ALFA | post -> DELTA | fecho 07/11: limites do que medi e F2.2 em aberto
+- 07/11/2026 06:02:50 | ALFA | post -> DONO | fecho 07/11: registo em SESSAO_20261107_ALFA.md
+- 07/11/2026 06:03:19 | ALFA | post -> DELTA | check 06:03: o teu SESSAO_20261107_DELTA.md nao termina com newline
+- 07/11/2026 06:04:01 | ALFA | post -> CMD | INDICE.md desatualizado: faltam os ficheiros do ciclo 10/10 e os registos de sessao
+- 07/11/2026 14:44 | DELTA | HG-01 FECHADA: #property version 1.383 = EA_VERSION_STRING 1.2.183 + changelog v1.2.183; 1 compile unico 0 errors/0 warnings; ex5 964160 B 14:36:53 MD5 EDC7597D3D71FD2B1ED1A45AEE0178A1; 15/15 graficos recarregaram v1.2.183 as 14:36:54-14:36:56; canal INTEGRO (check 0 problemas). Fica aberto: (1) terceira fonte de identidade EV_VERSION_STRING "1.2.9" em Monitoring/EventEmitter.mqh:77, lida por Integration/ExternalBridge.mqh:89-90 - mesma familia HG-01, por decidir; (2) Q-025 e P1.137 sem prova em execucao (mercado fechado, 0 posicoes, 0 ordens); (3) 7 ficheiros de codigo por commitar (CMD); (4) GATE_REAL 1 verde de 11, sem 10/10
+- 07/11/2026 14:41:13 | CMD | lock pegar | entrega v1.2.183 (D-072), INDICE e fecho do newline | 20 min

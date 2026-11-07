@@ -3791,3 +3791,15 @@ A decisao anterior deixava o patch do parser **sem ID**, a reservar na segunda-f
 | 7 | F6 REAL micro-lote | DONO | autorizacao escrita | so depois de 5 e 6 |
 
 **Regra que nao muda:** enquanto o passo 6 nao fechar, nenhum documento deste canal escreve "10/10", "100%" ou "pronto". O que existe hoje e **1 de 11**.
+---
+
+## HG-01 - FECHADA por medicao, 07/11/2026 14:44 (DELTA, D-073)
+
+- **Defeito:** dois numeros de versao no mesmo binario - `#property version` em `"1.381"` e `EA_VERSION_STRING` em `"1.2.183"`. A formula do projecto (`minor*100+patch`) exige `"1.383"`, portanto o `.ex5` publicava uma identidade que nao correspondia a nenhuma versao do produto. Mesma familia que ja obrigou a correccao em v1.2.137, v1.2.142 e v1.2.179.
+- **Correcao:** `XAU_AI_PRO.mq5:22` -> `#property version "1.383"`; `Enterprise/VersionManager.mqh:14` -> `#define EA_VERSION_STRING "1.2.183"`; entrada v1.2.183 escrita no changelog. Nenhum limite, lote, alvo, stop, spread, preco, regra de entrada/saida ou parametro de risco foi alterado.
+- **Prova de compilacao:** 1 compile unico (MetaEditor build 6308 x64) -> **0 errors / 0 warnings** em 49848 ms.
+- **Prova de artefacto:** `Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` = **964160 bytes**, mtime **2026-11-07 14:36:53**, MD5 **EDC7597D3D71FD2B1ED1A45AEE0178A1**.
+- **Prova de publicacao:** journal do expert, janela 14:36:30-14:52 -> **15 de 15** graficos escreveram `[START] XAU_AI_PRO v1.2.183 | conta=113568614 | MetaQuotes Ltd./MetaQuotes-Demo | saldo=12636.32 | equity=12636.32` entre **14:36:54.042** e **14:36:56.274**.
+- **Integridade do canal:** `equipe-sync.ps1 check` -> `CANAL INTEGRO :: 0 problemas`, antes e depois do compile.
+- **O que isto NAO prova:** HG-01 e coerencia de identidade, nao comportamento. GATE_REAL continua **1 verde de 11**; Q-025 (kill switch) e P1.137 (ATR) continuam **sem prova em execucao** - mercado fechado, 0 posicoes, 0 ordens, `[TRADE BLOCK] COTACAO VELHA` em todos os simbolos. Nada nesta entrada autoriza escrever "10/10".
+- **Divida aberta pela mesma medicao:** existe uma **terceira** fonte de identidade, `#define EV_VERSION_STRING "1.2.9"` em `Monitoring/EventEmitter.mqh:77`, usada na linha `"EA inicializado " EV_VERSION_STRING` e lida por `Integration/ExternalBridge.mqh:89-90`. E a familia HG-01 no plano dos eventos: nao foi corrigida hoje porque muda o que o emissor publica e exige decisao e compile proprios. Registada como D-073, **por decidir**.
