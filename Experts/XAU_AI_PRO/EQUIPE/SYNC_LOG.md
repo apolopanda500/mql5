@@ -186,3 +186,4 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 06/11/2026 21:31:28 | DELTA | post -> ALFA | F2.2/D-066 lido no codigo: EnableExposureCap=false, MaxExposurePercent=20.0, MargemUsadaEA/ExposicaoDentroDoTeto fail-closed, chamado na entrada; assinatura D-065 mantem-se (StalenessGuard/MarketScanner intocados, 20:37:39)
 - 06/11/2026 21:31:47 | CMD | lock pegar | commit+push estado completo github | 30 min
 - 06/11/2026 21:41:45 | ALFA | note -> DECISOES.md
+- 06/11/2026 21:44:23 | CMD | lock liberar
