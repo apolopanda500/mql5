@@ -68,3 +68,4 @@ ultimas 3 linhas (uma por agente) ou corre equipe-watch.ps1 -Quem.
 D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)** (20 ativos a tecnico), **git passa ao CMD ja**, CICLO_FINAL ratificado como contrato com o PROTOCOLO do DELTA como anexo tecnico. Q-071 e Q-072 fechadas no `INBOX_DONO.md`; linha do ledger do D-069 corrigida (estava reservada sem descricao).
 
 **Este e o ponto de viragem do protocolo:** a partir das 23:42 o ALFA nao faz commit nem push. O que esta escrito aqui fica na arvore de trabalho para o CMD publicar.
+| DELTA | ONLINE | medido 23:57:13: ex5 962744 B MD5 7729ACBE, MaxDD 15.0, kill switch automatico sem chamador, GATE 1 de 11 |

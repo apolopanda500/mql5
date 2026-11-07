@@ -506,7 +506,7 @@ switch($Cmd.ToLower()){
     Test-LockLivre
     $quem = Get-AgenteAtual
     if($Assunto -eq ''){ $Assunto = 'aviso' }
-    $bloco = "`n---`n`n## " + (Get-HoraLocal) + " - " + $quem + " -> " + $Para.ToUpper() + ": " + $Assunto + "`n`n" + $Corpo + "`n`n- **estado:** ABERTO/RESPONDIDO/FECHADO | " + (Get-HoraCurta) + " | " + $quem + "`n"
+    $bloco = "`n---`n`n## " + (Get-HoraLocal) + " - " + $quem + " -> " + $Para.ToUpper() + ": " + $Assunto + "`n`n" + $Corpo + "`n`n- **estado:** INFORMATIVO | " + (Get-HoraCurta) + " | " + $quem + "`n"
     $bkp = Backup-Arquivo $p
     $n = Add-BlocoBruto $p $bloco
     Write-Output ('OK aviso -> ' + $inbox + ' :: ' + $n + ' bytes :: de=' + $quem + ' :: backup=' + [System.IO.Path]::GetFileName($bkp))
