@@ -289,8 +289,8 @@ Nivel C (so voce): 1) ligar metaeditor5 na lista de extensoes; 2) instalar Pytho
 - **de:** CMD | **hora:** 05/11 22:52
 - **prazo:** 07/11 12:00
 - **opcoes:** (a) sim, demo primeiro; (b) nao, quero real antes
-- **estado:** ABERTA
-- **RESPOSTA:**
+- **estado:** FECHADA
+- **RESPOSTA:** **(a)** sim, demo primeiro. Texto literal do DONO, 06/11 23:00: "Q-016 autoriza o forward de 30 dias em demo sim autorizado" | **respondida por:** DONO | **registada por:** ALFA (transcricao literal)
 
 
 ---
@@ -305,8 +305,8 @@ Nivel C (so voce): 1) ligar metaeditor5 na lista de extensoes; 2) instalar Pytho
 - **de:** ALFA | **hora:** 05/11 22:58
 - **prazo:** 06/11 23:00
 - **opcoes:** (a) aplicar 5.0 e 10.0 antes do GATE F2, como proponho; (b) manter 10.0 e 15.0 ate o F6 fechar e so entao reduzir; (c) outro par de valores - o dono escreve os dois numeros
-- **estado:** ABERTA
-- **RESPOSTA:**
+- **estado:** FECHADA (fecho dado pela Q-070)
+- **RESPOSTA:** **parcial, e nao e um numero.** Texto literal do DONO, 06/11 23:00: "Q-017 sim uero correr bastante risco". O DONO rejeita reduzir (logo a opcao (a), 5.0/10.0, esta fora), mas nao escreveu o par de valores que a opcao (c) exige. **Nada foi alterado:** os 13 graficos continuam com MaxDailyLossPercent 10.0 e MaxDrawdownPercent 15.0. O par de numeros foi pedido na Q-070 (item 1). | **respondida por:** DONO | **registada por:** ALFA (transcricao literal)
 
 
 ---
@@ -930,8 +930,9 @@ Se a resposta for **nao**, tambem serve: fica registado no `D-057` que o EA pode
 - **de:** ALFA | **hora:** 06/11 20:21
 - **prazo:** 07/11 12:00
 - **opcoes:** (a) watchdog de freeze (F2.9) + perda de conexao acima de 5 min; (b) drawdown acima de MaxDrawdownPercent 15% ou perda diaria acima de MaxDailyLossPercent 10%; (c) os dois, cada um com motivo proprio publicado no journal; (d) nenhum gatilho automatico agora - manter so o manual ate o F6
-- **estado:** ABERTA
-- **RESPOSTA:**
+- **estado:** FECHADA
+- **RESPOSTA:** **(e) condicao nova, que nao esta nas opcoes publicadas:** o kill switch automatico arma quando a banca perder **50%**. Texto literal do DONO, 06/11 23:00: "Q-025 quando perder 50% da banca". Fica registada como opcao propria, nao como (a), (b), (c) nem (d). | **respondida por:** DONO | **registada por:** ALFA (transcricao literal)
+- **nota de ordem (ALFA, 23:00):** com MaxDrawdownPercent 15.0 a bloquear entradas muito antes, um gatilho aos 50% e um para-quedas e nao uma guarda de rotina. A ordem entre as duas guardas esta na Q-070 (item 2).
 
 
 ## Correcao de IDs em 06/11/2026 20:24 - ALFA
@@ -952,7 +953,8 @@ Corrigido e medido: `Show-Ask` agora (a) conta **qualquer** `Q-nnn` do inbox, (b
 - **custo declarado:** dos 117 parametros que diferem entre P216 e P215_LIVE_B, 6 caem no DEFAULT do binario e coincidem; 3 sao reais: URL 9001 (neutra - AIConnector.mqh AIGatewayUrlEfetiva reescreve so a porta a partir de XAU_GATEWAY_PORT, provado pelos 1122 bytes recebidos), AllowTradeWithoutAI true->false (mais seguro) e EnableAutonomousMode false->true (mais permissivo, Config.mqh:1111). Nao copiei o token de 64 caracteres para os 13 .chr: duplicaria o segredo em 13 ficheiros versionados e criaria 13 sitios de rotacao.
 - **nota de numeracao (corrigida as 20:30):** esta pergunta nasceu como Q-024 as 20:13. O ALFA publicou as 20:21 outro Q-024 (kill switch automatico de F2.1) e, as 20:24, renumerou o dele para Q-025 reservando-o no IDS.md. O DELTA nao viu essa correcao a tempo e publicou as 20:26 tambem como Q-025, ficando dois Q-025 no ficheiro. Resolucao, pela ordem em que cada um foi publicado e reservado no ledger: o Q-025 fica com o ALFA e esta pergunta passa a Q-026. Nenhum texto de outro agente foi reescrito; o IDS.md e o corpo do D-062 foram corrigidos.
 - **quem executa depois:** DELTA (leitura do perfil) + DONO (decisao de risco e de modo).
-- **estado:** ABERTO | 06/11 20:22
+- **estado:** FECHADA (fecho dado pela Q-070, item 3) | 06/11 20:22
+- **RESPOSTA:** **parcial.** Texto literal do DONO, 06/11 23:00: "Q-026 criar apenas 1 perfial para xau ai pro operar todas contas". Leitura directa: **um unico perfil** para o XAU_AI_PRO operar **todas as contas** - o `XAI_P215_LIVE_B` fica ratificado como esse perfil (opcao (a) respondida). **Sem resposta:** (b) `EnableAutonomousMode` true/false e (c) universo de modelos - as duas na Q-070 (item 3). | **respondida por:** DONO | **registada por:** ALFA (transcricao literal)
 
 ---
 ## Q-065 - Teto de exposicao total somada na conta real (F2.2): qual o limite em % do capital?
@@ -1078,6 +1080,66 @@ O DELTA levantou, com razao, uma preocupacao a meu respeito: cada recarga dos 13
 - **de:** ALFA | **hora:** 06/11 21:56
 - **prazo:** 06/11 23:00
 - **opcoes:** (a) autorizo agora, ainda hoje - o ALFA anuncia a hora e faz um compile; (b) autorizo, mas segunda-feira com o mercado aberto e o CMD presente; (c) nao autorizo o D-068 - fica como esta e o EA continua sem poder entrar
+- **estado:** FECHADA
+- **RESPOSTA:** **(b)** autorizo, mas segunda-feira, com o mercado aberto e o CMD presente. Texto literal do DONO, 06/11 23:00: "1 Q-068 B" | **respondida por:** DONO | **registada por:** ALFA (transcricao literal, sem interpretacao)
+
+
+---
+## 06/11 22:53 - ALFA -> DONO | Q-068 expira as 23:00 - tres opcoes e a minha recomendacao; mais um esclarecimento sobre a versao nos 13 graficos
+
+- **precisa:** escolher (a) agora, (b) segunda ou (c) nao autorizo
+- **estado:** ABERTO | **hora:** 06/11 22:53 | **de:** ALFA
+
+Uma pergunta sua tem prazo: **23:00 de hoje**. Nao e trabalho pendente meu - e uma autorizacao que so o DONO pode dar.
+
+**Em duas frases.** O EA hoje **calcula e nunca decide**: o servico de IA responde bem (`signal=SELL`, `confidence=72.4`, `prob_sell=0.7235`), mas o EA procura tres nomes de campo que o servico nao publica (`buy`, `sell`, `score`), le zero nos tres, e a guarda de score minimo (60) transforma esse zero em **veto permanente em todos os simbolos**. Por isso, com a conta ligada desde as 20:42, houve **0 trades**. O conserto e pequeno e esta escrito: ler `prob_buy`/`prob_sell` e usar a confianca como score quando nao houver score.
+
+**Porque precisa da sua palavra.** O conserto **muda o comportamento de entrada** - e a diferenca entre um EA que nunca entra e um EA que pode entrar. Isso nao e decisao de agente. A Q-068 esta aberta no seu INBOX com tres opcoes:
+**(a)** autorizo agora, ainda hoje - o ALFA anuncia a hora e faz **um** compile;
+**(b)** autorizo, mas **segunda-feira**, com o mercado aberto e o CMD presente;
+**(c)** nao autorizo - fica como esta e o EA continua sem poder entrar.
+
+**O que eu recomendo.** Se nao tiver preferencia, **(b)** e a escolha segura e nao custa nada: o mercado esta fechado ate segunda, o EA nao opera este fim de semana de qualquer maneira, e na segunda ha gente a olhar. A **(a)** tambem e segura esta noite - 0 posicoes, 0 ordens, margem 0.00, zero trades hoje, mercado fechado - mas ninguem ve o resultado antes de segunda de qualquer forma. A **(c)** e a unica que garante que segunda comeca exactamente onde sexta acabou: **nao a recomendo**.
+
+**O que isto NAO faz.** Desbloquear o veto poe o EA **a poder** operar; nao prova que deva. `GATE_REAL` continua **1 verde de 11**, o GATE F2 continua aberto (falta provar recusa, fail-closed e ausencia de falso positivo da guarda de margem) e o F6 nao arrancou. Nao escrevo "10/10" e nao assino nenhum gate por isto.
+
+**Um esclarecimento que lhe devo.** Chegou-lhe a informacao de que os 13 graficos continuavam com a versao antiga (v1.2.179 das 20:46). Medi o journal do terminal: os 13 correm **v1.2.181 desde as 21:38:02.403** (13/13 linhas `[START]`) e nao ha nenhum arranque em 68 minutos. As versoes anteriores foram substituidas automaticamente - o MT5 recarrega o EA recompilado -, sem reattach manual e sem ninguem a mexer nos seus graficos. Conta plana: equity **12636.32**, **0 posicoes**, **0 ordens**.
+
+---
+## Q-070 - fecho da Q-017, da Q-025 e da Q-026) - tres itens que as suas palavras nao fecham. ITEM 1 (Q-017, risco): disse que quer correr bastante risco mas nao escreveu numeros. Hoje MaxDailyLossPercent=10.0 e MaxDrawdownPercent=15.0 nos 13 graficos, ou seja: perda diaria maxima 1.263 USD e drawdown maximo 1.895 USD sobre 12.636. ITEM 2 (Q-025, ordem das guardas): o kill switch aos 50% da banca dispara muito depois de o MaxDrawdownPercent aos 15% ja ter bloqueado entradas - quer (i) manter as duas como estao (15% bloqueia, 50% mata) ou (ii) alinhar as duas no mesmo numero? ITEM 3 (Q-026): (b) EnableAutonomousMode fica true (a IA aconselha e nao veta) ou false (a IA veta e exige gateway)? (c) universo: reduzir a XAUUSD, o unico com modelo publicado, ou manter os 21 e esperar modelos?
+
+- **de:** ALFA | **hora:** 06/11 23:00
+- **prazo:** 09/11 12:00
+- **opcoes:** ITEM 1: (a) manter 10/15; (b) 20/30 - perda diaria 2.527 e drawdown 3.791; (c) 30/50 - 3.791 e 6.318; (d) escrevo outro par. ITEM 2: (i) manter 15% a bloquear e 50% a matar; (ii) alinhar as duas. ITEM 3: (b) true ou false | (c) so XAUUSD ou manter 21. Responder por item, ex.: "1b 2i 3 true, so XAUUSD".
+- **estado:** FECHADA
+- **RESPOSTA:** **(1) a** | **(2) ii** | **(3) true** - texto literal do DONO, 06/11 23:03: "1 a / 2 ii / 3 pode ativar IA true. mais quero o EA operando todos ativos globais nao so xauusd, e tambem corigir todos modelos ou deletar e treinar novos e funcional" (erros de escrita preservados; **registada por:** ALFA, transcricao literal)
+- **ITEM 1 = (a) manter 10/15 - JA ESTA EM VIGOR, VERIFICADO:** os 15 graficos tem `MaxDailyLossPercent=10.0` e `MaxDrawdownPercent=15.0`. Sobre 12.636,32 de equity: perda diaria maxima 1.263,63 USD e drawdown maximo 1.895,45 USD. Nada a alterar.
+- **ITEM 2 = (ii) alinhar as duas guardas - FALTA O NUMERO.** O DONO escolheu alinhar, mas nao escreveu qual dos dois numeros fica. As duas leituras, com o dinheiro a vista sobre 12.636,32: **(a) 15%** - a guarda de rotina e o kill switch passam a disparar juntos aos 1.895,45 USD de drawdown; **(b) 50%** - disparam juntos aos 6.318,16 USD, que e o numero que o DONO deu na Q-025 ("quando perder 50% da banca"). A leitura (a) contradiz a Q-017 ("quero correr bastante risco"); a (b) obedece as duas respostas dele. **Pergunta em aberto: 15 ou 50? Uma linha resolve.**
+- **ITEM 3 = true - JA ESTA EM VIGOR, VERIFICADO:** `EnableAutonomousMode=true` nos 15 graficos. Efeito lido no codigo: `AIGateRequired()` devolve false (AIEngine.mqh:52) e `FinalAIAllow()` salta a exigencia de gateway e devolve true (AIEngine.mqh:584). A IA deixa de vetar.
+- **EFEITO COLATERAL DO ITEM 3, que o DONO tem de saber:** a mesma chave que tira o veto tambem cala a IA. `GetAIEngineSignal()` continua a exigir `AI_Score>=MinAIConfidence (60)` (AIEngine.mqh:291) e o parser devolve zero - journal 21:38:32: `[AI] PYTHON | XAUUSD | SELL | PRICE=4065.82 | BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=72.40%`. Com `AIHasSignalAuthority=false`, quem decide e o sinal tecnico e a IA nao opina. Resumo honesto: **o EA pode operar, mas nao guiado pela IA.** Para a IA voltar a ter voz e preciso o parser (o patch que estava a ser chamado D-068, agora renomeado D-069) e um compile.
+- **ITEM 3b, universo "todos os ativos globais":** o universo JA e 21 ativos - `[SYMS] UNIVERSO | marketwatch=21 | deSymbols=11 | adicionadosDoMarketWatch=10 | grafico=XAUUSD | ativos=21 | origem=Symbols+MarketWatch+grafico` (journal 21:38:01). O que falta nao e universo, e modelo: o gateway responde `disponivel=true` so para XAUUSD (1122 bytes) e `disponivel=false` para os outros 12 graficos (357 bytes cada). Operar 21 ativos a tecnico e possivel hoje; operar 21 ativos com IA exige um modelo publicavel por ativo.
+- **ITEM 3c, "corrigir todos modelos ou deletar e treinar novos":** medido em disco - existem 21 simbolos x {H1,H4,M15,M5} com `.pkl`+`.meta.json` em `MQL5\Files\XAU_AI_PRO\Python\models` (mtimes 2026-11-03), mais MULTI_METALS/MULTI_FIAT/MULTI_CRYPTO. A amostra prova que "ter ficheiro" nao e "ter modelo funcional": `XAUUSD_H1` e publicable=true (edge +0.0363, AUC 0.5485, 4/5 folds positivos, min_edge declarado 0.05); `EURUSD_H1` e publicable=false (edge -0.0161, acc 0.3353 contra palpite 0.3514). Portanto o trabalho pedido e **retreinar os que reprovam**, nao apagar tudo.
+- **ESTADO REAL DO TERMINAL, medido agora as '06/11 23:11' (isto muda o que estava escrito antes):** o terminal fechou e reabriu - `[STOP] XAUUSD | motivo=9` (REASON_CLOSE) as **22:59:15** e `[START]` as **22:59:18**. O conjunto de graficos mudou: sao agora **15 graficos, perfil DEFAULT** (CHART01..CHART15), com **USDCOP e USDCLP a entrar**; antes eram 13 no perfil XAI_P215_LIVE_B. Todos os 15 correm XAU_AI_PRO **v1.2.181**. Nada foi recompilado (`#property version "1.381"`, `.ex5` de 21:38:01).
+- **O QUE BLOQUEIA A OPERACAO NESTE MOMENTO NAO E O CODIGO:** os 15 graficos registam `[TRADE BLOCK] COTACAO VELHA (timer)`, com `idade` entre 13.116s e 38.321s contra `limite=900s`. O mercado fechou (sexta-feira, servidor 23:59). Sem tick nao corre `OnTick`; sem `OnTick` nao ha entrada. A medicao decisiva so pode ser feita na abertura, com feed vivo.
+- **estado:** FECHADA
+
+
+---
+## Q-071 - O senhor respondeu "2 ii" = alinhar as duas guardas no mesmo numero, mas nao escreveu QUAL numero fica. Hoje as duas estao desalinhadas e e por isso que uma chega primeiro: o MaxDrawdownPercent (15%) bloqueia novas entradas e o kill switch (50% da banca, Q-025) mata a conta. Alinhar significa escolher um numero unico para as duas. Com o equity de hoje (12.636,32 USD): se o numero for 15, o EA para e mata aos 1.895,45 USD de drawdown - e isso contradiz a Q-017 ("quero correr bastante risco"); se o numero for 50, o EA so para e mata aos 6.318,16 USD - e o numero que o proprio senhor deu na Q-025 ("quando perder 50% da banca"). Sao 4.422,71 USD de diferenca entre as duas leituras. Nada foi alterado: o EA continua com MaxDailyLossPercent 10.0 e MaxDrawdownPercent 15.0 em vigor nos 15 graficos.
+
+- **de:** ALFA | **hora:** 06/11 23:13
+- **prazo:** 09/11 12:00
+- **opcoes:** (a) 15% -> as duas guardas disparam aos 1.895,45 USD. (b) 50% -> as duas disparam aos 6.318,16 USD, coerente com a Q-025. (c) manter desalinhado como esta hoje (15% bloqueia, 50% mata) - era o "2 i" que o senhor nao escolheu.
+- **estado:** ABERTA
+- **RESPOSTA:**
+
+
+---
+## Q-072 - O senhor pediu "o EA operando todos ativos globais nao so xauusd". Medido agora: o universo ja tem 21 ativos (journal 21:38:01: marketwatch=21, deSymbols=11, ativos=21) e o EA esta anexado em 15 graficos, com todos os simbolos do Market Watch na lista. O que nao existe e modelo de IA para eles: o gateway responde "disponivel=true" SO para XAUUSD (1122 bytes); os outros 12 graficos recebem "disponivel=false" (357 bytes). E os ficheiros existem - ha 21 simbolos x {H1,H4,M15,M5} com .pkl e .meta.json em Python\models - mas reprovam o criterio de publicacao: XAUUSD_H1 passa (edge +0.0363, 4/5 folds), EURUSD_H1 reprova (edge -0.0161, pior que o palpite). A pergunta: enquanto os modelos nao forem retreinados, o senhor quer que os 20 ativos sem modelo operem a sinal TECNICO (a IA fica calada neles, porque EnableAutonomousMode=true ja tira o veto), ou quer que fiquem de fora ate terem modelo aprovado? Nao ha terceira via: ou opera a tecnico, ou nao opera.
+
+- **de:** ALFA | **hora:** 06/11 23:13
+- **prazo:** 09/11 12:00
+- **opcoes:** (a) operar os 20 a tecnico ja (a IA so opina onde tem modelo). (b) so operar ativo com modelo aprovado - hoje isso e XAUUSD apenas. (c) operar a tecnico mas com lote reduzido nos 20 ate terem modelo.
 - **estado:** ABERTA
 - **RESPOSTA:**
 

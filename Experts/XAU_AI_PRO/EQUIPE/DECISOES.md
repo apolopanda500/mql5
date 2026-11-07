@@ -3469,7 +3469,7 @@ BLOQUEANTE de conta real com uma justificacao falsa.
 
 ## D-067 - F2.2b (v1.2.181): o teto de exposicao passa a medir a MARGEM DA CONTA, nao a soma das posicoes do magic
 
-**Autor:** ALFA | **hora:** 06/11/2026 21:39 (hora medida no momento da escrita; o rascunho dizia 21:43, que ainda nao tinha acontecido - corrigido antes de publicar) | **fonte:** `Core/Config.mqh`, `Core/PositionManager.mqh`, `Enterprise/VersionManager.mqh`, `XAU_AI_PRO.mq5` | **estado:** IMPLEMENTADO E COMPILADO (0 errors, 0 warnings); NAO PROVADO; NAO PUBLICADO nos 13 graficos
+**Autor:** ALFA | **hora:** 06/11/2026 21:39 (hora medida no momento da escrita; o rascunho dizia 21:43, que ainda nao tinha acontecido - corrigido antes de publicar) | **fonte:** `Core/Config.mqh`, `Core/PositionManager.mqh`, `Enterprise/VersionManager.mqh`, `XAU_AI_PRO.mq5` | **estado:** IMPLEMENTADO E COMPILADO (0 errors, 0 warnings); NAO PROVADO; PUBLICADO nos 13 graficos as 21:38:02, por recarga automatica do MT5 apos o compile (a frase original dizia "NAO PUBLICADO" e foi corrigida as 22:54, depois de medir o journal: 13/13 [START] v1.2.181 entre 21:38:01.638 e 21:38:02.403)
 
 ### 1. As duas objecoes que esta versao fecha
 Ambas foram levantadas no canal contra a v1.2.180 e as duas estavam certas.
@@ -3499,7 +3499,7 @@ Ambas foram levantadas no canal contra a v1.2.180 e as duas estavam certas.
 1. **Recusa observada.** A conta tem 0 posicoes e 0 ordens; a margem usada e 0 e a guarda nunca disparou. Nao ha uma unica linha `[EXPOSURE CAP]` no journal.
 2. **Fail-closed observado.** Nao se simulou `ACCOUNT_MARGIN` ilegivel.
 3. **Ausencia de falso positivo** abaixo do teto - nao testada com posicoes reais.
-4. **A publicacao.** Os 13 graficos continuam a correr a v1.2.180, ou seja a implementacao ANTIGA (soma por posicao, fail-closed por simbolo), com `EnableExposureCap=true` nos inputs. O `MT5` preserva os inputs no reload: o default novo (`true`) coincide com o que esta la, mas o CODIGO em memoria e o antigo. Enquanto o binario nao for recarregado, o risco (3b) do DELTA esta vivo nos 13 graficos.
+4. **A publicacao.** Correccao de 22:54, por medicao: o texto original afirmava que os 13 graficos corriam a v1.2.180 (implementacao antiga). Nao corriam ja. O journal mostra v1.2.178 as 20:42:33, v1.2.179 as 20:46:55, v1.2.180 as 21:23:40/21:25:51/21:26:28/21:28:39 e **v1.2.181 as 21:38:01.638-21:38:02.403 (13/13)**, sem nenhum [START] posterior, com `EnableExposureCap=true` nos inputs. O `MT5` preserva os inputs no reload: o default novo (`true`) coincide com o que esta la, mas o CODIGO em memoria e o antigo. O binario foi recarregado as 21:38:02 e este texto estava errado quando foi escrito. Logo o risco (3b) do DELTA (fail-closed por simbolo) **ja nao esta em execucao**; o que continua em falta e a prova de que a guarda nova recusa, fecha em falha e nao gera falso positivo.
 
 ### 6. Decisao que fica com o CMD/DONO
 Republicar a v1.2.181 reinicia os 13 EAs e, com eles, as guardas de perda diaria - e o DELTA pediu explicitamente para nao continuar a republicar (4 publishes em 9 minutos). Mas nao republicar mantem em execucao exactamente o modo de falha que o DELTA descreveu. **A minha leitura: 1 publish unico, assim que houver decisao, e nenhum outro esta noite.** Nao o fiz por mim porque a troca de binario a meio de uma sessao e decisao de risco partilhada.
@@ -3507,3 +3507,118 @@ Republicar a v1.2.181 reinicia os 13 EAs e, com eles, as guardas de perda diaria
 ### 7. Nao assina
 Nao assina o GATE F2 (as 6 falhas simuladas continuam por fazer), nao assina o F2.2 (falta a prova de recusa e o filtro do envelope), nao assina 10/10, nao assina o F6. O `GATE_REAL` continua **1 verde de 11**.
 
+## D-068 - decisoes do DONO de 06/11 23:03: risco mantem-se 10/15, guardas alinhadas (falta o numero), IA com EnableAutonomousMode true, universo de 21 ativos e modelos a retreinar
+
+**Autor:** ALFA | **hora:** 06/11/2026 23:12 (lida do relogio no momento da escrita) | **fonte:** `INBOX_DONO.md` Q-070 + `list_open_charts` + journal do terminal 21:38-23:20 | **estado:** DECIDIDO PELO DONO; **nada compilado, nada publicado, nenhuma ordem enviada** | **ID:** reservado no ledger as 23:04:58 (`id -Tipo D` devolveu D-068)
+
+### 1. O que o DONO escreveu, literal
+"1 a / 2 ii / 3 pode ativar IA true. mais quero o EA operando todos ativos globais nao so xauusd, e tambem corigir todos modelos ou deletar e treinar novos e funcional"
+
+Erros de escrita preservados. **Registada por:** ALFA (transcricao literal). Nao foi usado `answer -From DONO`: assinar por ele seria a mesma falta que a Q-065 apontou.
+
+### 2. Item 1 = (a) manter 10/15 - JA ESTAVA EM VIGOR, VERIFICADO
+Medido nos 15 graficos abertos: `MaxDailyLossPercent=10.0` e `MaxDrawdownPercent=15.0`. Sobre equity 12.636,32: **1.263,63 USD** de perda diaria maxima e **1.895,45 USD** de drawdown maximo. Nenhum parametro foi alterado por esta decisao: o DONO ratificou o que ja corria.
+
+### 3. Item 2 = (ii) alinhar as duas guardas - DECISAO INCOMPLETA, FALTA O NUMERO
+O DONO escolheu alinhar, mas nao escreveu se o numero comum e 15 ou 50. As duas leituras, com dinheiro a vista:
+
+| Leitura | Numero comum | Guarda de rotina e kill switch disparam aos | Coerencia com as respostas anteriores |
+|---|---|---|---|
+| (a) alinhar em 15% | 15% | 1.895,45 USD de drawdown | **contradiz** a Q-017 ("quero correr bastante risco") |
+| (b) alinhar em 50% | 50% | 6.318,16 USD de drawdown | **obedece** a Q-025 ("quando perder 50% da banca") e a Q-017 |
+
+**Nao implementei nenhuma das duas.** Escolher por ele entre 1.895 e 6.318 USD de perda tolerada seria exactamente o tipo de decisao que o DONO reservou para si. A pergunta viajou na Q-071.
+
+### 4. Item 3 = true - JA ESTAVA EM VIGOR, VERIFICADO
+`EnableAutonomousMode=true` nos 15 graficos. Efeito lido no codigo, nao suposto:
+- `AIEngine.mqh:52` - `AIGateRequired()` devolve false quando `EnableAutonomousMode` e true.
+- `AIEngine.mqh:584` - `FinalAIAllow()` chega a `if(!AIGateRequired()) return(true);` e **devolve true sem olhar o score**.
+- conclusao: **a IA deixa de vetar entradas.**
+
+### 5. O efeito colateral do item 3, que tem de ficar escrito
+A mesma chave que tira o veto **cala** a IA. `GetAIEngineSignal()` continua a exigir `AI_Score >= MinAIConfidence` (`AIEngine.mqh:291`) e o parser devolve zero. Journal de 21:38:32, textual:
+
+```
+[AI] GATEWAY | XAUUSD | H1 | 1122 bytes | disponivel=true
+[AI] PYTHON  | XAUUSD | SELL | PRICE=4065.82 | BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=72.40%
+```
+
+Com `AIHasSignalAuthority=false`, `GetCombinedSignal()` devolve o sinal **tecnico**. Resumo sem enfeite: **o EA pode operar, mas nao guiado pela IA.** Para a IA voltar a ter voz e preciso o patch do parser (o que o canal chamava D-068) e um compile.
+
+### 6. Item 3b - "todos os ativos globais": o universo ja e 21, o que falta e modelo
+`[SYMS] UNIVERSO | marketwatch=21 | deSymbols=11 | adicionadosDoMarketWatch=10 | grafico=XAUUSD | ativos=21 | origem=Symbols+MarketWatch+grafico` (journal 21:38:01). A assimetria esta no gateway: `disponivel=true` **so** para XAUUSD (1122 bytes); os outros 12 graficos recebem `disponivel=false` (357 bytes cada). Operar 21 ativos a tecnico e possivel hoje; operar 21 ativos com IA exige um modelo publicavel por ativo.
+
+### 7. Item 3c - "corrigir todos modelos ou deletar e treinar novos"
+Medido em disco: 21 simbolos x {H1,H4,M15,M5} com `.pkl` + `.meta.json` em `MQL5\Files\XAU_AI_PRO\Python\models` (mtimes 2026-11-03) mais `MULTI_METALS`, `MULTI_FIAT`, `MULTI_CRYPTO`. A amostra prova que "ter ficheiro" nao e "ter modelo":
+
+| Modelo | edge | AUC / acc | publicable | motivo declarado |
+|---|---|---|---|---|
+| XAUUSD_H1 | +0.036288 | AUC 0.5485 (holdout 0.5630), 4/5 folds | **true** | "balanced edge +0.0363 nas folds >= 0.0300, AUC 0.5630 >= 0.5200 e 4/5 folds positivos" |
+| EURUSD_H1 | **-0.016129** | acc 0.3353 vs palpite 0.3514 | **false** | "edge -0.0161 abaixo do minimo +0.0500" |
+
+Logo o trabalho pedido **nao e apagar tudo**: e retreinar os que reprovam. O criterio real de publicacao e **0.0300 no edge balanceado + AUC + folds**; o `min_edge: 0.05` do ficheiro e a razao de recusa, nao o limiar de aprovacao. Isto tem de estar claro antes de se prometer "21 ativos com IA".
+
+### 8. Colisao de IDs - resolvida por renomeacao, nao por reescrita
+O ledger deu **D-068** a este registo as 23:04:58 porque o patch do parser, chamado "D-068" em todo o canal, **nunca reservou ID**. Decisao: **D-068 passa a ser este registo** (o unico com reserva) e o patch do parser passa a chamar-se **D-069**, a reservar no ledger no momento em que for aplicado. O `Tools\` e os posts antigos que dizem "D-068 = parser" ficam como estao: sao historia, e historia nao se reescreve - acrescenta-se.
+
+### 9. O estado do terminal mudou as 22:59 e isso invalida o "13 graficos" de toda a noite
+Medido no journal e em `list_open_charts`:
+- **22:59:15.255** - `[STOP] XAUUSD | motivo=9` (REASON_CLOSE): o terminal fechou. Antes disso, `[AI] Client shutdown` e `[NOTIFY] Sent=1`.
+- **22:59:18** - `[START]` em todos os graficos, todos **v1.2.181**.
+- O conjunto mudou: **15 graficos, perfil DEFAULT** (`CHART01`..`CHART15`), com **USDCOP e USDCLP a entrar**; antes eram 13 no perfil `XAI_P215_LIVE_B`.
+- `MagicNumber=2026001` nos 15 (o defeito do F2.8 continua la, agora com 15 instancias em vez de 13).
+
+### 10. Porque o EA nao opera neste momento, e nao e o codigo
+Os 15 graficos registam `[TRADE BLOCK] COTACAO VELHA (timer)`, com `idade` medida entre **13.116 s** e **38.321 s** contra `limite=900 s`. O mercado fechou (sexta-feira, servidor 23:59). Sem tick nao corre `OnTick`; sem `OnTick` nao ha entrada. Qualquer diagnostico de "o EA nao opera" feito agora e um diagnostico de mercado fechado, nao de estrategia.
+
+### 11. O que esta decisao NAO assina
+- Nao assina o **GATE F2** (F2.2 continua "ligada, nao provada, nao assinada").
+- Nao assina o **F6** (forward 30 dias: exige >=100 trades, PF>=1.2, DD<=8% - hoje ha **0 trades**).
+- Nao sobe o **GATE_REAL**: continua **1 verde de 11**.
+- Nao se escreve "10/10" nem "100% operando conta real" por causa desta decisao.
+- Nenhum compile. Q-068 = (b): so segunda-feira, mercado aberto, CMD presente.
+## D-069 - ciclo final: contrato da EQUIPE ate ao 10/10 (ordem do DONO de 06/11 23:36)
+**ID:** reservado no ledger as 23:36:58 por id -Tipo D (o CLI escreveu "para sistema" por nao receber -From; o autor real e ALFA)
+**Assinatura do registo:** 06/11/2026 23:39:04 (hora lida do relogio no momento da escrita)
+**Documento normativo:** EQUIPE/CICLO_FINAL.md (12.6 KB, criado 06/11/2026 23:39:04)
+
+### 1. Porque existe este ciclo
+O DONO ordenou reorganizar a EQUIPE e informar todos os agentes como se conclui o projeto. O ciclo anterior produziu um "quase 10/10" que nao era verificavel porque o mesmo agente escrevia, media e assinava.
+
+### 2. A mudanca estrutural: quem faz nao assina
+- ALFA faz codigo, compila, publica e mede - e **nao assina** os seus gates.
+- DELTA mede por conta propria e assina **GATE F2, GATE F6 e GATE_REAL**.
+- CMD responde por modelos, testes, gateway e runbook.
+- DONO decide dinheiro (Q-071), universo (Q-072) e a assinatura final de conta real.
+Recusar um gate e trabalho, nao obstrucao.
+
+### 3. "10/10" passa a ser dez provas, nao uma nota
+1) compila limpo e publicado com [START] em 15/15; 2) GATE F2 com 6 falhas simuladas; 3) fila do PLANO_10_10 fechada; 4) IA com voz em todos os ativos operados; 5) GATE_REAL 11 de 11; 6) forward 30 dias demo (>=100 trades, PF>=1.2, DD<=8%); 7) canal sem deriva em 10 checks seguidos; 8) main = working tree = binario publicado; 9) runbook testado em 3 incidentes simulados; 10) assinatura explicita do DONO.
+**Nove verdes e uma vermelha = 0/10.** O numero nao se escreve antes das dez.
+
+### 4. Fases C0 a C7
+C0 contrato (hoje) -> C1 GATE F2 (segunda 09/11) -> C2 parser + modelos (segunda a noite, 1 compile) -> C3 forward congelado 30 dias -> C4 checkpoint dia 15 -> C5 GATE F6 -> C6 GATE_REAL 11/11 + runbook -> C7 real com micro-lote e rampa.
+Cada fase com entrada, saida e assinador. Uma fase nao comeca antes de a anterior estar assinada.
+
+### 5. Protocolo de evidencia obrigatorio
+Toda a afirmacao leva: o que se mediu, com que comando, que saida, a que hora. Sem os quatro e opiniao e nao entra em gate. Carimbo escrito a mao e defeito.
+
+### 6. Forward de 30 dias: congelamento total
+Hash dos inputs dos 15 graficos registado no arranque. Qualquer alteracao de parametro suspende o forward e reinicia a contagem - sem "so esta vez". DD > 8% em qualquer momento vira incidente e para a corrida.
+
+### 7. Corte por simbolo, com numero
+Sai quem tiver DD do simbolo > 3% do capital, ou PF < 1.0 com >= 20 trades, ou 3 falhas de execucao no mesmo dia. Corte por medicao, nao por impressao.
+
+### 8. Modelos: retreinar, nao apagar
+Censo de 23:18: 4 publicaveis de 87; 83 reprovados com motivo discriminado (76 edge, 3 instabilidade entre folds, 3 balanced edge e AUC, 1 sem folds); 80 dos 87 sao 25F-v2 sem AUC, folds nem edge balanceado - pipeline antigo, nao modelo avariado. Retreino no pipeline XAU-30F-v4, comecando pelos 14 simbolos com grafico e, dentro desses, os melhores por edge medido. Apagar deixaria a IA muda em 20 dos 21 simbolos.
+
+### 9. Decisoes que continuam a ser do DONO (prazo 09/11 12:00)
+- Q-071: 15% (1.895,45 USD) ou 50% (6.318,16 USD) para as duas guardas. Silencio = mantem-se 10/15.
+- Q-072: os 20 sem modelo operam a tecnico, ficam de fora, ou lote reduzido. Silencio = fica (b), so XAUUSD.
+- A autorizacao de conta real vem depois de C5, nunca antes.
+
+### 10. O que este ciclo NAO assina
+GATE_REAL continua 1 verde de 11. GATE F2 por assinar. F2.2 "ligada, nao provada". F6 sem trades. Nenhum "10/10". Zero compiles hoje (Q-068 = b: segunda, mercado aberto, CMD presente).
+
+### 11. Como o projeto termina
+Quando as 10 provas estiverem verdes e o DONO assinar. Nesse dia: main = working tree = .ex5 provado por [START]; relatorio de 1 pagina com as 10 provas datadas; forward fechado com o pacote de metricas; decisao de real com numero; e o "10/10" escrito uma vez, por quem assinou. Depois passa a manutencao: retreino mensal, revisao trimestral de risco, runbook vivo.

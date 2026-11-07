@@ -851,3 +851,57 @@ gateway   HTTP 200  1122 B  signal=SELL  confidence=72.4  prob_buy=0.2765  prob_
 - **Compromisso do ALFA**: zero compiles e zero recargas esta noite a partir das 21:38:02.
 - **Deriva de IDs**: 61 usados / 61 unicos / 54 no ledger. O D-068 so sera publicado depois de `id -Tipo D`.
 - `GATE_REAL` **1 verde de 11**. Nao assino GATE F2, F2.2, 10/10 nem F6.
+
+### Estado medido (06/11 22:49) - ALFA: qual binario esta EM MEMORIA nos 13 graficos
+
+- **Janela medida:** journal do terminal, `20:40:00 -> 22:46:00`, filtro `START`, **104 registos**, `truncated=false`. Nao e mtime de ficheiro: e o que os EAs escreveram ao arrancar.
+- **Sequencia de arranques, 13 linhas cada:** v1.2.178 as **20:42:33** | v1.2.179 as **20:46:55** e **20:47:07-12** | v1.2.180 as **21:23:40**, **21:25:51**, **21:26:28** e **21:28:39** | **v1.2.181 as 21:38:01.638 -> 21:38:02.403 (13/13)**.
+- **Ultimo `[START]` da noite: 21:38:02.403.** Entre 21:38:03 e 22:46:00 o filtro `START` devolve **0 registos** (68 minutos sem um unico arranque). O compromisso de zero compiles continua cumprido por medicao.
+- **Sobre a frase "os 13 graficos continuam com a v1.2.179 publicada as 20:46":** descreve o disco as 20:46, nao a memoria as 22:49. Foi verdade ate as **21:23:40**; nessa altura e ate 21:28:39 os 13 subiram para v1.2.180, e as 21:38:02 para v1.2.181.
+- **Nao houve reattach manual, e nao e preciso haver:** o MT5 recarrega o `.ex5` recompilado nos graficos que ja o tem anexado. Neste setup **compilar e publicar sao a mesma accao** - e por isso a regra do canal e "1 compile, hora anunciada", nao "1 compile + 1 reattach".
+- **Binario no disco (medido 22:48:46):** `XAU_AI_PRO.ex5` **962744 B**, mtime **21:38:01**, MD5 `7729ACBED18278B5B59E2F3AF81AAE15`. Fonte `XAU_AI_PRO.mq5` **104770 B**, **21:37:33**, `#property version "1.381"`, `EA_VERSION_STRING "1.2.181"`.
+- **Medicao independente que converge:** o DELTA mediu a mesma janela final (`21:37-22:50`) e chegou ao mesmo resultado. Duas leituras, um numero.
+- **Git (22:48-22:49):** repo mql5 `HEAD = main = github/main = e5c04136`, working tree **limpa**; `origin/main = d36be65d` (**Forge/CodeBase intocado**). Repo `Files/XAU_AI_PRO`: `HEAD = develop = origin/develop = de0f08f`, limpa; `origin/main = 07abc4d` (diferente do develop).
+- **Identidade dos commits:** os 4 ultimos sao `XAU AI Pro Developer <developer@xaupro.com>`, que e exactamente `git config user.name/user.email` **deste repo**. Nao ha actor com identidade propria a assinar - logo **a autoria nao se prova pelo autor do commit**; prova-se pelo conteudo.
+- **`e5c04136` (22:01:06)** toca **so documentos do canal** (INBOX_AGENTE_1 +177, INBOX_AGENTE_2 +81, INBOX_AGENTE_3 +80, INBOX_DONO +97, QUADRO +17, SYNC_LOG +17, PRESENCA +4, PLANO 2, LOCK, IDS). **Nenhum ficheiro de codigo do EA.**
+- **Actor vivo na pasta (medido):** as 22:50:28 o `LOCK.md` passou a OCUPADO por **DELTA** com motivo "verificar relatorio dois repositorios do CMD", libertado as **22:52:35**. Ha pelo menos duas sessoes com escrita nesta pasta - o que explica commits que nenhuma das duas atribui a si.
+- **Nesta sessao eu nao escrevi no git:** so `rev-parse`, `status`, `reflog`, `log`, `config --get`. Zero `add`, `commit`, `push`, `checkout`, `reset`.
+- **Conta:** demo 113568614, equity **12636.32**, margem **0.00**, **0 posicoes**, **0 ordens**. `GATE_REAL` **1 verde de 11**.
+
+### Decisoes do DONO (06/11 23:00) - transcritas pelo ALFA
+
+- **Q-068 = (b) FECHADA.** Texto: "1 Q-068 B" -> autorizado **segunda-feira**, mercado aberto, com o CMD presente. **Nao houve compile hoje** e o `d068_aplicar.ps1` fica em DRY-RUN.
+- **Q-016 = (a) FECHADA.** Texto: "Q-016 autoriza o forward de 30 dias em demo sim autorizado". Nota: o F6 exige >=100 trades e hoje ha 0, logo a ordem e D-068 -> trades -> 30 dias -> F6.
+- **Q-025 = (e) FECHADA, condicao nova.** Texto: "Q-025 quando perder 50% da banca" -> kill switch automatico aos 50% da banca. Nao estava nas opcoes (a)-(d); registada como condicao propria. Ordem entre esta e o `MaxDrawdownPercent` 15% -> Q-070 item 2.
+- **Q-026 = PARCIAL.** Texto: "Q-026 criar apenas 1 perfial para xau ai pro operar todas contas" -> **um perfil unico** (`XAI_P215_LIVE_B`) para todas as contas. Modo autonomo e universo de modelos sem resposta -> Q-070 item 3.
+- **Q-017 = PARCIAL, sem numeros.** Texto: "Q-017 sim uero correr bastante risco" -> rejeita reduzir; **os valores continuam 10.0 / 15.0** nos 13 graficos. Par de numeros pedido na Q-070 item 1.
+- **Q-070 ABERTA** (o pedido anterior saiu como Q-070 porque o Q-069 ja estava usado no ledger), prazo **09/11 12:00**, tres itens.
+- **Metodo:** as palavras do DONO estao nos blocos entre aspas, literais, com `**registada por:** ALFA (transcricao literal)`. Nao foi usado `answer -From DONO`.
+- **O que nao mudou:** `GATE_REAL` 1 verde de 11; F2.2 ligada, nao provada, nao assinada; F6 nao arrancado; nenhum compile (`.ex5` 962744 B 21:38:01, `[START]` desde 21:38:02.403 = 0); conta plana.
+
+**Decisoes do DONO (06/11 23:03) registadas em D-068, e o estado do terminal mudou as 22:59.**
+
+- **Item 1 = (a) manter 10/15.** Ja em vigor, verificado nos 15 graficos: `MaxDailyLossPercent=10.0`, `MaxDrawdownPercent=15.0`. Sobre 12.636,32: 1.263,63 USD por dia e 1.895,45 USD de drawdown.
+- **Item 2 = (ii) alinhar as guardas, FALTA O NUMERO.** 15% -> 1.895,45 USD; 50% -> 6.318,16 USD. A primeira contradiz a Q-017; a segunda obedece a Q-025 e a Q-017. **Q-071 aberta, prazo 09/11 12:00.** Nada alterado.
+- **Item 3 = true.** Ja em vigor (`EnableAutonomousMode=true` em 15/15). A IA deixa de vetar (`AIEngine.mqh:52` -> `:584`), mas tambem deixa de opinar (`:291` exige `AI_Score>=60`; o parser devolve 0). **Opera a tecnico, nao guiado por IA.** Journal 21:38:32: `BUY=0.00% | SELL=0.00% | SCORE=0.00 | CONF=72.40%`.
+- **Universo: 21 ativos ja** (`marketwatch=21 | deSymbols=11 | ativos=21`). O que falta e modelo: gateway `disponivel=true` so para XAUUSD (1122 B); os outros 12, `false` (357 B cada).
+- **Modelos: 21 simbolos x {H1,H4,M15,M5} em disco.** `XAUUSD_H1` publicable=true (edge +0.0363, 4/5 folds). `EURUSD_H1` publicable=false (edge -0.0161, acc 0.3353 vs palpite 0.3514). O trabalho e retreinar os que reprovam, nao apagar tudo. **Q-072 aberta:** operar os 20 a tecnico ou deixa-los de fora?
+- **ESTADO DO TERMINAL: 15 graficos, nao 13, desde as 22:59:18.** `[STOP] motivo=9` as 22:59:15.255 e `[START]` as 22:59:18; perfil **DEFAULT** (CHART01..CHART15); entraram **USDCOP** e **USDCLP**; o perfil `XAI_P215_LIVE_B` de 13 deixou de correr. Todos v1.2.181, `.ex5` 962.744 B de 21:38:01, nada recompilado.
+- **Bloqueio actual: mercado fechado.** `[TRADE BLOCK] COTACAO VELHA (timer)` nos 15 graficos, idades 13.116s a 38.321s contra `limite=900s`.
+- **Gates intocados:** GATE F2 nao assinado (F2.2 segue "ligada, nao provada, nao assinada"), F6 com 0 trades, **GATE_REAL 1 verde de 11**. Sem "10/10". Zero compiles (Q-068 = b).
+
+CENSO DOS MODELOS (medido 06/11 23:18, leitura dos 87 *.meta.json):
+- 4 publicable=true: XAUUSD_H1 (edge 0.0363, AUC 0.5485, holdout 0.5630, 4/5 folds) e MULTI_METALS 0.2497 / MULTI_FIAT 0.1853 / MULTI_CRYPTO 0.1816 (sem AUC nem folds no meta).
+- 83 publicable=false: 76x edge abaixo de +0.0500; 3x edge instavel entre folds; 3x balanced edge e AUC abaixo do minimo; 1x sem folds.
+- 80 dos 87 sao 25F-v2 sem auc/folds - pipeline antigo, nao modelo avariado. Os 4 XAU-30F-v4 medem o criterio real.
+- Consequencia escrita ao CMD: "corrigir todos" = retreinar os 83 com o 30F-v4; apagar deixaria a IA muda em 20 dos 21 simbolos.
+GATES: inalterados. Zero compiles (Q-068 = b).
+
+CICLO_FINAL EM VIGOR (06/11 06/11/2026 23:39:04, D-069 + EQUIPE/CICLO_FINAL.md).
+- Regra nova: quem faz nao assina. ALFA executa e mede; DELTA assina GATE F2, GATE F6 e GATE_REAL; CMD responde por modelos, testes, gateway e runbook; DONO decide dinheiro, universo e real.
+- "10/10" = 10 provas com numero (seccao 1 do CICLO_FINAL.md). Nove verdes e uma vermelha = 0/10.
+- Fases: C0 contrato (hoje) -> C1 GATE F2 (segunda 09/11) -> C2 parser + retreino dos 83 (segunda noite, 1 compile) -> C3 forward congelado 30 dias -> C4 checkpoint dia 15 -> C5 GATE F6 -> C6 GATE_REAL 11/11 + runbook -> C7 real com micro-lote e rampa.
+- Forward com congelamento total: hash dos inputs no arranque; mexer num parametro suspende e reinicia; DD > 8% para a corrida.
+- Corte por simbolo com numero: DD do simbolo > 3% do capital, ou PF < 1.0 com >= 20 trades, ou 3 falhas de execucao no mesmo dia.
+- Prazos do DONO: Q-071 e Q-072 ate 09/11 12:00; silencio = conservador (10/15 mantido; so XAUUSD opera).
+ESTADO: inalterado nos gates - GATE_REAL 1 de 11, GATE F2 por assinar, F6 com 0 trades, zero compiles (Q-068 = b).
