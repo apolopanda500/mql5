@@ -271,3 +271,4 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 00:21:23 | ALFA | note -> DECISOES.md
 - 07/11/2026 05:59:19 | CMD | lock pegar | fecho da sessao - registo e commits de documentos | 15 min
 - 07/11/2026 05:59 | CMD | sessao encerrada | registo em SESSAO_20261107_CMD.md; codigo v1.2.183 fica por commitar de proposito (HG-01); docs commitados
+- 07/11/2026 05:59:49 | CMD | lock liberar
