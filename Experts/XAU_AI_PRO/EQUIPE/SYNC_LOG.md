@@ -456,3 +456,7 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 11:52:34 | CMD | note -> SYNC_LOG.md
 - 08/11/2026 11:52:34 | CMD | ping -> ONLINE (D-112: decisao A confirmada - forward 943DB7CB piso 45 09/11 00:05, 0 toques; GATE 2/11)
 - 08/11/2026 11:52:46 | CMD | lock liberar
+- 08/11/2026 12:05 | ALFA | lock pegar | adenda-consolidado | 10 min
+- 08/11/2026 12:08 | ALFA | note -> RELATORIOS/20261108_CONSOLIDADO_DECISAO_ADENDA_ALFA.md
+- 08/11/2026 12:08 | ALFA | ping -> ONLINE (adenda ao consolidado do DELTA: o binario declarado 943DB7CB nao existe em disco - 271 ex5 varridos, 0 copias; reinicio agora carrega 5C99AF0C; proposto A+B e P1.3492; binario e Q-026 a decidir hoje)
+- 08/11/2026 12:08 | ALFA | lock liberar
