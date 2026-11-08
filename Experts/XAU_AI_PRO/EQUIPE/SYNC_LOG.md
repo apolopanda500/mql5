@@ -480,3 +480,9 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 12:38:54 | CMD | note -> SYNC_LOG.md
 - 08/11/2026 12:38:54 | CMD | ping -> ONLINE (D-115: D-114 (DELTA) commitado + P1.3493 decidido; GATE 2/11)
 - 08/11/2026 12:39:00 | CMD | lock liberar
+- 08/11/2026 12:44:03 | DELTA | lock pegar | fecho-operacional | 10 min
+
+- 08/11/2026 12:44 | DELTA | fecho | instrucao do dono executada: fica armado apenas o forward de 30 dias. Medido: ex5 5C99AF0CDCE1E2C74D39270C21047607 (969944 B, 10:25:59) == declarado no G11; 15 graficos 15/15 com EA (chart16 fechado, perfil XAU_AI_PRO_15CHARTS_Q071 regravado); conta 12636.32 flat, 0 posicoes, 0 ordens; risco identico nos 15 graficos (hash ae49d929a07c2c2b, n=14); git main == github/main, arvore limpa (d748d042); ForwardInicio Pronto, proxima 09/11/2026 00:05:00 (last 267011 = nunca correu); GatewayKeepalive 5 min, result 0; LOCK livre; check OK (66 .md, 99 IDs D unicos, 124 no ledger, 19 perguntas abertas). Fechado: P1.3491 (chart16), P1.3493 (.set commitado em d748d042), IDS.md normalizado a LF. Adiado por desenho: P1.3486 e P1.3489 (so depois dos 30 dias). Aberto apenas por decisao do DONO: Q-026/G5, Q-017/G9, Q-013/G10, Q-022/G2, G1. GATE 2/11, forward 0/30. 0 compiles, 0 ordens, 0 reanexos nesta operacao.
+- 08/11/2026 12:44:46 | DELTA | note -> SYNC_LOG.md
+- 08/11/2026 12:44:52 | DELTA | ping -> ONLINE (fecho operacional 12:44: fica so o forward 30 dias (09/11 00:05) - ex5 5C99AF0C, 15/15 graficos com EA, conta flat, git limpo d748d042, GATE 2/11 forward 0/30, 0 compiles 0 ordens)
+- 08/11/2026 12:44:52 | DELTA | lock liberar
