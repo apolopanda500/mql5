@@ -436,3 +436,8 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 06:20 | DELTA | note -> PENDENCIAS.md, GATE_REAL.md, INDICE.md, IDS.md, RELATORIOS/20261108.md
 - 08/11/2026 06:20 | DELTA | ping -> ONLINE (sincronizacao de documentos para 08/11: 8 ficheiros; P1.3486/P1.3487 abertos; remedicao GATE 2/11 sem mudanca de cor; v1.2.188 15/15; forward 0/30)
 - 08/11/2026 06:33 | DELTA | note -> README.md (cabecalho v1.2.135 -> v1.2.188, data 2026-11-08, 16 -> 15 graficos, CRLF preservado)
+
+- 08/11/2026 10:22 | ALFA | lock pegar | p13487+g56 | 45 min
+- 08/11/2026 10:59 | ALFA | note -> DECISOES.md, IDS.md, PRESENCA.md, SESSAO_20261108_ALFA_T2.md
+- 08/11/2026 10:59 | ALFA | ping -> ONLINE (D-108: P1.3487 fechado no verificador, UP (HTTP 401) medido; 3 meses XAUUSD 37 trades PF 0,6603 DD 1,77% shorts 36/37; P1.3486 adiado para nao mudar o MD5 do forward)
+- 08/11/2026 10:59 | ALFA | lock liberar

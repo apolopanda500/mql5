@@ -5783,3 +5783,82 @@ Nao ha nada de estrategia alterado: `RiskPercent`, `MaxDailyLossPercent`,
 `MaxTotalRiskPercent` e `MinMarketScore` permanecem 1,0 / 10,0 / 50,0 / 2,0 / 8,0 /
 10,0 / 65,0. **GATE_REAL continua 2 de 11 e o forward 0 de 30: nao existe 10/10.**
 
+
+
+## D-108 - P1.3487 fechado no verificador, G4 remedido e primeiro numero de G5-G8 (ALFA, 08/11/2026 10:59)
+
+**Autorizacao do DONO nesta sessao:** "autorizacao TOTAL" (10:20). Nao foi usada para
+reattach de frota, ordens ou alteracao de risco - nenhuma dessas tres coisas aconteceu.
+
+### 1. P1.3487 fechado no que era do ALFA (`tools/agente-briefing.ps1`)
+
+- A sonda do gateway usava `-SkipHttpErrorCheck`, parametro que **nao existe no
+  PowerShell 5.1**: a excecao caia no `catch` e o briefing imprimia `DOWN` com o
+  servidor vivo. O proprio binario prova o contrario - `/api/health` responde **401**
+  sem token (e 404 com token), como ja estava medido no RELATORIOS/20261108.md.
+- Substituida por `Get-Gateway`: prova de vida por `TcpClient` na porta 9011 (metodo
+  do D-102) e, depois, **qualquer** resposta HTTP conta como servidor vivo.
+  Resultado medido no arranque do proprio script: `gateway 9011 : UP (HTTP 401)`.
+- O rodape deixou de imprimir a versao fixa `1.386?`; o cabecalho passou a declarar
+  **3 fontes** de versao (as que sao realmente lidas: `#property`, `VersionManager`,
+  `EventEmitter`) em vez de "4 fontes" - a quarta nunca existiu no script.
+- Backup previo: `Files\Backup\agente-briefing.ps1.bak_p13487`.
+- **Nota de autoria:** a alteracao foi apanhada pelo `git add` do turno CMD e
+  commitada dentro de `86d1ac96` (10:26), sem registo de decisao propria; este bloco
+  regulariza o registo. Disco == HEAD, arvore limpa antes deste turno.
+
+### 2. G4 - binario em memoria, remedido (parcial, continua VERMELHO)
+
+`MQL5\Logs\20261108.log` lido as 10:22:
+
+| Contador | Ocorrencias |
+|---|---|
+| `[ATR] SEM LEITURA` | **0** |
+| `HANDLE MORTO` | **0** |
+| `[TREND] LEITURA SUSPEITA` | **0** (eram 278 536 antes do D-107) |
+| `[START] XAU_AI_PRO v1.2.188` | 31 (15 as 06:01, 16 as 09:34) |
+| `[TRADE BLOCK]` | 135 (mercado fechado, guarda correcta) |
+
+Memoria == binario (`[VERSION] v1.2.188 | build 2026.11.06`, MD5 `943DB7CB...`), mas a
+janela exigida e de 24 h e esta e de 4 h 20 min. **G4 nao muda de cor.**
+
+### 3. G5-G8 - primeiro numero medido num job de 3 meses
+
+Job: `Profiles\Tester\ALFA_G56_3M.ini` + `DELTA_186_A.set`, XAUUSD **H1**, modelo
+`m1 ohlc`, deposito 12 636,32, **08/08/2026 -> 08/11/2026**, run `7705790507266947777`,
+34 min, 1434 barras, 343 991 ticks.
+
+| Criterio | Limite | Medido | Cor |
+|---|---|---|---|
+| **G5** trades fechados | >= 100 e >= 3 meses | **37** trades (74 deals) em 3 meses | VERMELHO |
+| **G6** MaxDD | <= 8 % | **1,77 %** (balance) / 1,79 % (equity) | passa no backtest |
+| **G7** Profit factor | >= 1,20 com >= 100 trades | **0,6603** | VERMELHO |
+| **G8** shorts | >= 30 % numa amostra >= 100 | **36 de 37 = 97,3 %** | numero passa, amostra nao |
+
+- Saldo final 12 515,31 (**-121,01**); gross profit 235,19 / gross loss 356,20;
+  expected payoff -3,27; sharpe -5,00; 34 vitorias / 3 derrotas; pior DD em equity
+  227,44. A expectancy negativa nao vem da taxa de acerto (91,9 %): vem do tamanho -
+  tres derrotas somam 356,20 contra 235,19 de trinta e quatro vitorias.
+- **Consequencia para o plano:** em 3 meses o EA produz **37 trades**. G5/G7 exigem
+  ~100, portanto ~8 meses neste cadence: o criterio G5, como esta escrito, **nao e
+  fechavel com uma janela de 3 meses** - ou o periodo cresce, ou o criterio muda por
+  decisao do DONO.
+- **G8 inverte a leitura anterior.** O GATE_REAL diz "0 shorts, estrutural em
+  `SignalCore.mqh:372-375`". Com este set e este periodo a esmagadora maioria e
+  SHORT (36/37). Nao estou a corrigir o DELTA: estou a entregar o numero para ele
+  remedir - as duas frases nao podem estar certas ao mesmo tempo.
+- **Ressalvas obrigatorias deste job:** (1) e **1 simbolo**, nao os 11 de `Symbols`
+  nem os 15 dos graficos; (2) `DELTA_186_A.set` **nao replica a corrida A**
+  (P1.3485) e difere da producao em autonomous/telemetria/piso; (3) em tester nao
+  ha `WebRequest`, logo a IA e o fallback ja documentado no G3; (4) modelo `m1 ohlc`
+  nao e tick a tick.
+
+### 4. O que NAO foi feito, e por que
+
+- **P1.3486 (cabecalhos `v1.2.183` / `v1.2.9` no source) nao foi tocado de proposito:**
+  corrigir um comentario muda o `LastWriteTime` do `.mqh`, o compile produz outro
+  MD5 e o forward de 09/11 00:05 esta declarado no binario `943DB7CB...`. Fica para
+  depois da janela do forward, ou para quando o DONO autorizar novo congelamento.
+- Sem reanexo de frota, sem ordem, sem alteracao de risco.
+
+**GATE_REAL continua 2 de 11 e o forward 0 de 30. Nao existe 10/10.**
