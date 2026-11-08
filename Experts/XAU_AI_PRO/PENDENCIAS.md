@@ -1460,7 +1460,7 @@ O P1.138 (v1.2.184) mudou a escala do MarketScore para `100 * pontos / 115` e ac
 - `TOTAL=` aparece 65 vezes: **65 de 65 com 100.00**, e todas as 65 em 01-05/11, isto e **todas anteriores a v1.2.184**.
 - `PTS=` aparece **0 vezes** em qualquer log.
 
-Consequencia dupla: (a) o defeito antigo (score saturado em 100.00, piso `MinMarketScore=65.0` aprovando tudo) esta confirmado com 65 amostras; (b) a **correcao nao tem uma unica prova viva** e a distribuicao de `TOTAL=` pedida pelo ALFA **nao e mensuravel hoje**. Isto nao acusa o P1.138 de estar errado - acusa que a linha de diagnostico deixou de ser publicada, portanto o conserto ficou sem instrumento de medida.
+Correccao DELTA (D-109, 08/11 11:45): TOTAL= **existe** (formato [SCORE] CALCULATED | Symbol=<s> | Signal=<n> | EMA= | RSI= | ADX= | AI= | WARMUP= | PTS= | TOTAL=) e imprime; o problema real e **taxa de emissao insuficiente** para amostragem - Core/DecisionEngine.mqh usa if(logOnce && DecisionLogDue(symbol,"SCORE",900)) (exige o gate de 1x/minuto e os 900 s por simbolo no mesmo tick). Em 8 dias de log sao pouquissimas linhas, todas TOTAL=100.00 **anteriores a v1.2.184**, logo nao validam o score actual pos-normalizacao. PTS= **nunca foi impresso** (0 amostras em qualquer log, mesmo a fonte actual imprimindo | PTS=<pts> |): nao escrever em documento nenhum que ja foi observado em producao. (a) o defeito antigo (score saturado em 100.00, piso MinMarketScore=65.0 aprovando tudo) esta confirmado com as amostras historicas; (b) a **correcao nao tem prova viva** - o conserto ficou sem instrumento de medida.
 
 Suspeita por leitura de codigo, a confirmar: `DecisionLogDue(symbol, "SCORE", 900)` e `logOnce` - o emissor depende de o caminho de calculo do score ser chamado com `logOnce=true`, e esse caminho pode ter deixado de ser atingido depois das alteracoes do scanner.
 
@@ -1591,3 +1591,13 @@ Pedido do DONO as 06:05: "atualizar todos documentos do projeto para a data de h
 
 - **P1.3486 - ABERTO (ALFA)** - cabecalhos de versao no source desalinhados: `XAU_AI_PRO.mq5:2` em `v1.2.183`, `AI/AIConnector.mqh:1` em `v1.2.9`, arvore em `1.2.188`.
 - **P1.3487 - ABERTO (DELTA)** - documentos de estado com datas de 06-07/11 ainda a circular como se fossem de hoje (`QUADRO_ESTADO.md` 07/11 02:48, `BRIEFING_ATUAL.md` 05:42 de hoje mas sem versao, `RELATORIOS/20261107.md` sem par de 08/11 antes deste ciclo). Resolvido parcialmente: par de 08/11 criado.
+
+### P1.3488 - FECHADO (D-109) - `-SkipHttpErrorCheck` (PS 5.1) em 3 scripts + `/api/health` falso
+
+`dono-mandato.ps1:77`, `ordem-master.ps1:77`, `mcp-check.ps1:32/37/62`. Duas causas independentes, as duas davam DOWN falso: (a) `-SkipHttpErrorCheck` so' existe em PS 7+ - em `powershell` 5.1 o binding falha e cai no catch; (b) `/api/health` nao e prova de vida (401 sem token, 404 com token). Corrigido por portacao do `Get-Gateway` do `agente-briefing.ps1` (TcpClient 9011 + qualquer HTTP = UP). Testado nos dois motores: `powershell 5.1 mcp-check.ps1` -> **11 OK, 0 falhas**; `ordem-master.ps1 estado` -> `gateway 9011 : HTTP 401`; `pwsh mcp-check.ps1` OK; parse 0 erros. `dono-mandato.ps1` ja' nao depende do token do `.env` para provar vida.
+
+Nota: o gerador de IDs do sync-agent somou a base 1130 ao maximo 3487 e deu P1.4617; corrigido a mao no IDS.md para P1.3488 (serie P1.34xx do DELTA/ALFA). Registo como P1 futuro do gerador, nao bloqueia este fecho.
+
+### Origem das [START] das 09:34 - investigado em D-109 (08/11 11:45)
+
+Journal Experts 08/11: 46 starts = 05:40 x15 (v1.2.187), 06:01 x16 (v1.2.188, USDCLP duplicado), 09:34 x15 (v1.2.188). Terminal log: 2 starts (05:40:05, **09:34:10.2**) e **nenhum** `exit/stopped/shutdown` entre 06:01 e 09:34; nao ha' [STOP] dos EAs entre 06:01:51 e 09:34:28. Nenhum agente regista reanexo/compile/restart as 09:34. Conclusao: **restart externo nao atribuivel a nenhum agente** (DONO manual ou sistema). **Nao divide o forward**: os 15 das 09:34 correram o mesmo binario **943DB7CB** (v1.2.188 em memoria desde 06:01); o disco 5C99 (969 944 B, 10:25:59, metaeditor 0 errors/32823 ms) nasceu depois. Forward de 09/11 00:05 mede **943DB7CB6955299C6A470141B942BC54**.

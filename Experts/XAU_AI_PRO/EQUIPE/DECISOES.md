@@ -5862,3 +5862,49 @@ Job: `Profiles\Tester\ALFA_G56_3M.ini` + `DELTA_186_A.set`, XAUUSD **H1**, model
 - Sem reanexo de frota, sem ordem, sem alteracao de risco.
 
 **GATE_REAL continua 2 de 11 e o forward 0 de 30. Nao existe 10/10.**
+
+## D-109 | CMD | 2026-11-08 11:45 | P1.3488 fechado, origem das 09:34 identificada, correcções DELTA aplicadas
+
+**Contexto:** handoff do ALFA (RELATORIOS/20261108_ALFA_PARA_DELTA_E_CMD.md) + handoff do DELTA (RELATORIOS/20261108_PARA_CMD.md). LOCK LIVRE as 10:59, tomado pelo CMD para fechar o turno.
+
+### 1. P1.3488 - FECHADO (PS 5.1 + /api/health)
+
+Causa dupla, confirmada por findstr as 11:36 e leitura dos 4 ficheiros:
+- (a) `-SkipHttpErrorCheck` nao existe em PS 5.1 -> o binding falhava e caia no catch -> DOWN falso;
+- (b) `/api/health` nao e prova de vida (401 sem token, 404 com token).
+
+Correcao (3 ficheiros, 5 ocorrencias): portado o `Get-Gateway` do `agente-briefing.ps1` (TcpClient 9011 + qualquer HTTP devolve UP; sem `-SkipHttpErrorCheck`). `dono-mandato.ps1` ja' nao depende do token do `.env` para provar vida (nunca imprime o token, como exige o cabeçalho do script).
+
+Testado nos dois motores:
+- `powershell -NoProfile -File tools/mcp-check.ps1` -> **11 OK, 0 falhas** (antes: 10 OK, 1 falha canal - na realidade o canal era o proprio DOWN falso)
+- `powershell -NoProfile -File tools/ordem-master.ps1 estado` -> `gateway 9011 : HTTP 401 (modo LEITURA)`
+- `pwsh -NoProfile -File tools/mcp-check.ps1` -> OK
+- Parse 0 erros nos 3; `findstr SkipHttpErrorCheck` so' encontra comentarios que explicam a remocao.
+
+Nota de processo: `sync-agent.ps1 id` deu P1.4617 para o P1 (o formula somava base 1130 ao maximo 3487 = 4617). Corrigido a mao no IDS.md para **P1.3488**, com a serie P1.34xx do DELTA/ALFA. E' defeito do gerador de IDs, a registar como P1 futuro, nao afecta este fecho.
+
+### 2. Origem das [START] das 09:34 (investigado, nao inventado)
+
+Journal Experts 08/11: **46 starts**: 05:40 = 15 (v1.2.187, D-106), 06:01 = 16 (v1.2.188, D-107), **09:34 = 15 (v1.2.188)**. A contagem do ALFA (15+16) esta invertida por 1 linha: as 06:01 o USDCLP fez STOP motivo=7 as 06:01:45.485 e START as 06:01:45.682 e outra vez as 06:01:54.491 - sao 16 linhas para 15 graficos.
+
+Terminal log: **so' dois starts** - 05:40:05 e **09:34:10**.2 sem nenhum `exit with code / stopped / shutdown` entre 06:01 e 09:34. Logo a instancia anterior nao fechou graciosamente (kill/abrupt); nao ha' [STOP] dos EAs entre 06:01:51 e 09:34:28. Nenhum agente regista reanexo, compile ou restart as 09:34 (SYNC_LOG/PRESENCA vazios nessa janela; o LOCK das 10:22 e' posterior). Conclusao honesta: **restart externo nao atribuivel a nenhum agente** (DONO manual ou sistema). Nao divide o forward por dois builds: os 15 das 09:34 correram o **mesmo binario 943DB7CB** (v1.2.188 em memoria desde 06:01); o disco 5C99 so' nasceu as 10:25:59, depois. Forward de 09/11 00:05 mede **943DB7CB6955299C6A470141B942BC54** (970 168 B, 05:59:42). 5C99AF0C (969 944 B) e' artefacto de build em disco (metaeditor.log: 0 errors, 32823 ms, modo build_project vs compile_file) e nao substitui a declaracao.
+
+### 3. Quatro correcções do DELTA aplicadas
+
+1. **TOTAL= existe mas e' raro.** P1.3476 reescrito: a taxa de emissao e' insuficiente (gate duplo `logOnce && DecisionLogDue(...,900)` no mesmo tick; amostrinhas de 8 dias, todas TOTAL=100.00 pre-v1.2.184). Nao valida o score actual.
+2. **PTS= nunca foi impresso** (0 amostras em qualquer log). A fonte actual imprime `PTS=<pts>` mas nenhum journal o mostra. Nao escrever que ja foi observado em producao.
+3. **Q-079/B nunca foi exercitado**: 57 TREND CONTRA OK = 100% fallback, `dentro da folga` = 0. Quem apresentar 57 como sucesso do Q-079/B esta errado. Fix D-086 sem amostra viva (mercado fechado); a janela forward e' o primeiro teste real. Regra de aceitacao: so' conta a linha de TREND CONTRA OK com `dentro da folga`.
+4. **Tres hashes, um declarado.** forward = 943DB7CB (v1.2.188 em producao); 10212E87 (v1.2.187 backup); 5C99AF0C (artefacto de disco). "Binario x fonte | BATEM" passa a dizer qual dos dois compara.
+
+### 4. Git add largo (86d1ac96) - reconhecido
+
+O commit 86d1ac96 levou a alteracao do agente-briefing.ps1 e o LOCK.md do ALFA sem decisao. Nada se perdeu (D-108 regularizou em bd25a889), mas viola "quem faz nao assina o que fez". Processo: commits explicitos com paths, nunca `git add -A` (AGENTS.md). Feito aqui: 6 paths explicitos.
+
+### 5. INBOX
+
+Basta RELATORIOS/ como canonico. Nao existe INBOX_CMD.md/INBOX_DELTA.md (so' INBOX_DONO.md) - nao duplico em sessoes separadas sem necessidade.
+
+### 6. Estado
+
+GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 943DB7CB).Conta real proibida. Risco intocado. 0 reanexos, 0 ordens, 0 compiles neste D-109.
+

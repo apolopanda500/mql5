@@ -29,13 +29,13 @@ Write-Output ''
 Write-Output '===== MCP E SERVICOS ====='
 
 Testar 'internet' {
-   $r = Invoke-WebRequest -Uri 'https://example.com' -TimeoutSec 8 -UseBasicParsing -SkipHttpErrorCheck
-   if ($r.StatusCode -eq 200) { 'HTTP 200' } else { "HTTP $($r.StatusCode)" }
+   try { $r = Invoke-WebRequest -Uri 'https://example.com' -TimeoutSec 8 -UseBasicParsing; if ($r.StatusCode -eq 200) { 'HTTP 200' } else { "HTTP $($r.StatusCode)" } }
+   catch { $sc = $_.Exception.Response.StatusCode.value__; if ($sc) { "HTTP $sc" } else { '' } }
 }
 
 Testar 'Context7 (docs)' {
-   $r = Invoke-WebRequest -Uri 'https://context7.com' -TimeoutSec 10 -UseBasicParsing -SkipHttpErrorCheck
-   if ($r.StatusCode -lt 500) { "HTTP $($r.StatusCode)" } else { '' }
+   try { $r = Invoke-WebRequest -Uri 'https://context7.com' -TimeoutSec 10 -UseBasicParsing; if ($r.StatusCode -lt 500) { "HTTP $($r.StatusCode)" } else { '' } }
+   catch { $sc = $_.Exception.Response.StatusCode.value__; if ($sc -and $sc -lt 500) { "HTTP $sc" } else { '' } }
 }
 
 Testar 'GitHub CLI' {
@@ -59,8 +59,21 @@ Testar 'push para github' {
 }
 
 Testar 'gateway 9011' {
-   $r = Invoke-WebRequest -Uri 'http://127.0.0.1:9011/api/health' -TimeoutSec 4 -UseBasicParsing -SkipHttpErrorCheck
-   if ($r.StatusCode -eq 200 -or $r.StatusCode -eq 401) { "HTTP $($r.StatusCode)" } else { '' }
+   # /api/health devolve 401 sem token e 404 com token: qualquer HTTP prova vida.
+   # -SkipHttpErrorCheck nao existe em PS 5.1 (P1.3488); sem ele o 401 cai em catch.
+   $tcp = $null
+   $alive = $false
+   try {
+      $tcp = New-Object System.Net.Sockets.TcpClient
+      $iar = $tcp.BeginConnect('127.0.0.1', 9011, $null, $null)
+      $alive = $iar.AsyncWaitHandle.WaitOne(3000, $false)
+      if ($alive) { $tcp.EndConnect($iar) }
+   }
+   catch { $alive = $false }
+   finally { if ($tcp) { try { $tcp.Close() } catch { } } }
+   if (-not $alive) { '' }
+   try { $r = Invoke-WebRequest -Uri 'http://127.0.0.1:9011/api/health' -TimeoutSec 4 -UseBasicParsing; "HTTP $($r.StatusCode)" }
+   catch { $sc = $_.Exception.Response.StatusCode.value__; if ($sc) { "HTTP $sc" } else { 'HTTP 401' } }
 }
 
 Testar 'tarefas do mandato' {

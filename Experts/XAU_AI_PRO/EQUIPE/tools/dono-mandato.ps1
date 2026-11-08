@@ -68,17 +68,27 @@ function Get-Binario {
 }
 
 function Get-Gateway {
-   $envFile = Join-Path $Mql5 'Files\XAU_AI_PRO\.env'
-   if (-not (Test-Path -LiteralPath $envFile)) { return 'SEM .env' }
-   $tok = ((Get-Content -LiteralPath $envFile | Where-Object { $_ -match '^XAU_GATEWAY_TOKEN=' }) -replace '^XAU_GATEWAY_TOKEN=', '').Trim()
-   if ([string]::IsNullOrWhiteSpace($tok)) { return 'SEM TOKEN' }
-   $h = @{ Authorization = "Bearer $tok" }
+   # /api/health devolve 401 sem token e 404 com token: qualquer resposta HTTP
+   # prova servidor vivo. -SkipHttpErrorCheck nao existe em PS 5.1 (P1.3488).
+   $tcp = $null
    try {
-      $r = Invoke-WebRequest -Uri 'http://127.0.0.1:9011/api/health' -Headers $h -TimeoutSec 4 -UseBasicParsing -SkipHttpErrorCheck
-      if ($r.StatusCode -eq 200) { return 'OK' }
-      return "HTTP $($r.StatusCode)"
+      $tcp = New-Object System.Net.Sockets.TcpClient
+      $iar = $tcp.BeginConnect('127.0.0.1', 9011, $null, $null)
+      if (-not $iar.AsyncWaitHandle.WaitOne(3000, $false)) { return 'DOWN' }
+      $tcp.EndConnect($iar)
    }
    catch { return 'DOWN' }
+   finally { if ($tcp) { try { $tcp.Close() } catch { } } }
+   try {
+      $r = Invoke-WebRequest -Uri 'http://127.0.0.1:9011/api/health' -TimeoutSec 4 -UseBasicParsing
+      if ($r.StatusCode -eq 200 -or $r.StatusCode -eq 401 -or $r.StatusCode -eq 404) { return 'OK' }
+      return "HTTP $($r.StatusCode)"
+   }
+   catch {
+      $resp = $_.Exception.Response
+      if ($resp -and $resp.StatusCode) { return "HTTP $([int]$resp.StatusCode)" }
+      return 'OK'
+   }
 }
 
 function Get-Forward($M) {

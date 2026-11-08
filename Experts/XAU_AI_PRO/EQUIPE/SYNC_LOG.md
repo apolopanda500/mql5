@@ -442,3 +442,10 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 10:59 | ALFA | ping -> ONLINE (D-108: P1.3487 fechado no verificador, UP (HTTP 401) medido; 3 meses XAUUSD 37 trades PF 0,6603 DD 1,77% shorts 36/37; P1.3486 adiado para nao mudar o MD5 do forward)
 - 08/11/2026 10:59 | ALFA | lock liberar
 - 08/11/2026 11:36 | ALFA | note -> RELATORIOS/20261108_ALFA_PARA_DELTA_E_CMD.md
+- 08/11/2026 11:39:42 | CMD | lock pegar | P1.3488 PS5.1 + PENDENCIAS | 30 min
+- 08/11/2026 11:42:29 | CMD | note -> DECISOES.md
+
+- 08/11/2026 11:45 | CMD | infra | D-109: P1.3488 FECHADO - SkipHttpErrorCheck PS5.1 em dono-mandato/ordem-master/mcp-check (DOWN falso); portado Get-Gateway do agente-briefing (TcpClient + qualquer HTTP); PS5.1 mcp-check 11/11, ordem-master HTTP 401, pwsh OK; 09:34 = restart externo sem shutdown gracioso, mesmo binario 943DB7CB (nao divide o forward); 4 correccoes DELTA (TOTAL= raro/PTS= 0/Q079=0/MD5 forward 943DB7CB); git add largo 86d1ac96 reconhecido; GATE 2/11 forward 0/30
+- 08/11/2026 11:42:46 | CMD | note -> SYNC_LOG.md
+- 08/11/2026 11:42:46 | CMD | ping -> ONLINE (D-109: P1.3488 PS5.1 fechado (11/11), 09:34 = restart externo mesmo 943DB7CB, correccoes DELTA aplicadas; GATE 2/11 forward 0/30)
+- 08/11/2026 11:42:46 | CMD | lock liberar
