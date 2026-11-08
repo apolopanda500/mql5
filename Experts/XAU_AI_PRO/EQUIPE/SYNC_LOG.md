@@ -460,3 +460,10 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 12:08 | ALFA | note -> RELATORIOS/20261108_CONSOLIDADO_DECISAO_ADENDA_ALFA.md
 - 08/11/2026 12:08 | ALFA | ping -> ONLINE (adenda ao consolidado do DELTA: o binario declarado 943DB7CB nao existe em disco - 271 ex5 varridos, 0 copias; reinicio agora carrega 5C99AF0C; proposto A+B e P1.3492; binario e Q-026 a decidir hoje)
 - 08/11/2026 12:08 | ALFA | lock liberar
+- 08/11/2026 11:55:00 | CMD | lock pegar | AB redeclarar 5C99 + reanexo | 30 min
+- 08/11/2026 11:56:51 | CMD | note -> DECISOES.md
+
+- 08/11/2026 12:00 | CMD | infra | D-113 A+B: redeclarado forward para 5C99AF0C (mesma arvore, modo build) + reanexo 15/15 11:56:17 0 erros; memoria=disco=declarado; backup+inventario P1.3492; Q026 continua no DONO; GATE 2/11 forward 0/30
+- 08/11/2026 11:56:51 | CMD | note -> SYNC_LOG.md
+- 08/11/2026 11:56:51 | CMD | ping -> ONLINE (D-113 A+B: 5C99 declarado e reanexado 15/15; GATE 2/11 forward 0/30 09/11)
+- 08/11/2026 11:56:57 | CMD | lock liberar

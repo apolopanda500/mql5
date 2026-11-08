@@ -5935,3 +5935,26 @@ O perfil Q071 tem agora **16 charts** (chart16.chr 2 040 B, XAUUSD H1, **sem** E
 
 GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 943DB7CB). Conta real proibida. Risco intocado. 0 compiles, 0 reanexos, 0 ordens neste D-112.
 
+
+## D-113 | CMD | 2026-11-08 12:00 | A+B executado: forward redeclarado para 5C99AF0C e reanexado 15/15 (memoria == disco == declarado)
+
+**Contexto:** o DONO confirmou A+B depois da adenda do ALFA (o binario declarado 943DB7CB so' existia na memoria). D-112 (decisao A) fica substituido no ponto binario por esta D-113.
+
+### 1. Redeclaracao (GATE_REAL G11)
+
+- Novo MD5 declarado: **5C99AF0CDCE1E2C74D39270C21047607** (969 944 B, 10:25:59).
+- Justificacao escrita: **mesma arvore de fonte** (git limpo, 0 fontes tocadas desde 05:58:48; `metaeditor.log`: 0 errors, 32823 ms, modo `compile_file` vs `build_project`, 224 B de diferenca = modo de build, nao divergencia de codigo).
+- Backup: `Files\Backup\ex5\XAU_AI_PRO_1.2.188_5C99AF0C.ex5`; inventario por hash em `Files\Backup\ex5\INVENTARIO_20261108.txt` (P1.3492 proposta do ALFA implementada pelo CMD).
+- O 943DB7CB (970 168 B, carregado 09:34:28) era o mesmo codigo; desaparece da declaracao porque nao tem copia em disco. Nenhum outro MD5 entra na janela.
+
+### 2. Reanexo (medido)
+
+- Terminal fechado e reaberto; PID **9532** desde 11:56:05.
+- Journal 08/11: **15/15 `[START] XAU_AI_PRO v1.2.188` as 11:56:17-18**, **0 erros**; conta 113568614 demo, **12 636,32 USD, 0 posicoes, 0 ordens**; `chart13.chr` M5; `.ex5` em disco MD5 `5C99AF0C...`.
+- **Memoria == disco == declarado (5C99AF0C).** A dependencia de um ficheiro inexistente foi destruida.
+- 16 charts no perfil (chart16 sem EA, ALFA) mantidos - nao sao tocados.
+
+### 3. O que nao mudou
+
+Piso 45,0; P1.3486 adiado ate' 09/12 (muda MD5); Q-026 (janela do G5) continua escalado ao DONO e nao bloqueia o forward; Q-017/Q-013/Q-022 executam depois do forward. GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 5C99). Conta real proibida. 0 compiles, 0 ordens, risco intocado neste D-113.
+

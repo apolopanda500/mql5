@@ -172,3 +172,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-08 11:42:46 | CMD | ONLINE | D-109: P1.3488 PS5.1 fechado (11/11), 09:34 = restart externo mesmo 943DB7CB, correccoes DELTA aplicadas; GATE 2/11 forward 0/30
 
 2026-11-08 11:52:34 | CMD | ONLINE | D-112: decisao A confirmada - forward 943DB7CB piso 45 09/11 00:05, 0 toques; GATE 2/11
+
+2026-11-08 11:56:51 | CMD | ONLINE | D-113 A+B: 5C99 declarado e reanexado 15/15; GATE 2/11 forward 0/30 09/11
