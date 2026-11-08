@@ -196,13 +196,28 @@ bool ScenarioTrendGate(string symbol, int signal, string &reason)
    // pouco e o portao lia contramao - o EA vetava o sinal que a regra
    // procura. Quanto melhor o pullback pela regra, mais certo o veto.
    //
-   // A folga NAO apaga a guarda: acima de `ScenarioTrendAtrSlack` ATR de
+   // A folga NAO apaga a guarda: ela isenta SO o teste da EMA200 (D-086,
+   // v1.2.187). O veto de tendencia formada (ScenarioCounterTrendMaxADX)
+   // vale tambem DENTRO da banda; acima de ScenarioTrendAtrSlack ATR de
    // distancia continua a ser contramao e segue as regras abaixo (ADX e
-   // cenario). Sem leitura de EMA ou de ATR, o rigor antigo fica intacto.
+   // cenario). Sem leitura de EMA, de ATR ou de ADX, o rigor antigo fica
+   // intacto.
    //==================================================
    if(!EnableAdaptiveTrendGate)
    {
       reason = "contramao vetada (EnableAdaptiveTrendGate=false)";
+      return(false);
+   }
+
+   // v1.2.187 - D-086: o ADX passou a ser lido ANTES da folga Q-079/B.
+   // A folga isenta apenas o teste da EMA200; o veto de tendencia formada
+   // (ScenarioCounterTrendMaxADX) continua valendo DENTRO da banda.
+   double adx = GetADX(symbol);
+
+   // ADX <= 0 = sem leitura: mantem o rigor antigo (contramao veta).
+   if(adx <= 0.0)
+   {
+      reason = "contramao vetada | ADX indisponivel";
       return(false);
    }
 
@@ -224,31 +239,22 @@ bool ScenarioTrendGate(string symbol, int signal, string &reason)
 
          if(MathAbs(bidRef - emaRef) <= folga)
          {
-            reason = "contramao dentro da folga de " +
-                     DoubleToString(ScenarioTrendAtrSlack, 2) +
-                     " ATR | dist=" + DoubleToString(bidRef - emaRef, 5) +
-                     " | ATR=" + DoubleToString(atrRef, 5) +
-                     " | Q-079/B";
-            return(true);
+            // v1.2.187 - D-086: a folga isenta so o teste da EMA200; o veto
+            // de tendencia formada continua valendo DENTRO da banda.
+            if(adx < ScenarioCounterTrendMaxADX)
+            {
+               reason = "contramao dentro da folga de " +
+                        DoubleToString(ScenarioTrendAtrSlack, 2) +
+                        " ATR | dist=" + DoubleToString(bidRef - emaRef, 5) +
+                        " | ATR=" + DoubleToString(atrRef, 5) +
+                        " | Q-079/B | ADX=" + DoubleToString(adx, 1);
+               return(true);
+            }
          }
       }
    }
 
    // Daqui para baixo: sinal CONTRA a tendencia de referencia.
-   if(!EnableAdaptiveTrendGate)
-   {
-      reason = "contramao vetada (EnableAdaptiveTrendGate=false)";
-      return(false);
-   }
-
-   double adx = GetADX(symbol);
-
-   // ADX <= 0 = sem leitura: mantem o rigor antigo (contramao veta).
-   if(adx <= 0.0)
-   {
-      reason = "contramao vetada | ADX indisponivel";
-      return(false);
-   }
 
    ENUM_MARKET_SCENARIO s = MarketScenarioDetect(symbol);
 

@@ -11,7 +11,7 @@
 // escreve no log, e que a tela mostra, dizia uma versao que nao existe mais.
 // Este modulo nao esta na lista de manifestos do `sync_version.py`, entao a
 // divergencia nao era detectada por `--check`.
-#define EA_VERSION_STRING "1.2.186"
+#define EA_VERSION_STRING "1.2.187"
 
 struct VersionInfo
 {

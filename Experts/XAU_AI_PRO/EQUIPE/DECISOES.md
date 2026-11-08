@@ -5519,3 +5519,73 @@ Sem elevacao nao se tocam; o MT5 gere-os.
 
 GATE_REAL **2 de 11**; forward **0/30**. Isto e' validacao sem erros, nao e'
 10/10: 10/10 continua a ser o alvo, nao um estado.
+
+## D-104 | ALFA | 2026-11-07 22:53 | D-086/Q-079/B fechado: a folga de 1 ATR passa a isentar SO a EMA200
+
+### 1. O que estava errado e como foi medido
+
+O DELTA pediu revisao independente (D-086) do portao `ScenarioTrendGate()` em
+`Filters/MarketScenario.mqh`. Por leitura do codigo, antes de tocar em nada: a
+banda Q-079/B fazia `return(true)` **antes** de qualquer leitura de ADX ou de
+cenario (bloco nas linhas 215-235; o `double adx = GetADX(symbol);` vivia na
+245, DEPOIS do bloco). Consequencia: dentro da banda a folga isentava **dois**
+vetos, nao um - o `adx >= ScenarioCounterTrendMaxADX` e o `SCENARIO_VOLATILE` -
+enquanto o cabecalho do proprio bloco prometia que "a folga NAO apaga a
+guarda". O comentario descrevia uma intencao que o codigo nao cumpria.
+
+### 2. Correcao aplicada (v1.2.187)
+
+- `double adx = GetADX(symbol);` e o veto `adx <= 0.0` subiram para ANTES da
+  banda: sem leitura de ADX nao ha' folga, como ja' nao havia sem EMA ou ATR.
+- Dentro de `if(MathAbs(bidRef - emaRef) <= folga)` o `return(true)` passou a
+  exigir `adx < ScenarioCounterTrendMaxADX`. Com ADX formado o fluxo cai no veto
+  que ja' existia (`contramao vetada | tendencia formada`), portanto a mensagem
+  ao operador nao mudou.
+- Removida a guarda `if(!EnableAdaptiveTrendGate)` duplicada e **inalcancavel**
+  (linhas 238-242) e a leitura antiga de ADX que vivia abaixo dela.
+- A mensagem de entrada na folga passou a publicar `ADX=` para a decisao ficar
+  auditavel no journal.
+
+### 3. Efeito na decisao (nenhum input alterado)
+
+| Caso | Antes | Agora |
+|---|---|---|
+| Alinhado com a EMA200 | entra | entra |
+| ADX indisponivel / <= 0 | veta | veta (avaliado mais cedo) |
+| Dentro da banda, ADX < 22 | entra | entra |
+| Dentro da banda, ADX >= 22 | **entra** | **veta** |
+| Fora da banda | veta (ADX + cenario) | veta (igual) |
+
+`ScenarioTrendAtrSlack` continua 1.0 e com o mesmo significado para o teste da
+EMA200. Nenhum limite de risco, lote, alvo, stop, spread, preco ou regra de
+saida foi tocado: o EA decide sobre o mesmo mercado, so' deixa de entrar contra
+uma tendencia ja' formada dentro da folga.
+
+### 4. Compilacao (por `compile-ea.ps1`, com backup previo)
+
+| Item | Resultado |
+|---|---|
+| Result | `0 errors, 0 warnings, 22865 ms elapsed, cpu='X64 Regular'` |
+| Backup previo | `Files\Backup\XAU_AI_PRO_v12187_20261107_224621.ex5`, 967 328 B, MD5 `10212E8702FB0A14D070240D3BA22B85` |
+| Binario novo | 966 012 B, 07/11 22:46:45, MD5 `CAE840F626AD6BD2FCCF6351FC4D4EAB` |
+| Versoes | `#property version "1.387"`, `EV_VERSION_STRING "1.2.187"`, `EA_VERSION_STRING "1.2.187"` |
+
+Nota: o backup saiu com o nome `v12187` porque o script le `EA_VERSION_STRING`
+**ja' actualizado**; o ficheiro la' dentro e' o binario anterior, como o tamanho
+(967 328 B) e o MD5 provam.
+
+### 5. Incidente de edicao (registado para nao se repetir)
+
+O primeiro `replace_text_in_file` (single-line, termo `double adx = GetADX(symbol);`)
+atingiu a **primeira** ocorrencia do ficheiro - a da linha 82, dentro de
+`MarketScenarioDetect()` - e apagou essa declaracao em vez da da linha 245. Foi
+detetado por `Select-String` logo depois e reparado; a prova de que o ficheiro
+voltou ao original foi `git diff` **vazio** antes de aplicar o D-086. Regra: com
+termos repetidos, ancorar por linha ou por bloco, nunca por primeira ocorrencia.
+
+### 6. Estado honesto
+
+O binario novo **nao esta' em nenhum grafico**: a frota de 15 continua a correr
+o v1.2.186 (MD5 `10212E...`). Reanexar e' do CMD. GATE_REAL continua **2 de 11**
+e forward **0/30**: isto e' uma correcao de portao compilada e verificada, nao
+e' 10/10.
