@@ -25,9 +25,26 @@ if (-not (Test-Path -LiteralPath $python)) {
    exit 1
 }
 
-$ouvindo = Get-NetTCPConnection -LocalPort $porta -State Listen -ErrorAction SilentlyContinue
-if ($ouvindo) {
-   Write-Output "OK: porta $porta ja esta a ouvir (pid $($ouvindo[0].OwningProcess)); nada a fazer."
+# Neste host o socket do uvicorn nao aparece com State=Listen no CIM
+# (Get-NetTCPConnection -State Listen devolve vazio). Prova-se a porta com uma
+# ligacao TCP real; e o PID vem da tabela sem filtro de estado.
+function Test-PortaAberta([int]$p) {
+   $cli = New-Object System.Net.Sockets.TcpClient
+   $ok = $false
+   try { $ok = $cli.ConnectAsync('127.0.0.1', $p).Wait(800) } catch { $ok = $false }
+   finally { $cli.Dispose() }
+   return $ok
+}
+
+$conn = Get-NetTCPConnection -ErrorAction SilentlyContinue |
+   Where-Object { $_.LocalPort -eq $porta -and $_.OwningProcess -gt 0 } |
+   Select-Object -First 1
+if ($conn) {
+   Write-Output "OK: porta $porta ja esta a ouvir (pid $($conn.OwningProcess)); nada a fazer."
+   exit 0
+}
+if (Test-PortaAberta $porta) {
+   Write-Output "OK: porta $porta ja responde (pid nao exposto pelo CIM); nada a fazer."
    exit 0
 }
 
@@ -51,7 +68,7 @@ $limite = (Get-Date).AddSeconds(45)
 while ((Get-Date) -lt $limite) {
    Start-Sleep -Milliseconds 700
    $vivo = $false
-   if (Get-NetTCPConnection -LocalPort $porta -State Listen -ErrorAction SilentlyContinue) { $vivo = $true }
+   if (Test-PortaAberta $porta) { $vivo = $true }
    if (-not $vivo) {
       # 401 sem token tambem prova que o servico esta vivo a responder.
       try {

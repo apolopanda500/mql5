@@ -5408,3 +5408,54 @@ periodo fazem-se no `.chr` com o terminal fechado ou pelo proprio utilizador.
 GATE_REAL **2 de 11**; forward **0/30** (09/11 00:05); gateway vivo em leitura
 (`/health` 401 sem token); conta 113568614 em 12 636,32 USD, 0 posicoes, 0 ordens;
 15 graficos `v1.2.186`; `USDBRL,M5` provado. Risco intocado. Nada aqui e' 10/10.
+
+## D-102 | CMD | 2026-11-07 22:35 | P1.3477 fechado: o CIM nao ve o socket do uvicorn como Listen e o keepalive duplicava o gateway a cada 5 min
+
+**Contexto:** validacao total pedida pelo DONO. O log `gateway_9011.err.log` voltou
+a ter `[Errno 10048]` as 22:28:05, o que provou que o problema do P1.3477 nao era
+so' o arranque manual.
+
+### 1. Causa raiz (medida)
+
+| Prova | Resultado |
+|---|---|
+| `Get-NetTCPConnection -LocalPort 9011 -State Listen` | vazio |
+| `.NET IPGlobalProperties.GetActiveTcpListeners()` na porta 9011 | vazio |
+| `Get-NetTCPConnection` sem filtro de estado | `127.0.0.1:9011 -> 0.0.0.0:0`, `OwningProcess=8992`, **sem State** |
+| `TcpClient.Connect('127.0.0.1',9011)` | **True** |
+| `GET /health` | **401** (servico vivo, modo leitura) |
+| `netstat -ano` | so' TIME_WAIT; nenhuma linha LISTENING |
+
+O socket do uvicorn neste host nao e' reportado como `Listen` pelo CIM. O
+`gateway-start.ps1` usava exactamente esse filtro como teste de idempotencia:
+todas as 5 minutos concluia que a porta estava livre, arrancava uma segunda
+instancia e essa instancia morria com `10048`. O erro era falso, mas repetia-se
+e reescrevia o `gateway_9011.err.log`.
+
+### 2. Correcao (sem tocar em risco)
+
+`EQUIPE\tools\gateway-start.ps1`:
+- teste de porta por ligacao TCP real (`TcpClient`, 800 ms) em vez de
+  `Get-NetTCPConnection -State Listen`;
+- PID mostrado a partir da tabela sem filtro de estado;
+- o mesmo teste passou a ser usado no ciclo de espera de 45 s.
+
+Teste depois da correcao: `OK: porta 9011 ja esta a ouvir (pid 8992); nada a
+fazer.`, 1 unico `uvicorn` vivo, `gateway_9011.err.log` sem nova escrita.
+
+### 3. Outros achados da validacao
+
+| Item | Estado |
+|---|---|
+| 15 graficos | 15/15 `v1.2.186`; 14 em H1 + USDBRL em M5; inputs `AllowTradeWithoutAI=true`, `MinMarketScoreNoAI=45.0`, `MinMarketScore=65.0`, `expertmode=5` nos 15 |
+| Binario | `XAU_AI_PRO.ex5` 967 328 B, MD5 `10212E8702FB0A14D070240D3BA22B85`, igual ao dos A/B |
+| Conta | 113568614 demo, 0 posicoes, 0 ordens, 12 636,32 USD |
+| Canal | 5 ficheiros LF, sem BOM; `sync-agent` OK; LOCK livre |
+| CI | `c633c721` CI MQL5 success e CodeQL success |
+| Tarefa `XAU_AI_PRO_Dashboard` | **sem proxima execucao** (trigger unico em 01/09/2026, `LastRunTime` 02/09/2026); nao conta como activa -> P1.3482 |
+| Processos tester | 4 orfaos de 20:26 (2 MetaTester64 + 2 metatester64) resistem a `Stop-Process -Force` sem admin -> P1.3483 |
+
+### 4. Estado
+
+GATE_REAL **2 de 11**; forward **0/30** (09/11 00:05); gateway OK em leitura;
+P1.3477 **fechado**. Risco intocado. Nada aqui e' 10/10.
