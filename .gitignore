@@ -49,6 +49,7 @@ Thumbs.db
 # --- MetaTrader Auto-generated Profiles ---
 # (arquivos criados/alterados automaticamente pelo terminal)
 Profiles/Charts/**/*.chr
+Profiles/Charts/**/*.chr.bak*
 Profiles/Charts/**/*.wnd
 Profiles/deleted/
 Profiles/Tester/*.ini
