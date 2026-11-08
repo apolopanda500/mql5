@@ -639,6 +639,29 @@ bool AllowTradeEx(
          "VALIDATION: "+
          ((g_validationLastBlock=="")?"sem detalhe":g_validationLastBlock);
 
+      //--------------------------------------------------
+      // v1.2.188 (08/11/2026) - P1.139
+      // O PASSO 1 DO AllowTradeEx VETAVA EM SILENCIO.
+      // MEDIDO (D-079/DELTA): 1 576 sinais no dia, 1 576 entraram em
+      // AllowTradeEx e 0 passaram, e o passo da VALIDACAO era o unico dos
+      // gates que devolvia false sem escrever a causa por inteiro - a razao
+      // real do veto (TREND, SPREAD, AI, SESSION...) ficava so no contador
+      // interno. Os passos 2 (NEWS) e 2c (MARKET INTEL) ja imprimiam
+      // "DECISION BLOCKED"; este passa a imprimir o mesmo, com o motivo.
+      // No maximo 1 linha por hora por CONTA e por simbolo+motivo, com o
+      // motivo novo a sair na hora. A tag reusa ValidationGateTag (ja
+      // saneada para nome de ficheiro, P2.15) com prefixo proprio, para nao
+      // gastar a vez da linha [VALIDATION] BLOCK escrita pelo ValidateTrade.
+      // So impressao: nenhum passo, condicao, limite, lote, alvo, stop,
+      // spread, preco, regra de entrada ou de saida muda.
+      //--------------------------------------------------
+      string motivoVeto = (g_validationLastBlock == "" ? "sem detalhe" : g_validationLastBlock);
+
+      if(AccountLogGatePodeImprimir("dblock_" + ValidationGateTag(symbol, motivoVeto), 3600))
+         Print("DECISION BLOCKED | VALIDATION | Symbol=", symbol,
+               " | Signal=", signal,
+               " | Reason=", reason);
+
       return false;
    }
 
