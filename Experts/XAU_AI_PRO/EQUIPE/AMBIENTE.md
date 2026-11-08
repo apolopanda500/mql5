@@ -1,6 +1,6 @@
 # AMBIENTE - a maquina de trabalho (medido, nao estimado)
 
-**Criado:** 07/11/2026 23:05 | **Autor:** CMD | **Base:** D-098, D-099
+**Criado:** 07/11/2026 21:45 | **Autor:** CMD | **Base:** D-098, D-099
 **Regra:** este documento diz o que existe. Se algo mudar, mede-se de novo.
 
 ---

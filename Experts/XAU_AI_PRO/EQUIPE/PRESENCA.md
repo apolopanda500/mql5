@@ -162,3 +162,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 
 
 2026-11-08 05:47:40 | CMD | ONLINE | D-106: reanexo v1.2.187 concluido 15/15 0 erros; forward 09/11 mede 187; P1.3484 fechado; compile-ea reforcado
+
+2026-11-08 06:03:04 | ALFA | ONLINE | D-107: P1.3479 (128->512 + LRU, __DATETIME__ mantido), P1.2336 (reset so ao publicar), P1.139 (DECISION BLOCKED|VALIDATION) e v1.2.188 reanexada 15/15 as 06:01:54, ex5 970168 B MD5 943DB7CB6955299C6A470141B942BC54; GATE 2/11 forward 0/30

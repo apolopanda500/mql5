@@ -5680,3 +5680,106 @@ perguntou qual binario entra no forward. O CMD decidiu e executou o reanexo.
 GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, v1.2.187). Conta real
 proibida. LOCK tomado para `reattach`, libertado em seguida.
 
+
+## D-107 | ALFA | 2026-11-08 06:12 | P1.3479 / P1.2336 / P1.139 fechados no codigo e v1.2.188 reanexada 15/15 (medido)
+
+**Contexto:** o DONO autorizou (a) P1.3479 nas tags `__DATETIME__`, (b) P1.2336 e
+P1.139 e (c) o reanexo. Tres defeitos de OBSERVABILIDADE: nenhum altera sinal,
+risco ou parametro de risco.
+
+### 1. P1.3479 - saturacao do log-gate no Strategy Tester (causa medida, nao suposta)
+
+A hipotese original ("remover `__DATETIME__` das 7 tags do ATR liberta 105->7
+vagas") foi **REFUTADA pela medicao**: listando `Common\Files\XAU_AI_PRO\loggate_*`
+o sufixo e CONSTANTE por build (`loggate_atr_no_read_XAUUSD_1793915847.bin`
+repete-se em todas as chamadas daquele build; 1793893014 / 1793915847 /
+1793979218 / 1794001056 sao impressoes digitais de build). Logo `__DATETIME__` e
+macro de COMPILACAO e nao relogio: custa ZERO vagas a mais.
+
+O defeito real era outro, e foi contado: censo de tags em todo o EA =
+**94 chamadas / 83 bases de tag**; 7 tags do ATR x 15 simbolos = 105 vagas so
+dessa familia, mais ~20 familias por simbolo -> universo potencial **> 400** com
+**128** vagas. Ao encher, o ramo antigo NAO registava a tag e devolvia `true`:
+desse instante em diante toda a tag nova falava sem throttle. Foi assim que
+`[TREND] LEITURA SUSPEITA` saiu **278 536** vezes (USDSEK 73 464) com janela de
+3600 s (85x acima do maximo teorico).
+
+Correcao (`Monitoring/AccountLogGate.mqh`): `TESTER_GATE_MAX_TAGS` 128 -> **512**
+e, ao esgotar, **evicao LRU** (padrao ja provado no P1.114 do `Monitoring/DiagGate.mqh`),
+com um aviso `[DIAG] LOGGATE TESTER tabela cheia | ... | evacuacoes=N` no maximo
+1x/hora. Antes a saturacao era **invisivel**; agora e datada. `__DATETIME__`
+mantido de proposito (P1.121).
+
+### 2. P1.2336 - `[SCANNER] RESUMO ... trades=0` em 7 429 janelas
+
+Causa: os contadores de janela (`g_scanSimbolos/g_scanSinais/g_scanTrades/g_scanQtd[]`)
+eram zerados em TODOS os ciclos (~60 s), mas a linha so era publicada quando o
+portao a deixava falar (`SCAN_SILENT_SEC` = 15 min); a linha publicada descrevia
+o ultimo ciclo, nao o intervalo anunciado. Correcao (`Core/MarketScanner.mqh`):
+o reset passou para dentro de `if(publicouResumo)`; `g_scanJanela = now` continua
+incondicional porque e ele que marca os 60 s da varredura.
+
+### 3. P1.139 - passo 1 do `AllowTradeEx` vetava em silencio
+
+1 576 sinais no dia, 1 576 entraram em `AllowTradeEx`, 0 passaram, e o passo
+VALIDACAO era o unico gate que fazia `return false` sem escrever a causa por
+inteiro. Correcao (`Core/DecisionEngine.mqh`): passa a imprimir
+`DECISION BLOCKED | VALIDATION | Symbol=... | Signal=... | Reason=VALIDATION: <motivo>`,
+com throttle 3600 s por conta e por simbolo+motivo (motivo novo fala de imediato),
+usando `ValidationGateTag(symbol, motivo)` com prefixo `dblock_` para NAO consumir
+a vaga do `[VALIDATION] BLOCK` do `ValidateTrade`.
+
+### 4. Versao e compilacao (0 errors / 0 warnings)
+
+Fonte unica tripla alinhada: `#property version "1.388"` (XAU_AI_PRO.mq5),
+`EA_VERSION_STRING "1.2.188"` (Enterprise/VersionManager.mqh, com changelog em
+`m_current.changes`) e `EV_VERSION_STRING "1.2.188"` (Monitoring/EventEmitter.mqh,
+consumido por `Integration/ExternalBridge.mqh:90 EB_Version()`).
+
+Compilado por `EQUIPE\tools\compile-ea.ps1` (unico caminho autorizado):
+backup `XAU_AI_PRO_v12188_20261108_055917.ex5` (966 012 B, MD5 `CAE840F6...`),
+**0 errors, 0 warnings, 24 856 ms**, `.ex5` novo **970 168 B**, escrito
+08/11 05:59:42, **MD5 `943DB7CB6955299C6A470141B942BC54`**.
+
+### 5. Reanexo (c) - medido, sem automacao de foco (D-103)
+
+`profile_apply` do perfil **selecionado** e recusado pelo terminal (`ok=false`);
+aplicar um perfil **nao selecionado** funciona. Sequencia usada:
+
+1. `chart_apply_template` com template salvo do proprio grafico (teste em USDCLP)
+   -> `[STOP] motivo=7` + `[START] v1.2.188` as **06:01:45**;
+2. `profile_add` de um perfil temporario (para o Q071 deixar de ser o selecionado);
+3. `profile_apply XAU_AI_PRO_15CHARTS_Q071` -> **15 `[START] XAU_AI_PRO v1.2.188`
+   as 06:01:54** (XAUUSD, USDBRL, USDCHF, USDRUB, USDSGD, GBPUSD, NZDUSD,
+   USDCAD, USDCNH, USDCZK, USDJPY, USDSEK, USDCOP, USDCLP, AUDUSD);
+4. limpeza: perfis temporarios `XAU_AI_PRO_15CHARTS_R12188` e
+   `XAU_AI_PRO_REATACH_TMP` apagados, template `REATACH_R12188_USDCLP.tpl`
+   apagado; `XAU_AI_PRO_15CHARTS_Q071` continua o perfil selecionado.
+
+Sem `taskkill`, sem reinicio do terminal, sem teclado/rato. Zero ordens, conta demo
+flat, mercado fechado (`trade_server_last_known_time` 06/11 23:59:59).
+
+**Licao operacional (para CMD e DELTA):** o leitor de journal do MCP fica atras do
+ficheiro. As 06:0x devolvia `records_count: 0` para uma janela que ja continha 15
+`[START]` no `MQL5\Logs\<data>.log`. Prova de reanexo faz-se no ficheiro de log,
+nao pelo journal do MCP.
+
+### 6. Entrega ao DELTA (aceitacao, nao assinatura)
+
+Binario congelado para o forward de 09/11 00:05: **MD5 `943DB7CB6955299C6A470141B942BC54`**
+(`EA_VERSION_STRING` 1.2.188, `#property` 1.388). Ficam tres medicoes para o DELTA
+fechar, cada uma com criterio escrito:
+
+- **P1.3479** - sem nova inundacao de `[TREND] LEITURA SUSPEITA` (ordem de grandeza
+  ~1 centena/dia em vez de 278 536) e, se houver saturacao, **exactamente uma**
+  linha `[DIAG] LOGGATE TESTER tabela cheia` por hora;
+- **P1.2336** - `[SCANNER] RESUMO ... trades=N` com `N != 0` numa janela em que
+  houve deals, e `N` coerente com o intervalo anunciado (15 min);
+- **P1.139** - `DECISION BLOCKED | VALIDATION | Symbol=... | Signal=... | Reason=VALIDATION: <motivo>`
+  presente, no maximo 1/hora por conta e por simbolo+motivo.
+
+Nao ha nada de estrategia alterado: `RiskPercent`, `MaxDailyLossPercent`,
+`MaxDrawdownPercent`, `RiskPerTradeUsd`, `MaxRiskPerTradeUsd`,
+`MaxTotalRiskPercent` e `MinMarketScore` permanecem 1,0 / 10,0 / 50,0 / 2,0 / 8,0 /
+10,0 / 65,0. **GATE_REAL continua 2 de 11 e o forward 0 de 30: nao existe 10/10.**
+

@@ -428,3 +428,7 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 05:47:40 | CMD | note -> DECISOES.md
 - 08/11/2026 05:47:40 | CMD | lock liberar
 - 08/11/2026 05:47:40 | CMD | ping -> ONLINE (D-106: reanexo v1.2.187 concluido 15/15 0 erros; forward 09/11 mede 187; P1.3484 fechado; compile-ea reforcado)
+- 08/11/2026 06:02:37 | ALFA | lock pegar | reattach | 30 min
+- 08/11/2026 06:02:57 | ALFA | note -> DECISOES.md
+- 08/11/2026 06:03:04 | ALFA | ping -> ONLINE (D-107: P1.3479 (128->512 + LRU, __DATETIME__ mantido), P1.2336 (reset so ao publicar), P1.139 (DECISION BLOCKED|VALIDATION) e v1.2.188 reanexada 15/15 as 06:01:54, ex5 970168 B MD5 943DB7CB6955299C6A470141B942BC54; GATE 2/11 forward 0/30)
+- 08/11/2026 06:03:21 | ALFA | lock liberar

@@ -120,3 +120,4 @@ USADO | P1 | P1.3484 | DELTA | 07/11/2026 23:00 | binario do tester mudou a meio
 
 USADO | P1 | P1.3485 | DELTA | 08/11/2026 08:50 | DELTA_186_A.set nao replica a corrida A: 16 linhas diferentes do floor40 (1 vs 11 simbolos, SymbolsFromMarketWatch, EnableAutonomousMode ON vs OFF, telemetria/dataset OFF vs ON, piso 45 vs 40); sem .set com piso 45 anterior as 19:31:54, A nao e' reprodutivel do disco, so B/B'; receita comparavel para o v1.2.187 = XAI_ALFA_1186.ini + XAI_ALFA_floor40.set
 USADO | D | D-106 | CMD | 08/11/2026 05:46:58 | D-106 reanexo a v1.2.187, P1.3484 fechado, compile-ea.ps1 hardening .NET MD5
+USADO | D | D-107 | ALFA | 08/11/2026 06:02:40 | P1.3479/P1.2336/P1.139 fechados no codigo e v1.2.188 reanexada 15/15
