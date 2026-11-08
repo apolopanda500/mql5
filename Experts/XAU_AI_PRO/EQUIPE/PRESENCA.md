@@ -180,3 +180,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-08 12:38:54 | CMD | ONLINE | D-115: D-114 (DELTA) commitado + P1.3493 decidido; GATE 2/11
 
 2026-11-08 12:44:52 | DELTA | ONLINE | fecho operacional 12:44: fica so o forward 30 dias (09/11 00:05) - ex5 5C99AF0C, 15/15 graficos com EA, conta flat, git limpo d748d042, GATE 2/11 forward 0/30, 0 compiles 0 ordens
+
+2026-11-08 12:59:40 | CMD | ONLINE | D-116 autorizacao DONO executada (G9/G10/G5/G2/G1); GATE 2/11

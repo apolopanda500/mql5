@@ -486,3 +486,10 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 12:44:46 | DELTA | note -> SYNC_LOG.md
 - 08/11/2026 12:44:52 | DELTA | ping -> ONLINE (fecho operacional 12:44: fica so o forward 30 dias (09/11 00:05) - ex5 5C99AF0C, 15/15 graficos com EA, conta flat, git limpo d748d042, GATE 2/11 forward 0/30, 0 compiles 0 ordens)
 - 08/11/2026 12:44:52 | DELTA | lock liberar
+- 08/11/2026 12:56:18 | CMD | lock pegar | Q-026 G9 G10 G2 G1 autorizados DONO | 60 min
+- 08/11/2026 12:59:39 | CMD | note -> DECISOES.md
+
+- 08/11/2026 13:00 | CMD | infra | D-116 autorizacao DONO executada: G9 3.0/6.0/0.5 (15 chr + tester), G10 Symbols=15 (EURUSD fora, 5 extras dentro), G5 escalado janela 8 meses, G2 servico bloqueado sem admin (keepalive 5min mantem), G1 autorizado sem conta aberta; 0 compiles MD5 5C99 preservado; GATE 2/11 forward 0/30
+- 08/11/2026 12:59:40 | CMD | note -> SYNC_LOG.md
+- 08/11/2026 12:59:40 | CMD | ping -> ONLINE (D-116 autorizacao DONO executada (G9/G10/G5/G2/G1); GATE 2/11)
+- 08/11/2026 13:02:37 | CMD | lock liberar

@@ -5984,3 +5984,38 @@ Q-026/G5, Q-017/G9 (declarar <=3/<=6/<=0.5; em vigor 10.0/50.0/1.0), Q-013/G10 (
 
 GATE_REAL **2 de 11**; forward **0 de 30** (MD5 `5C99AF0C`). Conta real proibida. 0 compiles, 0 ordens, risco intocado neste D-115.
 
+
+## D-116 | CMD | 2026-11-08 13:00 | Autorizacao DONO executada: G9 no limite, G10 coerente, G5 escalado, G2/G1 registados sem tocar binario
+
+**Contexto:** o DONO autorizou por escrito "a destrava r e corrigr todos" (Q-026/G5, Q-017/G9, Q-013/G10, Q-022/G2, G1) antes do periodo de 30 dias. Forward ainda nao comecou (0/30, 09/11 00:05). MD5 **5C99AF0C** intocado (0 compiles, 0 fontes).
+
+### 1. Q-017/G9 - risco no limite (corrigido e verificado)
+
+| Input | Antes | Agora (15/15 graficos + tester) |
+|---|---|---|
+| `MaxDailyLossPercent` | 10.0 | **3.0** |
+| `MaxDrawdownPercent` | 50.0 | **6.0** |
+| `RiskPercent` | 1.0 | **0.5** |
+
+Metodo (AGENTES.md §9): terminal fechado (PID 9532), edicao dos 15 `chartNN.chr` do perfil `XAU_AI_PRO_15CHARTS_Q071` em UTF-16, backup `.bak.20261108_125818` por ficheiro, reabertura do terminal; `Profiles\Tester\XAU_AI_PRO.set` atualizado (UTF-16, backup `.bak.20261108_125825`). **0 erros**; conta flat 12 636,32; USDBRL M5.
+
+### 2. Q-013/G10 - universo coerente (corrigido)
+
+`Symbols=` alinhado aos simbolos com grafico: `XAUUSD,USDCLP,USDCOP,USDCZK,USDRUB,USDSGD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH` (15). `EURUSD` saiu da lista (declarado mas sem grafico) e os 5 extras (USDCLP/USDCOP/USDCZK/USDRUB/USDSGD) entraram. `SymbolsFromMarketWatch=true` intocado. Fonte (Config.mqh:973, SymbolManager.mqh:319) confirma: e' expandidor de universo, nao gate de trade.
+
+### 3. Q-026/G5 - janela escalado ao DONO, numero nao reescrito por agente
+
+37 trades em 3 meses = 12,3/mes -> 100 trades exige **~8,1 meses**. O dono autorizou "seja 100 trades ou novos testes com validacoes reais" - fica como criterio: **>= 100 trades e >= 8 meses de dados** (janela 08/03/2026 -> 08/11/2026 a partir de 09/11). O ALFA corre o backtest longo depois do inicio do forward (slot do tester livre); o gate mede trades do build que vai a real.
+
+### 4. Q-022/G2 - gateway como servico: autorizado, nao executavel sem admin
+
+Sessao nao elevada (`IsInRole(Administrator)=False`), sem NSSM; `sc.exe query` responde 1060 (servico inexistente). Nao se pode registar servico Windows sem elevacao (mesma parede do P1.3483). Mantem-se a tarefa `XAU_AI_PRO_GatewayKeepalive` (5 min, rc=0) + sessao cron da tarefa de relatorio; quando houver sessao elevada, um `sc.exe create` resolve. Nenhum DOWN falso desde D-109 (ordem-master HTTP 401, mcp 11/11).
+
+### 5. G1 - autorizado pelo DONO, sem conta aberta
+
+A autorizacao foi registada; **nenhuma conta real foi aberta nem tocada** (nao ha credenciais, e o mandato mantem a demo ate 11/11 + DELTA). G1 continua VERMELHO ate o operador fornecer a conta.
+
+### 6. Estado
+
+GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 `5C99AF0C`). Piso **45,0**. Conta real proibida. 0 compiles, 0 ordens, 0 fontes neste D-116.
+
