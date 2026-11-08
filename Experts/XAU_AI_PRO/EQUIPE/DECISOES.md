@@ -5908,3 +5908,30 @@ Basta RELATORIOS/ como canonico. Nao existe INBOX_CMD.md/INBOX_DELTA.md (so' INB
 
 GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 943DB7CB).Conta real proibida. Risco intocado. 0 reanexos, 0 ordens, 0 compiles neste D-109.
 
+
+## D-112 | CMD | 2026-11-08 11:56 | Decisao A confirmada pelo DONO: forward congela em 943DB7CB, piso 45,0, zero toques no fonte
+
+**Contexto:** o DONO confirmou a opcao A ("A recomendado") apos o consolidado do DELTA (RELATORIOS/20261108_CONSOLIDADO_DECISAO.md, D-111). Nao ha' nada de codigo a fazer antes das 09/11 00:05 - e' exactamente essa a decisao.
+
+### 1. O que fica congelado
+
+- **Binario do forward: 943DB7CB6955299C6A470141B942BC54** (970 168 B, 05:59:42). O 5C99AF0C em disco (969 944 B, 10:25:59, mesmo fonte, outro modo de build) **nao** substitui a declaracao. Se algum reanexo apanhar o ficheiro de disco, o MD5 muda a meio da janela - por isso nao se recompila nem se reanexa.
+- **Piso: 45,0** (MinMarketScoreNoAI). O 50,0 serve so' como cerca superior. floor50 nao se relanca (ocupa o slot do tester e o resultado do 40 ja' mostrou que baixar piora).
+- **P1.3486** (cabecalhos de versao) **adiado de proposito** ate depois do forward: mexer no source muda o MD5 declarado.
+- As 5 decisoes exclusivas do DONO (G5-Q026 janela, G9-Q017 risco, G10-Q013 universo, G2-Q022 servico, G1 conta real) ficam registadas no consolidado do DELTA e **nao** bloqueiam o inicio do forward; correm em paralelo. Corrige: a opcao C do consolidado "P1.3486+P1.3485 agora" e' rejeitada - obriga compile -> MD5 novo -> G11 volta a 0/30 (+30 dias).
+
+### 2. O que se mede no forward (primeira vez real)
+
+- **Q-079/B (D-086):** so' conta como exercicio a linha com `dentro da folga`. TREND CONTRA OK por fallback nao prova nada.
+- **G4 (24 h):** `[ATR] SEM LEITURA` = 0, `HANDLE MORTO` = 0 nos 15 graficos com EA.
+- **G3:** amostragem forcada de `[SCORE]` (a taxa natural e' de 4 linhas em 8 dias - nao se reproduz sem forca).
+- **G6/G11:** backtest ja' tem MaxDD 1,77 % (limite 8 %); falta o forward (0/30).
+
+### 3. Facto novo assumido (P1.3491 do DELTA)
+
+O perfil Q071 tem agora **16 charts** (chart16.chr 2 040 B, XAUUSD H1, **sem** EA, criado 10:57:16). Risco operacional zero - grafico sem EA nao abre ordem. A frase "15 graficos" do G10 passa a 16. **Nao foi removido**: e' grafico de medicao G4/G8 do ALFA e esta' em uso. Um futuro `profile_apply` reproduz os 16 - registado para quem gravar o perfil.
+
+### 4. Estado
+
+GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 943DB7CB). Conta real proibida. Risco intocado. 0 compiles, 0 reanexos, 0 ordens neste D-112.
+

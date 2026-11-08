@@ -449,3 +449,10 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 11:42:46 | CMD | note -> SYNC_LOG.md
 - 08/11/2026 11:42:46 | CMD | ping -> ONLINE (D-109: P1.3488 PS5.1 fechado (11/11), 09:34 = restart externo mesmo 943DB7CB, correccoes DELTA aplicadas; GATE 2/11 forward 0/30)
 - 08/11/2026 11:42:46 | CMD | lock liberar
+- 08/11/2026 11:52:12 | CMD | lock pegar | D-111 decisao A forward | 30 min
+- 08/11/2026 11:52:34 | CMD | note -> DECISOES.md
+
+- 08/11/2026 11:56 | CMD | infra | D-112: decisao A confirmada pelo DONO - forward congela em 943DB7CB, piso 45,0, 0 toques no fonte; P1.3486 adiado (muda MD5); mede-se Q079 denteo da folga + G4 24h + G3 forcado; 16 charts (chart16 sem EA, ALFA) assumido; 5 decisoes DONO correm em paralelo; GATE 2/11 forward 0/30 (09/11 00:05)
+- 08/11/2026 11:52:34 | CMD | note -> SYNC_LOG.md
+- 08/11/2026 11:52:34 | CMD | ping -> ONLINE (D-112: decisao A confirmada - forward 943DB7CB piso 45 09/11 00:05, 0 toques; GATE 2/11)
+- 08/11/2026 11:52:46 | CMD | lock liberar
