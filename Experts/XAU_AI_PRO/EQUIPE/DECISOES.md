@@ -6019,3 +6019,28 @@ A autorizacao foi registada; **nenhuma conta real foi aberta nem tocada** (nao h
 
 GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 `5C99AF0C`). Piso **45,0**. Conta real proibida. 0 compiles, 0 ordens, 0 fontes neste D-116.
 
+
+## D-116 | CMD | 2026-11-08 13:05 | G9 no limite e G10 coerente: risco 3.0/6.0/0.5 e Symbols=15 antes da janela
+
+**Contexto:** o DONO autorizou por escrito "a destrava r e corrigir todos": Q-026/G5, Q-017/G9, Q-013/G10, Q-022/G2, G1. Nada disto bate no binario (0 compiles, MD5 `5C99AF0C` intocado); os 30 dias de forward **nao** voltam a zero.
+
+### 1. Q-017/G9 - feito (15 graficos + tester, verificado)
+
+Os 15 `chartNN.chr` do perfil `XAU_AI_PRO_15CHARTS_Q071` e o `Profiles\Tester\XAU_AI_PRO.set` tem agora `MaxDailyLossPercent=3.0`, `MaxDrawdownPercent=6.0`, `RiskPercent=0.5`. Backup `.bak.20261108_125818` por chr e `.set.bak.20261108_125825` (UTF-16, BOM unico). Terminal reiniciado as 12:58:31 (PID 10424): **15/15 `[START] v1.2.188` as 12:58:59, 0 erros**, conta 113568614 sincronizada, 0 posicoes, 0 ordens, 12 636,32; USDBRL M5; `.ex5` MD5 `5C99AF0C` confirmado em disco. A guarda fisica continua acima da declarada, mas **o EA nao para aos 8 %** - com 6.0 para mais cedo, mas nao e' guardiao; quem trava e' o DONO.
+
+### 2. Q-013/G10 - feito (Symbols alinhado aos graficos, sem gatilho de trade)
+
+`Symbols=` (11 -> 15): `XAUUSD,USDCLP,USDCOP,USDCZK,USDRUB,USDSGD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH`. `EURUSD` saiu da lista (declarado sem grafico) e os 5 extras entraram - Universo efectivo == `Symbols` == `chartNN.chr` (15) por leitura direta, nao por lista. `SymbolsFromMarketWatch=true` intocado (Config.mqh:973); o EURUSD continua visivel em Market Watch mas ja nao e' sinal de trade falso. **Nao mexi em gatilhos** (validações, `AllowTradeWithoutAI`, `MinMarketScore` = 45,0/65,0); o Universo do forward e' exatamente o que esta no perfil.
+
+### 3. Q-026/G5 e G5 - decisao registada, nao reescrita por agente
+
+37 trades em 3 meses = 12,3/mes -> 100 trades exige **~8,1 meses**. Criterio mantido (`>= 100` trades **e** `>= 3` meses); a janela sobe para **12 meses** a partir de 09/11 (2025-11-09 a 2026-11-09, XAUUSD H1, `m1 ohlc`, `DELTA_186_A.set`) - run aberto a partir das 00:05. **Nao baixei a fasquia**; o DONO autorizou "seja 100 trades ou novos testes com validacoes reais" - opcao adotada: **100 trades com janela de 12 meses**. ALFA confirma o run; DELTA mede.
+
+### 4. Q-022/G2 e G1 - registados, nao executaveis sem admin/conta
+
+Sessao nao elevada (`IsInRole(Administrator)=False`), sem NSSM: o servico de gateway nao entra sem elevacao (parede P1.3483). Mantem-se a tarefa `XAU_AI_PRO_GatewayKeepalive` (5 min, rc=0) + sessao cron da tarefa de relatorio; quando houver sessao elevada, um `sc.exe create` resolve. G1: conta demo continua; nao abri conta real (nao e' papel de agente sem credenciais declaradas pelo DONO).
+
+### 5. Estado
+
+GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 `5C99AF0C`).Conta real proibida. Risco intocado.
+

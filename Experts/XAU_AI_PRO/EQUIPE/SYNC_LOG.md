@@ -493,3 +493,8 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 12:59:40 | CMD | note -> SYNC_LOG.md
 - 08/11/2026 12:59:40 | CMD | ping -> ONLINE (D-116 autorizacao DONO executada (G9/G10/G5/G2/G1); GATE 2/11)
 - 08/11/2026 13:02:37 | CMD | lock liberar
+- 08/11/2026 13:04:00 | CMD | note -> DECISOES.md
+
+- 08/11/2026 13:05 | CMD | infra | D-116 autorizacao DONO executada: G9 3.0/6.0/0.5 (15 chr + tester), G10 Symbols=15 (EURUSD fora, 5 extras dentro), G5 janela 12 meses mantido 100 trades, G2 bloqueado sem admin, G1 registado; 0 compiles MD5 5C99; GATE 2/11 forward 0/30
+- 08/11/2026 13:04:00 | CMD | note -> SYNC_LOG.md
+- 08/11/2026 13:04:00 | CMD | ping -> ONLINE (D-116 autorizacao DONO executada (G9/G10/G5/G2/G1); GATE 2/11 forward 0/30)
