@@ -135,3 +135,23 @@ Verificacao: `tools/mcp-check.ps1` (0 falhas).
 servico externo. Nao e' versionado no repositorio, mas deve ser rotacionada pelo
 DONO quando for conveniente; nenhum agente a copia para o canal ou para o git.
 
+
+---
+
+## 9. Regra inviolavel: sem automacao de foco/teclado (D-103, 07/11/2026 22:45)
+
+O terminal NAO pode ser controlado por `AttachThreadInput`, `SetFocus`,
+`SetForegroundWindow`, `keybd_event`, `mouse_event`, nem por
+`PostMessage`/`SendMessage` de teclas ou cliques. A tentativa de mudar USDBRL de
+H1 para M5 por essa via terminou no crash do terminal as 22:16:02 (P1.3480).
+
+Metodo correcto para mudar periodo ou simbolo de um grafico:
+
+1. fechar o terminal pelo metodo normal;
+2. editar o `chartNN.chr` do perfil em `MQL5\Profiles\Charts\<perfil>`
+   (UTF-16 LE, `period_type`/`period_size`);
+3. abrir o terminal e provar no journal a linha `(SIMBOLO,PERIODO) [START]`.
+
+Nunca fechar o terminal com o grafico num periodo errado: o MT5 grava esse
+estado no perfil ao sair. Os scripts de automacao dessa tentativa foram apagados
+em 07/11 22:45.

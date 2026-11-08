@@ -5459,3 +5459,63 @@ fazer.`, 1 unico `uvicorn` vivo, `gateway_9011.err.log` sem nova escrita.
 
 GATE_REAL **2 de 11**; forward **0/30** (09/11 00:05); gateway OK em leitura;
 P1.3477 **fechado**. Risco intocado. Nada aqui e' 10/10.
+
+## D-103 | CMD | 2026-11-07 22:45 | P1.3480/P1.3482 fechados, P1.3483 reclassificado, P1.3481 atribuido ao DONO
+
+**Contexto:** respostas do DONO: P1.3481 foi ele que mudou; P1.3480 corrigir e
+validar; P1.3482 autorizado; P1.3483 autorizado; validar com 0 erros.
+
+### 1. P1.3481 - nao era defeito
+
+O DONO confirmou que foi ele que mudou o USDBRL para H1 (21:13 e 22:19). O
+grafico foi reposto em M5 e o EA nao tem qualquer chamada a
+`ChartSetSymbolPeriod`/`ChartApplyTemplate`. Fecha como **acao do DONO**, sem
+correccao de codigo. A regra operacional mantem-se: confirmar `(USDBRL,M5)
+[START]` antes das 09/11 00:05.
+
+### 2. P1.3480 - fechado
+
+- Apagados os 8 scripts de automacao usados na tentativa:
+  `set_usdbrl_m5.ps1`, `set_usdbrl_m5_focus.ps1`, `ativa_grafico.ps1`,
+  `ciclo_usdbrl_m5.ps1`, `foco_real_usdbrl.ps1`, `enummenu.ps1`,
+  `toolbars.ps1`, `underpoint.ps1`.
+- `rg "AttachThreadInput|keybd_event|mouse_event"` em `Temp\opencode` e no
+  projecto: **0 scripts** (so' documentacao menciona a regra).
+- `EQUIPE\AGENTES.md` Â§9 passa a proibir a automacao de foco/teclado e define o
+  metodo correcto (editar o `.chr` com o terminal fechado).
+- Terminal vivo PID 14240, janela `USDBRL,M5`; sem repeticao.
+
+### 3. P1.3482 - fechado
+
+A tarefa `XAU_AI_PRO_Dashboard` foi **removida**: tinha um unico trigger em
+01/09/2026, `NextRunTime` vazio, nunca voltaria a correr, e o dashboard nao
+estava a correr (porta 8501 fechada, sem `XAU_AI_PRO.exe`). Era contada como 5.Âª
+tarefa activa sem o ser. Passam a existir **4** tarefas com proxima execucao:
+DonoRelatorio (23:50), ForwardInicio (09/11 00:05), GatewayKeepalive (5 min) e
+LimpezaSemanal (domingo 10:00). O dashboard continua disponivel manualmente por
+`start_dashboard.cmd`.
+
+### 4. P1.3483 - fechado por reclassificacao
+
+Os 4 processos **nao sao orfaos**: sao workers dos servicos Windows
+`MetaTester-1/2/5/6` (parent `services.exe`, PID 596, a correr como SYSTEM),
+2 `MetaTester64` + 2 `metatester64`, ~110 MB. `Stop-Process`/`taskkill` devolvem
+**acesso negado** e `Stop-Service` tambem (sem admin). Nao ha' erro operacional:
+nao seguram o log do tester (fechado as 22:16:02) e o terminal vivo e' PID 14240.
+Sem elevacao nao se tocam; o MT5 gere-os.
+
+### 5. Validacao final (0 erros)
+
+| Item | Resultado |
+|---|---|
+| Terminal | PID 14240; 15/15 `v1.2.186`; `USDBRL,M5` |
+| Inputs | 15/15 `AllowTradeWithoutAI=true`, `MinMarketScoreNoAI=45.0`, `MinMarketScore=65.0`, `expertmode=5` |
+| Binario | 967 328 B, MD5 `10212E8702FB0A14D070240D3BA22B85` |
+| Conta | 113568614 demo, 0 posicoes, 0 ordens, 12 636,32 USD |
+| Gateway | 1 uvicorn; keepalive 22:38 rc=0; sem `10048` depois do fix |
+| Tarefas | 4, todas com proxima execucao |
+| MCP / canal / mandato | 11 OK / OK / OK |
+| CI | `c633c721` e `5595af12` success (MQL5 + CodeQL) |
+
+GATE_REAL **2 de 11**; forward **0/30**. Isto e' validacao sem erros, nao e'
+10/10: 10/10 continua a ser o alvo, nao um estado.
