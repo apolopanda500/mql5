@@ -133,3 +133,7 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 20:49:18 | DELTA | ONLINE | T6: P1.2345 FECHADO por medicao (tester LIVRE - terminal reiniciado 20:39:50, 0 janelas, tester log sem escrita desde 20:29:38); gateway 9011 medido 200 com token (SELL 72.4, atr 20.983) e o HTTP 1001 do EA explicado (python arrancou 20:42:32, 2m38s depois do terminal); Q-079/B com ZERO linhas ao vivo (57 TREND CONTRA OK sao todas de 01-05/11, texto velho e sem selo); [SCORE] mudo desde 03/11 e PTS= com 0 ocorrencias -> P1.3476 aberto e TOTAL= nao mensuravel; IA 1 de 15 simbolos (XAUUSD 36/36 true, 14 com 36/36 false); ATR 47 linhas de identidade, serie impossivel determinista em USDCLP/USDCOP e caso USDCAD+AMD com o mesmo doHandle por diagnosticar; 0 compiles, 0 ordens, conta 113568614 flat; GATE_REAL 2 de 11, sem 10/10
 
 2026-11-07 21:25 | CMD | ONLINE | D-095: mandato do DONO fechado (7/7), autonomia total dentro do mandato, zero interrupcoes; ficha + manual + MANDATO_ATIVO.json + dono-mandato.ps1 + gateway-start.ps1; tarefas de relatorio diario e keepalive do gateway instaladas; check OK; GATE_REAL 2 de 11.
+
+2026-11-07 22:00 | CMD | ONLINE | D-096: ordem master pronta - DONO diz INICIAR/ESTADO/FINALIZAR; iniciar medido OK, finalizar recusa sem prova; 4 tarefas ativas; GATE_REAL 2 de 11.
+
+2026-11-07 22:45 | CMD | ONLINE | D-097/D-098: autoridade tecnica, AGENTES.md, briefing, mcp-check 11 OK, MCP playwright+sentry activos; GATE_REAL 2 de 11.

@@ -106,3 +106,7 @@ Traducao operacional, sem alargar o que nao pode ser alargado:
   11/11 + 30 dias + assinatura do DELTA. Atrasos corrigiveis nao param nada.
 - **Conta real** - depois dos 30 dias ou mais, e so com os quatro requisitos
   do ponto 7. "Uso real ok" e a intencao; a chave continua condicional.
+
+## 7. Autoridade tecnica (07/11/2026 22:10, D-097)
+
+Os agentes podem pesquisar na web, instalar/desinstalar ferramentas, limpar temporarios do Windows e automatizar para destravar o projeto. Limites: sem remover guarda de risco, sem conta real antes dos 4 requisitos, sem apagar dados pessoais/backups, sem expor tokens, risco so com decisao escrita.

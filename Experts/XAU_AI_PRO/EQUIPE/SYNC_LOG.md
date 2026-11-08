@@ -403,3 +403,5 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 20:50:16 | DELTA | note -> DECISOES.md
 - 07/11/2026 21:25 | CMD | mandato | D-095: DONO fecha a ficha 7/7 e reforca autonomia total ate 11/11 + 30 dias; criados FICHA_DONO.md, MANUAL_DONO.md, MANDATO_ATIVO.json, tools/dono-mandato.ps1 e tools/gateway-start.ps1; tarefas DonoRelatorio (23:50) e GatewayKeepalive (5 min) instaladas sem admin; check do mandato OK; GATE_REAL 2 de 11
 - 07/11/2026 21:40 | CMD | mandato | terceira tarefa XAU_AI_PRO_ForwardInicio (09/11 00:05) grava o inicio do forward sem intervencao do DONO; 3 tarefas ativas: relatorio 23:50, keepalive 5 min, inicio do forward
+- 07/11/2026 22:00 | CMD | ordem master | D-096: ORDEM_MASTER.md + tools/ordem-master.ps1 (iniciar/estado/finalizar); iniciar medido OK 0 pendencias; finalizar medido a recusar sem prova (2/11, 0/30, sem assinatura) e sem alterar nada; GATE_REAL 2 de 11
+- 07/11/2026 22:45 | CMD | cenario | D-097 autoridade tecnica + D-098: AGENTES.md, briefing automatico, mcp-check 11/11, MCP playwright e sentry activos no OpenCode; estado gerado fora do git

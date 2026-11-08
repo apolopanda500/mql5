@@ -106,3 +106,6 @@ Experts/XAU_AI_PRO/EQUIPE/_SYNC/LOCK
 *.bak_*
 Scripts/Temp/
 
+# estado gerado pelas ferramentas do dono (nao e fonte)
+Experts/XAU_AI_PRO/EQUIPE/ORDEM_MASTER_ESTADO.json
+Experts/XAU_AI_PRO/EQUIPE/BRIEFING_ATUAL.md

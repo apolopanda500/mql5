@@ -15,8 +15,28 @@
   "ficha_dono": "EQUIPE/FICHA_DONO.md",
   "manual_dono": "EQUIPE/MANUAL_DONO.md",
 
-  "interacao_dono": {
-    "modo": "ZERO_INTERRUPCOES_DURANTE_EXECUCAO",
+  "autoridade_tecnica": {
+    "concedida_pelo_dono": "2026-11-07T22:10:00-03:00",
+    "decisao": "D-097",
+    "ambito": [
+      "pesquisar na web e estudar documentacao, motores, plugins, extensoes, scripts, agentes e repositorios",
+      "instalar, configurar, atualizar e desinstalar ferramentas e dependencias necessarias ao projeto",
+      "limpar ficheiros temporarios, caches, logs e binarios obsoletos do Windows e do terminal",
+      "usar MCP, automacao e tarefas agendadas para manter o projeto a andar sem o DONO"
+    ],
+    "limites_inviolaveis": [
+      "nao remover nem desativar guardas de risco",
+      "nao abrir conta real sem 11/11 + 30 dias + assinatura do DELTA",
+      "nao apagar dados pessoais, historico de conta, backups ou o repositorio",
+      "nao imprimir, gravar ou commitar tokens e credenciais",
+      "nao executar limpeza destrutiva sem copia de seguranca previa",
+      "nao alterar parametros de risco sem decisao escrita do DONO"
+    ],
+    "regra_de_limpeza": "backup antes; remover so o que for reproduzivel; registar o que foi removido",
+    "registo": "cada instalacao/remocao/limpeza relevante leva linha no SYNC_LOG.md"
+  },
+
+  "interacao_dono": {    "modo": "ZERO_INTERRUPCOES_DURANTE_EXECUCAO",
     "reforco_2026_11_07_2120": "DONO: 'deixar tudo automatico, todas as permissoes e execucoes; so parar quando der o resultado esperado; manter o endurecer, fazer uns trades manuais e acompanhar os automaticos ate 30 dias ou mais; depois uso real'",
     "autonomia": {
       "nivel": "TOTAL_DENTRO_DO_MANDATO",

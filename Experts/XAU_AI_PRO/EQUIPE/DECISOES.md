@@ -5123,3 +5123,106 @@ substituida mais tarde, sem pressa.
 o projecto fechado.
 
 **Adenda (21:40):** terceira tarefa instalada sem admin, `XAU_AI_PRO_ForwardInicio`, para 09/11/2026 00:05 - grava sozinha `forward.inicio_medido = 2026-11-09`. O DONO nao tem de arrancar a contagem.
+
+## D-096 | CMD | 2026-11-07 22:00 | Ordem master: o DONO diz uma palavra e tudo arranca; `FINALIZAR` recusa sem prova
+
+**Autor da decisao:** DONO ("facam uma super anotacao e automacao para todos,
+para ficar super facil para mim so dar uma ordem e todos vao iniciar e depois
+finalizar"). **Execucao:** CMD. **Compile:** 0. **Ordem:** 0. **Risco:**
+intocado.
+
+### 1. A super anotacao
+
+`EQUIPE/ORDEM_MASTER.md` - uma pagina com: as tres palavras do DONO
+(`INICIAR`, `ESTADO`, `FINALIZAR`), o que cada uma mede e liga, o checklist de
+cada agente, as proibicoes e o estado de hoje (2 de 11).
+
+### 2. A automacao de uma ordem
+
+`EQUIPE/tools/ordem-master.ps1` com tres accoes:
+
+| Accao | O que faz | O que nunca faz |
+|---|---|---|
+| `iniciar` | valida mandato, ficheiros, gateway, 3 tarefas, canal e binario; religa o que faltar; escreve `ORDEM_MASTER_ESTADO.json`; imprime o checklist | nao abre ordens, nao altera risco, nao liga conta real |
+| `estado` | uma pagina: gate, forward, gateway, binario, tarefas, o que falta | nao altera nada |
+| `finalizar` | exige 11/11 + 30 dias + `ASSINADO POR DELTA` + sem paragem; se faltar, **recusa e diz o que falta**; se cumprir, gera `DOSSIE_FINAL.md` para o DELTA assinar | nao declara 10/10, nao assina no lugar do DELTA |
+
+### 3. Medido (nao deduzido)
+
+- `ordem-master.ps1 estado` -> GATE 2/11, forward 0/30, gateway OK, binario
+  BATEM, 4 tarefas ativas (3 do mandato + `XAU_AI_PRO_Dashboard` de outro
+  agente).
+- `ordem-master.ps1 iniciar` -> **RESULTADO: INICIADO**, 0 pendencia(s);
+  mandato OK, ficheiros OK, gateway OK, 3/3 tarefas, canal OK, binario BATEM.
+- `ordem-master.ps1 finalizar` -> **NAO FECHA**, exit 1, com a lista exacta:
+  9 criterios, 30 dias, assinatura. Nenhum ficheiro alterado nesse pedido.
+- `dono-mandato.ps1 check` continua **OK**.
+
+### 4. O que o DONO passa a escrever
+
+| Palavra | Efeito |
+|---|---|
+| `INICIAR` | tudo verificado e ligado; contagem arranca 09/11 00:05 sozinha |
+| `ESTADO` | uma pagina de estado medido |
+| `FINALIZAR` | fecha so com prova; sem prova, lista o que falta |
+
+**GATE_REAL continua 2 de 11.** A ordem nao cria progresso: mede-o.
+
+## D-098 | CMD | 2026-11-07 22:45 | Cenario de trabalho serio: pagina dos agentes, briefing automatico e 2 MCP novos
+
+**Autor da decisao:** DONO (22:40): *"melhorar outros agentes, instalar MCP ou
+codigos para eles melhorarem ao todo"* / *"instalar novas MCP para o OpenCode
+do meu Windows CLI... prepara o cenario para trabalhar serio"*.
+**Execucao:** CMD.
+
+### 1. Pagina unica para qualquer agente
+
+`EQUIPE/AGENTES.md`: quem e' quem, zona de escrita, ferramentas, MCP, autoridade
+D-097, regras de git/canal e o estado actual. Um agente novo comeca ali, nao em
+10 ficheiros dispersos.
+
+### 2. Briefing automatico
+
+`EQUIPE/tools/agente-briefing.ps1` le o estado real (git, 4 fontes de versao,
+`.ex5`, GATE_REAL, mandato, forward, gateway, tarefas) e grava
+`EQUIPE/BRIEFING_ATUAL.md`. Medido: `HEAD 8a038959`, `#property 1.386 / EA
+1.2.186 / EV 1.2.186`, binario BATEM, GATE 2/11, forward 0/30, gateway OK.
+
+`EQUIPE/tools/mcp-check.ps1`: 11 verificacoes (internet, Context7, GitHub CLI e
+auth, remotes, upstream, gateway, tarefas, canal, mandato, config MCP). Medido:
+**11 OK, 0 falhas**.
+
+### 3. MCP novos no OpenCode (Windows CLI)
+
+Ficheiro: `C:\Users\Micro\.config\opencode\opencode.json` (backup `.bak` gerado
+antes da alteracao). Adicionados e **activos** (o catalogo do agente passou a
+mostrar as ferramentas):
+
+| Servidor | Ferramentas | Para que serve |
+|---|---|---|
+| `playwright` | 25 | navegar e testar na web; estudar documentacao e sites |
+| `sentry` | 70 | erros e telemetria dos componentes Python |
+
+Ja existiam: `filesystem`, `memory`, `context7`, `sequential_thinking`,
+`supabase`, `render` (e `GitKraken` desactivado). Verificacao de arranque:
+`npx @playwright/mcp --help` e `npx @sentry/mcp-server --help` responderam.
+
+**Seguranca:** o `opencode.json` contem uma credencial de servico externo. Nao e'
+versionado no repositorio e nenhum agente a copia para o canal; fica registado
+que deve ser rotacionada pelo DONO quando for conveniente.
+
+### 4. Correccao medida (bug meu)
+
+`agente-briefing.ps1` usava `$Args` como parametro, que colide com a variavel
+automatica do PowerShell; o `git` recebia os argumentos errados. Renomeado para
+`$GitArgs`. Mesmo tipo de erro encontrado e corrigido em `ordem-master.ps1`
+(`$Estado` vs `$estado`). Ambos re-testados com resultado correcto.
+
+### 5. Ficheiros
+
+Novos: `AGENTES.md`, `ORDEM_MASTER.md`, `tools/ordem-master.ps1`,
+`tools/agente-briefing.ps1`, `tools/mcp-check.ps1`.
+Actualizados: `MANDATO_ATIVO.json` (`autoridade_tecnica`),
+`FICHA_DONO.md`, `MANUAL_DONO.md`, `.gitignore` (estado gerado nao entra no git).
+
+**GATE_REAL continua 2 de 11.** Nada aqui e' 10/10 nem fecha o projecto.

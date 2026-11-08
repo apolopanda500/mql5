@@ -140,3 +140,9 @@ esta **pre-autorizado** por esta ficha e pelo `MANDATO_ATIVO.json`.
   esperado existir: 11/11 + 30 dias + assinatura do DELTA.
 - Conta real: **depois** dos 30 dias ou mais, e apenas com os quatro requisitos.
   Nao ha atalho por "ja passou tempo".
+
+---
+
+## 10. Autoridade tecnica dos agentes (D-097)
+
+O DONO autorizou pesquisa na web, instalacao/remocao de ferramentas, limpeza de temporarios do Windows e automacao por tarefas/MCP. Os agentes resolvem o que estiver a travar o projeto e registam no SYNC_LOG.md; nao voltam a perguntar. Continuam proibidos: mexer em risco, abrir conta real antes dos 4 requisitos, apagar dados pessoais/backups, expor tokens.
