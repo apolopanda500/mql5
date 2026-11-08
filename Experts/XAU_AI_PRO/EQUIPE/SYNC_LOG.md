@@ -441,3 +441,4 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 10:59 | ALFA | note -> DECISOES.md, IDS.md, PRESENCA.md, SESSAO_20261108_ALFA_T2.md
 - 08/11/2026 10:59 | ALFA | ping -> ONLINE (D-108: P1.3487 fechado no verificador, UP (HTTP 401) medido; 3 meses XAUUSD 37 trades PF 0,6603 DD 1,77% shorts 36/37; P1.3486 adiado para nao mudar o MD5 do forward)
 - 08/11/2026 10:59 | ALFA | lock liberar
+- 08/11/2026 11:36 | ALFA | note -> RELATORIOS/20261108_ALFA_PARA_DELTA_E_CMD.md
