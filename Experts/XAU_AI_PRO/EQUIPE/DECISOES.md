@@ -5958,3 +5958,29 @@ GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 943DB7CB). Conta re
 
 Piso 45,0; P1.3486 adiado ate' 09/12 (muda MD5); Q-026 (janela do G5) continua escalado ao DONO e nao bloqueia o forward; Q-017/Q-013/Q-022 executam depois do forward. GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 5C99). Conta real proibida. 0 compiles, 0 ordens, risco intocado neste D-113.
 
+
+## D-115 | CMD | 2026-11-08 12:35 | D-114 do DELTA registado e commitado; P1.3493 decidido: o .set entra explicito, nao por git add -A
+
+**Contexto:** o DELTA fez a verificacao independente do A+B (D-114) e abriu o P1.3493 (o `XAU_AI_PRO.set` versionado e' reescrito pelo terminal a cada remocao de EA). O commit e' do CMD, com assunto a nomear os dois agentes (regra F-B).
+
+### 1. D-114 verificado por medicao independente do DELTA
+
+- **G11/memoria/disco/declarado:** confirmado - `5C99AF0C`, 0 fontes tocadas, 15/15 as 11:56:17, ciclo gracioso (exit code 0, nao crash), USDBRL M5, chart16 sem EA, backup + inventario presentes.
+- **G4 corrigido: 46 -> 61** `[START]` no dia (15 v1.2.187 + 16 + 15 + 15; o ultimo lote e' o reanexo do D-113).
+- **G9 corrigido: 15.0 -> 50.0** (`MaxDrawdownPercent` nos 15 graficos; o 15.0 vinha do `.set` do tester). Intervalo real 8,3x o limite, nao 2,5x. Continua VERMELHO. Conseencia: com 50.0 a correr, o EA nao para aos 8 % - o DD <= 8 % do G11 e' criterio de medicao do DELTA, nao guarda activa; quem trava e' o DONO.
+- **Q-013/G10 medido com precisao:** 10 coincidem, 5 sobram (USDCLP/USDCOP/USDCZK/USDRUB/USDSGD), 1 falta (EURUSD). Universo efectivo 15, declarado 11.
+
+### 2. P1.3493 - decisao do CMD (registada aqui)
+
+`Profiles/Tester/XAU_AI_PRO.set` mudou as 11:55:21 (29844 -> 29692 B, MD5 `0a130ca1 -> 5ecd6b25`, 17 linhas) para valores identicos ao DELTA_186_A.set do job do ALFA. O terminal regrava-o a cada remocao de EA - e' a escrita dele.
+
+**Decisao: commitar o conteudo actual com paths explicitos (este commit), e nao untrackar.** Motivos: (a) ha' ~80 `.set` versionados e os jobs do tester dependem dessa convencao; tirar um do git parte a regra sem acordo do ALFA; (b) commitar grava o que o slot do tester contem agora - informacao util, nao perdida; (c) o risco "git add -A sem decisao" resolve-se com commits por paths explicitos (ja' e' a regra do AGENTS.md), nao com gitignore. A referencia do P1.3485 passa a ser os `.chr` dos 15 graficos, como o DELTA disse - o `.set` deixa de ser referencia.
+
+### 3. Pendente (nao bloqueia 09/11 00:05)
+
+Q-026/G5, Q-017/G9 (declarar <=3/<=6/<=0.5; em vigor 10.0/50.0/1.0), Q-013/G10 (10+5-1), Q-022/G2 (servico), G1. P1.3491 (chart16) resolver antes de fechar o terminal - o perfil regrava 16. P1.3486 segue adiado (muda MD5). Calendario: 23:50 DonoRelatorio, 00:04 conferir 5C99AF0C, 00:05 ForwardInicio, 00:10 primeira captura `delta-captura-d089.ps1 -Dia 20261109`; so' conta Q-079/B exercitado a linha com `dentro da folga`.
+
+### 4. Estado
+
+GATE_REAL **2 de 11**; forward **0 de 30** (MD5 `5C99AF0C`). Conta real proibida. 0 compiles, 0 ordens, risco intocado neste D-115.
+

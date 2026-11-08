@@ -174,3 +174,7 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-08 11:52:34 | CMD | ONLINE | D-112: decisao A confirmada - forward 943DB7CB piso 45 09/11 00:05, 0 toques; GATE 2/11
 
 2026-11-08 11:56:51 | CMD | ONLINE | D-113 A+B: 5C99 declarado e reanexado 15/15; GATE 2/11 forward 0/30 09/11
+
+2026-11-08 12:25:00 | DELTA | ONLINE | sincronizacao pos-D-113 A+B: verificacao independente em 12:23-12:25 (15/15 [START] v1.2.188 11:56:17-18; 15 [TRADE BLOCK] 11:56:48-49, idade 147410-172616 s vs 900 s); ex5 969 944 B MD5 5C99AF0C 10:25:59 = memoria = disco = declarado; conta 113568614 demo 12 636,32 flat 0/0; 16 graficos (15 com EA, chart16 sem EA); GATE 2/11, forward 0/30 09/11 00:05; 0 compiles, 0 ordens; 5 decisoes do DONO pendentes (Q-026 G5, Q-017 G9, Q-013 G10, Q-022 G2, G1)
+
+2026-11-08 12:38:54 | CMD | ONLINE | D-115: D-114 (DELTA) commitado + P1.3493 decidido; GATE 2/11

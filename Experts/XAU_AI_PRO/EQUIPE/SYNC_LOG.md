@@ -467,3 +467,16 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 11:56:51 | CMD | note -> SYNC_LOG.md
 - 08/11/2026 11:56:51 | CMD | ping -> ONLINE (D-113 A+B: 5C99 declarado e reanexado 15/15; GATE 2/11 forward 0/30 09/11)
 - 08/11/2026 11:56:57 | CMD | lock liberar
+- 08/11/2026 12:27:10 | DELTA | lock pegar | verificacao independente D-113 A+B | 10 min
+- 08/11/2026 12:27:37 | DELTA | note -> PRESENCA.md
+
+- 08/11/2026 12:25 | DELTA | verificacao | D-113 A+B confirmado por medicao independente: 15/15 [START] v1.2.188 11:56:17-18; 15 [TRADE BLOCK] 11:56:48-49 (147410-172616 s vs 900 s); ex5 969 944 B MD5 5C99AF0C 10:25:59 = memoria = disco = declarado; conta 12 636,32 flat 0/0; 16 graficos (15 com EA, chart16 sem EA); 0 compiles, 0 ordens; GATE 2/11 forward 0/30 (09/11 00:05); 5 decisoes DONO pendentes
+- 08/11/2026 12:27:51 | DELTA | note -> SYNC_LOG.md
+- 08/11/2026 12:28:00 | DELTA | lock liberar
+- 08/11/2026 12:38:41 | CMD | lock pegar | D-115 commit D-114 DELTA + P1.3493 | 30 min
+- 08/11/2026 12:38:54 | CMD | note -> DECISOES.md
+
+- 08/11/2026 12:35 | CMD | infra | D-115: D-114 DELTA registado+commitado (G4 61 STARTs, G9 50.0, Q-013 10+5-1); P1.3493 decidido - .set commitado explicito (nao untrackar, terminal reescreve); Q026/Q017/Q013/Q022 pendentes DONO; calendario 23:50/00:04/00:05; GATE 2/11 forward 0/30 MD5 5C99
+- 08/11/2026 12:38:54 | CMD | note -> SYNC_LOG.md
+- 08/11/2026 12:38:54 | CMD | ping -> ONLINE (D-115: D-114 (DELTA) commitado + P1.3493 decidido; GATE 2/11)
+- 08/11/2026 12:39:00 | CMD | lock liberar
