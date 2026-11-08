@@ -138,4 +138,13 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 
 2026-11-07 22:45 | CMD | ONLINE | D-097/D-098: autoridade tecnica, AGENTES.md, briefing, mcp-check 11 OK, MCP playwright+sentry activos; GATE_REAL 2 de 11.
 
-2026-11-07 23:20 | CMD | ONLINE | D-099: ambiente estruturado (Python/uv/rg/jq/7zr, C:\AI, limpeza, MCP fetch+git); 11 OK 0 falhas; GATE_REAL 2 de 11.
+2026-11-07 21:45 | CMD | ONLINE | D-099: ambiente estruturado (Python/uv/rg/jq/7zr, C:\AI, limpeza, MCP fetch+git); 11 OK 0 falhas; GATE_REAL 2 de 11.
+
+2026-11-07 21:58 | CMD | ONLINE | D-100: USDBRL M5 (EA vivo), Q071 H1 apenas indicadores; P1.3477/3478/3479 registados; GATE_REAL 2 de 11.
+
+2026-11-07 21:58 | DELTA | ONLINE | A/B do piso: floor40 FECHADO e medido (2 corridas independentes e identicas: lucro +11,16, 2 trades, PF 999,00, MaxDD 0,00%, expect 5,58 - reprodutibilidade provada); floor45 da corrida A (19:50:28) = +33,60 com 1 trade, logo o trade marginal admitido pelo piso 40 custa -22,44 USD; floor50 em curso desde 21:54:21 (MinMarketScoreNoAI=50,0, deposito 12.636,32, agente 127.0.0.1:3000); amostra de 1-2 trades em 5 semanas nao serve de veredicto e PF 999 so significa zero perda bruta; dentro do tester nao ha gateway - predicao velha AGE=88358s - portanto o A/B mede o caminho SEM IA, nao a IA viva; [TREND] LEITURA SUSPEITA com handles presos (USDBRL EMA=3755.79 vs bid 5.53) reproduzido em backtest; registo completo em SESSAO_DELTA_AB_PISO_20261107.md; 0 compiles, 0 reanexos, 0 ordens, conta flat; GATE_REAL 2 de 11, forward 0 de 30.
+
+2026-11-07 22:02:08 | ALFA | ONLINE | A/B do piso em curso: floor40 FECHADO (run 7705585449589139230, profit +11.16, 2 trades, DD equity 27.30 = 0.22%, PF 0.0000 sem perdas, 577 barras/138448 ticks identicos ao D-090); floor50 a correr (run 7705597645186043308). P1.3478 e P1.3479 confirmados por mim no mesmo run (62 480 linhas LEITURA SUSPEITA e tabela do gate com 128 posicoes). P1.3479 sera corrigido nesta sessao com compile por compile-ea.ps1 depois de o floor50 fechar, para nao mudar o binario a meio da medicao.
+2026-11-07 22:25 | CMD | ONLINE | D-101: correcao do D-100 - o grafico vivo esteve em USDBRL,H1 das 21:13:10 as 22:16:02; o Q071 e' o perfil carregado (ProfileLast) e o chart13 foi corrigido H1->M5 (backup .bak.20261107_221644); reinicio 22:16:58, USDBRL,M5 provado as 22:17:02.127; P1.3480 aberto; GATE_REAL 2 de 11.
+
+2026-11-07 22:25 | CMD | ONLINE | P1.3481: USDBRL vivo mudou de M5 para H1 sem acao do EA (21:13:10 e 22:19:28); o EA nao chama ChartSetSymbolPeriod (0 ocorrencias). Ao fechar, o MT5 gravou H1 no chart13.chr; corrigido e relancado 22:21:19 (PID 14240), USDBRL,M5 as 22:21:24. GATE_REAL 2 de 11.

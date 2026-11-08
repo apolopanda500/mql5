@@ -5227,9 +5227,9 @@ Actualizados: `MANDATO_ATIVO.json` (`autoridade_tecnica`),
 
 **GATE_REAL continua 2 de 11.** Nada aqui e' 10/10 nem fecha o projecto.
 
-## D-099 | CMD | 2026-11-07 23:20 | Ambiente Windows limpo, estruturado e pronto para IA (2026)
+## D-099 | CMD | 2026-11-07 21:45 | Ambiente Windows limpo, estruturado e pronto para IA (2026)
 
-**Autor da decisao:** DONO (23:00): *"preciso da maquina windows ambiente limpo
+**Autor da decisao:** DONO (07/11/2026): *"preciso da maquina windows ambiente limpo
 estruturado e completo para todos projetos IA de ultima geracao 2026 tops"*.
 **Execucao:** CMD, com autoridade D-097.
 
@@ -5291,3 +5291,120 @@ e PATH antigo da sessao para rg/jq/7zr). Nenhuma falha bloqueante.
 
 **O ambiente esta' pronto. O projeto NAO esta' fechado:** GATE_REAL **2 de 11**,
 forward **0/30** (arranca 09/11 00:05), gateway OK, zero ordens. Isto nao e' 10/10.
+
+## D-100 | CMD | 2026-11-07 21:58 | USDBRL continua M5; Q071 e' banco de indicadores, nao perfil de forward
+
+**Contexto:** ALFA reportou (21:13) que o chart13 "vivo" estaria em USDBRL,H1,
+em contradicao com a FICHA_DONO §2, e propos uma adenda D-099. Medido antes de
+decidir.
+
+### 1. O que esta' realmente vivo (medido)
+
+| Prova | Valor |
+|---|---|
+| Log do terminal, 20:40:00.812 | `expert XAU_AI_PRO (USDBRL,M5) loaded successfully` |
+| `Profiles\Charts\Default\chart13.chr` | `period_type=0`, `period_size=5` -> **M5** |
+| `Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071\chart13.chr` | `period_type=1`, `period_size=1` -> **H1** |
+| Log do terminal, 21:33:30 | `KCI_Directional_Matrix (USDBRL,H1)` carregado/removido |
+
+O EA vivo esta' em **M5**. O perfil `Q071` e' um conjunto separado de 15 graficos
+H1 usado para o indicador KCI; nao e' o grafico do EA. Nao ha' divergencia com a
+ficha no que o EA ve'.
+
+### 2. Decisao
+
+**A FICHA_DONO §2 prevalece: USDBRL M5, sem folga.** Nao se altera a ficha nem
+o risco. `Q071` nao pode ser carregado como perfil de forward enquanto o
+chart13 estiver em H1; se for para usar, tem de ser corrigido para M5 e provado
+pelo log `USDBRL,M5` antes de 09/11 00:05.
+
+### 3. Correccao de numeracao
+
+O D-099 ja' foi usado as 23:20 para o ambiente Windows (Python/uv/rg/jq/7zr,
+`C:\AI`, limpeza, MCP fetch/git). Esta adenda e' **D-100**; nao se reutiliza
+D-099.
+
+### 4. Pendencias registadas (sem tocar em risco nem recompilar)
+
+| ID | Estado | Medida |
+|---|---|---|
+| P1.3477 | ABERTO | bind duplicado do gateway: `[Errno 10048]` as 21:13:12; processo vivo PID 8992, `/health` = 401; keepalive e arranque manual a competir |
+| P1.3478 | ABERTO | `[TREND] LEITURA SUSPEITA` no TrendFilter: **278 536** linhas no log de teste de 07/11; amostra `USDCNH EMA=0.71560` com `bid=6.72217` |
+| P1.3479 | ABERTO | gate do tester saturado: `TESTER_GATE_MAX_TAGS 128` (AccountLogGate.mqh:73) < 135 tags (7 ATR + 2 TREND x 15 simbolos); linha 102 so' guarda abaixo do limite e a linha 109 devolve `true` -> fail-open, throttle perdido, log de 252 MB |
+
+P1.3478/P1.3479 ficam por corrigir de proposito enquanto o A/B nao fecha, para
+o par de medicoes usar o mesmo binario MD5 10212E8702FB0A14D070240D3BA22B85.
+
+**Estado:** GATE_REAL 2 de 11; forward 0/30 (arranca 09/11 00:05); gateway OK;
+zero ordens; risco intocado. Nada aqui e' 10/10.
+
+**CORRECCAO (D-101):** o quadro acima estava certo as 20:40 e ficou errado a
+partir das 21:13:10. Nao foi o `Q071` que mudou; foi o grafico vivo. Ver D-101
+abaixo.
+
+## D-101 | CMD | 2026-11-07 22:25 | CORRECCAO do D-100: o grafico vivo esteve em USDBRL,H1 das 21:13 as 22:16, e o Q071 e' o perfil carregado
+
+**Contexto:** leitura integral dos dois journals (terminal `logs\20261107.log`,
+1079 linhas; Experts `MQL5\logs\20261107.log`, 1510 linhas) depois do D-100.
+O D-100 foi escrito com a medicao das 20:40 e nao viu a troca das 21:13.
+
+### 1. Prova da troca (journal Experts)
+
+| Hora | Linha |
+|---|---|
+| 20:40:00.812 | (terminal) `expert XAU_AI_PRO (USDBRL,M5) loaded successfully` |
+| **21:13:10.120** | `(USDBRL,M5) [STOP] USDBRL \| motivo=3` |
+| **21:13:10.123** | `(USDBRL,H1) [START] XAU_AI_PRO v1.2.186` |
+
+Ou seja: das 21:13:10 ate' ao crash das 22:16:02 o grafico vivo esteve em
+**USDBRL,H1**. As 22:16:02 o terminal gerou crashlog e saiu; as 22:17:02.127,
+depois do reinicio, o journal volta a dizer `expert XAU_AI_PRO (USDBRL,M5) loaded
+successfully` e a janela viva mede `USDBRL,M5`.
+
+### 2. O erro do D-100
+
+Duas afirmacoes do D-100 estavam erradas:
+
+1. "O EA vivo esta' em M5" era verdade as 20:40 e **falso** de 21:13 a 22:16.
+2. "`Q071` e' um conjunto separado... nao e' o grafico do EA" e' **falso**:
+   `config\common.ini` tem `ProfileLast=XAU_AI_PRO_15CHARTS_Q071`, portanto o
+   `Q071` **e'** o perfil carregado, e o `chart13.chr` dele era H1. O perfil
+   `Default` nao estava em uso.
+
+### 3. O que foi corrigido (sem tocar em risco)
+
+- Backup do `chart13.chr` antes de qualquer escrita:
+  `chart13.chr.bak.20261107_221644`.
+- `MQL5\Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071\chart13.chr`: `period_type=1`
+  / `period_size=1` (H1) -> `period_type=0` / `period_size=5` (M5), UTF-16 LE
+  preservado.
+- Terminal relancado as 22:16:58 (PID 5080). Provas: 15 EAs `v1.2.186`
+  carregados; `USDBRL,M5` no journal as 22:17:02.127; janela viva `USDBRL,M5`.
+- **As 22:19:28.549, sem acao deste turno, o grafico vivo voltou a
+  `USDBRL,H1`** (`[AI] Client shutdown` -> `[STOP] M5` -> `[START] H1`). O
+  ficheiro do perfil continuou M5. Ao fechar o terminal as 22:21:06 o MT5 gravou
+  esse H1 de volta no `chart13.chr`; o ficheiro foi corrigido outra vez para M5
+  (backup novo `.bak.*`) e o terminal relancado as 22:21:19 (PID 14240), com
+  `USDBRL,M5` no journal as 22:21:24 e janela viva `USDBRL,M5` as 22:21:54.
+  Causa do desvio em **P1.3481**.
+
+### 4. Nao repetir a causa do crash
+
+O crash das 22:16:02 aconteceu durante as tentativas de focar/activar o grafico
+por automacao (`AttachThreadInput`/`SetFocus`/`keybd_event`). O terminal tem um
+painel `Chrome_RenderWidgetHostHWND` (AI Assistant) por cima da area dos graficos,
+o que impediu o clique e provocou a sequencia que terminou no crash.
+**Regra nova: nao se usa automacao de foco/teclado no terminal.** Mudancas de
+periodo fazem-se no `.chr` com o terminal fechado ou pelo proprio utilizador.
+
+### 5. Pendencia nova
+
+| ID | Estado | Medida |
+|---|---|---|
+| P1.3480 | ABERTO | crash do terminal as 22:16:02 (`Terminal crashlog generated` -> `crashlog finalized` 22:16:06) durante automacao de foco; recuperado por reinicio; nao repetir `AttachThreadInput`/`SetForegroundWindow` |
+
+### 6. Estado
+
+GATE_REAL **2 de 11**; forward **0/30** (09/11 00:05); gateway vivo em leitura
+(`/health` 401 sem token); conta 113568614 em 12 636,32 USD, 0 posicoes, 0 ordens;
+15 graficos `v1.2.186`; `USDBRL,M5` provado. Risco intocado. Nada aqui e' 10/10.
