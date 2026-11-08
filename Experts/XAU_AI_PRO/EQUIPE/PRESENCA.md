@@ -137,3 +137,5 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-07 22:00 | CMD | ONLINE | D-096: ordem master pronta - DONO diz INICIAR/ESTADO/FINALIZAR; iniciar medido OK, finalizar recusa sem prova; 4 tarefas ativas; GATE_REAL 2 de 11.
 
 2026-11-07 22:45 | CMD | ONLINE | D-097/D-098: autoridade tecnica, AGENTES.md, briefing, mcp-check 11 OK, MCP playwright+sentry activos; GATE_REAL 2 de 11.
+
+2026-11-07 23:20 | CMD | ONLINE | D-099: ambiente estruturado (Python/uv/rg/jq/7zr, C:\AI, limpeza, MCP fetch+git); 11 OK 0 falhas; GATE_REAL 2 de 11.

@@ -5226,3 +5226,68 @@ Actualizados: `MANDATO_ATIVO.json` (`autoridade_tecnica`),
 `FICHA_DONO.md`, `MANUAL_DONO.md`, `.gitignore` (estado gerado nao entra no git).
 
 **GATE_REAL continua 2 de 11.** Nada aqui e' 10/10 nem fecha o projecto.
+
+## D-099 | CMD | 2026-11-07 23:20 | Ambiente Windows limpo, estruturado e pronto para IA (2026)
+
+**Autor da decisao:** DONO (23:00): *"preciso da maquina windows ambiente limpo
+estruturado e completo para todos projetos IA de ultima geracao 2026 tops"*.
+**Execucao:** CMD, com autoridade D-097.
+
+### 1. Ferramentas novas (instaladas e medidas)
+
+| Ferramenta | Versao | Onde |
+|---|---|---|
+| Python | 3.13.18 | `%USERPROFILE%\.local\bin\python.exe` (via uv) |
+| uv / uvx | 0.13.7 | `%USERPROFILE%\.local\bin` |
+| ripgrep | 15.2.0 | `C:\AI\tools\rg.exe` |
+| jq | 1.8.2 | `C:\AI\tools\jq.exe` |
+| 7-Zip (7zr) | 26.04 | `C:\AI\tools\7zr.exe` |
+
+`C:\AI\tools` foi acrescentado ao PATH do utilizador. Nota medida: terminais
+abertos antes da alteracao ainda nao o veem; um terminal novo resolve. `python`
+e `uv` funcionam imediatamente.
+
+### 2. Estrutura `C:\AI`
+
+`projects`, `tools`, `models`, `data`, `logs`, `backups`, `scripts`, `docs`,
+`sandbox`. O projeto vive em `C:\AI\projects\xau-ai-pro` por **junction** para o
+`MQL5` do terminal (sem duplicar dados). Regras em `C:\AI\README.md`.
+
+### 3. Limpeza segura (com backup e sem tocar em projetos)
+
+| Item | Antes | Depois |
+|---|---|---|
+| Disco C: livre | 4,80 GB | **~6,2 GB** |
+| cache npm | 1693 MB | 479 MB |
+| `%TEMP%` | 495 MB | 238 MB |
+| lixeira | 1 item (instalador) | vazia |
+
+Ferramenta permanente: `tools/limpeza-segura.ps1` (simulacao por omissao;
+`-Executar` limpa). Nunca toca em projetos, git, backups, Downloads, Documentos,
+lixeira, historico de conta, modelos ou dados. Tarefa semanal
+`XAU_AI_PRO_LimpezaSemanal` (domingo 10:00) chama `C:\AI\scripts\limpeza-semanal.ps1`.
+
+### 4. Dois MCP novos (total 10 activos)
+
+`fetch` (1 ferramenta) e `git` (14 ferramentas), ambos via `uvx`, juntam-se a
+`filesystem`, `memory`, `context7`, `sequential_thinking`, `playwright`,
+`sentry`, `supabase` e `render`. Ficheiro `~/.config/opencode/opencode.json`
+com backup antes de cada alteracao. `tools/mcp-check.ps1`: **11 OK, 0 falhas**.
+
+### 5. Saude do ambiente
+
+`tools/ambiente-check.ps1` mede disco, ferramentas, Python, MCP, tarefas e
+projeto. Resultado actual: **11 OK, 4 avisos, 0 falhas** (avisos: disco 6,2 GB
+e PATH antigo da sessao para rg/jq/7zr). Nenhuma falha bloqueante.
+
+### 6. Limites (inalterados)
+
+1. Risco intocado.
+2. Conta real so com 11/11 + 30 dias + assinatura DELTA.
+3. Sem apagar dados pessoais ou backups.
+4. Sem expor tokens (o `opencode.json` tem uma credencial a rotacionar pelo DONO).
+5. Sem desligar guardas/auto-stop.
+6. Sem mudar parametros sem decisao escrita.
+
+**O ambiente esta' pronto. O projeto NAO esta' fechado:** GATE_REAL **2 de 11**,
+forward **0/30** (arranca 09/11 00:05), gateway OK, zero ordens. Isto nao e' 10/10.

@@ -126,6 +126,8 @@ antes de cada alteracao):
 | **`playwright`** (novo) | navegar e testar na web (25 ferramentas) |
 | **`sentry`** (novo) | erros e telemetria (70 ferramentas) |
 | `supabase`, `render` | servicos externos ja existentes |
+| **`fetch`** (novo, com Python) | ler qualquer URL em markdown |
+| **`git`** (novo, com Python) | historico do repositorio (14 ferramentas) |
 
 Verificacao: `tools/mcp-check.ps1` (0 falhas).
 
