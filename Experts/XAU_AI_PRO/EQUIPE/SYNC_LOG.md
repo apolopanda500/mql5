@@ -424,3 +424,7 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 22:55 | CMD | infra | D-105: relatorio DELTA registado e verificado. floor50 PERDIDO (log congelado 22:21:08, so cabecalho 21:54:21, ultima final balance 12647,48 @21:33:30, cache 21:33:30). A/B 3/4: floor45 +33,60/1 trade, floor40 +11,16/2, floor50 sem numero; marginal -22,44 -> piso fica 45,0, sem relancar 50. Gateway: /health 404, XAUUSD available=true conf 72,4, USDSGD available=false por edge; 15 linhas 357B sao recusa por edge, nao falha de canal. TRADE BLOCK = fim de semana. GATE 2/11, forward 0/30.
 - 07/11/2026 22:50:29 | CMD | note -> SYNC_LOG.md
 - 07/11/2026 22:50:29 | CMD | ping -> ONLINE (D-105: floor50 perdido registado, gateway sem defeito medido, piso 45,0 confirmado; GATE 2/11 forward 0/30)
+- 08/11/2026 05:38:55 | CMD | lock pegar | reattach | 30 min
+- 08/11/2026 05:47:40 | CMD | note -> DECISOES.md
+- 08/11/2026 05:47:40 | CMD | lock liberar
+- 08/11/2026 05:47:40 | CMD | ping -> ONLINE (D-106: reanexo v1.2.187 concluido 15/15 0 erros; forward 09/11 mede 187; P1.3484 fechado; compile-ea reforcado)

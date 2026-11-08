@@ -19,6 +19,20 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# MD5 por .NET: nao depende de Get-FileHash (ausente em alguns hosts/runspaces
+# deste ambiente) e devolve sempre o mesmo formato de 32 hex maiusculos.
+function Get-Md5Hex([string]$Path) {
+   $md5 = [System.Security.Cryptography.MD5]::Create()
+   try {
+      $fs = [System.IO.File]::OpenRead($Path)
+      try {
+         return ([BitConverter]::ToString($md5.ComputeHash($fs)) -replace '-', '')
+      }
+      finally { $fs.Dispose() }
+   }
+   finally { $md5.Dispose() }
+}
+
 $Mql5    = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)))
 $EaDir   = Join-Path $Mql5 'Experts\XAU_AI_PRO'
 $Source  = Join-Path $EaDir 'XAU_AI_PRO.mq5'
@@ -49,7 +63,7 @@ if (Test-Path -LiteralPath $Ex5) {
    $safeVer = $ver -replace '[^0-9A-Za-z]', ''
    $backupPath = Join-Path $Backup ("XAU_AI_PRO_v{0}_{1}.ex5" -f $safeVer, $stamp)
    Copy-Item -LiteralPath $Ex5 -Destination $backupPath -Force
-   $h = (Get-FileHash -LiteralPath $backupPath -Algorithm MD5).Hash
+   $h = Get-Md5Hex $backupPath
    Write-Output ("[BACKUP] {0} ({1} B) MD5 {2}" -f (Split-Path -Leaf $backupPath), (Get-Item -LiteralPath $backupPath).Length, $h)
 }
 else {
@@ -84,7 +98,7 @@ if (-not (Test-Path -LiteralPath $Ex5)) {
 }
 
 $info = Get-Item -LiteralPath $Ex5
-$md5  = (Get-FileHash -LiteralPath $Ex5 -Algorithm MD5).Hash
+$md5  = Get-Md5Hex $Ex5
 Write-Output ("[EX5] {0} B | {1} | MD5 {2}" -f $info.Length, $info.LastWriteTime.ToString('dd/MM HH:mm:ss'), $md5)
 
 if ($result -match '0 errors') { exit 0 } else { exit 1 }

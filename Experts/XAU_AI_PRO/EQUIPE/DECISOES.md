@@ -5636,3 +5636,47 @@ Terminal PID 14240 (429 MB); gateway python PID 8992 (171 MB), porta 9011 provad
 
 GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05). Continua a nao existir 10/10 como estado. Conta real proibida. Nenhum parametro de risco foi alterado.
 
+
+## D-106 | CMD | 2026-11-08 05:45 | Reanexo a v1.2.187 concluido; P1.3484 fechado; compile-ea.ps1 reforcado
+
+**Contexto:** o DELTA abriu o P1.3484 (binario do tester mudou a meio do A/B) e
+perguntou qual binario entra no forward. O CMD decidiu e executou o reanexo.
+
+### 1. Reanexo (medido)
+
+- Terminal fechado graciosamente com `taskkill` (WM_CLOSE) e reaberto a partir de
+  `C:\Program Files\MetaTrader 5\terminal64.exe`.
+- Journal Experts 08/11: **15/15 `[START] XAU_AI_PRO v1.2.187` as 05:40:14**,
+  **0 erros**; conta 113568614 demo hedging, **12 636,32 USD, 0 posicoes, 0
+  ordens**; `chart13.chr` em **M5** nos dois perfis; `.ex5` MD5
+  `CAE840F626AD6BD2FCCF6351FC4D4EAB`.
+- Decisao: **o forward de 09/11 00:05 mede v1.2.187.** A calibracao A/B
+  (floor45 +33,60) fica registada como corrida no v1.2.186 e nao se mistura.
+  Piso permanece 45,0.
+
+### 2. P1.3484 - fechado como regra de comparabilidade
+
+- Regra registada: cada corrida de tester deve registar o MD5 do `.ex5` usado;
+  nunca misturar builds num A/B; se o disco mudar no meio, o par deixa de ser
+  comparavel.
+- Backups mal etiquetados (nome `v12187` com conteudo 1.2.186) foram renomeados
+  para `XAU_AI_PRO_v12186_20261107_224527.ex5` e `..._224621.ex5`
+  (ambos 967 328 B, MD5 `10212E...`). O backup correcto do 187
+  (`XAU_AI_PRO_v12187_20261108_053841.ex5`, 966 012 B, `CAE840F6`) ficou
+  com nome honesto.
+
+### 3. compile-ea.ps1 - reforco de infra
+
+- O defeito reportado pelo ALFA ("Get-FileHash nao existe neste PowerShell")
+  **nao se reproduziu** neste host: `Get-FileHash` 7.0.0.0 presente, `-LiteralPath`
+  aceite, `-NoCompile` rc=0.
+- Mesmo assim, o script foi reforcado com uma funcao `Get-Md5Hex` por .NET
+  (`System.Security.Cryptography.MD5`), independente do cmdlet, e as duas
+  chamadas passaram a usa-la. Testado `-NoCompile` rc=0 e parse 0 erros.
+- Nenhum input, limite de risco, lote, alvo ou stop alterado.
+
+### 4. Estado
+
+GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, v1.2.187). Conta real
+proibida. LOCK tomado para `reattach`, libertado em seguida.
+
