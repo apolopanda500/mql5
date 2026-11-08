@@ -5589,3 +5589,50 @@ O binario novo **nao esta' em nenhum grafico**: a frota de 15 continua a correr
 o v1.2.186 (MD5 `10212E...`). Reanexar e' do CMD. GATE_REAL continua **2 de 11**
 e forward **0/30**: isto e' uma correcao de portao compilada e verificada, nao
 e' 10/10.
+
+
+## D-105 | CMD | 2026-11-07 22:55 | Registo medido do DELTA: floor50 PERDIDO, gateway sem defeito, piso 45,0 confirmado
+
+**Contexto:** o DELTA libertou o LOCK as 22:52 e entregou o relatorio medido da sessao A/B do piso. O CMD verificou os pontos principais por leitura directa.
+
+### 1. floor50 - PERDIDO (4 provas, confirmadas pelo CMD)
+
+- `Tester\logs\20261107.log`: 252 339 234 B, ultima escrita **22:21:08**; cauda de 1 412 linhas.
+- Cauda do log: floor50 tem so' o cabecalho `21:54:21.647 MinMarketScoreNoAI=50.0` + `[BT] inicializado`; sem `[BT] Trades=` e sem final balance do piso 50.
+- Ultima final balance do ficheiro: **12 647,48 USD @ 21:33:30** (corrida B', floor40).
+- `Tester\cache`: `.tst` mais recente 21 682 B, **21:33:30**; nada escrito as ~22:21.
+
+Sequencia: `22:16:02.744 disconnected` -> `connection closed` -> `22:17:01.186 Tester Cloud servers switched off`. O crash das 22:16:02 matou a corrida antes do flush. Cabecalho sem bloco final = "arrancou", nao "acabou". **Nao se inventa numero para o floor50.**
+
+### 2. Par A/B - 3 de 4 metades
+
+| Piso | Resultado | Trades |
+|---|---|---|
+| 45,0 | **+33,60 USD** | 1 |
+| 40,0 | **+11,16 USD** | 2 (identico em duas corridas) |
+| 50,0 | **sem numero** | corrida perdida |
+
+O trade marginal do piso 40 custa **-22,44 USD**. Decisao operacional (dentro dos defaults ja' aceites pelo DONO): **o piso fica em 45,0**; o 50,0 serve apenas como cerca superior. **Nao se relanca o floor50**: ocupa o slot do tester, o resultado do 40 ja' mostra que baixar o piso piora, e nao ha' decisao do DONO para gastar esse slot. Se o DONO quiser, autoriza explicitamente e o CMD agenda.
+
+### 3. Gateway de IA - a suspeita do DELTA foi desmentida pela medicao
+
+| Pedido | Resultado (verificado pelo CMD) |
+|---|---|
+| `GET /health` com token | **404** - rota nao existe nesta build |
+| `/api/ai/predict?symbol=XAUUSD&timeframe=H1` | **200**, 1 122 B, `available=true`, conf **72,4** |
+| `/api/ai/predict?symbol=USDSGD&timeframe=H1` | **200**, 357 B, `available=false`, `edge +0.0193 abaixo do minimo +0.0500` |
+
+As 15 linhas `[AI] GATEWAY | ... | 357 bytes | disponivel=false` das 22:21:55 **nao sao falha de canal**: sao recusa por edge. O `timeframe=H1` dessas linhas e' o input do gateway, nao o periodo do grafico (os 15 estavam em M5). Nada a corrigir; nao vai para PENDENCIAS como defeito.
+
+### 4. [TRADE BLOCK] COTACAO VELHA - guarda correcta
+
+Idade 98 518-123 723 s, limite 900 s, `trade_server_time 2026-11-06 23:59:59`: e' fim de semana. A guarda funcionou; nao e' defeito.
+
+### 5. Estado medido
+
+Terminal PID 14240 (429 MB); gateway python PID 8992 (171 MB), porta 9011 provada por TcpClient; conta 113568614 demo hedging **12 636,32 USD, 0 posicoes, 0 ordens**; `chart13.chr` em **M5** nos perfis `Default` e `XAU_AI_PRO_15CHARTS_Q071`.
+
+### 6. Estado do gate
+
+GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05). Continua a nao existir 10/10 como estado. Conta real proibida. Nenhum parametro de risco foi alterado.
+

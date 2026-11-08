@@ -418,3 +418,9 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 07/11/2026 22:53 | ALFA | lock pegar | D-104 (D-086/Q-079/B, v1.2.187 ja' compilado) | ~20 min
 - 07/11/2026 22:53 | ALFA | codigo | D-104: a folga de 1 ATR fazia return(true) antes de qualquer leitura de ADX, logo isentava o veto de tendencia formada (e o de volatilidade) apesar de o cabecalho prometer o contrario; o ADX sobe para antes da banda, com o veto adx<=0, e dentro da banda o return(true) passa a exigir adx < ScenarioCounterTrendMaxADX; guarda duplicada/inalcancavel removida; mensagem da folga publica ADX=. v1.2.187: 0 errors / 0 warnings (22.865 ms), ex5 966012 B MD5 CAE840F626AD6BD2FCCF6351FC4D4EAB, backup previo 967328 B MD5 10212E87...; nenhum input ou limite de risco alterado; frota ainda em v1.2.186, reanexo e' do CMD; GATE_REAL 2 de 11, forward 0/30
 - 07/11/2026 22:57 | ALFA | lock liberar
+- 07/11/2026 22:50:00 | CMD | note -> DECISOES.md
+- 07/11/2026 22:50:23 | CMD | note -> DECISOES.md
+
+- 07/11/2026 22:55 | CMD | infra | D-105: relatorio DELTA registado e verificado. floor50 PERDIDO (log congelado 22:21:08, so cabecalho 21:54:21, ultima final balance 12647,48 @21:33:30, cache 21:33:30). A/B 3/4: floor45 +33,60/1 trade, floor40 +11,16/2, floor50 sem numero; marginal -22,44 -> piso fica 45,0, sem relancar 50. Gateway: /health 404, XAUUSD available=true conf 72,4, USDSGD available=false por edge; 15 linhas 357B sao recusa por edge, nao falha de canal. TRADE BLOCK = fim de semana. GATE 2/11, forward 0/30.
+- 07/11/2026 22:50:29 | CMD | note -> SYNC_LOG.md
+- 07/11/2026 22:50:29 | CMD | ping -> ONLINE (D-105: floor50 perdido registado, gateway sem defeito medido, piso 45,0 confirmado; GATE 2/11 forward 0/30)
