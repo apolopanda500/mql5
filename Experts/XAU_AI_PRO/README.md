@@ -1,13 +1,16 @@
 # XAU_AI_PRO — Indice do projeto
 
-> Expert Advisor MQL5 multiativo (16 graficos), arquitetura modular, com escada
+> Expert Advisor MQL5 multiativo (15 graficos medidos em 08/11/2026), arquitetura modular, com escada
 > de saida em dolares, aprendizado a partir do historico real e camadas de
 > risco de carteira. Este arquivo e o PONTO DE ENTRADA da documentacao: diz
 > onde cada assunto esta e qual e o estado atual medido.
 >
-> Versao do codigo: **v1.2.135** (`Enterprise/VersionManager.mqh` ->
-> `EA_VERSION_STRING`). `#property version "1.326"` acompanha desde a v1.2.123:
-> MQL5 aceita somente dois numeros na propriedade, entao ela e minor*100+patch.
+> Versao do codigo: **v1.2.188** (`Enterprise/VersionManager.mqh` ->
+> `EA_VERSION_STRING`; `Monitoring/EventEmitter.mqh` -> `EV_VERSION_STRING`).
+> `#property version "1.388"`: MQL5 aceita somente dois numeros na propriedade,
+> entao ela e minor*100+patch. Binario medido em 08/11 05:59:42: **970 168 B**,
+> MD5 `943DB7CB6955299C6A470141B942BC54`, com **15/15** graficos em
+> `[START] XAU_AI_PRO v1.2.188` as 06:01:54 (journal `MQL5\Logs\20261108.log`).
 >
 > Conta REAL: `Core/RealAccountGuard.mqh` (v1.2.37, P1.10). Inerte no testador e
 > em demo; em `ACCOUNT_TRADE_MODE_REAL` aperta tres regras de seguranca pura
@@ -33,7 +36,10 @@
 > cache a gravar por cima de outra instancia e sem lock nao ha interleave. Trade nao
 > gravado e um DROP contado e impresso, nunca uma linha partida.
 >
-> Ultima atualizacao: 2026-11-04.
+> Ultima atualizacao: **2026-11-08** (DELTA: versao, binario, contagem de
+> graficos e data; o texto historico das versoes abaixo nao foi reescrito).
+> Estado do mandato nessa data: GATE_REAL **2 de 11**, forward **0 de 30**
+> (arranca 09/11 00:05), conta demo 113568614 flat em 12 636,32 USD, 0 ordens.
 
 ---
 

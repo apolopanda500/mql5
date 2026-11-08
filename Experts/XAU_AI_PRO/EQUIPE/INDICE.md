@@ -1,15 +1,15 @@
 # INDICE DO CANAL - XAU_AI_PRO
 
 **Leia este ficheiro primeiro.** Tudo o resto e complemento.
-Atualizado: 07/11/2026 14:41 (CMD).
+Atualizado: 08/11/2026 06:20 (DELTA: datas, `D-001..D-107`, GATE 2/11, ficheiros de 08/11). Base anterior: 07/11/2026 14:41 (CMD).
 
 ## 1. Ordem de leitura (agente novo em 10 min)
 
 1. `QUADRO_ESTADO.md` - estado medido (versao, binario, trades, suite).
 2. `CICLO_FINAL.md` - contrato ate ao 10/10 (`D-069`), ratificado em `D-071`.
 3. `PROTOCOLO_CICLO_10_10.md` - anexo tecnico do contrato (`D-070`).
-4. `DECISOES.md` - o que ja foi decidido (`D-001..D-072`).
-5. `GATE_REAL.md` - os 11 portoes e o estado medido (hoje **1 verde de 11**).
+4. `DECISOES.md` - o que ja foi decidido (`D-001..D-107`).
+5. `GATE_REAL.md` - os 11 portoes e o estado medido (hoje **2 verdes de 11**, forward 0 de 30).
 6. `PLANO_10_10.md` - fases F0..F9 e portoes (plano canonico, `D-018`/`D-022`).
 7. `BACKLOG.md` - o que falta, com dono e criterio.
 8. `AUTORIZACOES.md` - quem pode o que.
@@ -29,7 +29,7 @@ Atualizado: 07/11/2026 14:41 (CMD).
 | `CICLO_FINAL.md` | ALFA | contrato ate ao 10/10 (`D-069`, ratificado `D-071`) | ao assumir |
 | `PROTOCOLO_CICLO_10_10.md` | DELTA | anexo tecnico do contrato (`D-070`): papeis, fases, evidencias | ao assumir |
 | `GATE_REAL.md` | DELTA | os 11 portoes do GATE_REAL e o estado medido | ao medir |
-| `DECISOES.md` | CMD (regista) | decisoes fechadas (`D-001..D-072`) | ao assumir |
+| `DECISOES.md` | CMD (regista) | decisoes fechadas (`D-001..D-107`) | ao assumir |
 | `IDS.md` | ledger | IDs reservados (D/P1/T) | ao escrever |
 | `PLANO_10_10.md` | CMD | plano mestre canonico | ao assumir |
 | `PLANO_MESTRE.md` | ALFA | historico/complemento (`D-022`) | opcional |
@@ -53,6 +53,11 @@ Atualizado: 07/11/2026 14:41 (CMD).
 | `SESSAO_20261107_ALFA.md` | ALFA | registo de 07/11: autorizacoes do DONO, provas, pendencias | historico |
 | `SESSAO_20261107_CMD.md` | CMD | registo de 07/11: commits, ferramentas, estado medido | historico |
 | `SESSAO_20261107_DELTA.md` | DELTA | registo de 07/11: medicao, diagnostico, fecho | historico |
+| `SESSAO_DELTA_AB_PISO_20261107.md` | DELTA | par A/B do piso 45 vs 40 vs 50 (medido) | ao comparar pisos |
+| `SESSAO_20261108_ALFA.md` | ALFA | registo de 08/11: v1.2.188 e D-107 | historico |
+| `SESSAO_20261108_DELTA.md` | DELTA | registo de 08/11: sincronizacao de documentos | historico |
+| `RELATORIOS/` | CMD | relatorio diario (`YYYYMMDD.md`) gerado as 23:50 | diaria |
+| `BRIEFING_ATUAL.md` | CMD | briefing curto gerado por `tools/agente-briefing.ps1` | primeiro |
 | `CONSOLIDACAO.md` | CMD | consolidacao da pasta | historico |
 | `PRESENCA.md` | cada um | quem esta online e o que mediu | diaria |
 | `LOCK.md` | runtime | lock de escrita do canal | antes de escrever |

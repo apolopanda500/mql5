@@ -9,8 +9,10 @@
 > - Dono: `DONO` = so o dono do terminal resolve (clicar, autorizar, decidir);
 >   `AGENTE` = trabalho de codigo/medicao aqui; `AMBOS` = quem estiver na vez.
 > - Nada aqui e promessa de lucro. Backtest nao prova lucro futuro.
-> - Ultima revisao desta lista: 2026-11-04 21:50 (conta 113568614, v1.2.147
->   compilada e validada; producao ainda em v1.2.146 ate reattach).
+> - **Ultima revisao desta lista: 2026-11-08 06:20** (conta 113568614, v1.2.188
+>   reanexada 15/15 as 06:01:54, MD5 `943DB7CB6955299C6A470141B942BC54`; o forward
+>   de 09/11 00:05 corre nesta versao; GATE_REAL 2 de 11, forward 0 de 30).
+> - Convencao de escrita deste canal: ASCII sem acentos, UTF-8 sem BOM, LF puro.
 
 ---
 
@@ -1466,17 +1468,19 @@ Proximo passo (proprio): localizar quem chama `CalculateMarketScore` com `logOnc
 
 ### P1.3477 - FECHADO (D-102) - gateway 9011 com bind duplicado (Errno 10048)
 
-`Files\XAU_AI_PRO\Logs\gateway_9011.err.log`, 21:13:12: `[Errno 10048] error while attempting to bind on address ('127.0.0.1', 9011)`. O processo vivo continua a responder (`/health` = 401 sem token, PID 8992); o erro e' de uma segunda instancia levantada pelo keepalive/manual ao mesmo tempo. Nao ha' impacto na operacao, mas o log ganha erro falso. Corrigir com lock de instancia unica no arranque do gateway, sem tocar em risco.
+`Files\XAU_AI_PRO\Logs\gateway_9011.err.log`, 21:13:12: `[Errno 10048] error while attempting to bind on address ('127.0.0.1', 9011)`. O processo vivo continua a responder (`/health` = 401 sem token, PID 8992); o erro e de uma segunda instancia levantada pelo keepalive/manual ao mesmo tempo. Nao ha impacto na operacao, mas o log ganha erro falso. Corrigir com lock de instancia unica no arranque do gateway, sem tocar em risco.
 
 **FECHADO em 07/11 22:35 (D-102):** a causa nao era falta de lock. Neste host o socket do uvicorn nao aparece como `State=Listen` no CIM: `Get-NetTCPConnection -LocalPort 9011 -State Listen` e `GetActiveTcpListeners()` devolvem vazio, mas `Get-NetTCPConnection` sem filtro mostra `127.0.0.1:9011 -> 0.0.0.0:0` com `OwningProcess=8992` e sem State, e uma ligacao TCP real responde (`/health` 401). O `gateway-start.ps1` usava esse filtro e, a cada 5 minutos, concluia que a porta estava livre e arrancava uma segunda instancia, que morria com `10048`. Corrigido: teste por `TcpClient` (800 ms) e PID lido da tabela sem filtro de estado. Testado: `OK: porta 9011 ja esta a ouvir (pid 8992); nada a fazer`, 1 unico uvicorn, sem nova escrita no `err.log`.
 
 ### P1.3478 - ABERTO - TrendFilter devolve EMA de outro simbolo (LEITURA SUSPEITA)
 
-Medido no log de teste de 07/11 (`Tester\logs\20261107.log`): **278 536** linhas `[TREND] LEITURA SUSPEITA` no dia; por simbolo, USDSEK 83 787, GBPUSD 80 222, EURUSD 65 065, USDBRL 55 133. Amostra: `USDCNH | EMA=0.71560 | bid=6.72217`. O ALFA mediu 62 480 linhas numa unica corrida (20:43-21:07), com EURUSD `EMA=6.66590` e `bid=1.12395`. Assinatura identica ao P1.137/P1.132 (ATR), agora em `Filters/TrendFilter.mqh`: o handle devolve a serie de outro simbolo. Nao corrigir antes de fechar o A/B (mesmo binario MD5 10212E8702FB0A14D070240D3BA22B85).
+Medido no log de teste de 07/11 (`Tester\logs\20261107.log`): **278 536** linhas `[TREND] LEITURA SUSPEITA` no dia. **Reparticao corrigida em 08/11 06:15 (DELTA):** o texto anterior somava 284 207 > 278 536 (reparticao inflada). O recount do ficheiro inteiro fecha exactamente no total: USDSEK 73 464, GBPUSD 65 135, USDBRL 50 896, EURUSD 46 604, AUDUSD 21 622, USDCAD 12 485, XAUUSD 4 219, USDCHF 1 453, NZDUSD 982, USDJPY 981, USDCNH 695 = **278 536**. Amostra: `USDCNH | EMA=0.71560 | bid=6.72217`. O ALFA mediu 62 480 linhas numa unica corrida (20:43-21:07), com EURUSD `EMA=6.66590` e `bid=1.12395`. Assinatura identica ao P1.137/P1.132 (ATR), agora em `Filters/TrendFilter.mqh`: o handle devolve a serie de outro simbolo. Nao corrigir antes de fechar o A/B (mesmo binario MD5 10212E8702FB0A14D070240D3BA22B85).
 
-### P1.3479 - ABERTO - gate do tester saturado e fail-open
+### P1.3479 - FECHADO (D-107) - gate do tester saturado e fail-open
 
-`Monitoring/AccountLogGate.mqh:73`: `TESTER_GATE_MAX_TAGS 128`. As tags por simbolo (7 ATR + 2 TREND, x 15 simbolos = 135) excedem o limite. A linha 102 so' guarda enquanto `s_usados < 128`; a linha 109 devolve `true` mesmo quando a tabela esta' cheia -> fail-open. O throttle de 1x/hora deixa de existir e o log chega a 252 MB. Corrigir aumentando o limite ou reduzindo as tags; nao antes de fechar o A/B.
+`Monitoring/AccountLogGate.mqh:73`: `TESTER_GATE_MAX_TAGS 128`. As tags por simbolo (7 ATR + 2 TREND, x 15 simbolos = 135) excedem o limite. A linha 102 so guarda enquanto `s_usados < 128`; a linha 109 devolve `true` mesmo quando a tabela esta cheia -> fail-open. O throttle de 1x/hora deixa de existir e o log chega a 252 MB. Corrigir aumentando o limite ou reduzindo as tags; nao antes de fechar o A/B.
+
+**FECHADO em 08/11 06:03 (D-107, ALFA):** `TESTER_GATE_MAX_TAGS` passa de **128 para 512** e a tabela ganha despejo **LRU** (o slot mais antigo sai quando enche) em vez de fail-open silencioso; `IntegerToString((long)__DATETIME__)` das 7 tags ATR foi **mantido** por decisao do ALFA (a proposta do DELTA de 105->7 slots nao foi adoptada). A v1.2.188 saiu com estas tres correccoes (P1.3479, P1.2336 e P1.139) e foi reanexada 15/15 as 06:01:54. DELTA nao editou o source em nenhum momento; a prova de que o throttle voltou a existir so e obtivel num teste de 24 h com mercado aberto - fica como medicao pendente da segunda-feira.
 
 ### P1.3480 - FECHADO (D-103) - crash do terminal as 22:16:02 durante automacao de foco
 
@@ -1501,7 +1505,7 @@ Regras ate o desvio estar explicado: (1) antes do inicio do forward (09/11 00:05
 
 ### P1.3482 - FECHADO (D-103) - tarefa XAU_AI_PRO_Dashboard nunca mais corre
 
-`Get-ScheduledTask` mostra a tarefa `Ready`, mas o trigger e' unico: `StartBoundary=2026-09-01T00:00:00`, sem repeticao; `NextRunTime` vazio e `LastRunTime=02/09/2026 00:04:41` com `LastTaskResult=3221225786`. Por isso o `ordem-master` conta 5 tarefas activas quando so' 4 tem proxima execucao: DonoRelatorio (23:50), ForwardInicio (09/11 00:05), GatewayKeepalive (5 min) e LimpezaSemanal (domingo 10:00). Decidir: recriar trigger diario ou remover a tarefa e passar a contar 4.
+`Get-ScheduledTask` mostra a tarefa `Ready`, mas o trigger e unico: `StartBoundary=2026-09-01T00:00:00`, sem repeticao; `NextRunTime` vazio e `LastRunTime=02/09/2026 00:04:41` com `LastTaskResult=3221225786`. Por isso o `ordem-master` conta 5 tarefas activas quando so 4 tem proxima execucao: DonoRelatorio (23:50), ForwardInicio (09/11 00:05), GatewayKeepalive (5 min) e LimpezaSemanal (domingo 10:00). Decidir: recriar trigger diario ou remover a tarefa e passar a contar 4.
 
 **FECHADO em 07/11 22:45 (D-103):** tarefa `XAU_AI_PRO_Dashboard` **removida**. O dashboard continua disponivel manualmente por `start_dashboard.cmd`. Ficam **4** tarefas com proxima execucao: DonoRelatorio (23:50), ForwardInicio (09/11 00:05), GatewayKeepalive (5 min) e LimpezaSemanal (domingo 10:00).
 
@@ -1509,22 +1513,81 @@ Regras ate o desvio estar explicado: (1) antes do inicio do forward (09/11 00:05
 
 `MetaTester64` PIDs 3512/6840 e `metatester64` PIDs 5896/10616, criados entre 20:26:48 e 20:27:05, antes do reinicio do terminal das 20:39; sem `CommandLine`; ~110 MB no total. `Stop-Process -Force` nao os remove sem elevacao. Nao bloqueiam o terminal vivo (PID 14240) nem o tester (log fechado as 22:16:02); limpar quando houver sessao com admin.
 
-**FECHADO em 07/11 22:45 (D-103, reclassificado):** os 4 processos **nao sao orfaos**. Sao workers dos servicos Windows `MetaTester-1/2/5/6` (parent `services.exe`, PID 596, a correr como SYSTEM). `Stop-Process`, `taskkill /F` e `Stop-Service` devolvem acesso negado sem admin. Nao ha' erro operacional: nao seguram o log do tester nem o terminal vivo. Sem elevacao nao se tocam; o MT5 gere-os. Nao e' falha de 10/10.
+**FECHADO em 07/11 22:45 (D-103, reclassificado):** os 4 processos **nao sao orfaos**. Sao workers dos servicos Windows `MetaTester-1/2/5/6` (parent `services.exe`, PID 596, a correr como SYSTEM). `Stop-Process`, `taskkill /F` e `Stop-Service` devolvem acesso negado sem admin. Nao ha erro operacional: nao seguram o log do tester nem o terminal vivo. Sem elevacao nao se tocam; o MT5 gere-os. Nao e falha de 10/10.
 
 ### P1.3484 - FECHADO (D-106) - o binario do tester mudou a meio do A/B: disco = v1.2.187, corridas A/B/B' = v1.2.186
 
-Medido por DELTA as 22:56. `MQL5\Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` em disco: **966.012 B, MD5 `CAE840F626AD6BD2FCCF6351FC4D4EAB`, escrito 07/11 22:46:45**. A arvore que o produziu declara-se 1.2.187: `Enterprise/VersionManager.mqh:14` `#define EA_VERSION_STRING "1.2.187"`, `Monitoring/EventEmitter.mqh:77` `#define EV_VERSION_STRING "1.2.187"` e `Filters/MarketScenario.mqh` com as notas `v1.2.187 - D-086`; os ficheiros foram escritos as 22:44:09 (MarketScenario), 22:44:25 (XAU_AI_PRO.mq5), 22:44:38 (EventEmitter) e 22:44:47 (VersionManager) e continuam por commitar (`git status` = ` M`). O ALFA registou a compilacao no D-104 (0 errors / 0 warnings, 22.865 ms, ex5 966012 B `CAE840F6`): confere com a medicao, **nao e' anomalia**.
+Medido por DELTA as 22:56. `MQL5\Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` em disco: **966.012 B, MD5 `CAE840F626AD6BD2FCCF6351FC4D4EAB`, escrito 07/11 22:46:45**. A arvore que o produziu declara-se 1.2.187: `Enterprise/VersionManager.mqh:14` `#define EA_VERSION_STRING "1.2.187"`, `Monitoring/EventEmitter.mqh:77` `#define EV_VERSION_STRING "1.2.187"` e `Filters/MarketScenario.mqh` com as notas `v1.2.187 - D-086`; os ficheiros foram escritos as 22:44:09 (MarketScenario), 22:44:25 (XAU_AI_PRO.mq5), 22:44:38 (EventEmitter) e 22:44:47 (VersionManager) e continuam por commitar (`git status` = ` M`). O ALFA registou a compilacao no D-104 (0 errors / 0 warnings, 22.865 ms, ex5 966012 B `CAE840F6`): confere com a medicao, **nao e anomalia**.
 
-O que isto muda: as corridas A (19:50:28), B (21:06:30) e B' (21:33:30) correram no binario anterior, **v1.2.186, MD5 `10212E8702FB0A14D070240D3BA22B85`**. O backup existe e foi verificado por hash: `MQL5\Files\Backup\XAU_AI_PRO_v12187_20261107_224527.ex5` e `..._224621.ex5`, ambos 967.328 B e ambos com MD5 `10212E...`. **Atencao ao nome:** os dois ficheiros chamam-se `v12187` mas o conteudo e' o 1.2.186; quem restaurar pelo nome fica com o build errado.
+O que isto muda: as corridas A (19:50:28), B (21:06:30) e B' (21:33:30) correram no binario anterior, **v1.2.186, MD5 `10212E8702FB0A14D070240D3BA22B85`**. O backup existe e foi verificado por hash: `MQL5\Files\Backup\XAU_AI_PRO_v12187_20261107_224527.ex5` e `..._224621.ex5`, ambos 967.328 B e ambos com MD5 `10212E...`. **Atencao ao nome:** os dois ficheiros chamam-se `v12187` mas o conteudo e o 1.2.186; quem restaurar pelo nome fica com o build errado.
 
-Consequencia medida: **relancar o floor50 agora nao e' A/B.** O tester corre o `.ex5` do disco, portanto o v1.2.187, e o par deixa de ser comparavel com A/B/B'. Ha' duas vias honestas para fechar o par: (1) repor `10212E...` na pasta do EA antes da corrida e devolver o 187 depois; (2) aceitar que o floor50 passa a ser um ponto noutro build e etiqueta-lo assim. A frota viva continua em v1.2.186 (journal `[START] XAU_AI_PRO v1.2.186` as 22:21:24, 15 instancias), logo o forward de 09/11 00:05 so' mede o 187 se houver reanexo antes disso - e o 187 nao tem uma unica corrida de tester.
+Consequencia medida: **relancar o floor50 agora nao e A/B.** O tester corre o `.ex5` do disco, portanto o v1.2.187, e o par deixa de ser comparavel com A/B/B'. Ha' duas vias honestas para fechar o par: (1) repor `10212E...` na pasta do EA antes da corrida e devolver o 187 depois; (2) aceitar que o floor50 passa a ser um ponto noutro build e etiqueta-lo assim. A frota viva continua em v1.2.186 (journal `[START] XAU_AI_PRO v1.2.186` as 22:21:24, 15 instancias), logo o forward de 09/11 00:05 so mede o 187 se houver reanexo antes disso - e o 187 nao tem uma unica corrida de tester.
 
-Nenhum reanexo, compilacao, ordem ou alteracao de risco feita por DELTA. A decisao e' do CMD/DONO.
+Nenhum reanexo, compilacao, ordem ou alteracao de risco feita por DELTA. A decisao e do CMD/DONO.
 
 **FECHADO em 08/11 05:45 (D-106):** o CMD reanexou a v1.2.187. Terminal fechado graciosamente (taskkill WM_CLOSE) e reaberto; journal Experts 08/11 mostra 15/15 `[START] XAU_AI_PRO v1.2.187` as 05:40:14, 0 erros; conta 113568614 flat (12 636,32 USD, 0 posicoes, 0 ordens); `chart13.chr` M5 em ambos os perfis; `.ex5` MD5 `CAE840F626AD6BD2FCCF6351FC4D4EAB`. Decisao: **o forward de 09/11 00:05 mede v1.2.187**; a calibracao A/B (floor45 +33,60) fica registada como corrida no v1.2.186 e nao se mistura. Piso permanece 45,0. As duas vias honestas apontadas pelo DELTA tornam-se uma: o CMD escolheu a v1.2.187 e executou o reanexo antes do forward. A regra de comparabilidade (registar o binario em cada corrida de tester, nunca misturar builds num A/B) fica registada em D-106. Os backups mal etiquetados (v12187 com conteudo 1.2.186) foram renomeados para `v12186_*`. O `compile-ea.ps1` foi reforcado com MD5 por .NET (fallback independente de `Get-FileHash`) e testado (-NoCompile rc=0): o defeito reportado pelo ALFA nao se reproduziu neste host (`Get-FileHash` 7.0.0.0 presente), mas o reforco remove a dependencia de host.
 
+**Actualizacao de 08/11 06:20 (DELTA):** a frase "o forward de 09/11 00:05 mede v1.2.187" desta pendencia ficou **desactualizada 16 minutos depois de ser escrita**. O ALFA publicou a v1.2.188 (D-107) e reanexou 15/15 as 06:01:54: `MQL5\Logs\20261108.log` tem `[START] XAU_AI_PRO v1.2.188` em 06:01:45.682 (USDCLP) e 06:01:54.495 (AUDUSD), e o ex5 em disco e **970 168 B, MD5 `943DB7CB6955299C6A470141B942BC54`, escrito 05:59:42**. Logo o binario declarado para o forward e o **1.2.188**, nao o 1.2.187. A regra de fundo continua valida e agora tem um segundo caso que a justifica: **o MD5 do binario vai ao DOSSIE antes das 09/11 00:05 e nao muda ate os 30 dias fecharem**; qualquer reanexo a meio divide a contagem por dois builds.
 
-### P1.3485 - ABERTO - `DELTA_186_A.set` nao e' a corrida A: 16 linhas diferentes e outro experimento
 
-`MQL5\Profiles\Tester\DELTA_186_A.set` (29.894 B, criado 07/11 20:16:46) tem as mesmas 328 linhas do `XAI_ALFA_floor40.set`, mas **16 delas diferem** - nao a unica linha (L195) que separa floor40 de floor50. Diferencas que mudam o experimento: `Symbols=XAUUSD` (1 simbolo) vs 11 simbolos; `SymbolsFromMarketWatch=false` vs `true`; `EnableAutonomousMode=true` vs `false`; `EnableTelemetry`/`EnableDataset`/`SaveDatasetCSV`=`false` vs `true`; `MinMarketScoreNoAI=45.0` vs `40.0`. Dois riscos medidos: (1) quem correr "a replica de A no v1.2.187" com este ficheiro atribui ao binario o que e' mudanca de configuracao; (2) nao existe `.set` com piso `45.0` anterior as 19:31:54, logo **a corrida A nao e' reprodutivel** a partir do disco - so B e B' sao (mesmo `.set`, resultado identico ao centavo: +11,16, 2 trades, PF 999,00, MaxDD 0,00%, expect 5,58). Sem accao de DELTA: o ficheiro e' de outro agente e a decisao e' do CMD/DONO.
+### P1.3485 - ABERTO - `DELTA_186_A.set` nao e a corrida A: 16 linhas diferentes e outro experimento
 
+`MQL5\Profiles\Tester\DELTA_186_A.set` (29.894 B, criado 07/11 20:16:46) tem as mesmas 328 linhas do `XAI_ALFA_floor40.set`, mas **16 delas diferem** - nao a unica linha (L195) que separa floor40 de floor50. Diferencas que mudam o experimento: `Symbols=XAUUSD` (1 simbolo) vs 11 simbolos; `SymbolsFromMarketWatch=false` vs `true`; `EnableAutonomousMode=true` vs `false`; `EnableTelemetry`/`EnableDataset`/`SaveDatasetCSV`=`false` vs `true`; `MinMarketScoreNoAI=45.0` vs `40.0`. Dois riscos medidos: (1) quem correr "a replica de A no v1.2.187" com este ficheiro atribui ao binario o que e mudanca de configuracao; (2) nao existe `.set` com piso `45.0` anterior as 19:31:54, logo **a corrida A nao e reprodutivel** a partir do disco - so B e B' sao (mesmo `.set`, resultado identico ao centavo: +11,16, 2 trades, PF 999,00, MaxDD 0,00%, expect 5,58). Sem accao de DELTA: o ficheiro e de outro agente e a decisao e do CMD/DONO.
+
+
+---
+
+## Ciclo 116 - 08/11/2026 (DELTA) - sincronizacao de todos os documentos para a data de hoje
+
+Pedido do DONO as 06:05: "atualizar todos documentos do projeto para a data de hoje, sincronizar tudo, corrigir escritas, PENDENCIAS.md corrigir tudo". Executado com LOCK tomado as 06:06 e libertado no fim, **sem compilar, sem tester, sem reanexar, sem ordem, sem tocar em risco**.
+
+### 1. Estado medido as 06:06-06:20 (prova, nao resumo)
+
+| Facto | Valor medido | Fonte |
+|---|---|---|
+| Binario no disco | `XAU_AI_PRO.ex5` **970 168 B**, MD5 **943DB7CB6955299C6A470141B942BC54**, escrito 08/11 05:59:42 | `Get-FileHash` |
+| Versao da arvore | `Enterprise/VersionManager.mqh:14` e `Monitoring/EventEmitter.mqh:77` = **"1.2.188"** | leitura directa |
+| `#property version` | **"1.388"** (coerente com 1.2.188) | `XAU_AI_PRO.mq5` |
+| Frota viva | **15/15** `[START] XAU_AI_PRO v1.2.188` entre 06:01:45.682 e 06:01:54.495 | `MQL5\Logs\20261108.log` |
+| USDBRL | `(USDBRL,M5) [START] v1.2.188` as 06:01:54.469 - **M5 confirmado** | idem |
+| Conta 113568614 | MetaQuotes-Demo, hedging, saldo = equity = **12 636,32 USD**, margem 0,00, **0 posicoes, 0 ordens** | `get_trading_account_info` |
+| Terminal | build **6308**, `synchronized`, ultimo `last_authorized_at` 08:40:11Z, ping 215 ms | idem |
+| Gateway | 15/15 instancias publicam `[AI] GATEWAY`; USDBRL 357 B `disponivel=false` por edge (`edge +0.0240 < +0.0500`) | journal 06:02:25 |
+| Mercado | **fechado** (fim de semana): `[TRADE BLOCK] COTACAO VELHA` idade 129 746 s vs limite 900 s - guarda correcta | journal 06:02:25 |
+| Git | HEAD `1f439d43` 08/11 06:06 (ALFA, D-107) | `git log` |
+| GATE_REAL | **2 de 11**; forward **0 de 30** (arranca 09/11 00:05) | `GATE_REAL.md` |
+
+### 2. Correccoes feitas nesta sincronizacao (o que mudou, com numero)
+
+| Ficheiro | Antes | Depois | O que mudou |
+|---|---|---|---|
+| `PENDENCIAS.md` | 106 706 B | **113 993 B** | cabecalho datado de 04/11 -> **08/11**; P1.3479 ABERTO -> **FECHADO (D-107)**; P1.3478 com **recount que fecha em 278 536**; P1.3484 com a **actualizacao para o 1.2.188**; 18 apostrofos-acento normalizados; novo **Ciclo 116** |
+| `EQUIPE/GATE_REAL.md` | 6 331 B | **6 998 B** | G1, G2, G4, G10 e G11 remedidos hoje; 13 graficos -> **15**; PID do gateway 1464 -> **8992**; binario 1.2.176 -> **1.2.188** |
+| `EQUIPE/INDICE.md` | 5 093 B | **5 681 B** | data 07/11 -> **08/11**; `D-001..D-072` -> **D-001..D-107**; "1 verde de 11" -> **2 de 11**; mapa com os ficheiros de 08/11 |
+| `EQUIPE/IDS.md` | 26 909 B | **27 773 B** | P1.3486 e P1.3487 |
+| `EQUIPE/SYNC_LOG.md` | 65 521 B | **65 882 B** | lock, nota, ping e libertacao deste turno |
+| `EQUIPE/PRESENCA.md` | 27 064 B | **28 485 B** | heartbeat de 08/11 06:25 |
+| `EQUIPE/RELATORIOS/20261108.md` | nao existia | criado | relatorio diario de 08/11 |
+| `EQUIPE/SESSAO_20261108_DELTA.md` | nao existia | criado | registo desta sessao |
+| `README.md` | 20 392 B | **20 950 B** | cabecalho estava em **v1.2.135** / `#property version "1.326"` / "Ultima atualizacao: 2026-11-04"; passa a **v1.2.188**, `"1.388"`, MD5 `943DB7CB...` e **2026-11-08**; "16 graficos" -> **15 medidos**; CRLF preservado (359 linhas) |
+
+### 3. Erros de escrita que estavam a circular e foram medidos (nao repetidos)
+
+- **"VERSION / Docs/version.json em 1.2.181"** - **nao existem**: `Experts\XAU_AI_PRO\VERSION` e `Experts\XAU_AI_PRO\Docs\version.json` devolvem "ausente". O item estava errado na lista de higiene herdada.
+- **"mojibake em CONVERSAS.md"** - **nao existe**: `CONVERSAS.md` tem 82 444 B e **0** caracteres U+FFFD. O que parece mojibake no terminal e' so o console a imprimir `Â§` em cp1252.
+- **"reparticao do P1.3478 = 284 207"** - **nao fecha**: o total real e' 278 536 e o recount por simbolo fecha ao numero. Corrigido no P1.3478.
+- **"`RELATORIOS/20261107.md`: Gateway 9011 DOWN"** - **falso por medicao**: o gateway respondeu **200** com Bearer do `.env` (`/api/ai/predict` XAUUSD 1122 B) e o journal publica `[AI] GATEWAY` nos 15 simbolos. O verificador do `tools/dono-mandato.ps1` testa `/health`, que devolve **404** com token e **401** sem token; a prova de vida e' a rota de predict. Item para o CMD em **P1.3487**.
+- **Cabecalhos de versao desalinhados (reais, medidos hoje):** `XAU_AI_PRO.mq5:2` diz **`// XAU_AI_PRO v1.2.183`** e `AI/AIConnector.mqh:1` diz **`// XAU_AI_PRO v1.2.9`**, com a arvore em 1.2.188. Sao comentarios: nao mudam comportamento nem binario, mas enganam quem le. **Nao corrijo source de outro agente** - fica em **P1.3486** para o ALFA.
+
+### 4. O que NAO foi feito e por que
+
+1. **Nao editei source MQL5** (`XAU_AI_PRO.mq5`, `AIConnector.mqh`, `AccountLogGate.mqh`, `TrendFilter.mqh`). Os cabecalhos v1.2.183/v1.2.9 sao higiene do ALFA; mexer agora mistura a minha mao em alteracoes nao commitadas e viola "quem faz nao assina o que fez".
+2. **Nao reescrevi texto de outro agente** em `DECISOES.md`, `AMBIENTE.md`, `QUADRO_ESTADO.md`, `BRIEFING_ATUAL.md`, `FICHA_DONO.md`, `MANDATO_ATIVO.json`, `ORDEM_MASTER.md` nem nos `SESSAO_*` que nao sao meus. Acrescentei apenas o meu heartbeat e as notas datadas nos sitios que sao meus.
+3. **Nao mexi no `Profiles/Tester/XAU_AI_PRO.set`** (unico ficheiro modificado no working tree) nem no `DELTA_186_A.set` do P1.3485: sao artefactos de outro agente e a decisao e' do CMD/DONO.
+4. **Nao compilo e nao ocupei o tester.** O slot continua livre e `tester_list_result_windows` continua vazio.
+5. **`QUADRO_ESTADO.md` (65 872 B, 07/11 02:48) e `BRIEFING_ATUAL.md`** nao foram regenerados por mim: sao saida de `tools/ordem-master.ps1`/`agente-briefing.ps1` (CMD). Regenerar aqueles ficheiros a mao seria fabricar um ecra unico; o pedido honesto e' correr os scripts.
+
+### 5. Pendencias novas abertas neste ciclo
+
+- **P1.3486 - ABERTO (ALFA)** - cabecalhos de versao no source desalinhados: `XAU_AI_PRO.mq5:2` em `v1.2.183`, `AI/AIConnector.mqh:1` em `v1.2.9`, arvore em `1.2.188`.
+- **P1.3487 - ABERTO (DELTA)** - documentos de estado com datas de 06-07/11 ainda a circular como se fossem de hoje (`QUADRO_ESTADO.md` 07/11 02:48, `BRIEFING_ATUAL.md` 05:42 de hoje mas sem versao, `RELATORIOS/20261107.md` sem par de 08/11 antes deste ciclo). Resolvido parcialmente: par de 08/11 criado.

@@ -55,11 +55,29 @@ if (Test-Path -LiteralPath $ex5) {
 }
 else { $bin = 'AUSENTE'; $binEstado = 'AUSENTE' }
 
-$gw = try {
-   $r = Invoke-WebRequest -Uri 'http://127.0.0.1:9011/api/health' -TimeoutSec 4 -UseBasicParsing -SkipHttpErrorCheck
-   if ($r.StatusCode -eq 200 -or $r.StatusCode -eq 401) { 'OK' } else { "HTTP $($r.StatusCode)" }
+function Get-Gateway {
+   # /api/health devolve 401 sem token e 404 com token: qualquer resposta HTTP
+   # prova servidor vivo. -SkipHttpErrorCheck nao existe em PS 5.1 (P1.3487).
+   $tcp = $null
+   try {
+      $tcp = New-Object System.Net.Sockets.TcpClient
+      $iar = $tcp.BeginConnect('127.0.0.1', 9011, $null, $null)
+      if (-not $iar.AsyncWaitHandle.WaitOne(3000, $false)) { return 'DOWN (porta 9011 fechada)' }
+      $tcp.EndConnect($iar)
+   }
+   catch { return 'DOWN (porta 9011 fechada)' }
+   finally { if ($tcp) { try { $tcp.Close() } catch { } } }
+   try {
+      $r = Invoke-WebRequest -Uri 'http://127.0.0.1:9011/api/health' -TimeoutSec 4 -UseBasicParsing
+      return ('UP (HTTP {0})' -f [int]$r.StatusCode)
+   }
+   catch {
+      $resp = $_.Exception.Response
+      if ($resp -and $resp.StatusCode) { return ('UP (HTTP {0})' -f [int]$resp.StatusCode) }
+      return 'UP (porta 9011, sem resposta HTTP)'
+   }
 }
-catch { 'DOWN' }
+$gw = Get-Gateway
 
 $tarefas = @(Get-ScheduledTask -TaskName 'XAU_AI_PRO_*' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TaskName)
 $m = Get-Content -LiteralPath $Mand -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -88,7 +106,7 @@ $L.Add('|---|---|')
 $L.Add("| HEAD | ``$head`` ($branch) |")
 $L.Add("| github/main | ``$upstream`` |")
 $L.Add("| Ficheiros alterados | $nDirty |")
-$L.Add("| Versao (4 fontes) | #property $verProp / EA $verEa / EV $verEv |")
+$L.Add("| Versao (3 fontes) | #property $verProp / EA $verEa / EV $verEv |")
 $L.Add("| Binario | $bin |")
 $L.Add("| Binario x fonte | $binEstado |")
 $L.Add('')
@@ -142,7 +160,7 @@ $L.Add('- Nao chamar o DONO durante a execucao.')
 Write-Output ''
 Write-Output '===== BRIEFING DO AGENTE ====='
 Write-Output ("HEAD            : {0} ({1}) | github/main {2} | sujos {3}" -f $head, $branch, $upstream, $nDirty)
-Write-Output ("versao          : 1.386? #property {0} / EA {1} / EV {2}" -f $verProp, $verEa, $verEv)
+Write-Output ("versao          : #property {0} / EA {1} / EV {2}" -f $verProp, $verEa, $verEv)
 Write-Output ("binario         : {0} | {1}" -f $binEstado, $bin)
 Write-Output ("GATE_REAL       : {0}" -f (Get-Gate))
 Write-Output ("forward         : {0}/{1}" -f $dias, $m.decisoes.forward.dias)

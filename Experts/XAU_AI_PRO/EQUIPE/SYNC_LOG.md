@@ -432,3 +432,7 @@ FECHO | ALFA | 06/11/2026 05:52:26 | D-053 registado, LOCK LIVRE, trabalhos ence
 - 08/11/2026 06:02:57 | ALFA | note -> DECISOES.md
 - 08/11/2026 06:03:04 | ALFA | ping -> ONLINE (D-107: P1.3479 (128->512 + LRU, __DATETIME__ mantido), P1.2336 (reset so ao publicar), P1.139 (DECISION BLOCKED|VALIDATION) e v1.2.188 reanexada 15/15 as 06:01:54, ex5 970168 B MD5 943DB7CB6955299C6A470141B942BC54; GATE 2/11 forward 0/30)
 - 08/11/2026 06:03:21 | ALFA | lock liberar
+- 08/11/2026 06:06 | DELTA | lock pegar | docs-sync | 25 min
+- 08/11/2026 06:20 | DELTA | note -> PENDENCIAS.md, GATE_REAL.md, INDICE.md, IDS.md, RELATORIOS/20261108.md
+- 08/11/2026 06:20 | DELTA | ping -> ONLINE (sincronizacao de documentos para 08/11: 8 ficheiros; P1.3486/P1.3487 abertos; remedicao GATE 2/11 sem mudanca de cor; v1.2.188 15/15; forward 0/30)
+- 08/11/2026 06:33 | DELTA | note -> README.md (cabecalho v1.2.135 -> v1.2.188, data 2026-11-08, 16 -> 15 graficos, CRLF preservado)
