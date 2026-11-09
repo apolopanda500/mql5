@@ -130,3 +130,4 @@ USADO | P1 | P1.3513 | CMD | 09/11/2026 14:41:00 | repo mql5 sem gitleaks e conf
 USADO | D | D-125 | CMD | 09/11/2026 14:41:50 | D-125 repo mql5: gitleaks 8.30.1, config v8.25+, workflow e prova local 472->0
 USADO | D | D-126 | ALFA | 09/11/2026 14:44:32 | auditoria do .gitleaks.toml e do security.yml criados na raiz do mql5: prova positiva e negativa, e 3 correcoes necessarias
 USADO | D | D-127 | ALFA | 09/11/2026 15:12:30 | default compilado MaxDailyLossPercent 10.0 -> 3.0 (opcao A) e binario AA836040 em disco vs B1F8722B em execucao
+USADO | D | D-128 | DELTA | 09/11/2026 15:48 | deploy do binario v1.2.191 021ABF10 nos 15 graficos (15/15 START as 15:44:29-30) e push para origin/forge

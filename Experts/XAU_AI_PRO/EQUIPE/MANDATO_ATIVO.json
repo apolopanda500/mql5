@@ -105,7 +105,7 @@
       "conta": "demo",
       "inicio_regra": "primeira segunda-feira com mercado aberto apos 07/11/2026",
       "inicio_previsto": "2026-11-09",
-      "inicio_medido": "2026-11-10", "binario_declarado": { "versao": "v1.2.190", "bytes": 979372, "mtime": "09/11/2026 15:03:01", "md5": "B1F8722B8A14D1E612717547DEB4BCC1", "nota": "D-126: recompilado apos MaxDailyLossUsd 60->600 (0 errors/0 warnings); 15/15 recarregados entre 15:03:01 e 15:03:02. Substitui A057982F (972428 B, 14:23:55) que substituiu DDF03BE3. Troca ANTES do primeiro dia da janela (inicio 2026-11-10 00:05, 0 de 30 dias medidos), portanto nao divide os 30 dias (precedente D-113/D-123)." },
+      "inicio_medido": "2026-11-10", "binario_declarado": { "versao": "v1.2.191", "bytes": 976428, "mtime": "09/11/2026 15:39:53", "md5": "021ABF1085809A72811625D90D7C8FAB", "nota": "D-128 (DELTA, deploy 09/11): binario da v1.2.191 medido em disco as 15:39:53 (976428 B) e posto em execucao nos 15/15 graficos entre 15:44:29 e 15:44:30 por chart_save_template+chart_apply_template (DELTA_DEPLOY_01..15), seguido de profile_add as 15:44:57 (apenas profile added no journal, zero removed/loaded, portanto nenhum EA foi reiniciado). Substitui B1F8722B (979372 B, 15:03:01), que era o build ANTERIOR da MESMA v1.2.191. Troca ANTES do primeiro dia da janela (inicio 2026-11-10 00:05, 0 de 30 dias medidos), portanto nao divide os 30 dias (precedente D-113/D-123)." },
       "dias_medidos": 0,
       "dia_sem_medicao_nao_conta": true
     },
