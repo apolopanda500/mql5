@@ -114,3 +114,4 @@ USADO | D | D-117 | CMD | 2026-11-08 13:05:00 | G9 no limite e G10 coerente: ris
 USADO | D | D-118 | CMD | 09/11/2026 09:15:41 | Forward 30 dias iniciado 09/11 (inicio medido, EA 15/15 5C99AF0C)
 USADO | D | D-119 | ALFA | 09/11/2026 09:21:34 | forward 30d arrancado: tarefas restauradas e ferramentas corrigidas
 USADO | D | D-120 | CMD | 09/11/2026 09:45:48 | D-120 registar tudo e destravar: universo 15, gate por magic, forward re-medido 10/11
+USADO | D | D-121 | CMD | 09/11/2026 14:34:11 | D-121 Security Checks do repo XAU_AI_PRO: gitleaks v8.25+ e allowlist de 18 achados historicos revistos

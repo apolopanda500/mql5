@@ -6081,3 +6081,30 @@ GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 `5C99AF0C`). Piso *
 ### 8. Estado final desta decisao
 GATE_REAL **3 de 11**; forward **0 de 30** com inicio medido **2026-11-10**; binario **`DDF03BE3`**; 15/15 graficos v1.2.189 com `SymbolsFromMarketWatch=false` e `EnableStoplessEntry=false`; conta demo `113568614`; conta real proibida.
 
+
+## D-121 | CMD | 2026-11-09 14:35 | Security Checks do repo XAU_AI_PRO: gitleaks em formato v8.25+ e 18 achados historicos revistos
+
+**Contexto:** o job agendado `Security Checks` (run 42663021253, repo `apolopanda500/XAU_AI_PRO`, commit `603b244`) falhou por 18 achados do gitleaks em 539 commits. O repo de trading (este `mql5`) nao foi tocado.
+
+### 1. Causa raiz (medida)
+- O repo tinha `.gitleaks.toml` no formato antigo (`allowlist = [...]`, pre-v8.19) e o action `gitleaks/gitleaks-action@v3` corria **gitleaks 8.24.3** sem `--config`. A auto-deteccao do action procura `gitleaks.toml` (sem ponto), logo usou a config interna e ignorou o ficheiro do repo. Reproducao local com 8.30.1 e a config antiga: **18 achados** (12 `generic-api-key`, 3 `custom-slack-webhook`, 2 `custom-admin-creds`, 1 `curl-auth-header`).
+
+### 2. Correcao (2 commits no repo XAU_AI_PRO)
+- `.gitleaks.toml` reescrito no formato **v8.25+** (`[[allowlists]]`), com:
+  - lista dos **10 commits historicos** revistos (allowlist precisa, nao cega HEAD nem commits novos);
+  - allowlist por linha para placeholders locais e `${{ secrets.* }}` do GitHub Actions.
+- `.github/workflows/security.yml` passa a declarar `GITLEAKS_CONFIG: .gitleaks.toml` e `GITLEAKS_VERSION: 8.30.1`.
+
+### 3. Classificacao dos 18 achados (nenhum segredo vivo)
+- 12 `generic-api-key`: Docs com exemplos, testes vendored do numpy, fallbacks `secrets.VERCEL_PROJECT_ID || '<id>'` em workflows antigos.
+- 3 `custom-slack-webhook`: placeholders `T0000/B0000/XXX` e `T00000000/B00000000/XXXXXXXXX` (confirmado: IDs so' com zeros e segredo so' com `X`).
+- 2 `custom-admin-creds`: `create_user("admin","admin")` em `Ultimate/` (removido do HEAD) e no historico de `app/config_manager.py`; o codigo actual cria `admin` com **senha aleatoria** (`app/config_manager.py:212-223`).
+- 1 `curl-auth-header`: `Bearer sk-xau-ai-pro-local...` (token local do proprio projecto, nao credencial de terceiro).
+
+### 4. Prova
+- Run `42665660959` (workflow_dispatch, `83d1cc3`): **success** nos 5 jobs; `Secret Scanning: success`, gitleaks **8.30.1**, `no leaks found`; 540 commits varridos.
+- Validacao local antes do push: config antiga = 18 achados; config nova = 0.
+
+### 5. Estado
+Nenhuma credencial de terceiro precisa de rotacao com base nos valores revistos. Se algum destes valores tiver sido real fora do repo, a rotacao no fornecedor continua a ser acao do DONO - o allowlist silencia o scanner, nao revoga nada. Repo de trading: GATE_REAL **3 de 11**, forward **0 de 30** (inicio 2026-11-10), binario **`DDF03BE3`**, conta real proibida.
+
