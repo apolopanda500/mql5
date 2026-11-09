@@ -129,3 +129,4 @@ USADO | P1 | P1.3512 | CMD | 09/11/2026 14:41:00 | alocador de IDs devolve numer
 USADO | P1 | P1.3513 | CMD | 09/11/2026 14:41:00 | repo mql5 sem gitleaks e config antiga em Files/XAU_AI_PRO (alias reservado P1.8031)
 USADO | D | D-125 | CMD | 09/11/2026 14:41:50 | D-125 repo mql5: gitleaks 8.30.1, config v8.25+, workflow e prova local 472->0
 USADO | D | D-126 | ALFA | 09/11/2026 14:44:32 | auditoria do .gitleaks.toml e do security.yml criados na raiz do mql5: prova positiva e negativa, e 3 correcoes necessarias
+USADO | D | D-127 | ALFA | 09/11/2026 15:12:30 | default compilado MaxDailyLossPercent 10.0 -> 3.0 (opcao A) e binario AA836040 em disco vs B1F8722B em execucao

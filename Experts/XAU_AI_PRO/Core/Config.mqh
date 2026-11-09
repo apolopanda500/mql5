@@ -110,7 +110,15 @@ input string MCPServerToken       = "";     // Token de autenticação (8+ carac
 
 input double RiskPercent        = 1.0;
 
-input double MaxDailyLossPercent= 10.0;
+// v1.2.191 (09/11/2026) - P1.3515: o default compilado passa a ser o valor
+// APROVADO em operacao. Estava 10.0 enquanto os 15 graficos corriam 3.0: um
+// reattach que omitisse esta input caia no default e o teto diario saltava de
+// 379,67 (3,00% de 12 655,63) para 600,00, porque o teto efetivo e
+// MIN(MaxDailyLossUsd, saldo * MaxDailyLossPercent/100). O default e rede de
+// seguranca, nao sugestao: 10.0 -> 3.0 (aperta, nao afrouxa) e fica igual ao
+// valor da DECISAO DO DONO de 09/11/2026 15:01 (opcao A: 600 USD + 3,0%).
+// `0` desliga o teto percentual e deixa mandar so o teto em USD.
+input double MaxDailyLossPercent= 3.0;
 
 // v1.2.35 (30/10/2026) - P1.2b: teto da perda do dia em DINHEIRO.
 // MEDIDO: com `MaxDailyLossPercent=10` e saldo 12 351,78 o limite diario era
@@ -119,7 +127,15 @@ input double MaxDailyLossPercent= 10.0;
 // segue a expectativa do dono: ele escala junto com o saldo.
 // O limite efetivo passa a ser o MENOR entre o de % e o de USD - mesma regra
 // ja usada em `MaxTotalRiskOpenUsd`. `0` desliga este teto e mantem so o de %.
-input double MaxDailyLossUsd    = 60.0;
+// DECISAO DO DONO (09/11/2026 15:01, opcao A) - 60.0 -> 600.0.
+// MEDIDO antes de tocar no numero (OrcamentoDiarioPerda, abaixo):
+//   teto efetivo = MIN(MaxDailyLossUsd, saldo * MaxDailyLossPercent/100).
+//   Com saldo 12 655,63 e MaxDailyLossPercent=3.0 o teto percentual e 379,67,
+//   logo o teto efetivo sobe de 60,00 para 379,67 (3,00% da banca), NAO 600.
+//   Para o teto ser literalmente 600 seria preciso MaxDailyLossPercent >= 4,75.
+// O DONO escolheu A para manter o teto diario dentro do MANDATO (drawdown 6%).
+// `0` continua a desligar este teto e a manter so o de %.
+input double MaxDailyLossUsd    = 600.0;
 // Q-071 (DONO, 06/11 23:42) - 15.0 -> 50.0. MEDIDO antes de tocar no numero:
 // esta input governa DUAS guardas de capital e nao uma.
 //   * Management/EquityProtection.mqh CheckEquityProtection(): DRAWDOWN

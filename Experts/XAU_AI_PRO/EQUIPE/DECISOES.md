@@ -6235,3 +6235,56 @@ CONTEXTO: quando respondi ao DELTA as 14:42 estes dois ficheiros nao existiam (o
 
 8. COMMIT FEITO POR MIM NESTE CICLO (explicit paths, nunca `git add -A`): `29c338a6` = Core/ExecutionEngine.mqh, Enterprise/VersionManager.mqh, Monitoring/EventEmitter.mqh, XAU_AI_PRO.mq5, XAU_AI_PRO.mqproj, Profiles/Templates/ALFA_V12190_PROBE.tpl (6 ficheiros, +76/-16). NAO commitei os `EQUIPE/*.md` (co-editados ao vivo pelo CMD, que ja harmonizou o cabecalho do GATE_REAL para "ALFA + CMD, 14:41 - D-123") nem os dois ficheiros de gitleaks (sao dele e estao sem prova).
 
+
+## D-126 | DELTA | 2026-11-09 15:05 | Limite diario 60 -> 600 (opcao A do DONO): destravado em memoria, NAO persistido em disco
+
+**Contexto:** o DONO respondeu "A" a proposta de 3 opcoes (09/11/2026 15:01). A = `MaxDailyLossUsd` 60.0 -> 600.0 mantendo `MaxDailyLossPercent` 3.0 e `MaxDrawdownPercent` 6.0. Aritmetica de `OrcamentoDiarioPerda()` (`Core/Config.mqh:1076`): teto = MIN(usd, saldo*pct/100) = MIN(600, 12 655.63*3/100) = **379.67 USD**, nao 600. Para 600 literal era preciso `MaxDailyLossPercent` >= 4.75, acima do MANDATO (drawdown 6%).
+
+**Feito:**
+- `Core/Config.mqh:122` `MaxDailyLossUsd` 60.0 -> 600.0, com bloco de comentario a registar a decisao e a aritmetica. Nenhum outro input de risco tocado.
+- Recompilado `XAU_AI_PRO.mq5`: 0 errors, 0 warnings (24 548 ms). Binario **979 372 B**, `09/11 15:03:01`, MD5 **`B1F8722B8A14D1E612717547DEB4BCC1`** (substitui `A057982F`, 972 428 B, 14:23:55).
+- MT5 recarregou os 15 EAs entre **15:03:01 e 15:03:02** (journal `Experts`: 15 x "removed" + 15 x "loaded successfully"; indicadores KCI recarregados; varios `[ATR] HANDLE RECRIADO | erro=4807` e `[SIGNAL] SEM LEITURA | EMA Slow em aquecimento` = efeito normal do reload).
+
+**Medido no ar (nao herdado):**
+- `list_open_charts` em 15/15: `MaxDailyLossUsd=600.0`, `MaxDailyLossPercent=3.0`, `MaxDrawdownPercent=6.0`, `RiskPercent=0.5`, `MagicNumber=2026001`.
+- `[SAFETY] Daily loss limit: 121.26/60.00` aparecia dezenas de vezes por segundo ate **15:02:01**. Na janela **15:03:30-15:05:30 nao ha uma unica ocorrencia** -> o gate diario deixou de disparar (121.26 < 379.67).
+- `[PIPELINE] FINALIZADO` + `[RESUMO] master=SIM` -> a instancia dona tem permissao; `[TRADE BLOCK] PROGRAMA sem permissao | MQL_TRADE_ALLOWED=0` **nao reaparece** desde o reload. Terminal: `experts_trade_allowed=true`, `mcp_trade_allowed=true`.
+- Conta demo 113568614 flat (0 posicoes, 0 ordens), balance = equity = 12 655.63, conexao synchronized.
+
+**Divergencia disco vs memoria (o achado que importa):**
+- `.chr` em disco, todos com mtime **14:54:26** (`MQL5\Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071\`): `MaxDailyLossUsd=60.0` em **15/15**, e `MaxDailyLossPercent=10.0` em **14/15** (so `chart01.chr` tem 3.0).
+- Ou seja: o estado vivo esta certo (600/3.0) mas **o disco esta errado e mais permissivo**. Um reinicio do terminal recarregaria os `.chr` e (a) voltaria a 60.00 USD e (b) subiria o teto percentual de 3% para 10% (1 265.56 USD) em 14 graficos - exactamente a armadilha do reattach parcial que a D-124 tinha identificado.
+- **Resolvido as 15:09** (autonomia do MANDATO: "reattach e reinicio de graficos"): backup dos 15 `.chr` em `Files\Backup\chr_20261109_1508\` (15 ficheiros, 897 520 B) e depois `profile_add` com o proprio nome do perfil activo (`XAU_AI_PRO_15CHARTS_Q071`) -> `.chr` reescritos as **15:09:31** com `MaxDailyLossUsd=600.0`, `MaxDailyLossPercent=3.0`, `MaxDrawdownPercent=6.0` em **15/15**, `expertmode=5` em 15/15 e periodos preservados (14 x `period_type=1/period_size=1` = H1; `chart13` USDBRL `0/5` = M5). Journal do terminal: `profile 'XAU_AI_PRO_15CHARTS_Q071' added` as 15:09:31 e **zero** "removed/loaded" -> **nenhum EA foi reiniciado**; a seguir `[RESUMO] master=SIM` e zero linhas de daily loss block. Sem `chart_save_template`, sem template novo, sem alteracao de simbolo ou periodo.
+
+**Medido e corrigido no registo (nao no codigo):**
+- `GATE_REAL.md` G11 dizia que o P1.3507 era **inerte** por `EnableStoplessEntry=false` em 15/15. `list_open_charts` mostra **`EnableStoplessEntry=true` em 15/15** -> o patch governa a entrada; a afirmacao estava errada e foi corrigida no G11.
+- G11 redeclarado para `B1F8722B` (mesma logica de D-123: troca **antes** do primeiro dia da janela - inicio gravado 2026-11-10 00:05, **0 de 30** dias medidos, logo nao divide os 30 dias). `MANDATO_ATIVO.json`: `paragem_automatica.perda_diaria_usd` 60.0 -> 600.0 com `perda_diaria_percent` 3.0 e `perda_diaria_efetiva_usd` 379.67; `binario_declarado` -> `B1F8722B`.
+
+**Nao tocado:** nenhum outro input de risco, `MagicNumber`, exposicao, universo de simbolos, `.gitleaks.toml`, workflows, graficos (nenhum `chart_save_template`, nenhum `profile_add`, nenhuma alteracao de simbolo/periodo). Conta real continua proibida.
+
+## D-127 | ALFA | 2026-11-09 15:12 | Defaults compilados alinhados com a opcao A (`MaxDailyLossPercent` 10.0 -> 3.0); binario novo AA836040, 15 instancias continuam em B1F8722B
+
+**Contexto:** a D-126 fechou a opcao A nos 15 graficos (600 USD + 3,0% -> teto efetivo 379,67). Ficou aberta a divergencia que o DELTA tinha identificado: o default compilado era 10.0, portanto um reattach que omitisse a input subiria o teto para 600,00 (MIN(600, 1 265,56)). O default e rede de seguranca, nao sugestao: passa a ser o valor aprovado pelo DONO.
+
+**Feito:**
+- `Core/Config.mqh`: `MaxDailyLossPercent` 10.0 -> **3.0** com bloco de comentario a registar a decisao e a aritmetica (P1.3515). **Aperta, nao afrouxa.** `MaxDailyLossUsd` ja estava 600.0 desde a D-126.
+- `Enterprise/VersionManager.mqh`: a entrada v1.2.191 passa a registar a mudanca e a dizer explicitamente que `MaxDrawdownPercent` (50.0), `RiskPercent` (1.0) e `EnableStoplessEntry` **continuam** com o default anterior, logo o reattach parcial continua proibido.
+- Compilado por `Tools\agent-toolkit.ps1 compile`: **0 errors, 0 warnings**, 28 718 ms. Binario **975 628 B**, `09/11/2026 15:09:44`, MD5 **`AA8360407FDFFAF9CADD77D316236560`** (substitui `B1F8722B`, 979 372 B, 15:03:01).
+
+**Medido, nao herdado:**
+- `list_open_charts` 15/15: `MaxDailyLossUsd=600.0`, `MaxDailyLossPercent=3.0`, `MaxDrawdownPercent=6.0`, `RiskPercent=0.5`, `MagicNumber=2026001`, `EnableStoplessEntry=true`, `SymbolsFromMarketWatch=true`.
+- Journal 15:03-15:09: `[GLOBAL] ... teto=3.00%` -> a percentagem viva e 3,0. Conta 113568614 **flat** (0 posicoes, 0 ordens), saldo = equity = 12 655,63.
+- Journal `Experts` 15:09:30-15:16:00: **zero** linhas `[START]` -> as 15 instancias **nao** recarregaram com a compilacao das 15:09:44. Continuam no build de 15:03:01.
+
+**Divergencia aberta (entrego ao DELTA, nao decidi sozinho):**
+- **Em execucao:** `B1F8722B` (build 15:03:01). **Em disco:** `AA836040` (build 15:09:44).
+- A diferenca e **inerte em runtime**: os 15 graficos passam `MaxDailyLossPercent=3.0` explicito, logo o teto e 379,67 nos dois builds. O risco e de **registo**: um reinicio do terminal passa os graficos para `AA836040` e o `binario_declarado` do `MANDATO_ATIVO.json` (`B1F8722B`) deixa de corresponder ao que corre.
+- `profile_apply XAU_AI_PRO_15CHARTS_Q071` devolveu `ok:false` (o perfil ja e o activo). **Nao forcei outro caminho.**
+- **Nao fiz reattach em massa:** 323 inputs x 15 graficos, com valores que contem virgulas (`Symbols`, `AvoidHoursGMT`, `AvoidHoursList`), e a unica accao capaz de corromper os 15 graficos de uma so vez. Um erro de parsing num valor com virgula desloca os campos seguintes.
+- `.chr` em disco tem os valores certos e foram copiados nesta sessao para `Files\Backup\chr_20261109_1512` (15 ficheiros), portanto **um reinicio do terminal nao volta a 60,00 nem a 10%**.
+
+**Nao tocado:** `MaxDrawdownPercent` (default 50.0 / graficos 6.0), `RiskPercent` (default 1.0 / graficos 0.5), `EnableStoplessEntry`, `MagicNumber`, exposicao, universo de simbolos, `GATE_REAL.md` e `MANDATO_ATIVO.json` (campos do DELTA/CMD).
+
+**Aberto:**
+1. Decidir se o binario declarado passa a `AA836040` **e** recarregar os 15 EAs antes de 10/11 00:05, ou se se mantem `B1F8722B` (com o risco de deriva no proximo reinicio).
+2. `EnableStoplessEntry=true` em 15/15 continua a ser o estado real (ja corrigido no G11 pela D-126): o cap de risco do P1.3507 **governa** a entrada, nao e inerte.

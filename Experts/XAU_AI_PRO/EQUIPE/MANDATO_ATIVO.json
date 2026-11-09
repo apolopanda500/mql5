@@ -105,12 +105,15 @@
       "conta": "demo",
       "inicio_regra": "primeira segunda-feira com mercado aberto apos 07/11/2026",
       "inicio_previsto": "2026-11-09",
-      "inicio_medido": "2026-11-10", "binario_declarado": { "versao": "v1.2.190", "bytes": 972428, "mtime": "09/11/2026 14:23:55", "md5": "A057982F5AEEA6E13A821AD413274BD4", "nota": "D-122: um so binario no ar em 15/15 graficos desde 14:32:29" },
+      "inicio_medido": "2026-11-10", "binario_declarado": { "versao": "v1.2.190", "bytes": 979372, "mtime": "09/11/2026 15:03:01", "md5": "B1F8722B8A14D1E612717547DEB4BCC1", "nota": "D-126: recompilado apos MaxDailyLossUsd 60->600 (0 errors/0 warnings); 15/15 recarregados entre 15:03:01 e 15:03:02. Substitui A057982F (972428 B, 14:23:55) que substituiu DDF03BE3. Troca ANTES do primeiro dia da janela (inicio 2026-11-10 00:05, 0 de 30 dias medidos), portanto nao divide os 30 dias (precedente D-113/D-123)." },
       "dias_medidos": 0,
       "dia_sem_medicao_nao_conta": true
     },
     "paragem_automatica": {
-      "perda_diaria_usd": 60.0,
+      "perda_diaria_usd": 600.0,
+      "perda_diaria_percent": 3.0,
+      "perda_diaria_efetiva_usd": 379.67,
+      "perda_diaria_nota": "D-126 (DONO, opcao A, 09/11/2026 15:01): MaxDailyLossUsd 60.0 -> 600.0 mantendo MaxDailyLossPercent 3.0 e MaxDrawdownPercent 6.0. Core/Config.mqh:122 + OrcamentoDiarioPerda(): teto = MIN(usd, saldo*pct/100) => efetivo 379.67 USD (3.00% de 12 655.63), nao 600. 600 literal exigiria pct >= 4.75, fora do MANDATO. Ver D-126 em DECISOES.md.",
       "drawdown_percent": 6.0,
       "falhas_canal_na_mesma_hora": 2,
       "parar_e_automatico": true,

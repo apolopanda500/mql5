@@ -167,7 +167,8 @@ double CalculateDynamicLot(
    if(baseLot <= 0.0)
    {
       Print("[TRADE] BLOQUEADA | ", symbol,
-            " | lote de referencia invalido (risco/escala)");
+            " | lote de referencia = 0 | motivo medido: ",
+            RiskLotBlockReason(symbol));
       return(0.0);
    }
 
