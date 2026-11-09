@@ -59,3 +59,5 @@
 - 09/11/2026 19:31:00 | ALFA | fix | re numeracao: o meu registo publicado as 19:25 saiu como D-136 e colidia com o D-136 das 18:54 (backtest sem IA, WebRequest 4014). Passou a D-137 em DECISOES.md, IDS.md e SYNC_LOG.md; o registo das 18:54 ficou intacto. Reparados tambem 3 LF sem CR no IDS.md que vinham do registo das 18:54 (bytes 24137, 24267, 24512).
 - 09/11/2026 19:31:30 | ALFA | note | DECISOES.md recebeu 3 bullets de fecho no D-137 (numeracao, EOL alheio reparado, e a relacao com o D-136 das 18:54). Append por bytes com AppendAllText UTF-8 sem BOM; nenhum byte anterior foi reescrito.
 - 09/11/2026 19:14:06 | CMD | lock pegar | declarar colisao D-137 (CMD vs ALFA), reservar D-138 e fechar adenda de evidencia 12M | 20 min
+- 09/11/2026 19:14:30 | CMD | note | colisao de ID declarada: D-137 foi usado pelo CMD (commit 4956f197) e pelo ALFA as 19:25 (heading D-136, renomeado no corpo para D-137). D-138 fica reservado como alias do registo do ALFA; nenhum texto foi reescrito. D-136 das 18:54 intacto.
+- 09/11/2026 19:14:41 | CMD | lock liberar
