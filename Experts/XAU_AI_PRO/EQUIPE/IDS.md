@@ -132,3 +132,4 @@ USADO | D | D-126 | ALFA | 09/11/2026 14:44:32 | auditoria do .gitleaks.toml e d
 USADO | D | D-127 | ALFA | 09/11/2026 15:12:30 | default compilado MaxDailyLossPercent 10.0 -> 3.0 (opcao A) e binario AA836040 em disco vs B1F8722B em execucao
 USADO | D | D-128 | DELTA | 09/11/2026 15:48 | deploy do binario v1.2.191 021ABF10 nos 15 graficos (15/15 START as 15:44:29-30) e push para origin/forge
 USADO | D | D-129 | DELTA | 09/11/2026 16:05 | gitleaks do mql5 ja estava em v8.25+ e provado no CI (429 commits, no leaks); acrescentado minVersion 8.25.0 e corrigidas 2 afirmacoes do cabecalho (allowlist n.1 e' load-bearing: 33 commits adicionaram a arvore)
+USADO | D | D-130 | ALFA | 09/11/2026 16:40:12 | push dos dois remotes fechado (0/0) e MQL_TRADE_ALLOWED=0 medido em 15/15; expertmode do .chr testado e rejeitado como alavanca (experimento controlado as 16:27:03), baseline reposto
