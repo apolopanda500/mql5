@@ -184,3 +184,9 @@ D-071 aberta: Q-071 = **50%** (as duas guardas aos 6.318,16 USD), Q-072 = **(a)*
 2026-11-08 12:59:40 | CMD | ONLINE | D-116 autorizacao DONO executada (G9/G10/G5/G2/G1); GATE 2/11
 
 2026-11-08 13:04:00 | CMD | ONLINE | D-116 autorizacao DONO executada (G9/G10/G5/G2/G1); GATE 2/11 forward 0/30
+
+2026-11-08 22:55 | DELTA | ONLINE | canal corrigido e verificado: IDS.md regenerado do backup + 46 IDs recuperados de DECISOES.md, D-116 duplicado renomeado para D-117, 5 ficheiros com LF final, SYNC_OFF.flag ausente, sync-agent check = OK (68 .md, 101 IDs unicos, 110 no ledger), LOCK livre. Forward INICIADO: inicio_medido=2026-11-09, 0/30. GATE_REAL 3/11. 15/15 graficos XAU_AI_PRO v1.2.188 com risco 0,5/3,0/6,0. Novos: P1.3499 SymbolsFromMarketWatch voltou a true nos 15 (regressao do reanexo D-113); P1.3500 perda diaria 119,40 USD contra limite 60,00 num unico trade do EA (magic 2026001); P1.3501 ordem market sell 0,1 XAUUSD as 22:47:35 sem magic e sem SL, ainda aberta com -51,50, nao registada por nenhum agente - aguarda decisao do DONO. 0 compiles, 0 reanexos, 0 ordens.
+
+2026-11-09 09:11:04 | CMD | ONLINE | D-117: auto-sincronizacao removida a pedido do DONO - nenhuma tarefa XAU_AI_PRO_* corre sozinha; forward sem inicio automatico 09/11
+
+2026-11-09 09:15:41 | CMD | ONLINE | D-118: forward 30 dias iniciado 09/11; GATE 3/11
