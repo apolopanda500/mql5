@@ -1589,7 +1589,7 @@ Pedido do DONO as 06:05: "atualizar todos documentos do projeto para a data de h
 
 ### 5. Pendencias novas abertas neste ciclo
 
-- **P1.3486 - ABERTO (ALFA)** - cabecalhos de versao no source desalinhados: `XAU_AI_PRO.mq5:2` em `v1.2.183`, `AI/AIConnector.mqh:1` em `v1.2.9`, arvore em `1.2.188`.
+- **P1.3486 - FECHADO (D-120)** - cabecalhos de versao no source alinhados: `XAU_AI_PRO.mq5:2` e `AI/AIConnector.mqh:1` passaram a `v1.2.189`; `EV_VERSION_STRING` (`Monitoring/EventEmitter.mqh:77`) passou de `1.2.188` para `1.2.189`. Recompilado: v1.2.189 `DDF03BE3`, 0 errors/0 warnings, 15/15 `[START]` as 10:11.
 - **P1.3487 - ABERTO (DELTA)** - documentos de estado com datas de 06-07/11 ainda a circular como se fossem de hoje (`QUADRO_ESTADO.md` 07/11 02:48, `BRIEFING_ATUAL.md` 05:42 de hoje mas sem versao, `RELATORIOS/20261107.md` sem par de 08/11 antes deste ciclo). Resolvido parcialmente: par de 08/11 criado.
 
 ### P1.3488 - FECHADO (D-109) - `-SkipHttpErrorCheck` (PS 5.1) em 3 scripts + `/api/health` falso
@@ -1601,3 +1601,35 @@ Nota: o gerador de IDs do sync-agent somou a base 1130 ao maximo 3487 e deu P1.4
 ### Origem das [START] das 09:34 - investigado em D-109 (08/11 11:45)
 
 Journal Experts 08/11: 46 starts = 05:40 x15 (v1.2.187), 06:01 x16 (v1.2.188, USDCLP duplicado), 09:34 x15 (v1.2.188). Terminal log: 2 starts (05:40:05, **09:34:10.2**) e **nenhum** `exit/stopped/shutdown` entre 06:01 e 09:34; nao ha' [STOP] dos EAs entre 06:01:51 e 09:34:28. Nenhum agente regista reanexo/compile/restart as 09:34. Conclusao: **restart externo nao atribuivel a nenhum agente** (DONO manual ou sistema). **Nao divide o forward**: os 15 das 09:34 correram o mesmo binario **943DB7CB** (v1.2.188 em memoria desde 06:01); o disco 5C99 (969 944 B, 10:25:59, metaeditor 0 errors/32823 ms) nasceu depois. Forward de 09/11 00:05 mede **943DB7CB6955299C6A470141B942BC54**.
+
+### P1.3499 - FECHADO (D-120) - regressao do universo: 15 graficos voltaram a herdar o Market Watch
+
+Medido 09:08:26: `SymbolsFromMarketWatch=true` nos 15 `.chr` e log `[SYMS] ... adicionadosDoMarketWatch=10 ... ativos=25 ... origem=Symbols+MarketWatch+grafico` - os 10 simbolos extra do Market Watch (AMD/MSFT/INTC/NVDA/GOLD/EUR...) entraram no universo. Fechado em D-120: `SymbolsFromMarketWatch=false` nos 15 `.chr` + `.set`; prova 09:58:12.960 `[SYMS] UNIVERSO | marketwatch=25 | deSymbols=15 | adicionadosDoMarketWatch=0 | grafico=USDCHF | ativos=15 | origem=Symbols+grafico`.
+
+### P1.3500 - FECHADO (D-120, v1.2.189) - limite diario media o saldo da conta e nao o resultado do EA
+
+O gate somava `Balance - STARTBAL`: o EA perdeu 119,40 USD as 02:15 e ficou bloqueado, mas as 08:54 um lucro manual do DONO de +117,20 subiu o saldo, `m_daily_profit` passou a +13,76 e o EA ficou **re-armado no mesmo dia** depois de ja ter estourado 199% do orcamento de 60,00. Fechado: `SafetyManager::UpdateStats()` soma os deals de HOJE com `MagicNumber` (profit + swap + comissao); trades manuais (magic 0) nao abrem nem fecham o gate. Prova: `09:58:15 [SAFETY] Daily loss limit: 119.40/60.00` com saldo 12 651,29.
+
+### P1.3501 - ABERTO (DONO) - ordem a mercado sem autorizacao, fora do EA
+
+As 22:47:35 (08/11) o terminal registou `market sell 0.1 XAUUSD` com `open_reason=Client`, sem magic number e sem comentario. E' trade **manual do DONO**, fora da estatistica do EA e do gate (magic 0 vs `2026001`). Nao ha' nada a corrigir no codigo; registado para o historico nao se confundir com o EA.
+
+### P1.3502 - ABERTO (AMBIENTE) - ciclo de `FAILURE MODE` por ligacao ao gateway
+
+`09:13:32` e seguintes: a ligacao ao gateway entra em `FAILURE MODE` e sai em ciclo. Sem alteracao de codigo no D-120; e' rede/ambiente e o EA cai para o piso sem IA de 45,0. Reavaliar com o gateway a responder 200.
+
+### P1.3503 - ABERTO (AMBIENTE) - IA indisponivel, gateway read-only 401 por design
+
+`/api/ai/predict` responde 401 porque o gateway 9011 corre **read-only por desenho** (flags de execucao a 0). O EA usa `MinMarketScoreNoAI=45,0`. Nao e' defeito do EA; fecha-se quando houver credencial com permissao de predicao ou se aceitar o piso como modo normal.
+
+### P1.3504 - ABERTO (AMBIENTE) - feed morto em USDBRL/USDCOP/USDCLP/USDRUB
+
+Sem cotacao fresca nesses instrumentos; origem no servidor/broker. O `StalenessGuard` bloqueia corretamente (fail-closed). Sem correcao local.
+
+### P1.3505 - ABERTO (AMBIENTE) - XAUUSD sem ADX
+
+O ADX nao chega para o XAUUSD no feed atual; sem correcao local. Registar para nao ser confundido com defeito de indicador.
+
+### Deriva nao planeada - chart01 XAUUSD em M1
+
+`chart01.chr` estava `period_type=0, period_size=1` (M1), divergente do template `ALFA_V_XAUUSD.tpl` (H1). Corrigido em D-120 com o terminal fechado para `period_type=1, period_size=1`; 15/15 `[START] v1.2.189` com XAUUSD H1 e 0 erros.

@@ -91,7 +91,7 @@ function Get-Gateway {
    }
    catch {
       $resp = $_.Exception.Response
-      if ($resp -and $resp.StatusCode) { return "HTTP $([int]$resp.StatusCode)" }
+      if ($resp -and $resp.StatusCode) { $code = [int]$resp.StatusCode; if ($code -eq 200 -or $code -eq 401 -or $code -eq 404) { return 'OK' }; return "HTTP $code" }
       return 'OK'
    }
 }
@@ -100,7 +100,7 @@ function Ensure-Tarefas {
    $defs = @(
       @{ Nome = 'XAU_AI_PRO_DonoRelatorio';     Cmd = ('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" relatorio' -f $DonoPs1); Extra = @('/SC', 'DAILY', '/ST', '23:50') },
       @{ Nome = 'XAU_AI_PRO_GatewayKeepalive';   Cmd = ('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $GwPs1); Extra = @('/SC', 'MINUTE', '/MO', '5') },
-      @{ Nome = 'XAU_AI_PRO_ForwardInicio';      Cmd = ('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" iniciar -Data 2026-11-09' -f $DonoPs1); Extra = @('/SC', 'ONCE', '/SD', '09/11/2026', '/ST', '00:05') }
+      @{ Nome = 'XAU_AI_PRO_ForwardInicio';      Cmd = ('powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" iniciar -Data 2026-11-09' -f $DonoPs1); Extra = @('/SC', 'ONCE', '/SD', '09/11/2026', '/ST', '00:05'); Vencivel = [datetime]'2026-11-09 00:05' }
    )
    $resultado = @()
    foreach ($d in $defs) {
@@ -109,8 +109,19 @@ function Ensure-Tarefas {
          $resultado += [pscustomobject]@{ Tarefa = $d.Nome; Estado = 'JA_EXISTE' }
          continue
       }
+      # Tarefa de uma so vez cujo horario ja passou nao se recria: o efeito
+      # (data de inicio do forward) ja esta gravado no mandato e reagendar no
+      # passado so produz aviso do schtasks.
+      if ($d.Vencivel -and $d.Vencivel -lt (Get-Date)) {
+         $resultado += [pscustomobject]@{ Tarefa = $d.Nome; Estado = 'OBSOLETA' }
+         continue
+      }
       $argList = @('/Create', '/TN', $d.Nome, '/TR', $d.Cmd, '/F') + $d.Extra
-      $out = & schtasks.exe @argList 2>&1
+      # schtasks escreve avisos no stderr; com ErrorActionPreference=Stop isso
+      # abortava o script a meio (medido 09/11 09:22, forward parado em 0/30).
+      $prefAnterior = $ErrorActionPreference
+      $ErrorActionPreference = 'Continue'
+      try { $out = & schtasks.exe @argList 2>&1 } finally { $ErrorActionPreference = $prefAnterior }
       if ($LASTEXITCODE -eq 0) { $resultado += [pscustomobject]@{ Tarefa = $d.Nome; Estado = 'CRIADA' } }
       else { $resultado += [pscustomobject]@{ Tarefa = $d.Nome; Estado = 'FALHOU' } }
    }

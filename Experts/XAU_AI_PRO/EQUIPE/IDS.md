@@ -112,3 +112,5 @@ USADO | D | D-115 | CMD | 2026-11-08 12:35:00 | D-114 do DELTA registado e commi
 USADO | D | D-116 | CMD | 2026-11-08 13:00:00 | Autorizacao DONO executada: G9 no limite, G10 coerente, G5 escalado, G2/G1 registados sem 
 USADO | D | D-117 | CMD | 2026-11-08 13:05:00 | G9 no limite e G10 coerente: risco 3.0/6.0/0.5 e Symbols=15 antes da janela
 USADO | D | D-118 | CMD | 09/11/2026 09:15:41 | Forward 30 dias iniciado 09/11 (inicio medido, EA 15/15 5C99AF0C)
+USADO | D | D-119 | ALFA | 09/11/2026 09:21:34 | forward 30d arrancado: tarefas restauradas e ferramentas corrigidas
+USADO | D | D-120 | CMD | 09/11/2026 09:45:48 | D-120 registar tudo e destravar: universo 15, gate por magic, forward re-medido 10/11

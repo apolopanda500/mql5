@@ -14,7 +14,6 @@
   },
   "ficha_dono": "EQUIPE/FICHA_DONO.md",
   "manual_dono": "EQUIPE/MANUAL_DONO.md",
-
   "autoridade_tecnica": {
     "concedida_pelo_dono": "2026-11-07T22:10:00-03:00",
     "decisao": "D-097",
@@ -35,8 +34,8 @@
     "regra_de_limpeza": "backup antes; remover so o que for reproduzivel; registar o que foi removido",
     "registo": "cada instalacao/remocao/limpeza relevante leva linha no SYNC_LOG.md"
   },
-
-  "interacao_dono": {    "modo": "ZERO_INTERRUPCOES_DURANTE_EXECUCAO",
+  "interacao_dono": {
+    "modo": "ZERO_INTERRUPCOES_DURANTE_EXECUCAO",
     "reforco_2026_11_07_2120": "DONO: 'deixar tudo automatico, todas as permissoes e execucoes; so parar quando der o resultado esperado; manter o endurecer, fazer uns trades manuais e acompanhar os automaticos ate 30 dias ou mais; depois uso real'",
     "autonomia": {
       "nivel": "TOTAL_DENTRO_DO_MANDATO",
@@ -69,7 +68,6 @@
       "progresso normal ou atraso corrigivel dentro do mandato"
     ]
   },
-
   "decisoes": {
     "piso_sem_ia": {
       "valor": 45.0,
@@ -77,7 +75,10 @@
       "aplicado": true,
       "onde": "15 graficos + Core/Config.mqh",
       "muda_sem_recompilar": true,
-      "alternativas_nao_escolhidas": [40.0, 50.0]
+      "alternativas_nao_escolhidas": [
+        40.0,
+        50.0
+      ]
     },
     "usdbrl": {
       "periodo": "M5",
@@ -104,13 +105,13 @@
       "conta": "demo",
       "inicio_regra": "primeira segunda-feira com mercado aberto apos 07/11/2026",
       "inicio_previsto": "2026-11-09",
-      "inicio_medido": null,
+      "inicio_medido": "2026-11-10",
       "dias_medidos": 0,
       "dia_sem_medicao_nao_conta": true
     },
     "paragem_automatica": {
       "perda_diaria_usd": 60.0,
-      "drawdown_percent": 50.0,
+      "drawdown_percent": 6.0,
       "falhas_canal_na_mesma_hora": 2,
       "parar_e_automatico": true,
       "retomar_exige": "causa identificada + registo datado",
@@ -128,7 +129,6 @@
       "sem_requisitos": "proibido abrir ordem em conta real"
     }
   },
-
   "proibicoes": [
     "escrever 10/10 como estado",
     "declarar 100% real antes de 11/11 + 30 dias + DELTA",
@@ -138,15 +138,13 @@
     "remover ou desativar guarda de risco",
     "commitar token ou credencial"
   ],
-
   "gate_real": {
     "criterios_total": 11,
-    "criterios_verdes": 2,
+    "criterios_verdes": 3,
     "ficheiro": "EQUIPE/GATE_REAL.md",
     "actualizado": "2026-11-07",
     "nota": "contagem medida; so sobe com prova datada"
   },
-
   "automacao": {
     "relatorio_diario": {
       "script": "EQUIPE/tools/dono-mandato.ps1",
@@ -161,7 +159,6 @@
       "falha_significa": "mandato violado ou estado medido inconsistente"
     }
   },
-
   "historico": [
     {
       "data": "2026-11-07T20:58:00-03:00",

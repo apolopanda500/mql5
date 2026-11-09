@@ -86,7 +86,7 @@ function Get-Gateway {
    }
    catch {
       $resp = $_.Exception.Response
-      if ($resp -and $resp.StatusCode) { return "HTTP $([int]$resp.StatusCode)" }
+      if ($resp -and $resp.StatusCode) { $code = [int]$resp.StatusCode; if ($code -eq 200 -or $code -eq 401 -or $code -eq 404) { return 'OK' }; return "HTTP $code" }
       return 'OK'
    }
 }

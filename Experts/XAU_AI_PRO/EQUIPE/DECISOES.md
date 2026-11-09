@@ -6035,3 +6035,49 @@ GATE_REAL **2 de 11**; forward **0 de 30** (09/11 00:05, MD5 `5C99AF0C`). Piso *
 - Monitorizar 30 dias (09/11 -> 08/12) com metricas G11 (PF>=1.2, DD<=8 %, >=30 trades, 0 violacoes).
 - Alternativa: parar a qualquer momento removendo/ignorada a janela no dossie -> basta dizer "parar".
 
+
+## D-120 | CMD | 2026-11-09 10:05 | Ordem do DONO "registar tudo e destravar": universo 15, gate diario por magic, forward re-medido para 10/11
+
+**Contexto:** o DONO ordenou "vamos registrar agora tudo e destravar tudo" antes da janela de endurecimento. Esta decisao regista, com medicao, o que estava a faltar e executa as duas correcoes que podiam ser feitas dentro do mandato (sem tocar em risco, lote, alvo, spread, preco ou regra de entrada).
+
+### 1. P1.3499 (regressao) - universo voltou a herdar o Market Watch: FECHADO
+- **Medido antes:** 15/15 `.chr` com `SymbolsFromMarketWatch=true`; log `09:08:26 [SYMS] ... adicionadosDoMarketWatch=10 ... ativos=25 ... origem=Symbols+MarketWatch+grafico`.
+- **Correcao:** `SymbolsFromMarketWatch=false` nos 15 `.chr` e no `Profiles\Tester\XAU_AI_PRO.set`; backups `.chr.bak.20261109_094936`.
+- **Medido depois:** `09:58:12.960 [SYMS] UNIVERSO | marketwatch=25 | deSymbols=15 | adicionadosDoMarketWatch=0 | grafico=USDCHF | ativos=15 | origem=Symbols+grafico`.
+- **Regra:** o universo e' a lista `Symbols` de 15 simbolos aprovados + o simbolo do grafico; os 10 simbolos extra do Market Watch (AMD/MSFT/INTC/NVDA/GOLD/EUR...) nunca mais entram.
+
+### 2. P1.3500 - limite diario media o SALDO, nao o EA: FECHADO no codigo (v1.2.189)
+- **Medido antes:** o EA perdeu `-119,40 USD` as 02:15 e ficou bloqueado; as 08:54 um lucro MANUAL do DONO de `+117,20` subiu o saldo, `m_daily_profit` passou a `+13,76` e o EA ficou **re-armado no mesmo dia** depois de ja ter estourado 199% do orcamento de 60,00.
+- **Correcao:** `SafetyManager::UpdateStats()` passa a somar os deals de HOJE com `MagicNumber` (`profit + swap + comissao`); operacoes manuais (magic 0) deixam de abrir ou fechar o gate. Se o historico nao for legivel, mantem o valor anterior (nunca cai para zero).
+- **Medido depois (v1.2.189):** `09:58:15 [SAFETY] Daily loss limit: 119.40/60.00` com saldo `12 651,29` - o lucro manual ja' nao re-arma o EA. O bloqueio de hoje mantem-se ate' a meia-noite do servidor (correto: a perda do EA e' real).
+
+### 3. Entrada sem stop - `EnableStoplessEntry=false`
+- **Medido:** entrada sem SL deixou passar ~2000 pontos sem corte e o teto de 1,5R nao fechou (P1.3500 repetido).
+- **Correcao:** `EnableStoplessEntry=false` nos 15 `.chr` + `.set`. O SL vai na ordem (`req.sl` calculado antes do envio). `AllowMinLotOverride` **mantem-se `true`**: sem isso, o lote minimo do XAUUSD bloquearia todas as entradas.
+- Nenhum limite, lote, alvo, spread ou preco alterado.
+
+### 4. Deriva nao planeada - chart01 XAUUSD estava em M1
+- **Medido:** `chart01.chr` com `period_type=0, period_size=1` (M1), divergente do template `ALFA_V_XAUUSD.tpl` (H1).
+- **Correcao:** `period_type=1, period_size=1` (H1) com o terminal fechado; backup `.bak.20261109_0954xx`.
+- **Medido depois:** 15/15 `[START] v1.2.189` com `XAUUSD H1` e `USDBRL M5`; 0 erros.
+
+### 5. Binario declarado e forward re-medido
+- **Binario:** `XAU_AI_PRO.ex5` 970 656 B, `09/11 10:09:55`, MD5 **`DDF03BE3D10AB77D021EF27A3C56A8A5`** (v1.2.189, 0 errors / 0 warnings na compilacao). Backup `MQL5\Files\Backup\XAU_AI_PRO_v12189_DDF03BE3.ex5`; o binario anterior `DAB9F16B` (970 468 B) fica em `..._v12189_DAB9F16B_20261109_100932.ex5`. A recompilacao alinha a terceira fonte de versao (`EV_VERSION_STRING` em `Monitoring\EventEmitter.mqh`, que estava em 1.2.188) e os cabecalhos de `XAU_AI_PRO.mq5` e `AI\AIConnector.mqh` - fecha P1.3486. 15/15 `[START] v1.2.189` as 10:11, 0 erros.
+- **Forward:** `inicio_medido` re-gravado de `2026-11-09` para **`2026-11-10`**. O dia 09/11 e' descartado como dia 1: correu com o binario antigo, 25 simbolos e entrada sem stop (estado contaminado, nao comparavel). `dias_medidos=0`, alvo 30.
+- **GATE_REAL:** mantem-se **3 de 11** (G2, G3, G9). G10 continua VERMELHO pela lacuna do Market Watch (25 residuais), agora com evidencia de `ativos=15` no EA.
+
+### 6. Defeitos registados e nao corrigidos (ambientais, fora do codigo)
+- **P1.3501** - ordem a mercado sem autorizacao as 22:47:35 (magic 0, `open_reason=Client`): trade manual do DONO, fora da estatistica do EA e do gate. Registar apenas.
+- **P1.3502** - ciclo de `FAILURE MODE` por ligacao ao gateway (09:13:32 e seguintes): ambiente/rede, sem alteracao de codigo.
+- **P1.3503** - IA indisponivel (`/api/ai/predict` 401): o gateway 9011 e' **read-only por design**; o EA usa o piso sem IA de 45,0.
+- **P1.3504** - feed morto em USDBRL/USDCOP/USDCLP/USDRUB: origem no servidor/broker, sem correcao local.
+- **P1.3505** - XAUUSD sem ADX: instrumento/feed, sem correcao local.
+
+### 7. Alinhamentos residuais
+- `MANDATO_ATIVO.json` `paragem_automatica.drawdown_percent` passou de `50.0` para `6.0` (valor em uso nos 15 graficos, G9). Sem alteracao de risco efetivo: alinha o documento ao que o EA ja' aplica.
+- `P1.3486` (cabecalhos de versao) fica coberto pelo bump v1.2.189; sem fecho formal ate' o proximo ciclo de higiene.
+- `G2` continua sem servico Windows (sem admin/NSSM) e o keepalive de 5 min foi removido por ordem do DONO; so' a tarefa diaria `XAU_AI_PRO_DonoRelatorio` (23:50) e' recriada para o forward contar.
+
+### 8. Estado final desta decisao
+GATE_REAL **3 de 11**; forward **0 de 30** com inicio medido **2026-11-10**; binario **`DDF03BE3`**; 15/15 graficos v1.2.189 com `SymbolsFromMarketWatch=false` e `EnableStoplessEntry=false`; conta demo `113568614`; conta real proibida.
+

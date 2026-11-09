@@ -1,4 +1,4 @@
-// XAU_AI_PRO v1.2.9
+// XAU_AI_PRO v1.2.189
 #ifndef AICONNECTOR_MQH
 #define AICONNECTOR_MQH
 
