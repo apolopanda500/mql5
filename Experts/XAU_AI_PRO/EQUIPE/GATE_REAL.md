@@ -67,3 +67,33 @@ Preencher apenas com medicao. Uma linha por item que passa a verde.
 | **Q-017 / G9** | Limites de conta real declarados: `MaxDailyLossPercent <= 3.0`, `MaxDrawdownPercent <= 6.0`, `RiskPercent <= 0.5`. Em demo estao 10.0 / 50.0 / 1.0 | aplicar 3.0 / 6.0 / 0.5 nos **12** graficos (inputs, **nao** muda o `.ex5`) e medir em `list_open_charts` - **FEITO e medido por DELTA em 08/11 13:05: 12 de 12** | DONO / CMD executa |
 | **Q-013 / G10** | Universo coerente = os **11** simbolos de `Symbols`. Fechar os 5 sem modelo (USDCLP, USDCOP, USDCZK, USDRUB, USDSGD), abrir **EURUSD** e fechar o `chart16` sem EA (P1.3491) | 11 graficos = 11 simbolos com `SymbolsFromMarketWatch=false` - estado medido 08/11 13:06: **12 graficos / 11 simbolos**, falta fechar `#95180320674740` (EURUSD sem EA, P1.3496); Market Watch com 25 simbolos por declarar | CMD executa / DELTA mede |
 | **Q-022 / G2** | Gateway sobe como **servico do Windows**, com arranque automatico | `/api/ai/predict` a **200** depois de um reboot, sem intervencao manual | CMD (fica fora das raizes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  
+
+## 6. Medicoes ALFA de G4-G8 (D-131, 09/11/2026 17:27)
+
+Apendice acrescentado por bytes no fim do ficheiro. Nao reescreve nenhuma linha anterior - #5/Q-026 nomeia o run `7705829861381623325` (`m1 ohlc`), que estava morto (0 trades) e foi substituido pelo job abaixo.
+
+| Criterio | Binario | Janela / modelo | Medido | Veredicto |
+|---|---|---|---|---|
+| **G5** | 021ABF1085809A72811625D90D7C8FAB | 2025-11-09 -> 2026-11-09, XAUUSD H1, `open prices`, run `7706252493875670501` | 45 trades em 12 meses = 3.75/mes; 100 trades exigem ~26.7 meses (2.2 anos) | **REPROVADO** por medicao (o piso de 100 nao foi baixado) |
+| **G6** | idem | idem (backtest) + forward 10/11 00:05 | MaxDD balance 737.10 = 5.57 %; equity 874.38 = 6.56 % (teto 8 %) | backtest **PASSA**; criterio **RED** por forward 0/30 dias |
+| **G7** | idem | idem | PF 1.0267 com 45 trades (exige >= 1.20 e >= 100 trades) | **REPROVADO** |
+| **G8** | idem | idem | 45 shorts / 0 longs = 100 % short, amostra 45 (exige >= 30 % em >= 100) | razao passa, **amostra reprovada**; EA estruturalmente short-only nesta janela |
+| **G4** | idem em 15/15 | journal 15:45:24 -> 16:23:59 | 207 linhas: ATR SEM LEITURA 0, HANDLE MORTO 0, TREND LEITURA SUSPEITA 0, ERRO 0, STOP 0 (38.6 min) | **EM CURSO** - 24 h fecham 10/11 15:45:24 |
+| **G9** (info) | idem | 15 graficos, inputs vivos | 600.0 / 3.0 / 6.0 / 0.5 (o texto do Q-017 diz 10.0 / 50.0 / 1.0) | medicao registada; linha do Q-017 nao reescrita |
+
+Nota de metodo: o resultado de G5/G7/G8 e do modelo `open prices` (contagem), nao `m1 ohlc`. O `m1 ohlc` custa 1.52 h de relogio por dia simulado (~556 h para 12 meses) e por isso ficou de fora desta medicao. As tres regressoes ficam por medir em `m1 ohlc` sobre a mesma janela.
+
+## 7. Gateway 9011 remedido nas duas pontas (D-132, 09/11/2026 17:36)
+
+| Item | Medido | Veredicto |
+|---|---|---|
+| Porta 9011 antes | `netstat` vazio, task estado `NAO ESTA A CORRER` | estava DOWN |
+| Subida | `tools/gateway-start.ps1` -> pid 7988, modo LEITURA, 6 flags de execucao a 0 | UP |
+| `/api/health` sem token | **401** `token invalido` | fail-closed OK |
+| `/api/health` com token | **200** `ok:true` `uptime_sec:40` `gateway_build:xau-ai-pro-1.2.181-universal-20261107` (10 ms) | OK |
+| `/api/ai/predict` XAUUSD H1 | **200** `available:true` `signal:SELL` `confidence:53.8` `edge:+0.0363` `accuracy:0.5361` (75 ms) | OK, inferencia real |
+| `/api/ai/predict` EURUSD H1 | **200** `available:false` `edge -0.0161 abaixo do minimo +0.0500` | gate de edge a funcionar |
+| EA (journal) | `17:34:06.305 [AI] GATEWAY RECUPERADO USDCHF falhas=214 cego=6510s resposta=357B`; 15 simbolos respondidos 17:34:06-17:34:33 | recuperacao autonoma |
+| Durabilidade (Q-022) | `admin=False` -> `gateway-task.ps1 -Acao instalar` = **RECUSADO**; tarefas XAU/Gateway existentes: so `Hermes_Gateway`, `OpenClaw Gateway`, `XAU_AI_PRO_DonoRelatorio` | **ABERTO** - processo manual, nao sobrevive a reboot |
+
+Nota de coerencia para quem for fechar o Q-022: `gateway-start.ps1` nomeia a tarefa `XAU_AI_PRO_GatewayKeepalive` (5 min) e `gateway-task.ps1` registra `XAU_AI_Gateway_9011` (logon). Nenhuma das duas existe. Escolher **uma** e alinhar o outro cabecalho.
