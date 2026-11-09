@@ -1655,3 +1655,15 @@ Medido duas vezes: 14:35:13 devolveu `P1.1251/2381/3511/4641/5771` para a serie 
 O repo de trading nao tinha workflow de gitleaks; a unica config era um `.gitleaks.toml` **nao trackeado** dentro de `Files/XAU_AI_PRO`, no formato pre-v8.19 (`allowlist = [...]`), que o gitleaks 8.24+ ignora. Baseline local com 8.30.1: **472** achados, todos `generic-api-key`, 458 em `Files/XAU_AI_PRO/**` (arvore vendorizada do app, ja limpa no repo proprio), 10 em `Experts/XAU_AI_PRO/PROGRESS.md*` e 4 em `Profiles/Templates/*.tpl` com atribuicoes vazias (`AIGatewayToken=`, `MCPServerToken=`).
 
 Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`), `.github/workflows/security.yml` com gitleaks-action@v3, config explicita e versao fixada em 8.30.1. Prova local: **472 -> 0** (`no leaks found`, 549 commits, 205,45 MB). O ficheiro antigo ficou em `Files/Backup/pre_gitleaks_20261109/gitleaks.toml.pre_v819` e foi removido do sitio.
+
+### P1.3514 - ABERTO (DONO/UI) - MQL_TRADE_ALLOWED=0 em 15/15: o EA esta' anexado mas sem permissao de negociacao por grafico
+
+**Medido 09/11 18:45:11** (`MQL5\logs\20261109.log`, USDSEK H1): `[TRADE BLOCK] PROGRAMA sem permissao: MQL_TRADE_ALLOWED=0 (bit POR GRAFICO; terminal e conta OK, a suite pode negociar)`. O mesmo bloco aparece de hora a hora desde 14:29. Os outros quatro bits estao a 1 (`TERMINAL_TRADE_ALLOWED`, `ACCOUNT_TRADE_ALLOWED`, `ACCOUNT_TRADE_EXPERT`, `TERMINAL_CONNECTED`) e `GET /api/ai/predict` responde 200, logo o problema nao e' conta, broker, ligacao nem gateway.
+
+**Causa (D-135):** o botao global 'Algoritmos' do terminal esteve OFF as 14:48 e, quando voltou a ON, o bit POR GRAFICO nao voltou sozinho. A permissao vive nas **propriedades do EA** de cada grafico, nao ha caminho por API, por `.chr`, por `.tpl` nem por `expertmode` (testado e rejeitado em P1.62/P1.88 e D-130). Reanexar o EA por arrasto repoe os INPUTS de fabrica e tocaria em `RiskPercent`, `MaxDrawdownPercent` e `Symbols` - **nao fazer**.
+
+**Acao do DONO (15 graficos, ~2 min):** em cada grafico, clicar com o botao direito -> **Expert Advisors / Peritos -> Properties / Propriedades -> separador Comum -> marcar 'Permitir negociacao algoritmica' / 'Allow algorithmic trading' -> OK**. Confirmar tambem que o botao global **Algoritmos** esta' verde. Nao e' preciso reiniciar o terminal nem recompilar.
+
+**Urgencia:** a janela de 30 dias comeca em **2026-11-10 00:05**. Sem este bit, o EA recebe dados e calcula, mas nao abre ordem nenhuma e os 30 dias nao produzem trades.
+
+**Nota de IDs:** o alocador devolveu `P1.10291`; o ID da serie e' **P1.3514** (`P1.10291` fica como alias reservado).
