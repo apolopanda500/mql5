@@ -1633,3 +1633,23 @@ O ADX nao chega para o XAUUSD no feed atual; sem correcao local. Registar para n
 ### Deriva nao planeada - chart01 XAUUSD em M1
 
 `chart01.chr` estava `period_type=0, period_size=1` (M1), divergente do template `ALFA_V_XAUUSD.tpl` (H1). Corrigido em D-120 com o terminal fechado para `period_type=1, period_size=1`; 15/15 `[START] v1.2.189` com XAUUSD H1 e 0 erros.
+
+### P1.3507 - FECHADO (D-122, v1.2.190) - teto de risco por operacao media a distancia de armadura na entrada sem stop
+
+Com `EnableStoplessEntry=true` a ordem saia sem SL e o teto `MaxRiskPerTradeUsd=8.00` comparava o risco com `NoiseDistancePointsForRisk` (distancia de armadura) em vez da distancia de emergencia a que o `CheckStoplessEmergency` fecha. Medido em 09/11: 0,06 lote XAUUSD sem SL, ~2000 pontos ate 4076.21 = **-119,40 USD**, contra teto de 8,00 por operacao; `MIN_LOT_EXCEEDS_RISK_CAP` nunca disparou. Corrigido com `StoplessRiskDistancePoints()` e `RiskDistancePointsForCap()` em `Core\ExecutionEngine.mqh`, usados por `CalculateDynamicLot` e `ExecuteTrade`. Inerte na configuracao em uso (`EnableStoplessEntry=false` em 15/15 devolve o valor anterior). Compilado v1.2.190 `A057982F` (972 428 B, 14:23:55, 0 errors/0 warnings), 15/15 `[START]` entre 14:32:24 e 14:32:29.
+
+**Nota de IDs:** o alocador devolveu `P1.2381` para este defeito. O ID da serie e' **P1.3507**; `P1.2381` fica como alias reservado. Mapeamento completo dos cinco IDs fora de serie emitidos as 14:35:13 na D-122, item 9.
+
+### P1.3508-P1.3511 - FECHADOS/ALIASES (D-122) - IDs fora de serie do alocador
+
+`P1.3511` = P1.3508 (forward atravessava dois binarios), `P1.4641` = P1.3509 (chart01 em M1), `P1.5771` = P1.3510 (mqproj em 1.386), `P1.1251` = P1.3506 (defaults de fonte inseguros - **ABERTO**, exige decisao escrita do DONO). Os tres primeiros estao fechados; P1.3506 continua aberto de proposito porque altera defaults de risco e o MD5 declarado.
+
+### P1.3512 - ABERTO (CMD) - alocador de IDs do `sync-agent.ps1` devolve numeros fora da serie
+
+Medido duas vezes: 14:35:13 devolveu `P1.1251/2381/3511/4641/5771` para a serie P1.3506..P1.3510; 14:40:38 devolveu `P1.6901` e `P1.8031` para a serie P1.3511+. O ledger regista o ID entregue, mas o numero nao pertence a serie em uso, o que obriga a mapeamento manual e arrisca duplicados. Nao bloqueia o gate. Corrigir quando o canal estiver estavel; ate la', reservations P1 sao mapeadas a mao na `DECISOES.md`.
+
+### P1.3513 - FECHADO (D-125) - repo `mql5` sem gitleaks e com config antiga em `Files/XAU_AI_PRO`
+
+O repo de trading nao tinha workflow de gitleaks; a unica config era um `.gitleaks.toml` **nao trackeado** dentro de `Files/XAU_AI_PRO`, no formato pre-v8.19 (`allowlist = [...]`), que o gitleaks 8.24+ ignora. Baseline local com 8.30.1: **472** achados, todos `generic-api-key`, 458 em `Files/XAU_AI_PRO/**` (arvore vendorizada do app, ja limpa no repo proprio), 10 em `Experts/XAU_AI_PRO/PROGRESS.md*` e 4 em `Profiles/Templates/*.tpl` com atribuicoes vazias (`AIGatewayToken=`, `MCPServerToken=`).
+
+Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`), `.github/workflows/security.yml` com gitleaks-action@v3, config explicita e versao fixada em 8.30.1. Prova local: **472 -> 0** (`no leaks found`, 549 commits, 205,45 MB). O ficheiro antigo ficou em `Files/Backup/pre_gitleaks_20261109/gitleaks.toml.pre_v819` e foi removido do sitio.

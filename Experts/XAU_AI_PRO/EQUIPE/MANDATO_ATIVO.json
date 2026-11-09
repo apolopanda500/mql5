@@ -105,7 +105,7 @@
       "conta": "demo",
       "inicio_regra": "primeira segunda-feira com mercado aberto apos 07/11/2026",
       "inicio_previsto": "2026-11-09",
-      "inicio_medido": "2026-11-10",
+      "inicio_medido": "2026-11-10", "binario_declarado": { "versao": "v1.2.190", "bytes": 972428, "mtime": "09/11/2026 14:23:55", "md5": "A057982F5AEEA6E13A821AD413274BD4", "nota": "D-122: um so binario no ar em 15/15 graficos desde 14:32:29" },
       "dias_medidos": 0,
       "dia_sem_medicao_nao_conta": true
     },

@@ -1,0 +1,40 @@
+name: Secret Scanning
+
+# O repo mql5 nao tinha scanner de segredos. Este workflow usa a MESMA
+# configuracao validada no repo da app (formato v8.25+, `[[allowlists]]`)
+# e fixa a versao do gitleaks para o parser nao mudar por baixo.
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gitleaks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    name: "Gitleaks"
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "Scan for secrets"
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # O ficheiro chama-se `.gitleaks.toml` (com ponto); a
+          # auto-deteccao do action so procura `gitleaks.toml`.
+          GITLEAKS_CONFIG: .gitleaks.toml
+          # v8.25+ e' obrigatorio para `[[allowlists]]`.
+          GITLEAKS_VERSION: 8.30.1

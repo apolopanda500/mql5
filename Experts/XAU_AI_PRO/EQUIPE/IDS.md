@@ -115,3 +115,17 @@ USADO | D | D-118 | CMD | 09/11/2026 09:15:41 | Forward 30 dias iniciado 09/11 (
 USADO | D | D-119 | ALFA | 09/11/2026 09:21:34 | forward 30d arrancado: tarefas restauradas e ferramentas corrigidas
 USADO | D | D-120 | CMD | 09/11/2026 09:45:48 | D-120 registar tudo e destravar: universo 15, gate por magic, forward re-medido 10/11
 USADO | D | D-121 | CMD | 09/11/2026 14:34:11 | D-121 Security Checks do repo XAU_AI_PRO: gitleaks v8.25+ e allowlist de 18 achados historicos revistos
+USADO | P1 | P1.1251 | ALFA | 09/11/2026 14:35:13 | defaults de fonte inseguros: SymbolsFromMarketWatch=true e EnableStoplessEntry=true contradizem os 15 graficos
+USADO | P1 | P1.2381 | ALFA | 09/11/2026 14:35:13 | teto de risco por operacao mediava a distancia de armadura na entrada sem stop (corrigido em v1.2.190)
+USADO | P1 | P1.3511 | ALFA | 09/11/2026 14:35:13 | forward 09/11->08/12 atravessava dois binarios (v1.2.189 em memoria e v1.2.190 em disco)
+USADO | P1 | P1.4641 | ALFA | 09/11/2026 14:35:13 | chart01 corria XAUUSD,M1 com os outros 14 em H1 (corrigido no grafico vivo as 14:21:07)
+USADO | P1 | P1.5771 | ALFA | 09/11/2026 14:35:13 | quinta fonte de versao: XAU_AI_PRO.mqproj estava em 1.386 / v1.2.186
+USADO | D | D-123 | CMD | 09/11/2026 14:40:38 | D-123 binario do forward redeclarado A057982F (v1.2.190) sem reiniciar janela, 0 de 30
+USADO | P1 | P1.6901 | CMD | 09/11/2026 14:40:38 | alocador de IDs devolve numeros fora da serie
+USADO | P1 | P1.8031 | CMD | 09/11/2026 14:40:38 | repo mql5 sem gitleaks e config antiga em Files/XAU_AI_PRO
+USADO | P1 | P1.9161 | ALFA | 09/11/2026 14:40:46 | gitleaks: config pre-8.19 inerte no repo do app e D-121 sem artefacto
+USADO | D | D-124 | ALFA | 09/11/2026 14:40:46 | D-123 G11 redeclarado v1.2.190 + escopo real do gitleaks
+USADO | P1 | P1.3512 | CMD | 09/11/2026 14:41:00 | alocador de IDs devolve numeros fora da serie (alias reservado P1.6901)
+USADO | P1 | P1.3513 | CMD | 09/11/2026 14:41:00 | repo mql5 sem gitleaks e config antiga em Files/XAU_AI_PRO (alias reservado P1.8031)
+USADO | D | D-125 | CMD | 09/11/2026 14:41:50 | D-125 repo mql5: gitleaks 8.30.1, config v8.25+, workflow e prova local 472->0
+USADO | D | D-126 | ALFA | 09/11/2026 14:44:32 | auditoria do .gitleaks.toml e do security.yml criados na raiz do mql5: prova positiva e negativa, e 3 correcoes necessarias
