@@ -1,11 +1,11 @@
-﻿{
+{
   "format_version":1,
   "platform"    :"mt5",
   "program_type":"expert",
   "copyright"   :"Copyright 2026, XAU_AI_PRO Team",
   "link"        :"https:\/\/www.mql5.com",
-  "version"     :"1.386",
-  "description" :"XAU_AI_PRO v1.2.186 - Expert Advisor algorítmico com IA, gestão de risco e arquitectura modular.",
+  "version"     :"1.390",
+  "description" :"XAU_AI_PRO v1.2.190 - Expert Advisor algorítmico com IA, gestão de risco e arquitectura modular.",
   "cpu_architecture" :"0",
   "optimize"    :"1",
   "fpzerocheck" :"1",

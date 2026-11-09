@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.189
+// XAU_AI_PRO v1.2.190
 //==================================================
 
 #property strict
@@ -19,7 +19,7 @@
 // A versao legivel ("1.2.27") vai na descricao do projeto (XAU_AI_PRO.mqproj),
 // tambem exibida na aba de propriedades. O build do projeto ja injeta essa
 // propriedade; repetir com `#property description` gera `warning 90`.
-#property version   "1.389"
+#property version   "1.390"
 
 #include <Trade/Trade.mqh>
 
