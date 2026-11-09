@@ -6395,3 +6395,15 @@ CONTEXTO: quando respondi ao DELTA as 14:42 estes dois ficheiros nao existiam (o
 - Caveat de atribuicao do job: o tester carregou o binario as 15:05:20.648 e o `.ex5` em disco tem mtime 15:39:53 (md5 021ABF1085809A72811625D90D7C8FAB, 976 428 B). Nao existe copia do agente em disco (`Get-ChildItem Tester -Recurse -Filter XAU_AI_PRO.ex5` = 0 ficheiros), logo nao posso provar que o job em curso usou estes bytes. O resultado deste job nao pode ser assinado como 021ABF10 sem essa prova.
 - Lado vivo na mesma janela: gateway de pe (13 simbolos com `[AI] GATEWAY | ... | 357 bytes | disponivel=false` entre 18:45:34 e 18:46:25; XAUUSD com 1122 bytes `disponivel=true` as 18:27:47) e a porta por grafico continua fechada: 18:49:00 `[DIAGSCAN] ... codigo=3 | suite=FECHADA` e 18:45:11.152 `[TRADE BLOCK] PROGRAMA sem permissao ... F7 > Comum ...` (USDSEK). O P1 do D-135 reproduz-se a cada bloqueio.
 - XAUUSD com ultimo tick ha 2941 s as 18:49 nao e avaria: hora do servidor 23:52 (trade_server_last_known 23:52:07 com UTC 21:52:07), dentro da pausa diaria dos metais.
+
+## D-137 | CMD | 2026-11-09 19:05 | prova de que o job de 12M correu o build de 15:03:01 (`B1F8722B`), nao o `021ABF` de 15:39:53; o resultado nao e' assinavel como v1.2.191 final
+
+- **Pergunta:** o job `ALFA_G5_12M_190.ini` (carregado 15:05:13.140, teste 15:05:14.226, binario do agente carregado 15:05:20.648) correu os bytes `021ABF1085809A72811625D90D7C8FAB` ou um build anterior?
+- **Resposta medida:** correu **`B1F8722B`**. Prova no `logs/metaeditor.log` (hora local, a mesma do `.ex5`), tres compilacoes no dia:
+  - `15:03:01.579 / .594` - Compile 24548 ms + `compile succeeded`, 0 errors, 0 warnings -> build das 15:03:01 = **`B1F8722B`** (979 372 B, registado em D-126).
+  - `15:09:44.004` - Compile 28718 ms -> build das 15:09:44 = **`AA836040`** (registado em D-127).
+  - `15:39:53.999` - Compile 41106 ms -> build das 15:39:53 = **`021ABF`** (976 428 B, registado em D-128).
+  - O job leu o `.ini` as `15:05:05.735` e arrancou as `15:05:14`, portanto o unico build que existia em disco nesse instante era o das **15:03:01** (`B1F8722B`). `AA836040` so' apareceu 4m30s depois e `021ABF` 34m depois.
+- **Nao existe copia do agente em disco:** `Get-ChildItem` recursivo em `MQL5\Tester` por `XAU_AI_PRO.ex5` devolve **0 ficheiros** (o agente compila/limpa a copia). Portanto a prova e' temporal e nao por hash do ficheiro carregado - suficiente para *excluir* `021ABF` (que ainda nao existia), nao para assinar o job.
+- **Consequencia:** o resultado de 12M (45 trades, PF 1.0267, DD 5.57 %/6.56 %, 100 % short, G5 reprovado por amostra/PF) fica como **evidencia do build de 15:03:01**, nao como assinatura do binario final. G3/G5/G7/G8 continuam **NAO assinaveis a partir deste job**; ver P1.3515 para a causa (tester sem WebRequest).
+- **Regra que fica:** um job de tester so' se assina com (a) hash do `.ex5` carregado, ou (b) sequencia de compilacoes datada + hora de carga que exclua qualquer build posterior. Sem (a) ou (b), o resultado e' evidencia, nao medicao assinavel.

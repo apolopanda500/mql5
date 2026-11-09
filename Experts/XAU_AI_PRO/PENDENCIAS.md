@@ -1667,3 +1667,18 @@ Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`),
 **Urgencia:** a janela de 30 dias comeca em **2026-11-10 00:05**. Sem este bit, o EA recebe dados e calcula, mas nao abre ordem nenhuma e os 30 dias nao produzem trades.
 
 **Nota de IDs:** o alocador devolveu `P1.10291`; o ID da serie e' **P1.3514** (`P1.10291` fica como alias reservado).
+
+### P1.3515 - ABERTO (TESTER/CODIGO) - o Strategy Tester nao herda a allowlist de WebRequest: a IA do backtest e' uma constante, nao uma previsao por barra
+
+**Medido 09/11 15:0x-18:5x** no job `ALFA_G5_12M_190.ini` (XAUUSD H1, 12 meses, Model=1):
+
+- `[AI] GATEWAY falhou | erro=4014 | http://127.0.0.1:9011/api/ai/predict?symbol=XAUUSD&timeframe=H1 | NAO PERMITIDO (URL fora da lista, ou checkbox 'Allow WebRequest' desligado)` a cada hora simulada.
+- Logo apos o 4014 sai `[AI] PYTHON | XAUUSD | SELL | PRICE=4063.84 | BUY=36.35% | SELL=63.65% | SCORE=36.35 | CONF=63.60%` e repete **identico** as 10:00, 11:00, 12:00 e 13:00 do mesmo dia simulado, com RSI[1] a ir 60.79 -> 61.56 -> 55.92 -> 56.15 e ADX 18.7 -> 22.5 -> 19.9 -> 19.4. Valor de IA congelado.
+- `[ATR] HANDLE RECRIADO | erro=4807 (ERR_INDICATOR_WRONG_HANDLE) | barsCalc=-1 | handleRecusado=10` a cada hora simulada, seguido de `[ATR] SERIE OK`: o ATR do backtest corre no fallback de serie, nao no handle.
+- `[LOGGER WARNING] Falha ao rotacionar log. Erro=5004` a cada hora simulada, `fallback=sem truncagem`: inofensivo para a logica, explica o tamanho do log do tester.
+
+**Consequencia:** o componente de IA que corre no backtest **nao e'** o que corre em producao. Nao se assina **G3** nem se valida o filtro de IA com backtest ate' este P1 estar fechado. G5/G7/G8 medidos no tester ficam sem a componente de IA (ver D-136/D-137).
+
+**O que fecha este P1:** provar uma de duas vias - (a) `WebRequest` permitido e a funcionar dentro do agente de teste (URL na allowlist do agente, nao so' do terminal), ou (b) um modo de backtest em que a IA seja explicitamente declarada como ausente (IA OFF) e os resultados assinados como "EA sem IA". A opcao (b) ja' tem controlo em preparacao (`ALFA_G5_A_CTRL60.set`), mas o controlo ainda nao foi corrido nem lido.
+
+**Nota de IDs:** o alocador devolveu `P1.11421`; o ID da serie e' **P1.3515** (`P1.11421` fica como alias reservado).
