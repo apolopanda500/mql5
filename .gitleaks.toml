@@ -5,20 +5,33 @@
 # em `Files/XAU_AI_PRO/.gitleaks.toml` estava no formato pre-v8.19
 # (`allowlist = [...]`), nao era trackeado e nenhum workflow o usava.
 #
-# Baseline medida em 09/11/2026 com gitleaks 8.30.1: 472 achados, todos
-# `generic-api-key`:
-#   - 458 em `Files/XAU_AI_PRO/**` (arvore vendorizada da app XAU_AI_PRO,
-#     incluindo `dist/` e `frontend/.../_internal/`; a app e' auditada no
-#     repo proprio `apolopanda500/XAU_AI_PRO`);
-#   - 10 em `Experts/XAU_AI_PRO/PROGRESS.md*` (texto de log que cita
-#     `MQL_TRADE_ALLOWED=0`, nao uma credencial);
-#   - 4 em `Profiles/Templates/ALFA_G10_*.tpl` (atribuicoes VAZIAS:
-#     `AIGatewayToken=` e `MCPServerToken=`).
-# Depois desta config: 0 achados. Nenhum allowlist abaixo cobre HEAD de
-# codigo novo: se um valor real for escrito num `.tpl` ou num ficheiro
-# fora da arvore vendorizada, o gitleaks volta a falhar.
+# PROVA (artefacto, nao afirmacao): run 42667896718 do workflow
+# `.github/workflows/security.yml`, evento `workflow_dispatch`, gitleaks
+# 8.30.1. Nesse evento o action corre
+# `git log -p -U0 --full-history --all --diff-filter=tuxdb`: 429 commits e
+# 131,40 MB varridos, `no leaks found`, SARIF artifact 13696573435.
+# No evento `push` o action acrescenta `--log-opts=-1`, isto e', so o commit
+# empurrado -- por isso a garantia sobre o HISTORICO vem do run de
+# `workflow_dispatch`, e nao dos runs de push.
+#
+# O numero "472 -> 0" que este cabecalho afirmava antes foi substituido pela
+# prova acima: nao existe nesta maquina o binario do gitleaks nem o relatorio
+# que teria produzido aquele numero, logo aquela frase nao era auditavel. A
+# prova do CI deixa rasto no log do run e num artefacto descarregavel.
+#
+# Nenhum allowlist abaixo cobre HEAD de codigo novo: se um valor real for
+# escrito num `.tpl` ou num ficheiro de documentacao, o gitleaks volta a
+# falhar.
 
 title = "mql5 / XAU_AI_PRO Gitleaks Configuration"
+
+# Exige gitleaks >= 8.25 ao parser. Sem este campo o gitleaks escreve no log
+# "no minVersion specified in config... consider adding minVersion": fica sem
+# contrato escrito e uma versao futura poderia reintroduzir o parser antigo,
+# lendo `[[allowlists]]` como lixo (deixando de excluir o que deve e, pior, de
+# varrer o que deve). O workflow fixa a versao INSTALADA; este campo fixa a
+# versao que o FICHEIRO exige. 8.30.1 >= 8.25.0, portanto o run actual cumpre.
+minVersion = "8.25.0"
 
 [extend]
 useDefault = true
@@ -26,7 +39,23 @@ useDefault = true
 # ---------------------------------------------------------------------------
 # 1. Arvore vendorizada da app. E' uma copia de outro repositorio que tem
 #    o seu proprio scanner; varrer 205 MB de `dist`/`botocore` aqui duplica
-#    o trabalho e produz 458 falsos positivos de dados de exemplo da AWS.
+#    o trabalho e produz falsos positivos de dados de exemplo da AWS.
+#
+#    NOTA MEDIDA (09/11/2026) -- corrige a premissa de que esta allowlist
+#    seria redundante no CI: `git log --all -- Files/XAU_AI_PRO` devolve 54
+#    commits e `--diff-filter=A` confirma 33 que ADICIONARAM a arvore
+#    (`node_modules`, `dist`, `core/Temp/cargo-target`, `EnvironmentManager.mqh`).
+#    O `.gitignore:85` impede apenas tracking FUTURO; o
+#    `--full-history --all` do CI reproduz os blobs antigos. Ou seja, esta
+#    entrada e' load-bearing no CI: remove-la re-expõe o ruido vendorizado do
+#    historico e poe o scan vermelho.
+#
+#    Risco residual aceite e conhecido: um segredo real escrito HOJE nesta
+#    arvore nao e' visto por um `gitleaks dir` local, porque o `paths` o
+#    exclui. Fechar isto exige uma allowlist por `commits` (os 33 SHA que
+#    introduziram a arvore) em vez de por `paths` -- decisao que so deve ser
+#    tomada com o binario do gitleaks a mao para calibrar, o que esta maquina
+#    nao tem.
 # ---------------------------------------------------------------------------
 [[allowlists]]
 description = "arvore vendorizada da app XAU_AI_PRO (auditada no repo proprio)"
@@ -50,7 +79,9 @@ paths = [
 #    linha SEGUINTE (`AIPollSeconds=15`, `RiskPercent=0.5`) porque o valor
 #    do token esta' vazio; por isso o regex compara o MATCH completo:
 #    so' passa `Token=` vazio seguido de imediato por outra atribuicao.
-#    Um token real na mesma linha nao e' coberto.
+#    Um token real na mesma linha nao e' coberto -- provado nos dois
+#    sentidos: `AIGatewayToken=\r\nAIPollSeconds=15` casa (allowlistado),
+#    `AIGatewayToken=sk-live-9f8e...` nao casa (varrido).
 # ---------------------------------------------------------------------------
 [[allowlists]]
 description = "atribuicoes de token vazias em templates"
@@ -64,6 +95,12 @@ regexes = [
 #    confirmou que `prova12345678` e' valor descartavel de uma tabela de
 #    provas; no EA o input esta vazio (`ExternalBridgeToken: ""`) e
 #    `EnableExternalBridge=false`. Literal exacto: nao cobre outro valor.
+#
+#    DELIBERADAMENTE sem fronteira de palavra (`\bprova12345678\b`). Testado:
+#    a forma ancorada deixa de cobrir `prova12345678_`, que existe em
+#    `DECISOES.md:6221` e `INBOX_AGENTE_2.md:1541`. Como o valor e' um token
+#    de teste descartavel, "substring" nao esconde segredo nenhum, enquanto
+#    "ancorado" poderia por o scan vermelho em texto de documentacao.
 # ---------------------------------------------------------------------------
 [[allowlists]]
 description = "token de teste prova12345678 citado em documentacao"
