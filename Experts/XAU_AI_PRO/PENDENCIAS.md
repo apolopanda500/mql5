@@ -1618,6 +1618,8 @@ As 22:47:35 (08/11) o terminal registou `market sell 0.1 XAUUSD` com `open_reaso
 
 `09:13:32` e seguintes: a ligacao ao gateway entra em `FAILURE MODE` e sai em ciclo. Sem alteracao de codigo no D-120; e' rede/ambiente e o EA cai para o piso sem IA de 45,0. Reavaliar com o gateway a responder 200.
 
+**Remedido 09/11 14:40-14:47:** o gateway **esta' vivo** - PID 7988 (`uvicorn backend.fastapi_gateway:app --port 9011 --host 127.0.0.1`), socket em `Listen`, e `GET /api/ai/predict?symbol=XAUUSD&timeframe=H1` com `XAU_GATEWAY_TOKEN` do `.env` devolveu **200 / 1122 B** as 14:47. O journal do EA registou `HTTP 1001` as 14:40:26 e 14:45:26 (USDCAD H1), ou seja o EA nao recebeu resposta dentro do timeout enquanto o gateway respondia a um pedido externo. Nao e' credencial em falta (token de 64 caracteres resolve). O `agente-briefing.ps1` marcou `DOWN` as 14:46 por falha de TCP momentanea e voltou a `UP` na geracao seguinte. Mantem-se ABERTO: e' contencao/timeout sob 15 graficos, nao um 401.
+
 ### P1.3503 - ABERTO (AMBIENTE) - IA indisponivel, gateway read-only 401 por design
 
 `/api/ai/predict` responde 401 porque o gateway 9011 corre **read-only por desenho** (flags de execucao a 0). O EA usa `MinMarketScoreNoAI=45,0`. Nao e' defeito do EA; fecha-se quando houver credencial com permissao de predicao ou se aceitar o piso como modo normal.
