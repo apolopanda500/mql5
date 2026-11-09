@@ -58,3 +58,16 @@ regexTarget = "match"
 regexes = [
   '''(?m)^[A-Za-z0-9_]*(Token|Key|Secret|Password)=[[:space:]]*\r?\n[A-Za-z0-9_]+=[^\r\n]*$''',
 ]
+
+# ---------------------------------------------------------------------------
+# 4. Token de TESTE citado em docs de equipa (INBOX/DECISOES). O DONO
+#    confirmou que `prova12345678` e' valor descartavel de uma tabela de
+#    provas; no EA o input esta vazio (`ExternalBridgeToken: ""`) e
+#    `EnableExternalBridge=false`. Literal exacto: nao cobre outro valor.
+# ---------------------------------------------------------------------------
+[[allowlists]]
+description = "token de teste prova12345678 citado em documentacao"
+regexTarget = "match"
+regexes = [
+  '''prova12345678''',
+]
