@@ -1668,6 +1668,8 @@ Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`),
 
 **Nota de IDs:** o alocador devolveu `P1.10291`; o ID da serie e' **P1.3514** (`P1.10291` fica como alias reservado).
 
+**Correcao de alcance (CMD, 19:16, medida em `Core/TradePipeline.mqh:27` `PipelineIsMaster()`):** **basta ligar o bit em UM grafico**, nao nos 15. A execucao e' delegada a uma unica instancia dona do pipeline; uma instancia com `MQL_TRADE_ALLOWED=0` **liberta o bastao** (`GlobalVariableDel` das chaves `XAI_PRO_PIPE_MASTER_*`) e outra com permissao assume. Com 15/15 a zero nao ha' dono possivel e o pipeline nao corre - e' por isso que o bloqueio e' total. Ligar o bit no **chart01 XAUUSD H1** e' suficiente e e' o que se pede; os outros 14 ficam em modo SO LEITURA por desenho (`MarketScanner.mqh:531`) e nao enviam ordens.
+
 ### P1.3515 - ABERTO (TESTER/CODIGO) - o Strategy Tester nao herda a allowlist de WebRequest: a IA do backtest e' uma constante, nao uma previsao por barra
 
 **Medido 09/11 15:0x-18:5x** no job `ALFA_G5_12M_190.ini` (XAUUSD H1, 12 meses, Model=1):
