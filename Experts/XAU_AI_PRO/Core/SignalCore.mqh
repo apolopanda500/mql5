@@ -448,11 +448,11 @@ int GetSignal(string symbol)
       }
    }
 
-   int sinalLocal = 0;   // v1.2.193 P1.3516: RSI na metade forte (BUY>50 / SELL<50) + pullback
+   int sinalLocal = 0;   // D-141: filtro "metade forte" revertido - era impossivel (BUY pedia RSI<45 e >50)
 
-   if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>50.0 && rsi[1]<rsi[2])
+   if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2])
       sinalLocal = 1;
-   else if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<50.0 && rsi[1]>rsi[2])
+   else if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<rsi[2])
       sinalLocal = -1;
 
    if(sinalLocal != 0)
@@ -554,8 +554,8 @@ int GetSignal(string symbol)
             " EMA200=", DoubleToString(slow[1], dg),
             " | RSI[1]=", DoubleToString(rsi[1], 2),
             " RSI[2]=", DoubleToString(rsi[2], 2),
-            " | pede: BUY RSI<", DoubleToString(RSIPullbackBuy, 1), " (>50) a recuar",
-            " | SELL RSI>", DoubleToString(RSIPullbackSell, 1), " (<50) a subir");
+            " | pede: BUY RSI<", DoubleToString(RSIPullbackBuy, 1), " e a subir",
+            " | SELL RSI>", DoubleToString(RSIPullbackSell, 1), " e a descer");
      }
 
    return 0;
