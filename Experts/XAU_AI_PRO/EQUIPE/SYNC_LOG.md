@@ -72,3 +72,7 @@
 - 10/11/2026 02:15 | ALFA | fix | D-140: corrigida a minha propria conclusao antes de publicar - a varredura E..L e' do ALFA (20 scripts alfa_g5_*.ps1, 17:49->02:02), nao de um actor externo; o run D perdeu-se por auto-infligencia.
 - 10/11/2026 02:15 | ALFA | decisao | D-140: binario EDF4C81A (980032 B, compile 01:53:23, 0 errors) em 15/15 desde 01:53:23.574; G4 recomeca e fecha 24 h as 11/11 01:53:24. A regra do D-139 tem de re-ancorar a referencia de F0AC8D28 para EDF4C81A antes de 10/11 19:05 local.
 - 10/11/2026 02:15 | ALFA | note | D-140: a varredura de limiares nao pode dar trades porque todos os .set levam EnableStaleDataGuard=true; o proximo run e' 12M com ALFA_G5_12M_STALE0.ini + ALFA_G5_D_STALE0.set e tem de publicar ADX(sem/ok) e trades=.
+- 10/11/2026 02:21:32 | CMD | lock pegar | P0: binario EDF4C81A e mudo (RSI<45 e >50); reverter filtro, recompilar e redeployar antes da janela | 45 min
+- 10/11/2026 02:45 | ALFA | fix | D-142: aceito o D-141 e verifiquei-o por mim - RSIPullbackBuy=45.0 (Config.mqh:882) e RSIPullbackSell=55.0 (:883) provam que o meu filtro do 7bc9b139 era vazio; EDF4C81A ficou mudo de 01:53:23 a 02:23:07 e a causa e' minha.
+- 10/11/2026 02:45 | ALFA | fix | D-142: corrigido o D-140 - binario declarado passa a 71ED34C6 e o G4 fecha as 11/11 02:35:37, nao as 01:53:24.
+- 10/11/2026 02:45 | ALFA | note | D-142: controlo do G5 lancado, run_id 7706413661306435354, 12M XAUUSD H1 open prices, EnableStaleDataGuard=false como unico desvio da producao, ETA ~1 h. So' vale com sinais>0 e trades>0.

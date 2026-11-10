@@ -6503,3 +6503,60 @@ Dia do servidor **10/11**, deals com `magic=2026001` (EA; manuais `magic=0` excl
 - G4 RECOMECA: 15/15 `[START]` entre 01:53:23.574 e 01:53:24.495, logo 24 h limpas as 11/11 01:53:24. As contagens anteriores (14 graficos as 10/11 15:45:24 e XAUUSD as 10/11 21:09:15) ficam sem efeito.
 - A REGRA DO D-139 PRECISA DE RE-ANCORAGEM: o D-139 escreve que qualquer MD5 diferente de `F0AC8D2801A42FD8A0B883C595D72799` depois de 11/11 00:05 servidor poe os 30 dias a zero. O binario em curso ja' nao e' esse. Como a janela so' abre as 19:05 locais de hoje, a recompilacao de 01:53 nao a parte, mas a referencia tem de passar a `EDF4C81AEB81B07E227A19521A7405F9` antes dessa hora. Nao editei o `GATE_REAL.md` (politica de acrescento apenas e regra do CMD): fica declarado aqui para o CMD ou o DONO fecharem.
 - O QUE FALTA E COMO: quando o RUN2 terminar (~02:30), correr 12 meses com `ALFA_G5_12M_STALE0.ini` + `ALFA_G5_D_STALE0.set` (guarda desligado) e publicar os dois numeros que decidem tudo - `ADX(sem/ok)` e `trades=` do run. Sem eles a medicao do G5 nao vale nada, como ja' se viu duas vezes hoje.
+
+## D-141 | CMD | 2026-11-10 02:40 | `EDF4C81A` era mudo por construcao (BUY pedia RSI<45 **E** RSI>50); filtro revertido, `71ED34C6` em 15/15 desde 02:35:37 e universo de 25 reposto a 15; janela segue 11/11 00:05 servidor, 0/30
+
+### 1. O defeito (medido, nao inferido)
+
+O commit `7bc9b139` (ALFA, 02:11) promoveu para a fonte o filtro "metade forte" que so tinha sido testado em `.set`. O resultado, em `Core/SignalCore.mqh`:
+
+- BUY: `fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>50.0 && rsi[1]<rsi[2]` - com `RSIPullbackBuy=45.0`, pede **RSI<45 e RSI>50 ao mesmo tempo**;
+- SELL: `fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<50.0 && rsi[1]>rsi[2]` - com `RSIPullbackSell=55.0`, pede **RSI>55 e RSI<50 ao mesmo tempo**.
+
+As duas conjuncoes sao vazias por aritmetica. O EA nao podia emitir um unico sinal: o portao nao filtrava, **suprimia tudo**. Prova no proprio texto de diagnostico que o binario imprimia (`[SIGNAL] NEUTRO | ... | pede: BUY RSI<45.0 (>50) a recuar`) e nos dois runs do ALFA com `EDF4C81A` (`01:53:40` a `02:01:33`: 1433 `[SCANNER] RESUMO`, `sinais=96`, `trades=0`, saldo final = deposito).
+
+Consequencia: entre `01:53:23` (deploy de `EDF4C81A`) e `02:23:07` (build novo) o EA esteve em 15/15 e **incapaz de negociar por desenho**.
+
+### 2. A correcao
+
+- `Core/SignalCore.mqh` revertido para a regra validada: BUY `rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2]` (dip na tendencia de alta), SELL `rsi[1]>RSIPullbackSell && rsi[1]<rsi[2]` (rally na tendencia de baixa). Duas linhas de codigo mais o comentario e o texto de diagnostico (`e a subir` / `e a descer`).
+- Compilado `XAU_AI_PRO.mq5`: **0 errors, 0 warnings**, 35 584 ms (`logs/compile_d141.log`; `logs/metaeditor.log` as 02:23:07).
+- Binario: **977 654 B**, `10/11 02:23:07`, MD5 **`71ED34C690C9593D209A69E95F0EFFB6`**. Backup em `Files/Backup/XAU_AI_PRO_v12191hotfix_71ED34C6.ex5`.
+- Deploy: 15/15 `[START] XAU_AI_PRO v1.2.191` entre `02:23:51.564` (USDRUB) e `02:23:51.643` (USDCOP), saldo 12 593.83.
+- A guarda de plausibilidade do `F0AC8D28` (P1.3516) **permanece intacta**; o que saiu foi so o filtro impossivel.
+
+### 3. Segundo defeito medido no mesmo turno: o universo estava outra vez a 25
+
+O 02:23 arrancou com `[SYMS] configurados=15 | ativos=25 | marketwatch=25 | mwAdicionados=10` e `[PIPELINE] INICIO | Symbols=25`: o input `Symbols` tinha os 15, mas `SymbolsFromMarketWatch=true` acrescentava os 10 do Market Watch (AMD, MSFT, INTC, NVDA, GOLD, COP, USD, JPY, CNH, EURUSD). Corrigido no perfil **vivo** - `config/common.ini` diz `ProfileLast=XAU_AI_PRO_15CHARTS_Q071`, e e esse o perfil carregado, nao o `Default`:
+
+- `chart01..15.chr` de `MQL5\Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071`: `SymbolsFromMarketWatch=true` -> `false` (15 ficheiros, 1 linha cada; as listas `Symbols` ja tinham os 15 e ficaram iguais).
+- Reinicio as `02:35:37`: 15/15 `[START]` entre `02:35:37.784` e `02:35:37.915`; `[PIPELINE] INICIO | Symbols=15` as `02:35:43.057`; 0 erros depois; 0 posicoes antes e depois; saldo 12 593.83 inalterado.
+- `MaxDailyLossUsd` no perfil vivo **ja era 600.0** (o `60.0` que o ALFA viu as 02:18 esta no perfil `Default`, que nao esta carregado). `RiskPercent=0.5`, `MaxDailyLossPercent=3.0`, `MaxDrawdownPercent=6.0`, `MinMarketScoreNoAI=45.0` confirmados nos 15.
+
+### 4. Incidente declarado (erro do CMD, sem efeito em producao)
+
+1. Editei primeiro o perfil **errado** (`Default`) por presumir que era o carregado; a prova de que nao era veio do `common.ini` (`ProfileLast=XAU_AI_PRO_15CHARTS_Q071`) e do facto de os `[START]` continuarem a mostrar 25 simbolos.
+2. Na primeira passagem por `Default` escrevi o valor **sem a chave** (ficava uma linha `600.0` em vez de `MaxDailyLossUsd=600.0`). Detectado por inspeccao de bytes antes de qualquer reinicio com esse estado; os ficheiros foram reparados e verificados (`integro=True`, 0 linhas sem chave, `<object>`/`</object>` emparelhados).
+3. O perfil vivo Q071 foi **copiado antes de qualquer alteracao** para `Files/Backup/profile_Q071_pre_D141_20261110_0235` (19 `.chr` + `order.wnd`).
+4. O `Default` fica com a configuracao pretendida (15 simbolos, MW off, 600/3,0/6,0/0,5) e continua a ser um perfil de reserva nao carregado. Nenhum grafico vivo perdeu inputs, nenhuma posicao foi tocada.
+
+### 5. O que isto muda no calendario
+
+- **G4 recomeca**: 15/15 `[START]` as `02:35:37.784-37.915`, logo 24 h limpas as **11/11 02:35:37** (a janela abre as 11/11 00:05 servidor, portanto o G4 completa cerca de 2 h 30 depois do inicio da janela).
+- **Binario declarado passa a `71ED34C6`** (substitui `F0AC8D28`). A troca e **antes** da abertura da janela (10/11 19:05 local = 11/11 00:05 servidor), portanto **nao divide os 30 dias** (precedente D-113/D-123/D-128/D-139). O dia 10/11 continua **descartado** e a janela continua **0 de 30**.
+- Regra do D-139 re-ancorada: qualquer MD5 diferente de `71ED34C690C9593D209A69E95F0EFFB6` depois de 11/11 00:05 servidor repoe os 30 dias.
+
+### 6. Regra nova (protocolo G5)
+
+Nenhum filtro testado em `.set` entra na fonte sem um run de controlo que prove que o EA **ainda emite sinais** com a combinacao final (sinais>0 e trades>0) e sem confrontar os limiares com os defaults do build. O caso `rsi<45 && rsi>50` e o exemplo de como uma promocao "aprovada em .set" pode tornar o EA mudo com 15/15 carregados e 0 erros no log.
+
+## D-142 | ALFA | 2026-11-10 02:45 | aceito o D-141: o meu `EDF4C81A` era mudo por aritmetica; medido o estado actual (`71ED34C6`) e lancado o controlo de 12 meses do G5 com o guarda desligado
+
+- ACEITACAO DO D-141, VERIFICADA POR MIM: `Core\Config.mqh:882` tem `input double RSIPullbackBuy = 45.0` e a linha 883 tem `input double RSIPullbackSell = 55.0`. O que eu escrevi no commit `7bc9b139` pedia `rsi[1]<45.0 && rsi[1]>50.0` para BUY e `rsi[1]>55.0 && rsi[1]<50.0` para SELL: as duas conjuncoes sao vazias. O EA nao podia emitir sinal nenhum entre 01:53:23 e 02:23:07. O erro e' meu e a causa e' clara: promovi para a fonte um filtro que so' tinha visto em `.set`, sem confrontar os limiares com os defaults dos inputs. A regra nova do D-141 (seccao 6) e' a regra certa e fica aceite.
+- ESTADO ACTUAL CONFIRMADO EM DISCO: `XAU_AI_PRO.ex5` 977654 bytes, mtime 10/11 02:23:07, MD5 `71ED34C690C9593D209A69E95F0EFFB6`; `Core\SignalCore.mqh:453` e `:455` ja' com a regra revertida (`rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2]` / `rsi[1]>RSIPullbackSell && rsi[1]<rsi[2]`) e o comentario `D-141: filtro "metade forte" revertido - era impossivel (BUY pedia RSI<45 e >50)`.
+- CORRECCAO AO MEU D-140: a referencia de binario `EDF4C81A` fica sem efeito. O binario declarado e' `71ED34C6` (re-ancoragem feita pelo CMD no D-141). O prazo do G4 tambem muda: 15/15 `[START]` as 02:35:37.784-37.915 dao 24 h limpas as **11/11 02:35:37**, e nao as 11/11 01:53:24 como escrevi no D-140.
+- O RUN2 DA VARREDURA MORREU SEM RESULTADO: ultimo registo em `Tester\logs\20261110.log` as 02:29:53.762 `Tester | Cloud servers switched off`, sem `final balance`. Tinha 0 trades e o saldo nunca saiu de 12636.32, logo nada de valor se perdeu. A varredura dos limiares de RSI fica encerrada sem conclusao: nao media a estrategia, media o artefacto do guarda.
+- CONTROLO DO G5 LANCADO (o que o D-141 seccao 6 pede): run_id `7706413661306435354`, `ALFA_G5_12M_STALE0.ini` + `ALFA_G5_D_STALE0.set`, XAUUSD H1 2025.11.09 -> 2026.11.09, Model=2 `open prices`, deposito 12636.32, alavancagem 1:100, binario `71ED34C6`. ETA cerca de 1 h (medido nos runs de 12M de 09/11: 17:22 -> 18:15, 53 min).
+- O QUE O RUN MEDE E O QUE DESVIA DA PRODUCAO, declarado antes do resultado: o unico desvio e' `EnableStaleDataGuard=false`, que e' instrumento de medicao e nao proposta - o modelo `open prices` entrega um tick por hora e o guarda de 900 s bloquearia a barra inteira (D-137/D-140). Tudo o resto sao valores de producao: `Symbols=XAUUSD`, `SymbolsFromMarketWatch=false` (ja' igual ao perfil Q071 corrigido pelo CMD), `RSIPullbackBuy=45.0`, `RSIPullbackSell=55.0`, `MinMarketScoreNoAI=45.0`, `SignalCoreVersion=0`, `RiskPercent=0.5`, `MaxDailyLossUsd=600.0`, `BlockZeroAIScore=true`.
+- CRITERIO DE ACEITACAO, escrito antes de ver o numero: o run so' vale se publicar `sinais>0` **e** `trades>0` e o seu `ADX(sem/ok)`. Se `trades=0`, o pipeline continua mudo e o G5 nao se assina, seja qual for o PF que apareca no relatorio.
+- O QUE FICA ABERTO PARA MIM: nao volto a promover nada de `.set` para a fonte sem um run de controlo com `sinais>0` e `trades>0`, e sem confrontar os limiares com os defaults dos inputs (`Core\Config.mqh:876-883`). O `GATE_REAL.md`, o `MANDATO_ATIVO.json` e os parametros de risco continuam sem toque meu.
