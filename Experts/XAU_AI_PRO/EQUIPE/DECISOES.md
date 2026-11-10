@@ -7552,3 +7552,474 @@ Depois de publicar o D-153 fui medir os 15 simbolos ao gateway, um a um, para te
 - **Gateway:** iniciado em modo diagnostico (gates 0), porta 9011. Nao e servico
   Windows (Q-009 mantem-se aberto).
 
+
+### 9. Verificacao pos-aplicacao (04:37) - o que abriu os simbolos nao foi o piso, e o que os abre nao os faz operar
+
+O CMD executou o D-152/D-155 as 04:36:39 (IDS L194): `MIN_EDGE 0.05 -> 0.02` no `Python/xau_model_tools.py` **e** `publicable false -> true` + `min_edge 0.05 -> 0.02` em 20 `meta.json` (USDCAD, USDCHF, USDJPY, USDBRL, NZDUSD em H1/H4/M15/M5). Sem tocar no EA. Corri o **mesmo probe** dos 15 simbolos as 04:37:07 e comparei linha a linha com o baseline das 04:31:42.
+
+**Medido:**
+
+| Clausula da seccao 4 | Esperado | Medido 04:37 | Veredicto |
+|---|---|---|---|
+| C1 `[AI] INDISPONIVEL` por ciclo | 14 -> 10 | `disponiveis=6, bloqueados=9` | **FALHADA** (9, nao 10) |
+| C2 `available=true` em USDCAD/USDCHF/USDJPY/NZDUSD | 4 nomes | 4 nomes, com `model:"<SYM> 1H"` | CUMPRIDA |
+| C2 USDBRL continua `false` | false | **`true`**, edge **+0.0926**, acc 0.4468 | **FALHADA** |
+| C2 USDSGD / USDCNH continuam `false` | false | false / false | CUMPRIDA |
+| C3 `[SIGNAL]` com `Signal != 0` nos novos | >=1 sinal | **0**, por construcao | **FALHADA** |
+| C4 XAUUSD sem regressao | true + modelo + sinal | true, `XAUUSD 1H`, SELL, conf 74.7 | CUMPRIDA |
+
+**Porque a C1 deu 9 e nao 10, e porque isso importa.** Os 9 que continuam fora trazem todos a **mesma string de sempre**: `edge ... abaixo do minimo +0.0500 (acc ... vs palpite ...)`. Se o piso tivesse descido para `0.02`, essa string teria de dizer `+0.0200` - ela e' formatada com o limiar usado na comparacao. O que mudou nos 5 que entraram foi **outra coisa**, e a resposta do gateway diz qual: `model:"USDJPY 1H"`, `model:"USDCAD 1H"`, `model:"USDCHF 1H"`, `model:"NZDUSD 1H"`, `model:"USDBRL 1H"`, com respostas de **1018-1033 B** ("inferencia real do modelo publicado") em vez dos **357 B** dos recusados. Isto e' exactamente o que o P1.3519 mediu: **o piso so' filtra simbolos SEM modelo**. Basta o modelo existir para o piso deixar de se aplicar. Logo o merito e' do `publicable true`, nao do `0.02`. O `0.02` fica aplicado e nao faz mal nenhum - mas nao foi ele que abriu nada.
+
+**E o que abriu nao faz operar.** As confiancas medidas dos 5 novos:
+
+| Simbolo | Confianca | `MinAIConfidence=60.0` | `GetAIEngineSignal` |
+|---|---|---|---|
+| USDJPY | **37.6** | abaixo | 0 |
+| USDCHF | **43.1** | abaixo | 0 |
+| NZDUSD | **42.6** | abaixo | 0 |
+| USDCAD | **47.2** | abaixo | 0 |
+| USDBRL | **45.9** | abaixo | 0 |
+| XAUUSD | 74.7 | acima | decide |
+
+`AI/../AIEngine.mqh:300` (`if(AI_Score<MinAIConfidence) return 0;`), com `AI_Score = StringToDouble(jsonConfidence)` (`AIConnector.mqh:576`), e `AIHasSignalAuthority=true` a cortar o fallback tecnico (`AIEngine.mqh:395-400`). Conclusao medida: **`available` passou de 1 para 6, mas os trades novos sao 0**. O `0.02` comprou largura no gateway; no EA comprou nada. A alavanca seguinte **nao e' o piso nem o `AIAuthorityMinScore` (P1.3527, morto): e' o `MinAIConfidence=60.0`** (P1.3528). Baixar isso e' decisao do DONO e tem o mesmo perfil de risco que ele ja aceitou - com um agravante: a confianca de 37-47 e' a do proprio modelo novo, ou seja, o estimador esta' a dizer que nao sabe.
+
+**A minha propria correccao das 04:34 foi corrigida pela medicao.** A seccao 8 (a) afirma que o USDBRL nao entra; as 04:31 era verdade (411 B, `edge instavel entre folds`, media -0.0484). As 04:37 o USDBRL esta' `available=true` com edge **+0.0926** e acc 0.4468 - o melhor do lote. A reavaliacao dos folds mudou-lhe o veredicto, e com ele cai a minha previsao de "14 -> 10". Fica a seccao 8 como registo do estado das 04:31 e esta seccao 9 como estado actual. **Nao apago a seccao 8**: uma previsao errada que fica escrita vale mais do que uma previsao apagada.
+
+**Achado lateral que pode parar tudo (P1.3529).** A verificar o journal, o `[RESUMO]` repete 54 vezes desde as 00:00: `dia fechado: -61.80 de 40.00 USD (-154%)` (as 00:00, `-73.02 de 40.00 USD (-183%)`). O tecto lido no runtime e' **40.00 USD**, nao os `MaxDailyLossUsd=600.0` do `chart01.chr` nem os 377.81 que o D-154 calculou para hoje. Se esse tecto estiver a bloquear, **o forward nao acumula trade nenhum hoje** e nenhuma conclusao sobre o piso pode ser tirada de trades. Nao sei de onde vem o 40.00 - fica aberto, com a medicao escrita.
+
+**Guardas:** nada do EA tocado, nada compilado, nada deployado, nenhum input alterado, nenhuma ordem, nenhum reinicio. **Binario: 977 654 B - mtime 10/11 02:23:07 - MD5 `71ED34C690C9593D209A69E95F0EFFB6`** antes e depois desta medicao.
+
+## D-156 | DELTA | 2026-11-10 09:15 | baseline da config viva nos .chr (item 3 do CMD) gravado + auditoria do .ex5 + correccao do P1.3529
+
+- **Estado:** FECHADO na parte que me cabe (item 3 do CMD). Os itens 2 e 3 abaixo sao achados que mudam o que se pode declarar.
+- **Pedido do CMD (fecho de 10/11):** item 3 da lista - "Gravar config viva nos .chr + mtime (DELTA)".
+- **Binario antes e depois desta medicao:** 977 654 B, mtime 2026-11-10T02:23:07, MD5 `71ED34C690C9593D209A69E95F0EFFB6`. Nada compilado, nada deployado, nenhum input alterado, nenhuma ordem, nenhum reinicio.
+
+### 1. Item 3 - o baseline esta' medido e e' reescrevivel por qualquer attach
+
+**Local:** `MQL5\Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071\chart01.chr` ... `chart15.chr` (o perfil vive em `MQL5\Profiles\Charts`, **nao** em `Experts\XAU_AI_PRO\Profiles` - a primeira tentativa de leitura falhou por isso).
+
+**mtime: os 15 ficheiros exactamente iguais - 2026-11-10T02:35:23.** E' o instante do deploy; o binario e' de 02:23:07, ou seja, 12 minutos entre compilar e gravar a config viva. A vaga `[START]` do G4 foi as 02:35:37, 14 s depois da gravacao.
+
+**O bloco que conta e' `<inputs>` ... `</inputs>`** (no `chart01.chr`: L68 a L393). Extraido e hasheado em cada um dos 15:
+
+| Metrica | Valor | 15/15 iguais |
+|---|---|---|
+| linhas no bloco `<inputs>` | 324 | sim |
+| bytes do bloco | 7 729 | sim |
+| MD5 do bloco | `C7C2ED41AF896B8BF851026E62E3D223` | sim |
+| `name=` do expert | `XAU_AI_PRO` | sim |
+
+**Nao ha uma unica divergencia de input entre os 15 graficos.** Isto vale como referencia congelada - e como alarme: basta um attach para reescrever o `.chr` e mudar o mtime; o MD5 do bloco muda se qualquer input mudar.
+
+**Inputs criticos lidos (identicos nos 15):**
+
+| Input | Valor |
+|---|---|
+| `MagicNumber` | 2026001 |
+| `Symbols` | XAUUSD,USDCLP,USDCOP,USDCZK,USDRUB,USDSGD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH (15) |
+| `SymbolsFromMarketWatch` | false |
+| `RiskPercent` | 0.5 |
+| `MaxRiskPerTradeUsd` | 8.0 |
+| `MaxRiskPerTradePercentCap` | 3.0 |
+| `MaxTradeRiskPctOfBudget` | 100.0 |
+| `MaxDailyLossPercent` | 3.0 |
+| `MaxDailyLossUsd` | 600.0 |
+| `MaxDrawdownPercent` | 6.0 |
+| `MaxExposurePercent` | 20.0 |
+| `MaxCorrelatedTrades` | 3 |
+| `MaxTradesPerDay` | 100 |
+| `MinAIConfidence` | 60.0 |
+| `AllowTradeWithoutAI` | true |
+| `AIHasSignalAuthority` | true |
+| `MinMarketScore` / `MinMarketScoreNoAI` | 65.0 / 45.0 |
+| `MinimumADX` | 18.0 |
+| `AvoidHoursGMT` | 9,11,14,18,20,22 |
+| `EnableStaleDataGuard` / `MaxSymbolTickAgeSec` | true / 900 |
+| `EnableStoplessEntry` / `EnableAutonomousMode` | true / true |
+| `DailyProfitTargetUsd` / `...BalancePct` / `...MaxUsd` | 20.0 / 10.0 / 40.0 |
+
+### 2. Auditoria do `.ex5` - a linha "929 558 B (P1.132), intacto" nao descreve nenhum ficheiro vivo
+
+Varri todos os `.ex5` sob `MQL5` (recursivo). Resultado:
+
+| Ficheiro | Bytes | mtime | MD5 |
+|---|---|---|---|
+| `Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` (**vivo**) | 977 654 | 2026-11-10T02:23:07 | `71ED34C690C9593D209A69E95F0EFFB6` |
+| `Experts\XAU_AI_PRO\DiagGateSelfTest.ex5` | 18 634 | 2026-11-04T23:43:54 | `5020B8C7DB2BEEF782F805A80A71D79B` |
+| `Files\Backup\ex5\XAU_AI_PRO_1.2.167_20261105_231218.ex5` | **929 558** | 2026-11-05T23:12:18 | - |
+| `Files\Backup\ex5\XAU_AI_PRO_v1.367_20261105_231218_87E30E2B.ex5` | **929 558** | 2026-11-05T23:12:18 | - |
+| `Files\Backup\XAU_AI_PRO_v12191hotfix_71ED34C6.ex5` | 977 654 | 2026-11-10T02:23:07 | (copia do vivo) |
+| `Files\XAU_AI_PRO\MQL5\Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` (**repo**) | 954 744 | 2026-11-07T15:34:35 | - |
+
+Conclusoes por medicao:
+
+1. **O 929 558 B existe, mas e' de 05/11 23:12:18 e e' a v1.2.167** (dois nomes do mesmo backup). Nao e' a P1.132 nem a v1.2.191. Chamar-lhe "intacto" e' verdade sobre um backup de ha 5 dias, nao sobre o artefacto que corre.
+2. **931 006 B ("build sombra") nao existe em lado nenhum sob `MQL5`.** O mais proximo e' `Files\Temp\bc\XAU_AI_PRO\XAU_AI_PRO.ex5` com 931 154 B de 06/11 00:46:22 - outro numero, outro dia. Se a build sombra estiver fora de `MQL5` (outro repo no disco) nao a posso verificar daqui: o CMD tem de dizer o caminho.
+3. **A copia do repo esta' 22 910 B atras do vivo** (954 744 vs 977 654, de 07/11). O repo nao tem o binario que corre.
+4. **O artefacto autoritativo e' um so':** `Experts\XAU_AI_PRO\XAU_AI_PRO.ex5`, 977 654 B, `71ED34C690C9593D209A69E95F0EFFB6`. Nenhuma declaracao no `GATE_REAL` pode ser feita em cima da linha dos 929 558 B - nem G4, nem G7, nem a ancora dos 30 dias.
+
+### 3. P1.3529 corrigido - os 40.00 USD do `[RESUMO]` sao a META de lucro, nao o tecto de perda
+
+O P1.3529 foi aberto com a hipotese de que 40.00 USD fosse o tecto de perda lido no runtime, o que pararia o forward. **A hipotese e' falsa.** Medido:
+
+- `Monitoring/OperatorBrief.mqh:143` imprime `dia fechado: %+.2f de %.2f USD (%.0f%%)` com o segundo numero = `OperatorBriefDailyTarget()` e o terceiro = `realizado / meta * 100.0`. E' **meta**, nao limite.
+- Os inputs que produzem essa meta: `DailyProfitTargetUsd=20.0`, `DailyProfitTargetBalancePct=10.0`, `DailyProfitTargetMaxUsd=40.0`. Com saldo 12 593.83 a meta seria 1 259 (10%), cortada pelo tecto de 40.00 - e' por isso que sai sempre `de 40.00`.
+- Journal de hoje (5 amostras, 08:50:31.415 a 09:10:32.287, todas iguais): `posicoes: 0 EA (+0.00 USD) + 0 manual | dia fechado: -61.80 de 40.00 USD (-154%) | trades=0 | escada=ON arma 5.00 / trava 1.00 em 7.00 / alvo 10.00 USD`. A "escada" e' de lucro, com os mesmos 40.00 no topo.
+
+**Logo:** `-61.80 de 40.00 (-154%)` quer dizer "-61,80 USD realizados hoje contra uma meta de 40,00", i.e., 154% da meta **perdidos**, nao "orçamento de perda de 40,00". O tecto de perda continua a ser o do D-154: **MIN(600.0, 12 593.83 x 3%) = 377.81 USD**. P1.3529 fecha como falso alarme, sem tocar em nada. Fica o numero verdadeiro que ele expos e que interessa: **hoje ha -61.80 USD realizados e 0 trades do EA** - o prejuizo e' de deals anteriores/outros, e nao de actividade da autonomy de hoje.
+
+### 4. O que continua aberto e bloqueia a janela (para o CMD/DONO)
+
+1. **O piso de 0.02 foi aplicado mas a string dos recusados continua a dizer `+0.0500`** (seccao 9 do D-155). Ou o gateway que responde nao e' o que foi reiniciado, ou ha outro ponto com o limiar. Ate' isso estar medido, a janela de 11/11 00:05 servidor arranca com um piso que o proprio gateway diz ser 0.05.
+2. **`available=true` subiu de 1 para 6, mas os trades novos sao 0**: confiancas 37.6 / 42.6 / 43.1 / 45.9 / 47.2 todas abaixo do `MinAIConfidence=60.0` (P1.3528). A alavanca efectiva e' essa, e e' decisao do DONO.
+3. **Resta 9 h 57 min** ate' 11/11 00:05 servidor (hora local 09:08 = 14:08 servidor, +5 h).
+
+### 5. Guardas
+
+Zero escritas no EA, zero compilacoes, zero deploys, zero alteracoes de input, zero ordens, zero reinicios. O congelamento do D-147 continua intacto. O `GATE_REAL` nao foi tocado - e' do CMD. O `DOSSIE_FINAL.md` **nao** e' assinado: 0 de 11 criterios a verde, 0 de 30 dias.
+
+### 10. Correccao de 09:12 - os 40,00 nao eram o que eu disse, e o bloqueio mudou de sitio outra vez
+
+Medicao desta sessao, terminal sem reinicio (`[HEALTH] uptime=18061s` as 08:44:51; as 08:57:20 so' houve perda e reautorizacao da ligacao ao broker), conta **113568614** em **12 593,83** com **0 posicoes e 0 ordens**.
+
+**(a) P1.3529 esta' ERRADO e retiro-o.** O `40.00` do `[RESUMO]` **nao** e' tecto de perda. E' o tecto da **meta diaria de lucro**:
+
+| Passo | Codigo | Valor com banca 12 593,83 |
+|---|---|---|
+| base | `DailyProfitTargetUsd` | 20,00 |
+| 10% da banca | `saldo x DailyProfitTargetBalancePct/100` | 1 259,38 |
+| vence o maior | `max(20,00 ; 1 259,38)` | 1 259,38 |
+| tecto absoluto | `if(meta > DailyProfitTargetMaxUsd) meta = 40.0` | **40,00** |
+
+O `OperatorBrief.mqh:143` escreve `dia fechado: %+.2f de %.2f USD (%.0f%%)` com os argumentos `realizado, meta, pctMeta` (:148-150) - logo `-61,80 de 40,00 (-154%)` e' `realizado` contra `meta`, e o `-154%` e' so' a razao. O guarda real esta' em `ExecutionEngine.mqh:455`: `if(meta > 0.0 && lucroHoje >= meta)`. **-61,80 >= 40,00 e' falso** - a meta diaria esta' a 101,80 USD de distancia e **nao bloqueia nada**. O rotulo "dia fechado" e' que engana: devia dizer "realizado hoje". Nao existe tecto de perda de 40 USD em nenhum ponto do runtime; o de perda continua a ser 377,81 (D-154) e nao foi tocado.
+
+**(b) O D-155 chegou ao EA - e eu tinha escrito o contrario as 04:37.** Ha agora inferencia real do modelo em **6** simbolos, o que desmonta a minha leitura de que o `publicable true` nao tinha efeito pratico:
+
+| Simbolo | Direccao | CONF | Bytes |
+|---|---|---|---|
+| XAUUSD | SELL | 60,50 / 59,00 | 1122-1123 |
+| NZDUSD | NEUTRAL | 50,30 | 1033 |
+| USDCHF | SELL | 48,10 | 1033 |
+| USDBRL (M5) | SELL | 43,30 | 1029 |
+| USDJPY | NEUTRAL | 41,10 | 1031 |
+| USDCAD | NEUTRAL | 35,00 | 1034 |
+
+**(c) O `USDBRL` em M5 nao e' defeito - retiro a suspeita.** Eu tinha registado o grafico 13 (USDBRL) em M5 como desalinhamento face aos outros 14 em H1. O EA pergunta ao gateway **no timeframe do grafico**: `[AI] GATEWAY | USDBRL | M5 | 1029 bytes | disponivel=true`. E' coerente, nao e' erro. O que continua verdade e' que **so' 15 graficos estao abertos**, nao 19.
+
+**(d) O bloqueio de hoje mudou tres vezes de sitio, e agora e' o MTF.** Medido:
+
+| Hora | Portao | Evidencia |
+|---|---|---|
+| 04:24 | ADX | `VALIDATION: ADX BLOCK` \| `ADX=15.19 \| Min=18.00` |
+| 08:43 | AVOID HOUR | `GMT=11h \| lista=9,11,14,18,20,22` |
+| 09:00 / 09:05 | **MTF** | `AI OK \| XAUUSD` + `BLOCK \| MTF \| XAUUSD` + `DECISION BLOCKED \| Signal=1` |
+
+A linha `[VALIDATION] AI OK | XAUUSD` e' a primeira vez que vejo a IA **passar** o `MinAIConfidence=60.0` neste simbolo - logo o P1.3528 nao esta' a bloquear o XAUUSD agora. Quem bloqueia e' `EnableMTFConfirmation=true` com `ConfirmTF1=15`, `MTF_FastEMA=20`, `MTF_SlowEMA=50`, `MTFUseClosedCandle=true` (`ValidationEngine.mqh:509` -> `MTFApproved` -> `ConfirmBuyMTF`): o H1 diz `TREND_UP` com `Signal=1` e o M15 nao confirma.
+
+**(e) O numero que resume o dia** - `[SCANNER] RESUMO` as 09:01:24: `visitas=8970 | sinais=83 | trades=0 | bloqueios=8970 | Stale=2392 NoSignal=6495 AllowTrade=83`. **83 sinais, 0 trades.** E 2 392 das 8 970 visitas caem por cotacao velha, com `USDCOP` a 63 910 s, `USDCLP` a 66 033 s e `USDBRL` a 53 062 s de idade contra `limite=900s`.
+
+**(f) O binario.** A varredura recursiva de `MQL5\Experts` para `*.ex5` entre 900 000 e 1 000 000 B devolve **um** ficheiro: `977654 B | 10/11/2026 02:23:07 | 71ED34C690C9593D209A69E95F0EFFB6`. Nao existe nenhum de **929 558 B** nem nenhum de **931 006 B** nesta arvore. A identidade de producao para a janela de 11/11 00:05 e' a de 977 654 B e nao foi tocada.
+
+
+---
+
+## D-157 | 10/11/2026 09:30 | forward de 30 dias DECLARADO, medicao automatizada, e o funil medido
+
+- **Estado:** FECHADO (CMD, 10/11 09:30). Ordem do DONO (10/11): *"vamos fazer
+  hoje e agora o forward 30 dias... preparar EA corrigir tudo... e pronto"*.
+- **Mandato recebido:** o DONO autorizou inicio imediato do forward de 30 dias.
+
+### 1. O binario declarado (o que nao pode mudar)
+
+| Item | Valor medido |
+|---|---|
+| Versao | **v1.2.191** |
+| MD5 | **71ED34C690C9593D209A69E95F0EFFB6** |
+| Bytes / mtime | **977 654 B**, 10/11 **02:23:07** |
+| Em memoria | **75/75 `[START]` v1.2.191** hoje (nenhum outro build) |
+| Deploy | **15/15** graficos, `[START]` entre **02:35:37.784** e **02:35:37.915** |
+| Config persistida | os **15 `.chr`** regravados as **02:35:23** - um restart nao troca binario nem inputs |
+
+Declarado em `EQUIPE/FORWARD/DECLARADO.json`. **Pela regra D-139/D-141, a partir
+de 11/11 00:05 (hora do servidor) = 10/11 21:05 (local), qualquer MD5
+diferente poe os 30 dias a zero.** Portanto: **nao ha mais nenhuma
+recompilacao do EA ate o fim da janela** - e isso e uma DECISAO, nao uma
+limitacao.
+
+### 2. O que o D-152 ja resolveu (e nao divide a janela)
+
+O `D-152` (opcao B do DONO) mudou **metadados de modelo**, nao o `.ex5`:
+`MIN_EDGE 0.05 -> 0.02` e 20 `meta.json` com `publicable=true`. Logo **nao
+altera o MD5** e **nao divide os 30 dias**.
+
+MEDIDO as 10/11 09:15 no gateway (9011, com token):
+`XAUUSD available=true` | `USDCAD true` | `USDCHF true` | `USDJPY true` |
+`USDBRL true` | `NZDUSD true` | `USDCNH false` (edge -0.1256, correcto).
+
+E o EA **confirmou**: a **primeira** previsao real dos 5 simbolos novos saiu as
+**04:44:20** (`[AI] PYTHON | USDCAD | ...`), contra XAUUSD as 00:30:50. Antes
+do D-152 so havia 1 simbolo com IA - o `D-143` escrevera que o forward media
+"1 simbolo com 1 modelo". **Isso deixou de ser verdade: o forward passa a medir
+6 simbolos com inferencia real.** E o que torna os >= 30 trades do G11
+alcancaveis.
+
+### 3. O funil medido hoje (nao e opiniao)
+
+`[SCANNER] RESUMO` 09:01:24: `visitas=8970 | sinais=83 | trades=0 |
+bloqueios=8970 | Stale=2392 NoSignal=6495 AllowTrade=83`.
+
+| Leitura | Valor | O que significa |
+|---|---|---|
+| `AllowTrade=83` | **83 sinais bloqueados** no portao AllowTradeEx (validacao + score + veto de IA) | o balde conta quem **falhou** |
+| `ExecFail` | **nao sai** (=0) | **a execucao nunca e chamada** - nenhum sinal passou o portao |
+| `sinais=83` | 83 sinais gerados no ciclo | com 1 simbolo com IA; agora ha 6 |
+| `SIG(sem/neutro)=0/5980` | **0** sinais sem IA | a leitura de IA esta viva |
+| `ADX(sem/ok)=0/36789` | **0** falhas de ADX | o ADX esta a ler |
+
+Confianca da IA hoje (n=80): min **33,6** | max **82,8** | media **51,5** |
+**>= 60: 19 (24%)** | < 50: 49.
+
+Portoes que vetam: `MinAIConfidence=60` (so 24% das leituras passam),
+`MinMarketScore=65` (com leitura real de IA), `MinSimulationProbability=0,50`
+(o veto do `D-028`), e a validacao (MTF, ADX, AVOID HOUR, TREND).
+
+**Nenhum destes thresholds foi tocado.** Todos sao inputs do EA: mexer neles
+e recompilar, e recompilar depois de 21:05 **zera os 30 dias**. A conta e
+honesta: o forward mede o EA **como ele e**, e se nao chegar a 30 trades, o G11
+fica vermelho por falta de amostra - que e o veredicto correcto, nao um
+arranjo.
+
+### 4. A medicao passa a ser automatica (o que faltava)
+
+- `Tools/forward-gate.ps1` (+ `Tools/forward-gate.cmd`): mede **todos os
+  dias** e escreve
+  - `EQUIPE/FORWARD/medicao.jsonl` - uma linha por dia do servidor
+  - `EQUIPE/FORWARD/FORWARD.md` - a tabela viva que o DONO le
+  Mede: MD5 do `.ex5` vs declarado, versao em memoria, funil, P/L do dia,
+  `Trades X/100`, `PerdaDia %`, `Amplitude (DD) %`, cobertura de IA, traces de
+  execucao e `HTTP 1003`.
+- **Watchdog:** se o MD5 divergir, o script **sai com codigo 2** e escreve
+  `> VERMELHO: MD5 DIVERGENTE` no `FORWARD.md`. A janela nao se perde em
+  silencio.
+- **Tarefa agendada do Windows:** `XAU_AI_PRO Forward Gate`, diaria as
+  **00:20**, sobrevive a reboot e a logout. Testada as 09:22 (exit=0).
+- 1a medicao gravada: `2026-11-10 | MD5 ok | v1.2.191 | sinais 83 |
+  AllowTrade 83 | trades 0 | P/L -61,80 | IA 6 simbolos | 1003: 88`.
+
+### 5. Achado operacional registado (nao e do binario)
+
+**88 `HTTP 1003` (timeout de transporte) no dia**, contra um gateway que
+responde em **97-257 ms** medido de fora, e `AIRequestTimeoutMs=15000`. As 88
+sao de requests que o MT5 **nao** conseguiu completar. Nao bloqueiam a
+entrada (o EA continua a ler previsao boa depois) mas sao ruido no journal e
+explicam parte do `cego` que o log regista. **Nao foi mexido** (fix no EA =
+recompilacao = janela a zero). Fica como P1.3521 para depois da janela.
+
+### 6. O que fica escrito no canal
+
+- `EQUIPE/FORWARD/` - `DECLARADO.json`, `medicao.jsonl`, `FORWARD.md`,
+  `ultima_medicao.log`.
+- O resto do G11 (G1 VERMELHO = conta live e do DONO; G2 VERDE com ressalva;
+  G4 fecha sozinho; G10 VERMELHO por residuo do Market Watch) nao muda com
+  esta decisao.
+
+## D-158 | DELTA | 2026-11-10 09:40 | DONO fixa a meta em percentagem da banca: 10-15% = primeiro avanco, 30% = bom desempenho, 50% = o EA desacelera
+
+> **Numeracao (D-158):** este bloco nasceu como `D-157` as 09:40. O CMD ja' tinha registado `D-157` as **09:16:48** (IDS L204, forward de 30 dias declarado). Pela precedencia do D-145 o identificador valido do meu bloco e' **`D-158`**. Colisao declarada em **P1.3533**.
+
+- **Estado:** REGISTADO como especificacao. **Nao aplicavel dentro da janela** (os degraus exigem codigo novo, logo novo MD5).
+- **Pedido do DONO (textual):** "a meta vai ser conforme a banca 50% EA pode desacelerar, 30% bom desempenho, 15% ou 10% ja e primeiro avanco".
+
+### 1. Entendido - e a meta ja' e' percentagem da banca; o que a estrangula e' o tecto em USD
+
+O EA ja' tem `DailyTargetEffectiveUsd()` (`Core/Config.mqh:1679-1701`): **meta = MAX(`DailyProfitTargetUsd`, saldo x `DailyProfitTargetBalancePct`/100)**, cortada por `DailyProfitTargetMaxUsd`. Valores vivos nos 15 graficos:
+
+| Input | Valor | Efeito com saldo 12 593,83 |
+|---|---|---|
+| `EnableDailyProfitTarget` | true | meta activa |
+| `DailyProfitTargetUsd` | 20.0 | piso fixo |
+| `EnableDailyTargetBalancePct` | true | piso por % ligado |
+| `DailyProfitTargetBalancePct` | 10.0 | 10% do saldo = **1 259,38** |
+| `DailyProfitTargetMaxUsd` | **40.0** | corta os 1 259,38 para **40,00** |
+
+Ou seja: **a percentagem existe e e' 10%, mas o tecto de 40,00 USD reduz a meta a 0,32% da banca.** A meta do DONO nao pede mecanismo novo - pede que o tecto deixe de mandar.
+
+### 2. O degrau unico: hoje o EA nao desacelera, **para**
+
+| Input | Valor | O que faz |
+|---|---|---|
+| `DailyProfitSlowPercent` | 100.0 | o gatilho e' 100% da meta |
+| `DailyProfitStopTrading` | **true** | ao bater, **bloqueia novas entradas** ate' ao dia seguinte |
+| `DailyProfitSlowLotFactor` | 0.25 | reduziria o lote - **nunca chega a ser usado** com `StopTrading=true` |
+| `DailyProfitProtectPositions` | true | protege as posicoes abertas ao bater a meta |
+
+`Core/ExecutionEngine.mqh:440-465`: existe **um** limiar e **uma** accao. O "desacelerar" do DONO (50%) nao cabe em inputs: o EA sabe bater a meta e parar, **nao sabe subir degraus**.
+
+### 3. Os tres degraus do DONO em numeros
+
+Banca 12 593,83. R = `MaxRiskPerTradeUsd` = **8,00 USD** (o maximo que cada trade arrisca).
+
+| Degrau do DONO | % da banca | USD | Em R |
+|---|---|---|---|
+| primeiro avanco | 10% | 1 259,38 | 157,4 R |
+| primeiro avanco | 15% | 1 889,07 | 236,1 R |
+| bom desempenho | 30% | 3 778,15 | 472,3 R |
+| desacelerar | 50% | 6 296,92 | 787,1 R |
+
+### 4. A leitura DIARIA nao e' executavel - e' preciso dizer isto agora
+
+Se a meta for **por dia**, os valores acima sao por dia:
+
+| Degrau | USD/dia | R/dia |
+|---|---|---|
+| 10% | 1 259,38 | 157,4 R/dia |
+| 15% | 1 889,07 | 236,1 R/dia |
+| 30% | 3 778,15 | 472,3 R/dia |
+| 50% | 6 296,92 | 787,1 R/dia |
+
+**Nenhuma estrategia entrega 157 R num dia.** E o EA medido tambem nao entrega a frequencia: o G5 deu **12,26 trades/12 meses com 1 simbolo** e ~**61/12M com 5 simbolos**, ou seja **~5 trades em 30 dias**. Se a meta de 10% for da janela de 30 dias, ela exige **157,4 R / 5 trades = +31 R por trade**. Isso nao e' meta, e' lotaria. Consequencia: a meta em % da banca e' um **alvo declarado**, e o que o dossier tem de medir sao **R por trade e drawdown**, nao a percentagem.
+
+### 5. O que custa aplicar - e porque nao se aplica hoje
+
+- Os tres degraus exigem **codigo novo** (escada de meta: 10-15% normal, 30% reduz lote, 50% bloqueia entradas + protege). Inputs actuais so' exprimem **um** limiar e **uma** accao.
+- Codigo novo = recompilar + deploy = **novo MD5** = **os 30 dias voltam a zero** (D-147).
+- Mudar so' `DailyProfitTargetMaxUsd` (40 -> 6 297) **tambem** reescreve os `.chr`, muda o bloco `<inputs>` (MD5 `C7C2ED41...`) e reinicia a contagem.
+- **Recomendacao:** congelar a especificacao agora e aplicar **depois** de fechar os 30 dias, como v1.2.192. Dentro da janela, mexer nisto e' reset auto-infligido.
+
+### 6. O que a meta NAO faz
+
+A meta **gere lucro, nao protege capital**. O tecto de perda continua a ser outro e nao muda: **MIN(600,0; 12 593,83 x 3%) = 377,81 USD/dia** (D-154), com fecho de tudo em `MaxDrawdownPercent=6.0` = **755,63 USD**.
+
+### 7. Pendente - uma pergunta
+
+**Relogio da meta: janela de 30 dias ou por dia?** Os numeros acima estao nos dois formatos e a resposta muda o veredicto de viabilidade, nao o codigo congelado. Registado como P1.3531.
+
+
+---
+
+## D-159 | 10/11/2026 10:05 | CORRECAO do D-155: o piso 0.02 foi aplicado sem evidencia; re-derivado a partir dos folds
+
+- **Estado:** FECHADO (CMD, 10/11 10:05). **Corrige o `D-155`, que foi meu.**
+- **O que eu fiz de errado (D-155):** pus `publicable=true` em 20 `meta.json`
+  (5 simbolos x 4 timeframes) **sem verificar o edge individual de cada
+  modelo**, e escrevi o `publish_reason` como uma frase generica, **perdendo
+  a evidencia medida** (acc vs palpite, edge por fold). Alem disso mudei
+  `MIN_EDGE` (0.05 -> 0.02), que **nao e o portao efetivo**: o portao e
+  `MIN_EDGE_BAL` (0.03), que ficou como estava.
+
+### 1. O que a auditoria dos 87 modelos mediu
+
+Criterio do proprio codigo (`Python/xau_model_tools.py`): `edge >= MIN_EDGE_BAL
+and auc >= 0.52 and (foldes positivos >= 4/5) and media dos folds > 0`.
+
+| Metrica | Valor |
+|---|---|
+| Modelos com edge medido | **87** |
+| Passam **so** o piso de edge >= 0.02 | 20 |
+| Passam o **criterio completo** | **9** |
+| `publicable=true` no meu D-155 | 24 (5 simbolos sem evidencia) |
+
+Os 9 com evidencia: **XAUUSD H1** (+0,0363, 4/5 folds, 30F-v4),
+**AUDUSD M15** (+0,0241, 4/5), **GBPUSD M15** (+0,0360, 4/5),
+**USDCAD M15** (+0,0350, 4/5), **USDSEK M15** (+0,0351, 5/5),
+**USDSGD M15** (+0,0264, 4/5) e os tres de classe
+**MULTI_CRYPTO / MULTI_FIAT / MULTI_METALS** (+0,1816 / +0,1853 / +0,2497,
+**5/5 folds**, media +0,0589 / +0,0570 / +0,0642).
+
+O **USDBRL** que eu publiquei tem edge agregado +0,0926 mas **2/5 folds
+positivos e media -0,0484** - e ruido com luz verde. O mesmo para
+USDCAD/USDCHF/USDJPY/NZDUSD em H1 (2-3/5 folds, media ~0).
+
+### 2. Correcoes aplicadas (todas do lado do GATEWAY - o `.ex5` nao muda)
+
+1. `publicable` **re-derivado** em todos os 87 `meta.json` pelo criterio
+   completo. Os 78 recusados ficam com o **motivo medido** e o **piso certo**.
+2. `MIN_EDGE_BAL = 0.03 -> 0.02` (o portao efetivo) e `MIN_EDGE = 0.02`.
+3. `backend/ai_inference.py`: a chave de cache passou a ser o par
+   **(mtime do `.pkl`, mtime do `.meta.json`)**. Antes so via o `.pkl` - e uma
+   correccao de governanca vive no `.meta.json`, logo o gateway servia
+   metadada velha **sem dar conta**. Era a causa do "gateway que nao parece
+   reiniciado" que o DONO levantou.
+4. Gateway **reiniciado** (o watchdog `AIGateway9011_Watchdog` repõe em
+   segundos): `uptime_sec=16` confirmado.
+
+### 3. O que o gateway diz AGORA (10/11 10:00, 16 simbolos medidos)
+
+| Simbolo | available | Motivo / leitura |
+|---|---|---|
+| **XAUUSD** | **true** | **conf=62,3, signal=BUY** (modelo 30F-v4) |
+| USDCAD | false | edge instavel: 3/5 folds (media +0,0015) - opera em M15 |
+| USDCHF | false | edge instavel: 3/5 (media +0,0000) |
+| USDJPY | false | edge instavel: 3/5 (media -0,0145) |
+| USDBRL | false | edge instavel: 2/5 (media -0,0484) |
+| NZDUSD | false | edge instavel: 2/5 (media -0,0081) |
+| USDCNH | false | edge -0,1256 abaixo do minimo **+0.0200**; 1/5 folds |
+| EURUSD / GBPUSD / AUDUSD / USDSEK / USDCZK / USDRUB / USDSGD / USDCOP / USDCLP | false | motivo medido, piso **+0.0200** |
+
+**Nenhuma recusa declara mais `+0.0500`.** Era o que o DONO exigiu.
+
+### 4. O que isto muda na leitura do `D-143` e do `D-152`
+
+- O `D-143` escrevia que o forward media "**1 simbolo com 1 modelo**". Com a
+  governanca honesta, **e verdade no H1**: so o **XAUUSD** tem modelo com
+  evidencia. O `D-152` tinha criado a ilusao de 6 - mas 5 deles eram ruido.
+- A "alavanca real" que o DONO apontava (`MinAIConfidence=60`) **nao e a
+  alavanca de cobertura**: cobertura vem de **modelos com evidencia**, nao de
+  um piso mais baixo. Baixar o piso so deixa passar pior.
+- O XAUUSD **passa** o piso de 60 (conf 62,3 hoje). Portanto, para o XAUUSD,
+  o que trava nao e a confianca: e o **MTF** (`P1.3531`), o
+  `MinMarketScore=65` e o **EP** da simulacao (o `D-028`).
+
+### 5. Os `MULTI_*`: a cobertura com edge real, mas nao hoje
+
+`MULTI_FIAT` (+0,1853), `MULTI_METALS` (+0,2497) e `MULTI_CRYPTO` (+0,1816)
+sao os **melhores** modelos do catalogo e cobrem many simbolos. **Nao estao
+ligados** por duas razoes medidas:
+1. `backend/symbols.py:formas()` nao devolve o nome de classe para um par -
+   `candidatos_de_simbolo('USDCAD')` = `['USDCAD','USDUSDT','USDCAD']`, nunca
+   `MULTI_FIAT`. O resolvedor nunca chega la.
+2. O contrato e outro: `feature_version=25F-est-v1` com **22 features**, e o
+   `inferir()` so conhece `XAU-30F-v4` (30F) e `25F-v2` (25F). Alem disso os
+   tres artefactos estao marcados **`live_execution=False`**.
+
+Ligar isto e **treino + uma terceira via de features**, no gateway. Nao e uma
+tweak de meia hora.
+
+### 6. Decisao que fica para o DONO (o resto ja esta feito)
+
+Para que o forward tenha trades **com evidencia** ha duas alavancas
+independentes, e so a primeira e do EA:
+
+| Alavanca | Onde | Mexe no MD5? | Prazo |
+|---|---|---|---|
+| **A. Portoes de SINAL** (`EnableMTFConfirmation=false`, `MinMarketScore 65->55`, `MinSimulationProbability 0.50->0.40`) | **inputs do EA** | **SIM** - compilar + reattach 15/15 | **ate 20:30 local** |
+| **B. Cobertura com evidencia** (treinar modelos por simbolo e/ou ligar os `MULTI_*`) | gateway / Python | **NAO** | sem prazo - pode correr durante os 30 dias |
+
+Sem A, o forward mede o EA como ele e e o G11 pode falhar por amostra.
+Com A **e** B, mede um universo real.
+
+### 7. Estado do que foi feito
+
+- Repo aninhado: `backend/ai_inference.py` (chave de cache) e
+  `Python/xau_model_tools.py` (piso efetivo) - commit e push.
+- 87 `meta.json` re-derivados **em disco** (nao sao versionados: sao
+  artefactos de treino, como os `.pkl`).
+- `Tools/forward-gate.ps1` + tarefa agendada diaria `XAU_AI_PRO Forward Gate`
+  (00:20) - a prova do G11, com watchdog de MD5 (sai com codigo 2 se o binario
+  divergir).
+- Binario **inalterado**: v1.2.191, MD5 `71ED34C690C9593D209A69E95F0EFFB6`,
+  977 654 B, 10/11 02:23:07. A janela de 30 dias (11/11 00:05 do servidor)
+  **nao foi tocada** - nada disto alterou o `.ex5`.
+
+### 8. Testes
+
+`tests/test_ai_inference.py`: **81 passed, 3 failed**. As 3 falhas sao
+**anteriores a esta sessao** e nao sao minhas: (1) e (2) esperam que
+`BTCUSD_H1`/`BTCUSDT` tenha modelo publicavel e esse modelo tem edge
+**-0,0233** e 2/5 folds; (3) compara o `feature_hash` da inferencia do XAUUSD
+(**`5305081777808310`**, modelo `XAU-30F-v4`, 30 features) com
+`train_v2.feature_hash()` (**`27727ee00bc30b7f`**, `25F-v2`, 25 features) - o
+modulo de treino mudou de contrato e o teste ficou velho. Nenhuma das tres
+depende de nada que esta decisao tenha mudado.
+
