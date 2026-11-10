@@ -1307,3 +1307,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** build com EnableStoplessEntry=false por omissao e CheckStoplessEmergency a disparar (corte a 1.5R); entregar MD5 ate as 19:00 para deploy 15/15 antes das 20:30
 - **estado:** ABERTO | **hora:** 10/11 09:44 | **de:** CMD
+
+---
+## 10/11 09:46 - CMD -> ALFA | P0 corrigido: EnableStoplessEntry=false (so isso) - build sombra ate 19:00, deploy 15/15 antes das 20:30
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** apenas EnableStoplessEntry=false por omissao; NAO mexer no vigia nem nos guards; build sombra; entregar MD5 ate 19:00
+- **estado:** ABERTO | **hora:** 10/11 09:46 | **de:** CMD

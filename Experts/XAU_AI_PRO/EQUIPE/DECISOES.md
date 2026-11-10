@@ -8128,3 +8128,107 @@ envelope. Passar a `false` **reduz** a exposicao, nao a aumenta.
 3. **CMD**: declarar o novo binario, deploy 15/15, e a recolha diaria passa a
    medir o binario novo.
 
+
+
+---
+
+## D-161 | 10/11/2026 10:05 | CORRECAO do D-160: o vigia nao esta "partido" - esta DESLIGADO em demo por desenho
+
+- **Estado:** FECHADO (CMD, 10/11 10:05). Corrige a leitura do `D-160`.
+- **O que eu escrevi no `D-160`:** que o corte de emergencia "nao dispara" e
+  que era um defeito. **Metade certo, metade errado.** A correcao muda a
+  conclusao - e para melhor.
+
+### 1. O mecanismo real (lido no codigo, nao suposto)
+
+`Core\ExecutionEngine.mqh:97` (`StoplessRiskDistancePoints`, a distancia que o
+**CAP** usa) e `Core\PositionManager.mqh:678` (`StoplessEmergencyDistance`, a
+distancia que o **VIGIA** usa) vao as duas ao mesmo sitio:
+
+```
+double mult = RealGuardStoplessEmergencyRMult();
+if(mult <= 0.0)
+   return(0.0);
+```
+
+E o comentario do proprio codigo diz porque (`PositionManager.mqh:683-685`):
+
+> *"v1.2.37 P1.10: em conta REAL o guarda garante que existe teto de perda.
+> `StoplessEmergencyRMult=0` continua a desligar o vigia em **demo/backtest**,
+> mas numa conta real passa a valer o piso do guarda (1,5R por omissao)."*
+
+**Em conta DEMO (que e a nossa, `MetaQuotes-Demo`), o mult e 0, logo:**
+- a distancia do **vigia** e 0 -> `CheckStoplessEmergency` nunca fecha
+  (`PositionManager.mqh:748`: `if(limite <= 0.0 || perda < limite) continue;`)
+- a distancia do **cap** e 0 -> o cap de `MaxRiskPerTradeUsd` nao mede
+  distancia nenhuma -> **nao aperta**
+
+**As duas protecoes partilham o mesmo interruptor.** E por isso que uma
+entrada sem stop em demo correu 2000-2400 pontos: **nao havia nem cap nem
+vigia**, nao um cap "partido".
+
+### 2. O que isto NAO muda (o P0 continua P0)
+
+A conta de producao e **demo**. O forward de 30 dias corre **em demo**. Logo o
+forward **esta a medir um comportamento que nao e o que vai correr em conta
+real**:
+
+| | Demo (hoje) | Conta real |
+|---|---|---|
+| Entrada sem stop | corre 2000+ pontos, **sem teto e sem corte** | corte a 1,5R pelo vigia |
+| Cap `MaxRiskPerTradeUsd` | **nao mede distancia -> nao aperta** | mede 1,5R e aperta |
+
+**Um forward que corre com as duas protecoes desligadas nao valida o
+comportamento de conta real.** E o G11 mede "0 violacoes de risco" - que em
+demo nunca pode ser violado, porque em demo nao ha teto para violar. **O G11
+seria verde numa conta real e vermelho no dinheiro.**
+
+### 3. A conclusao (e a acao certa)
+
+`EnableStoplessEntry = false` nao e so "menos risco": e **fazer o forward
+medir a mesma coisa que vai correr em conta real**. Com o SL **na ordem**,
+quem protege e o **broker**, em demo e em real, e o EA pode morrer, reiniciar
+ou o Windows cair que a posicao continua com stop.
+
+Isto resolve de uma vez:
+- o preco de -119,40 contra um teto de 8,00 (15x) - porque deixa de haver
+  entrada sem stop;
+- o PF medido de 0,06-0,34 - porque as duas entradas que o arrastavam para
+  baixo saem as duas;
+- a validade do forward como prova do G11 - porque passa a medir o caminho
+  que a conta real vai correr.
+
+**O vigia NAO esta partido e nao precisa de reparo** - ele funciona em conta
+real e continua a fazer sentido para quem ligar o stopless de proposito. O que
+falta e **desligar o stopless na configuracao de producao** (e deixar o
+vigia como rede de seguranca para o futuro).
+
+### 4. Especificacao para o ALFA (build sombra, ate as 19:00)
+
+1. `Core\Config.mqh`: `input bool EnableStoplessEntry = false;` (default
+   desligado) - **e nada mais**. Zero alteracao a risco, lote, alvo, stop,
+   spread, RR ou a qualquer limite.
+2. **Nao mexer** em `StoplessEmergencyDistance`, `StoplessRiskDistancePoints`,
+   `RealGuardStoplessEmergencyRMult` nem no `CheckStoplessEmergency`: estao
+   correctos para o seu uso (conta real). Se o vigia virar `false` por
+   omissao, deixa de ser exercitado em demo - e o que e **desejado**.
+3. Compilar em **build sombra** (metodo do `D-045`: copiar as 111+ fontes para
+   `Files\Temp\bc\XAU_AI_PRO` e compilar la) para **nao tocar no `.ex5` vivo**
+   enquanto o `B-031`/`G11` medem.
+4. Entregar: **MD5 do novo binario + bytes + 0 errors/0 warnings**, ate as
+   **19:00**. O CMD declara o binario novo e o ALFA/DELTA fazem o deploy
+   **15/15 antes das 20:30**, para a janela abrir as 21:05 com o binario
+   correto.
+
+### 5. O que o CMD faz entretanto (sem tocar no EA)
+
+- `Tools/g11-metrics.py` + `Tools/forward-gate.ps1` + tarefa agendada diaria:
+  a recolha do G11 (trades, PF, DD, MD5, cobertura de IA) ja corre sem
+  intervencao e **sem dependencia do modulo `Utility`** (o `Get-FileHash` nao
+  existe no PS 5.1 desta maquina - medido; o hash e .NET puro).
+- `D-159`: governanca de modelos re-derivada pelos folds (9 modelos com
+  evidencia, 78 recusados com motivo medido), piso efetivo 0.02 e a chave de
+  cache do `.meta.json` (o gateway servia metadada velha).
+- `D-160` mantem-se como o registo do **achado**; esta decisao e a correcao da
+  sua **causa**.
+

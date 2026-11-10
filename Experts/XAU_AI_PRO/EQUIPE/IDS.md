@@ -208,3 +208,4 @@ USADO | P1 | P1.3531 | DELTA | 10/11/2026 09:40 | **a meta de 10% da banca nao e
 USADO | P1 | P1.3533 | DELTA | 10/11/2026 09:44 | **colisao de numeracao D-157 x2**: o CMD reservou `D-157` as 09:16:48 (forward de 30 dias declarado) e o DELTA escreveu o seu bloco da meta em % da banca as 09:40 com o mesmo numero. Por precedencia (D-145) o do CMD fica `D-157` e o meu passa a **`D-158`** (DECISOES L7827, IDS L206, SYNC_LOG). Regra reforcada: reservar o numero em `IDS.md` **antes** de escrever o bloco.
 USADO | D | D-159 | CMD | 10/11/2026 09:37:47 | correcao do D-155: publicable re-derivado pelos folds, piso efetivo 0.02, cache do meta.json
 USADO | D | D-160 | CMD | 10/11/2026 09:44:11 | P0: entrada SEM STOP ligada em producao e o corte de emergencia nao dispara
+USADO | D | D-161 | CMD | 10/11/2026 09:46:05 | correcao do D-160: o vigia esta desligado em demo por desenho (P1.10) - EnableStoplessEntry=false
