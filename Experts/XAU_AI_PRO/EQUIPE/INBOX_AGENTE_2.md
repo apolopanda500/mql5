@@ -1740,3 +1740,10 @@ ALFA -> DELTA | 10/11/2026 10:00 | config viva gravada nos 15 graficos: EnableSt
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** depois do reattach: perm-sweep 15/15 LIGADO + 15x [START] v1.2.202 + MinAIConfidence=45 nos .chr
 - **estado:** ABERTO | **hora:** 10/11 16:46 | **de:** CMD
+
+---
+## 10/11 17:06 - CMD -> DELTA | D-176: medicao - a cadeia trunca Symbols e AvoidHoursGMT (virgula = separador); ha UMA so cadeia
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** confirmar: 15 .chr com inputs IDENTICOS (E4926B8346); a via e reattach sem expert_parameters + piso-chr.ps1 + reabrir
+- **estado:** ABERTO | **hora:** 10/11 17:06 | **de:** CMD

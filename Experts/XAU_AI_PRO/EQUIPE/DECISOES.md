@@ -9285,3 +9285,107 @@ O binario novo (com os defaults seguros) vira **o** binario do forward, e o
 `frota_ligada` (graficos que podem negociar). As quatro podem mudar; cada
 mudanca fica registada como evento.
 
+
+
+---
+
+## D-176 | 10/11/2026 17:00 | a cadeia de inputs TRUNCA-SE no formato da API - e ha uma so cadeia, nao duas
+
+- **Estado:** FECHADO (CMD, 10/11 17:00). Fecha o plano de deploy e as duas
+  questoes levantadas no relatorio do DELTA.
+
+### 1. O bloqueio real (e nao e o que o relatorio aponta)
+
+`chart_add_expert` aceita `expert_parameters` como **`"Nome=Valor,Nome2=Valor2"`** -
+**separado por VIRGULAS**. A fonte esta no proprio repo:
+`Experts\XAU_AI_PRO\Docs\GUIA_OPERACIONAL_MT5_ASSISTANT.md:231`
+-> *"chart_add_expert com expert_parameters="Nome=Valor,..." completo"*.
+
+E ha inputs cujo **valor contem virgulas**:
+
+```
+Symbols      = XAUUSD,USDCLP,USDCOP,USDCZK,USDRUB,USDSGD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH
+AvoidHoursGMT= 9,11,14,18,20,22
+```
+
+**Numa cadeia separada por virgulas, esses valores TRUNCA-SE.** O MT5 le
+`Symbols=XAUUSD` e o resto fica como lixo. **Aplicar a cadeia de 323 pares
+colapsava o universo de 15 para 1** e **desarmava 5 das 6 horas de veto** -
+e nenhum dos dois e erro visivel: o reattach aceita e o EA simplesmente deixa
+de operar nos outros 14.
+
+**Isto e o que a cadeia `Files\Temp\reattach_inputs_45.txt` mostra** - e a
+verificacao par a par confirma (delta so nesses dois campos + o piso):
+```
+chart01.chr  MUDA Symbols: (15 simbolos) -> XAUUSD
+              MUDA AvoidHoursGMT: 9,11,14,18,20,22 -> 9
+              MUDA AvoidHoursList: 0,20 -> 0
+              MUDA MinAIConfidence: 60.0 -> 45.0
+```
+
+### 2. HA UMA SO CADEIA (e nao duas) - e nao ha divergencia entre perfis
+
+**MEDIDO agora:** os **15 `.chr` tem blocos de inputs IDENTICOS** -
+MD5 `E4926B8346` e 8 058 caracteres em **15/15** (XAUUSD, USDCLP, USDCOP,
+USDSEK, USDJPY, USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD,
+USDBRL, USDRUB, USDSGD).
+
+Logo:
+- **nao ha "12 campos diferentes"** entre o XAUUSD e os 14 (o relatorio
+  confunde a cadeia truncada com perfis diferentes);
+- **nao ha "divergencia deliberada"** a documentar no dossier: ha **um perfil
+  so**;
+- **nao falta uma segunda cadeia**: falta uma cadeia **correcta**.
+
+### 3. A via que funciona (e nao usa `expert_parameters`)
+
+O `.chr` tem **uma linha por input**, sem separador: ai qualquer valor, com
+virgulas ou nao, sobrevive intacto. E o MT5 le o `.chr` ao abrir o grafico.
+
+| # | Quem | Acao |
+|---|---|---|
+| 1 | **ALFA** (feito) | alinhar os **13 defaults compilados** com o perfil vivo (`D-175`) -> `10C4DF68...` |
+| 2 | **ALFA/DELTA** | **reattach 15/15 SEM `expert_parameters`** -> os defaults (ja seguros) repõem o perfil certo |
+| 3 | **CMD** | `Tools\piso-chr.ps1` -> escrever `MinAIConfidence=45.0` **nos 15 `.chr`** (uma linha cada, com backup) |
+| 4 | **ALFA/DELTA** | **reabrir** os 15 graficos -> o EA le o `.chr` -> piso 45 vivo, resto intacto |
+| 5 | **DONO** | F7 > Comum > "Permitir negociacao algoritmica" nos 15 |
+| 6 | **DELTA** | `perm-sweep.ps1` -> **15/15 LIGADO** com IDADE |
+| 7 | **CMD** | `declarar-forward.ps1` -> a janela abre |
+
+**A ordem 2 -> 3 -> 4 e obrigatoria**: o reattach reescreve o `.chr` com os
+defaults (passo 2), so depois se escreve o piso (passo 3), e so a reabertura
+(passo 4) o torna vivo. Ao contrario, o passo 2 apagaria o piso.
+
+### 4. Ferramentas novas (CMD, prontas)
+
+| Ficheiro | Para que serve |
+|---|---|
+| `Tools\verificar-cadeia.ps1` | comparacao par a par cadeia vs `.chr` vivo; marca `TRUNCADO PELO FORMATO A VIRGULA` |
+| `Tools\cadeia-reattach.ps1` | extrai a cadeia do `.chr` VIVO e aplica **so** a mudanca pedida (`MinAIConfidence` 60 -> 45), preservando universo e horas de veto |
+| `Tools\piso-chr.ps1` | escreve o input nos 15 `.chr` vivos, com **backup** e `-Reverter`; `-DryRun` mostra o que muda |
+
+**Medido:** `piso-chr.ps1 -DryRun` -> **15/15 `MinAIConfidence: 60.0 -> 45.0`,
+0 erros**. E `cadeia-reattach.ps1` -> 323 pares, **15 simbolos**,
+**6 horas de veto**, piso 45. **Nao aplico o `.chr` agora**: o terminal tem os
+graficos abertos e o reattach do passo 2 reescreveria o ficheiro.
+
+### 5. As duas ressalvas ficam no dossier (como o DELTA pediu)
+
+1. **`MinAIConfidence` NAO vai nos defaults compilados.** O piso vive no
+   `.chr` de proposito: a `P1.3602` (proporcao de `MULTI_*` que passa) ainda
+   nao foi confirmada com candles frescas, e se o piso descer outra vez isso e
+   **um ficheiro**, nao um `.ex5` novo - que e o que o "tunel input" comprou.
+2. **`MCPServerToken` em claro nos `.chr` dos 14** (o XAUUSD esta vazio).
+   **Nao e tocado agora** e **nao entra no dossier com o valor**: rodar o token
+   partilharia o acesso MCP do terminal e so faz sentido **depois** da janela.
+   Fica como item de seguranca a fechar depois do forward.
+
+### 6. O que o CMD nao faz (e porquê)
+
+**Nao declaro** enquanto: o MD5 nao estiver estavel ha um ciclo, os 15 `.chr`
+nao tiverem o piso 45, e a frota nao der 15/15 LIGADO no perm-sweep. O
+`declarar-forward.ps1` ja sai com codigo 3 se a frota nao estiver completa,
+e o `forward-gate` / `pulso` dizem `md5_ok=false` se o binario mexer.
+**Declarar um dossier que descreve uma frota que nao existe seria o erro
+mais caro desta noite** - e e o que o relatorio do DELTA pediu para evitar.
+

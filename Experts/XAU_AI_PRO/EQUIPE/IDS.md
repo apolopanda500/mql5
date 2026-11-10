@@ -277,3 +277,4 @@ USADO | D | D-170 | DELTA | 10/11/2026 10:52 | binario de referencia trocado em 
 USADO | D | D-171 | CMD | 10/11/2026 13:47:42 | frota 0/15: sequencia da noite (deploy 20:30 -> F7 x15 -> sweep -> declarar -> ancora 21:05)
 USADO | D | D-172 | CMD | 10/11/2026 16:43:44 | 4a opcao medida: MULTI_* com edge real, mas confianca 34-38% estruturalmente abaixo do piso 60
 USADO | D | D-175 | CMD | 10/11/2026 16:50:21 | 13 defaults compilados sao o oposto do perfil vivo - corrigir na compilacao final
+USADO | D | D-176 | CMD | 10/11/2026 17:06:58 | a cadeia trunca-se no formato a virgula: universo de 15 para 1 - ha uma so cadeia

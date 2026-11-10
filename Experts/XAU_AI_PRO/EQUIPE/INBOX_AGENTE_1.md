@@ -1356,3 +1356,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** Core\Config.mqh: EnableStoplessEntry=false, AllowTradeWithoutAI=false, MaxDrawdownPercent=6.0, RiskPercent=0.5, 4 filtros=true, SymbolsFromMarketWatch=false, EnableAutonomousMode/AIHasSignalAuthority/RequireAIJSON=true, MinAIConfidence=45.0; compilar 0/0
 - **estado:** ABERTO | **hora:** 10/11 16:50 | **de:** CMD
+
+---
+## 10/11 17:06 - CMD -> ALFA | D-176: NAO usar expert_parameters no reattach - a cadeia trunca o universo
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** reattach 15/15 SEM expert_parameters (os defaults ja estao alinhados); depois o CMD escreve o piso 45 nos .chr etu reabres
+- **estado:** ABERTO | **hora:** 10/11 17:06 | **de:** CMD
