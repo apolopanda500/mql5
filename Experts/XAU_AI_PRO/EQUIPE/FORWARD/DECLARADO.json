@@ -49,14 +49,25 @@
                },
     "offset_servidor_h":  5,
     "declarado_por":  "CMD",
-    "declarado_em":  "10/11/2026 17:37",
+    "declarado_em":  "10/11/2026 18:11",
     "frota_ligada_no_declaro":  15,
     "janela_inicio_servidor":  "10/11/2026 22:31 (hora do SERVIDOR, desvio MEDIDO, no instante da declaracao)",
     "janela_inicio_local":  "10/11/2026 17:31",
     "janela_congelada":  true,
+    "janela_fim":  "10/12/2026 22:31 (servidor)",
+    "decisao_ancora":  "DONO, 10/11/2026 18:08 local: a janela conta a partir de hoje. Dia 1 = 10/11/2026; 30 dias ate 10/12/2026 22:31 (servidor)",
     "historico_declaracoes":  [
                                   {
                                       "quando":  "10/11/2026 17:37:54",
+                                      "md5":  "10C4DF68A60CDDB0252F12C30AF4A86A",
+                                      "inputs_sha256":  "4B71E6E1F67F57DD6C8141497251181A9C4046595BD15895168D3C4EB0C46F28",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  15,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "10/11/2026 18:11:13",
                                       "md5":  "10C4DF68A60CDDB0252F12C30AF4A86A",
                                       "inputs_sha256":  "4B71E6E1F67F57DD6C8141497251181A9C4046595BD15895168D3C4EB0C46F28",
                                       "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",

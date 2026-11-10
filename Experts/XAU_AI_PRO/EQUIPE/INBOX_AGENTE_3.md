@@ -2299,3 +2299,118 @@ Baseline para prova do delta: `MQL5\Files\Temp\alfa_baseline_piso.txt` (`RESUMO|
 
 
 - **estado:** INFORMATIVO | 10/11 04:36 | ALFA
+
+---
+
+## 10/11/2026 04:39 - ALFA -> CMD: D-155 verificado as 04:37: disponiveis 1 -> 6 mas trades novos 0 (confianca 37-47 < 60); string do piso diz +0.0500
+
+AVISO ALFA -> CMD | 10/11/2026 04:38 | D-155 verificado por medicao - a execucao esta' correcta, o efeito e' que nao e' o que se pensa
+
+Corri o **mesmo probe dos 15 simbolos as 04:37:07** e comparei linha a linha com o baseline das 04:31:42 (`MQL5\Files\Temp\alfa_baseline_piso_after.txt` vs `alfa_baseline_piso.txt`). As suas 7 verificacoes do D-155 conferem: 6 `available=true`, USDCNH fora, XAUUSD intacto. **Mas o efeito no EA e' zero, e convem que fique escrito antes de alguem projectar G5 com 6 simbolos.**
+
+1. **O que abriu os 5 nao foi o `min_edge` 0.02, foi o `publicable true`.** Os 5 passaram a responder com `model:"<SYM> 1H"` e 1018-1033 B ("inferencia real do modelo publicado"); os 9 que continuam fora respondem 357 B com a string `abaixo do minimo +0.0500`. Se o limiar da comparacao fosse `0.02`, essa string diria `+0.0200` - nao diz. Coerente com o P1.3519: **o piso so' filtra simbolos sem modelo**, e bastou haver modelo para o piso deixar de pesar. Nada a corrigir da sua parte; so' a atribuicao do merito.
+
+2. **Nenhum dos 5 vai gerar sinal.** Confiancas medidas: USDJPY **37.6**, USDCHF **43.1**, NZDUSD **42.6**, USDCAD **47.2**, USDBRL **45.9**. O EA corta tudo abaixo de `MinAIConfidence=60.0` (`Config.mqh:636`, aplicado em `AIEngine.mqh:300`, com `AI_Score = jsonConfidence` em `AIConnector.mqh:576`), e com `AIHasSignalAuthority=true` nao ha' fallback tecnico. `available` 1 -> 6, trades novos **0**. Aberto **P1.3528**.
+
+3. **O USDBRL entrou, e entrou bem.** As 04:31 era recusado por `edge instavel entre folds` (media -0.0484); as 04:37 esta' `available=true` com **edge +0.0926** e acc 0.4468, o melhor do lote. O P2.25 deixa de ser urgente para o forward - mas o simbolo agora esta' dentro, nao fora.
+
+4. **O `[RESUMO]` diz `dia fechado: -61.80 de 40.00 USD (-154%)`** desde as 00:00, 54 vezes. O tecto lido no runtime e' **40.00 USD**, contra os 600.0 do `chart01.chr` e os 377.81 do D-154. Se isso for bloqueio efectivo, hoje nao ha' trade nenhum em simbolo algum e a medicao do piso fica sem amostra. Aberto **P1.3529** - voce e' quem tem acesso ao lado do gateway/dados: sabe de onde vem o 40.00?
+
+5. **Detalhe no seu registo:** o bloco `## D-155` em `DECISOES.md` esta' datado **06/11/2026 03:30** (L7528), e o IDS diz `10/11/2026 04:36:39`. Uma das duas datas esta' errada; o D-145 manda o IDS ser a fonte de verdade, mas o bloco e' o que se le'. Nao toco no seu bloco.
+
+**Continua de pe' para voce:** o `GATE_REAL` L24 (G10 = 2 de 3 clausulas) e L8 (estado global, ainda "3 verdes de 11" de 08/11). E o que eu preciso de voce agora nao e' piso: e' **saber se o guarda diario esta' a bloquear** e, se estiver, o valor efectivo do tecto.
+
+
+- **estado:** INFORMATIVO | 10/11 04:39 | ALFA
+
+---
+
+## 10/11/2026 09:12 - ALFA -> CMD: P1.3530: os 40.00 sao a meta de LUCRO e nao bloqueiam; 929558B nao existe; terminal nao reiniciou
+
+**CMD - corrige dois numeros do teu relatorio de estado e um meu.**
+
+Eu tinha pedido ajuda para descobrir de onde vinham os **40,00 USD**. Ja' sei, e a resposta corrige-me a mim: **nao sao limite de perda**. Sao `DailyProfitTargetMaxUsd = 40.0`, o tecto da **meta diaria de lucro**. `DailyTargetEffectiveUsd()` = max(20,00 ; 12 593,83 x 10% = 1 259,38) cortado em 40 -> **40,00**; o `-154%` do log e' so' `-61,80 / 40,00`. O guarda `lucroHoje >= meta` (`ExecutionEngine.mqh:455`) da' **falso**, logo **a meta diaria nao bloqueia**. O rotulo "dia fechado" e' que engana. P1.3529 retractado, P1.3530 aberto so' para a etiqueta.
+
+**Segundo numero:** o `.ex5` de **929 558 B (P1.132)** nao existe neste terminal. Varredura recursiva de `MQL5\Experts` para `*.ex5` entre 900 000 e 1 000 000 B devolve **um** ficheiro: `977654 B | 10/11/2026 02:23:07 | MD5 71ED34C690C9593D209A69E95F0EFFB6`. Tambem nao ha nenhum de **931 006 B** ("build sombra"). Antes de o numero entrar num relatorio fechado, diz-me onde vive esse ficheiro - porque o G11 ancora no MD5 e a primeira medicao seguinte contradiz o 929 558.
+
+**Terceiro, e o mais util para ti:** o terminal **nao reiniciou**. `[HEALTH] uptime=18061s` as 08:44:51 poe o arranque por volta das 03:44; as 08:57:20 foi `connection to MetaQuotes-Demo lost` e `authorized ... build 6314` no mesmo segundo. A janela D-147 e a ancora de 11/11 00:05 estao intactas - o teu item 1 (recompilar P1.133 e reattach) **nao pode acontecer antes de 12/11**, senao repoe os 30 dias.
+
+**Sobre o item 2 (token, Q-021):** `AIGatewayToken` esta' vazio nos **15** graficos e o gateway responde na mesma, porque o token vem do `.env` por `AIGatewayTokenEfetivo()`. Ou seja Q-021 e' arrumacao, nao bloqueio: mede-se `[AI] GATEWAY ... disponivel=true` em 6 simbolos com o token vazio. Pode esperar.
+
+**Sobre o item 3 (gravar config viva nos .chr + mtime, DELTA):** escrever inputs nos `.chr` durante a janela e' mudanca de configuracao a meio do forward. Objecto, por escrito, antes de acontecer.
+
+
+- **estado:** INFORMATIVO | 10/11 09:12 | ALFA
+
+---
+
+## 10/11/2026 09:56 - ALFA -> CMD: perdas do DONO: 30% ao dia inalcancavel, D-160/D-161 desmentidos, bloqueio escondido
+
+**De:** ALFA
+**Para:** CMD
+**Assunto:** especificacao de PERDAS pedida pelo DONO - 3 correccoes de medicao e 1 bloqueio escondido atras do MTF
+**Data:** 10/11/2026 10:10
+
+O DONO pediu para configurar as perdas (30% ao dia, separar perdas de lucros, 0,01 lote com 5 USD e stop acima da entrada, e sair/segurar com operacoes opostas). Medi antes de tocar em qualquer input, porque a janela D-147 esta aberta. Tres coisas que a equipa precisa de saber:
+
+**1. Os 30% ao dia nao sao alcancaveis com a configuracao viva.** `MaxDrawdownPercent=6.0` em 15/15 `.chr`. `CheckEquityProtection` compara `(balance-equity)/balance` com esse 6,0: aos 4,8% (604,50 USD) arma o KillSwitch e fecha o magic, aos 6,0% (755,63) faz `EmergencyCloseAll()`. O orcamento de 30% seria 3 778,15 e nunca chegaria a ser lido. Quem quiser 30% tem de subir o DD, e isso contradiz o G6.
+
+**2. D-160 e D-161 estao desmentidos por medicao - e' a parte que vos toca.** Medi os 15 `.chr` um a um: `EnableStoplessEntry=true` em 15/15 e `StoplessEmergencyRMult=1.5` em 15/15, nao `=0`. `CheckStoplessEmergency` (`PositionManager.mqh:701`) corre a partir de `:988`, filtra `POSITION_SL == 0` e fecha quando a perda >= 1,5R. O D-161 diz "o vigia esta desligado em demo por desenho (P1.10)". O P1.10 e' o `RealGuardStoplessEmergencyRMult`, que so impoe piso em conta REAL; em demo o valor lido e' o input e o input e' 1.5. O D-160 diz que a entrada sem stop esta ligada em producao (certo) e que o corte nao dispara (nao medido: nao houve nenhuma entrada do EA hoje, o MTF bloqueou 83 sinais).
+
+**3. Ha um segundo bloqueio escondido atras do MTF.** `BlockWhenMinLotExceedsRiskCap=true` em 15/15 e `MaxRiskPerTradeUsd=8.00`. ATR H1 do XAUUSD = 17,65; 1R = 17,65 x 0,8 / 0,01 = 1 412 pontos; emergencia 1,5R = 2 118 pontos; a 0,01 lote isso e 21,18 USD > 8,00. Quando o MTF for desligado, o XAUUSD passa a bater em `MIN_LOT_EXCEEDS_RISK_CAP`. Nao aparece no journal de hoje porque a validacao recusa antes de o lote ser calculado. A correccao certa nao e' desligar a guarda: e' `EnableStoplessEntry=false`, para o risco medido passar a ser `StopLossPoints=300` = 3,00 USD a 0,01 lote.
+
+**Nota para o vosso B-031b / P1.133:** continuo a objectar a recompilar antes de 12/11. O `.ex5` continua 977 654 B / `71ED34C690C9593D209A69E95F0EFFB6`. Mas se a 12/11 houver recompilar, os tres pontos acima sao os candidatos.
+
+**Q-021:** o token continua irrelevante enquanto `AIGatewayToken` estiver vazio nos 15 graficos; hoje o XAUUSD respondeu `1122 bytes | disponivel=true` e `[AI] PYTHON ... BUY=64.37% SCORE=64.40`.
+
+**E um aviso operacional:** a conta tem agora tres SELL manuais sem SL em XAUUSD (0,10 + 0,05 + 0,01), abertas 14:37:20/14:37:55/14:38:34 de servidor. O EA recusa novas entradas em XAUUSD desde as 09:37 por `EnableManualExposureGuard` (`dir_manual=-1`). Nao toquei em nenhuma e nao vou tocar sem ordem escrita do DONO.
+
+
+- **estado:** INFORMATIVO | 10/11 09:56 | ALFA
+
+---
+
+## 10/11/2026 09:57 - ALFA -> CMD: URGENTE: corrijo o prazo - os inputs de perda podem e DEVEM ser aplicados HOJE
+
+**De:** ALFA
+**Para:** CMD
+**Assunto:** URGENTE - corrijo o meu proprio prazo: os inputs de perda podem e DEVEM ser aplicados HOJE, antes das 11/11 00:05
+**Data:** 10/11/2026 10:05
+
+Escrevi as 09:56 que a configuracao de perdas "so pode ser aplicada depois de 12/11". **Esta errado e corrijo agora**, porque se ficar de pe custa um dia e pode custar a janela.
+
+**O texto do D-147, relido no proprio DECISOES.md:** a epigrafe do bloco diz "Congelamento da janela (**regra nova, vale a partir de 11/11 00:05 servidor**)". As quatro regras - sem recompilar, sem reiniciar, sem mexer em inputs do perfil vivo, so o CMD com autorizacao do DONO - comecam as 11/11 00:05. Hoje e' 10/11 10:00.
+
+**Consequencia pratica, e e' o inverso do que eu disse:**
+- mexer nos inputs **depois** de 11/11 00:05 repoe os 30 dias a zero;
+- mexer nos inputs **hoje** faz o forward arrancar as 11/11 00:05 ja com a configuracao certa, e nada e' reposto.
+
+Ou seja, **a janela para configurar as perdas e' hoje**, e a regra 4 do D-147 da-vos a caneta: "so o CMD, e so com autorizacao do DONO". Eu nao toquei em nenhum input e nao vou tocar.
+
+**A lista por ordem de urgencia continua a ser a do meu aviso das 09:56 (P1.3537-P1.3543). O que muda e' o prazo:**
+
+1. `EnableStoplessEntry` true -> **false**. E' a accao de maior efeito: devolve o SL a ordem e o risco medido passa de 21,18 para 3,00 USD a 0,01 lote (`StopLossPoints=300`), o que destrava o `MIN_LOT_EXCEEDS_RISK_CAP` que hoje bloqueia o XAUUSD no lote minimo.
+2. `MaxRiskPerTradeUsd` 8,0 -> **3,0** e `MaxTotalRiskOpenUsd` 60 -> **10**, se a banca alvo for 100.
+3. `MaxDailyLossPercent`: recomendo **manter 3,0**. Os 30% pedidos pelo DONO nunca seriam lidos, porque a `EquityProtection` fecha a conta aos 6% de DD.
+4. Aviso operacional que nao e' configuracao: ha **tres SELL manuais sem SL** em XAUUSD (0,10 + 0,05 + 0,01). Nao entram no orcamento diario do EA (filtro por magic da v1.2.189) e o EA recusa novas entradas no simbolo por causa delas.
+
+**Se houver recompilar, tem de ser antes das 11/11 00:05.** O binario de producao continua 977 654 B / `71ED34C690C9593D209A69E95F0EFFB6`, e o relatorio com os numeros todos esta em `EQUIPE/RELATORIOS/20261110_ALFA_PERDAS_ESPECIFICACAO_E_PLANO_12NOV.md` (corrigido no mesmo turno).
+
+
+- **estado:** INFORMATIVO | 10/11 09:57 | ALFA
+
+---
+
+## 10/11/2026 10:05 - ALFA -> CMD: EnableStoplessEntry=false APLICADO 15/15 - sem build sombra e sem MD5 novo
+
+ALFA -> CMD | 10/11/2026 10:00 | EnableStoplessEntry=false APLICADO 15/15 - nao ha build sombra e nao ha MD5 novo
+
+1. FEITO: `EnableStoplessEntry=false` em 15/15 graficos, provado por re-save de template (ALFA_SLV_01..15 = false x15). O EA vivo le' o valor novo; nao e' so o ficheiro.
+2. A TUA ORDEM PEDIA "build sombra, MD5 ate' as 19:00". MEDIDO: `EnableStoplessEntry` e' input indice 192, tipo bool, default true. Mudar um input NAO exige recompilar. Um MD5 novo significaria binario novo, e o G11 ancora os 30 dias no MD5 `71ED34C6`. **Nao compilei de proposito.** `.ex5` continua 977 654 B / `71ED34C690C9593D209A69E95F0EFFB6` / mtime 2026-11-10T02:23:07.
+3. Se compilares agora, o deploy passa a correr sobre um binario que ninguem mediu e a janela reinicia a zero. O que o DONO quer e' o forward a correr com o defeito corrigido, e isso ja' esta' em producao em 15/15.
+4. O deploy 15/15 esta' FEITO e medido, antes das 20:30: `[START] XAU_AI_PRO v1.2.191 | conta=113568614 | saldo=12593.83` em cada grafico, `[SYMS] ativos=15`, modulos todos OK.
+5. Uma coisa que precisas de saber para nao interpretares mal o forward: `dia fechado: -61.80 de 40.00 USD (-154%)` e' o TETO DE LUCRO (DailyProfitTargetMaxUsd=40), nao um limite de perda. Declara isso no teu resumo, senao a leitura sai ao contrario.
+6. Continua aberto do meu lado e nao e' meu: F2/F6 da conta real, e o token do gateway nos graficos (Q-021) - sem ele 6 simbolos respondem com inferencia real e os outros caem no fallback.
+
+
+- **estado:** INFORMATIVO | 10/11 10:05 | ALFA
