@@ -1391,3 +1391,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
 - **precisa:** aplicar PROBE_chart01.tpl nos 14 graficos H1 e PROBE_chart13.tpl no USDBRL M5; confirmar 15x [START] v1.2.203 e 15/15 .chr com piso 45.0
 - **estado:** ABERTO | **hora:** 10/11 20:23 | **de:** CMD
+
+---
+## 10/11 20:49 - CMD -> ALFA | D-180: o motivo dos 0 trades e a IA contradizer o tecnico - e so 1 simbolo tem modelo
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** MULTI_* no gateway (10 dos 11 simbolos com edge +0,18/+0,25) e escrever prediction_<SYM>.json para todos os simbolos servidos (mata o livelock de 20 linhas/min)
+- **estado:** ABERTO | **hora:** 10/11 20:49 | **de:** CMD

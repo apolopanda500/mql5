@@ -278,3 +278,5 @@ USADO | D | D-171 | CMD | 10/11/2026 13:47:42 | frota 0/15: sequencia da noite (
 USADO | D | D-172 | CMD | 10/11/2026 16:43:44 | 4a opcao medida: MULTI_* com edge real, mas confianca 34-38% estruturalmente abaixo do piso 60
 USADO | D | D-175 | CMD | 10/11/2026 16:50:21 | 13 defaults compilados sao o oposto do perfil vivo - corrigir na compilacao final
 USADO | D | D-176 | CMD | 10/11/2026 17:06:58 | a cadeia trunca-se no formato a virgula: universo de 15 para 1 - ha uma so cadeia
+USADO | Q | Q-177 | ALFA | 10/11/2026 20:14:23 | O modelo de CLASSE (MULTI_*) pode operar um ativo cujo modelo proprio foi REPROVADO pela governanca (edge abaixo de +0.0200)? Hoje 10 dos 11 simbolos da frota estao nessa situacao.
+USADO | Q | Q-178 | ALFA | 10/11/2026 20:35:01 | Depois da opcao (b), o modelo de classe decide em 16 de 17 simbolos - mas a confianca dele fica entre 34.1 e 47.2, e o piso MinAIConfidence vivo nos 15 graficos e 60.0 (a D-174 autoriza 45). Com piso 45 passaria 1 de 16 (USDSGD 47.2); com o valor vivo 60, nenhum. Sem decidir isto, (b) nao gera uma unica ordem. Qual e a regra?

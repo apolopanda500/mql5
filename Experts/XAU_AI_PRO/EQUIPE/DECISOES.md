@@ -9389,3 +9389,77 @@ e o `forward-gate` / `pulso` dizem `md5_ok=false` se o binario mexer.
 **Declarar um dossier que descreve uma frota que nao existe seria o erro
 mais caro desta noite** - e e o que o relatorio do DELTA pediu para evitar.
 
+
+
+---
+
+## D-180 | 10/11/2026 20:50 | o motivo final dos 0 trades: a IA CONTRADIZ o tecnico, e tem autoridade
+
+- **Estado:** FECHADO (CMD, 10/11 20:50). Medido no journal de hoje, na conta
+  113568614 @ MetaQuotes-Demo (a que o heartbeat `system_status.json` diz
+  estar viva: `balance 12610,68`, `symbol USDBRL`, `generated_at
+  2026.11.11 01:22:58`).
+
+### 1. A prova (uma unica linha do journal, 20:01:22)
+
+```
+20:01:22.834  [SIGNAL] BUY  | XAUUSD | quem mediu=EURUSD | RSI[1]=32.07
+20:01:22.900  [AI] GATEWAY | XAUUSD | H1 | 1121 bytes | disponivel=true
+20:01:22.900  [AI] PYTHON  | XAUUSD | SELL | BUY=48,01% SELL=51,99% | CONF=52,00%
+20:01:22.901  [SCANNER] BLOCK | NoSignal | XAUUSD
+```
+
+**O tecnico diz BUY, a IA diz SELL, e com `AIHasSignalAuthority=true` a IA
+manda: contradição = sem sinal.** A plumbing esta saudavel - o gateway
+responde, o sinal dispara, a ordem e avaliada. **O que barra nao e o
+encanamento: e a contradicao de direcao.**
+
+### 2. Quantas contradicoes (hoje, contagem no journal inteiro)
+
+| Simbolo | Bloqueios `NoSignal` | Direccao da IA (hoje) |
+|---|---|---|
+| XAUUSD | **24** | SELL 48 / BUY 36 - **a IA vira de direccao 84 vezes** |
+| USDCHF | 14 | SELL 11 (nunca BUY) |
+| USDBRL | 6 | SELL 10 (nunca BUY) |
+| os restantes | 3-14 cada | - |
+
+`[EXECUTION]` aparece **3 vezes** hoje: houve tentativas de ordem. O resto
+morreu antes.
+
+### 3. As tres limitacoes (todas do mesmo lado)
+
+| # | Limitacao | Medido | Quem resolve |
+|---|---|---|---|
+| 1 | **So 1 simbolo tem modelo** | `[AI] GATEWAY ... disponivel=true` so no XAUUSD; os outros 14 devolvem `disponivel=false` | **ALFA: `MULTI_*` no gateway** (sem recompilar, sem reattach, sem F7) |
+| 2 | **6 simbolos sem serie provada** | `[ATR] SEM LEITURA \| USDCLP \| XAI_SymbolDataReady=false` (e USDCOP, USDCZK, USDRUB, USDBRL, USDSEK) | o mesmo passo 1 + series do broker |
+| 3 | **A IA contradiz o tecnico** | XAUUSD: 48 SELL vs 36 BUY no mesmo dia | modelos melhores (o `MULTI_METALS` tem edge **+0,2497**) ou a autoridade da IA desligada - **decisao do DONO**, nao do agente |
+
+**O ponto 3 tem uma leitura economica:** o `MULTI_METALS` (edge +0,2497, 5/5
+folds) e o `MULTI_FIAT` (+0,1853) **discordam do tecnico menos vezes** do que
+um classificador com 52% de acerto. Trazer os modelos bons para a mesa **resolve
+a contradicao** em vez de a desligar - e nao toca em nenhum parametro de risco.
+
+### 4. O custo do que esta a acontecer agora (o livelock)
+
+~**20 linhas por minuto** no journal (ciclo de 30 s em BTC/ETH):
+`[RECOVERY] AI FAILED: prediction file missing` -> `STATE_SAFE->RECOVERY` ->
+`Revalidation failed - returning to SAFE` -> repete. **Causa:** o exportador de
+`prediction_*.json` esta morto (ultimos ficheiros de **04/11**), por isso um
+simbolo **sem modelo** e tratado como **IA partida** em vez de "sem sinal".
+
+**Correcao do lado do gateway (mesmo patch do ponto 1):** escrever
+`prediction_<SIMBOLO>.json` para **todos** os simbolos servidos, com
+`available=false` + o motivo. O EA passa a ler "sem sinal" e o livelock acaba.
+
+### 5. O que o CMD fez com isto
+
+- `Tools\fechar-janela.ps1` endurecido: **um dossier sem conta declarada
+  falha** (medido: o terminal passou por 3 contas em 2 minutos e o portao nao
+  reclamou), e a frota passa a contar **so os simbolos do perfil vivo** (as 27
+  sondas orfas de outras contas ficam listadas a parte).
+- `Tools\pulso-forward.ps1` mede o **espaco livre do disco** (o disco a 0,00 GB
+  travou o canal as 20:00 - D-179).
+- `Tools\limpar-windows.ps1`: **2 396 MB** libertados (DISM + logs do tester +
+  caches), sem tocar em `Windows\Installer`, `Package Cache`, `pagefile.sys`,
+  registos, perfis, `.git`, `.venv`, `node_modules`, `.pkl` ou dados do projeto.
+
