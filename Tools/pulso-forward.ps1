@@ -40,6 +40,8 @@ function Get-MD5([string]$Path) {
 
 $agora = Get-Date
 $md5 = ''; $bytes = 0
+$discoLivreMB = -1
+try { $discoLivreMB = [int]((Get-PSDrive C).Free / 1MB) } catch { }
 if (Test-Path -LiteralPath $ex5) {
   $i = Get-Item -LiteralPath $ex5
   $md5 = Get-MD5 $ex5
@@ -78,18 +80,27 @@ try {
   $fs = [System.IO.File]::Open($log, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
   $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode)
   $txt = $sr.ReadToEnd(); $sr.Close()
-  $ult = ''
+  $ult = ''; $ultMaster = ''; $hResumo = ''; $hMaster = ''
+  foreach ($l in ($txt -split "`r?`n")) {
+    if ($l -match '\[SCANNER\] RESUMO') { $ult = $l }
+    if ($l -match '\[RESUMO\] master=') { $ultMaster = $l }
+  }
   foreach ($l in ($txt -split "`r?`n")) { if ($l -match '\[SCANNER\] RESUMO') { $ult = $l } }
   if ($ult -match 'sinais=(\d+)') { $sin = [int]$Matches[1] }
   if ($ult -match 'trades=(\d+)') { $trd = [int]$Matches[1] }
+  if ($ult -match '(\d\d:\d\d:\d\d)') { $hResumo = $Matches[1] }
+  if ($ultMaster) {
+    if ($ultMaster -match 'trades=(\d+)') { $trd = [int]$Matches[1] }
+    if ($ultMaster -match '(\d\d:\d\d:\d\d)') { $hMaster = $Matches[1] }
+  }
 } catch { }
 
-$linha = ('{{"t":"{0}","md5_ok":{1},"md5":"{2}","bytes":{3},"gov_ok":{4},"frota_on":{5},"frota_off":{6},"sinais":{7},"trades":{8}}}' -f `
+$linha = ('{{"t":"{0}","md5_ok":{1},"md5":"{2}","bytes":{3},"gov_ok":{4},"frota_on":{5},"frota_off":{6},"sinais":{7},"trades":{8},"dados_resumo":"{9}","dados_master":"{10}","disco_livre_mb":{11}}}' -f `
   $agora.ToString('yyyy-MM-dd HH:mm:ss'),
   $(if ($md5Dec -and $md5 -eq $md5Dec) { 'true' } else { 'false' }),
   $md5, $bytes,
   $(if ($govDec -and $govDec -ne '') { 'true' } else { 'false' }),
-  $ligados, $desligados, $sin, $trd)
+  $ligados, $desligados, $sin, $trd, $hResumo, $hMaster, $discoLivreMB)
 
 if (-not (Test-Path -LiteralPath (Split-Path $saida -Parent))) {
   New-Item -ItemType Directory -Path (Split-Path $saida -Parent) -Force | Out-Null

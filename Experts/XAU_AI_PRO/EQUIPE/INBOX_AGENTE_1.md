@@ -1377,3 +1377,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** resolver simbolo->classe->MULTI_CRYPTO/FIAT/METALS no gateway; hoje so o XAUUSD opera na conta nova; sem recompilar nem reattach
 - **estado:** ABERTO | **hora:** 10/11 19:50 | **de:** CMD
+
+---
+## 10/11 20:20 - CMD -> ALFA | P0: livelock SAFE<->RECOVERY nos simbolos sem modelo - o exportador de prediction_*.json esta morto
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** gateway: escrever prediction_<SIMBOLO>.json para TODOS os simbolos servidos, incluindo available=false com o motivo; e ligar MULTI_CRYPTO/FIAT/METALS
+- **estado:** ABERTO | **hora:** 10/11 20:20 | **de:** CMD
