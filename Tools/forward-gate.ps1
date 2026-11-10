@@ -46,7 +46,17 @@ $jsonl  = Join-Path $fwdDir 'medicao.jsonl'
 $md     = Join-Path $fwdDir 'FORWARD.md'
 $decl   = Join-Path $fwdDir 'DECLARADO.json'
 
-$OffsetServidorHoras = 3
+# Servidor = LOCAL + 5 h. MEDIDO em 10/11/2026 de quatro formas
+# independentes: get_time_information deu 14:07:51 local e 19:07:51 de
+# servidor; o ultimo tick do XAUUSD tinha update_time 19:08:07 com o relogio
+# local em 14:08:07; e as sondas escreveram os pares 15:52:10/10:52:10 e
+# 17:56:05/12:56:05 em Files\Data\permission_probe_*.csv. O valor anterior
+# (+3) punha o dia do servidor a comecar duas horas cedo, portanto a fronteira
+# do dia estava errada e as linhas das 19:00-21:00 locais caiam no dia errado.
+# Este numero e o VALOR DE RECURSO: sempre que existir uma sonda recente, o
+# desvio e MEDIDO do par server_time/local_time do ficheiro (Get-DesvioServidor)
+# e o valor fixo nao e usado, o que o torna imune a mudanca de hora no servidor.
+$OffsetServidorHoras = 5
 
 function Say($t) { if ($Detalhe) { Write-Host $t } }
 
@@ -136,19 +146,25 @@ foreach ($lf in $logFiles) { $texto += (Ler-LogLocal $lf.FullName) + "`n" }
 $linhas = @($texto -split "`r?`n")
 Say ("linhas lidas: " + $linhas.Count)
 
-# [START] por versao
+# [START] por versao - e a versao do ULTIMO arranque (a que esta em memoria),
+# nao a mais frequente: hoje houve many [START] do build antigo e o ultimo e
+# do novo, e era o novo que estava a correr.
 $versoes = @{}
 $nStarts = 0
+$versaoCorrer = ''
+$ultimoStart = ''
 foreach ($l in $linhas) {
   if ($l -match '\[START\] XAU_AI_PRO\s+(v[0-9.]+)') {
     $v = $Matches[1]; $nStarts++
     if (-not $versoes.ContainsKey($v)) { $versoes[$v] = 0 }
     $versoes[$v] = $versoes[$v] + 1
+    if ($l -match '^\S+\s+\S+\s+(\d\d:\d\d:\d\d)\.\d+') { $ultimoStart = $Matches[1] + ' ' + $v }
   }
 }
-$versaoCorrer = ''
-$melhor = -1
-foreach ($k in $versoes.Keys) { if ($versoes[$k] -gt $melhor) { $melhor = $versoes[$k]; $versaoCorrer = $k } }
+if ($ultimoStart -ne '') {
+  $partes = $ultimoStart -split ' '
+  $versaoCorrer = $partes[1]
+}
 
 # funil: ultimo [SCANNER] RESUMO
 $resumo = ''
@@ -185,9 +201,10 @@ if ($status) {
 # Contagem EXATA por dia do SERVIDOR.
 #
 # O ficheiro de log e nomeado pela data LOCAL (20261110.log) e o dia do
-# servidor = local + 3 h. Logo o dia do servidor 2026-11-10 comeca as
-# 21:00 do dia local 09 e acaba as 21:00 do dia local 10: atravessa DOIS
-# ficheiros. Somar os ficheiros "de hoje" dava um numero de dois dias.
+# servidor = local + $OffsetServidorHoras h (medido da sonda quando existe).
+# Com +5, o dia do servidor 2026-11-10 comeca as 19:00 do dia local 09
+# e acaba as 19:00 do dia local 10: atravessa DOIS ficheiros. Somar os
+# ficheiros "de hoje" dava um numero de dois dias.
 # Aqui cada linha e colocada no dia do servidor a que pertence.
 function Get-DiaServidor([string]$NomeFicheiro, [string]$HoraLinha) {
   if ($NomeFicheiro -notmatch '(\d{8})') { return '' }
@@ -341,7 +358,7 @@ foreach ($r in $mdLines) {
   $f = $r.funil; $c = $r.conta
   $ok = if ($r.md5_divergente) { 'NAO' } else { 'sim' }
   $gok = if ($r.governanca_mudou) { 'MUDOU' } else { 'sim' }
-  $frota = if ($r.frota_ligada -gt 0 -or $r.frota_desligada -gt 0) { ([string]$r.frota_ligada + '/' + ([string]$r.frota_ligada + [string]$r.frota_desligada)) } else { 'n/d' }
+  $frota = if ($r.frota_ligada -gt 0 -or $r.frota_desligada -gt 0) { ([string]$r.frota_ligada + '/' + ([string]([int]$r.frota_ligada + [int]$r.frota_desligada))) } else { 'n/d' }
   $sin = '-'; $alt = '-'; $exf = '-'; $trd = '-'
   if ($f) { $sin = $f.sinais; $alt = $f.allow_trade_bloqueios; $exf = $f.exec_fail; $trd = $f.trades }
   $pl = '-'; $dd = '-'
@@ -374,4 +391,4 @@ if ($divergente) {
 Write-Host ("OK forward: " + $serverDate + " | sinais=" + $(if ($funil) { $funil.sinais } else { '?' }) +
             " | trades=" + $(if ($funil) { $funil.trades } else { '?' }) +
             " | IA=" + $gwDisponiveis.Count + " simbolos | 1003=" + $n1003) -ForegroundColor Green
-exit 0
+exit 
