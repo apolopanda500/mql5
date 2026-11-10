@@ -1718,3 +1718,22 @@ Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`),
 **Nota de D-141 (CMD, 02:35):** o mesmo defeito voltou a acontecer e foi corrigido no perfil **vivo** `XAU_AI_PRO_15CHARTS_Q071` (o `ProfileLast` do `config/common.ini`), pondo `SymbolsFromMarketWatch=false` nos 15 `chart*.chr`; medicao: `[SYMS] ... ativos=25 | mwAdicionados=10` as 02:24 e `[PIPELINE] INICIO | Symbols=25` as 02:30:02 -> `[PIPELINE] INICIO | Symbols=15` as **02:35:43.057**. Cópia do perfil antes da alteração em `Files/Backup/profile_Q071_pre_D141_20261110_0235`.
 
 **Aprendizado que fica:** o perfil deCharts em uso **nao** e o `Default`; o `common.ini` (`ProfileLast`) e' a fonte de verdade. Qualquer alteração de inputs de grafico tem de ser feita no perfil carregado, com o terminal fechado, e verificada por `[PIPELINE] INICIO | Symbols=`.
+
+**Nota de correcao (D-143, CMD, 10/11 03:15) - a severidade deste P1 estava exagerada:** o `EDF4C81A` nao deixou o EA mudo **em producao**. Medido as **02:19:27**, com o binario mudo em memoria: `[SCANNER] RESUMO | visitas=21168 | sinais=836 | AllowTrade=836 | trades=0` - **836 sinais nao nulos**, todos barrados a jusante (AllowTrade). Causa: o master conta e executa sinais com **`GetCombinedSignal`** (`Core/MarketScanner.mqh:685`), e com **`AIHasSignalAuthority=true`** (medido no perfil vivo) essa funcao devolve **o sinal da IA** e ignora o sinal tecnico, onde o filtro de RSI morreu. O `trades=0` dos runs do ALFA mede **falta de IA no tester** (P1.3515, WebRequest 4014), nao o filtro. **O que fica:** a regra tecnica estava morta por aritmetica (ver acima) e a correcao do D-141 mantem-se; a unica coisa a corrigir e' a frase "nao podia emitir um unico sinal", que e' verdadeira para o caminho tecnico e para o tester, e nao para a producao.
+
+### P1.3519 - ABERTO (CMD, 10/11 03:15) - com `AIHasSignalAuthority=true` o sinal tecnico e' ignorado no caminho que abre ordens e 14 dos 15 simbolos sao inoperaveis: o forward mede um simbolo e um modelo
+
+**Medido no perfil vivo** (`MQL5\Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071\chart01.chr`): `AIHasSignalAuthority=true`, `AIAuthorityMinScore=75.0`, `AIConflictMinScore=80.0`, `AllowTradeWithoutAI=true`, `AllowTradeWithoutAI` nao tem efeito neste caminho.
+
+**Cadeia medida:**
+- `AI/AIEngine.mqh:377 GetCombinedSignal`: com autoridade ligada, `if(ai!=0) return ai; return 0;` - o sinal tecnico **nao e' consultado** e, sem previsao da IA, o resultado e' **0** (sem sinal, sem ordem).
+- `AI/AIEngine.mqh GetAIEngineSignal`: sem previsao carregada (`LoadAIPrediction` falha) devolve 0.
+- Em producao so' o **XAUUSD** tem modelo publicado: os outros 14 simbolos respondem `[AI] GATEWAY | <simbolo> | ... | disponivel=false` (medido as 02:35-02:37 nos 14).
+- `Core/MarketScanner.mqh:685` e' o master: conta sinais e **executa** a ordem (`MarketScanner.mqh:786 ExecuteTrade`).
+- Coerencia com a historia: os 3 trades do dia do servidor 10/11 foram **todos XAUUSD**.
+
+**Consequencia para o gate:** o "universo de 15 simbolos" e' nominal no caminho que abre ordens, e o forward dos 30 dias mede **XAUUSD + gateway**, nao a regra tecnica restaurada no D-141. O G11 (">= 30 trades") tem de ser lido assim, e o G3 (IA) tambem.
+
+**O que fecha este P1:** uma decisao explicita e escrita do DONO sobre o que a autoridade da IA deve fazer quando a IA esta calada - (a) manter `return 0` (o que fecha 14 simbolos), (b) cair para o sinal tecnico com `MinMarketScoreNoAI=45.0`, ou (c) outra politica - e a medicao do que muda no forward.
+
+**Nota de IDs:** o ID e' de serie **P1.3519**; o alocador nao foi usado.

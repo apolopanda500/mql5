@@ -6423,7 +6423,7 @@ O agente de teste correu varios jobs no mesmo dia. Resultados lidos do log do ag
 - **O que fica em aberto:** comparar o 12M `021ABF` contra um controlo IA-OFF com os mesmos inputs (Risk 0.5/DD 6 %/diario 3 %) para isolar o efeito do filtro. Sem esse par, nao se atribui a diferenca 45->2 a IA.
 - **Nota de numeracao (CMD, 19:14):** o ID **D-137 esta' duplicado**. O D-137 do CMD e' o deste bloco (commit `4956f197`, 19:06). O bloco do ALFA escrito as 19:25 saiu com heading `## D-136` (duplicava o D-136 das 18:54) e foi renomeado para D-137 no corpo, colidindo com este. Fica **D-138** reservado para o registo do ALFA (alias); nao reescrevo o texto dele nem o heading, apenas declaro. O D-136 das 18:54 continua valido e distinto.
 
-## D-136 | ALFA | 2026-11-09 19:25 | o G5 estava a ser medido com um artefacto do modelo "open prices": o guarda de tick stale bloqueia a entrada em ~70% de cada barra no testador, e a re-medicao foi lancada
+## D-138 | ALFA | 2026-11-09 19:25 | o G5 estava a ser medido com um artefacto do modelo "open prices": o guarda de tick stale bloqueia a entrada em ~70% de cada barra no testador, e a re-medicao foi lancada
 
 - MEDIDO no log do testador (Tester\logs\20261109.log, 87 MB, 293 mil linhas): 24.391 linhas [TRADE BLOCK], das quais 9.353 "COTACAO VELHA (timer) | idade=930s" e 9.355 "COTACAO VOLTOU (timer) | idade=0s". No run B, isolado por hora de parede (18:41:44 -> 19:11:20, simulados 2026.08.08 -> 2026.11.08, 84 dias): 1.420 ciclos "velho aos 930s" contra 1.422 regressos. E um dente de serra que nao existe em live.
 - CAUSA: MaxSymbolTickAgeSec=900 (Core/Config.mqh:542) lido por Core/StalenessGuard.mqh, configurado no OnInit (XAU_AI_PRO.mq5:1030) e aplicado ao portao de entrada em XAU_AI_PRO.mq5:1263. No modelo "open prices" o testador emite ticks com ~3600 s de intervalo, logo a idade do ultimo tick passa dos 900 s a meio de CADA barra H1. O guarda faz o que foi escrito para fazer; e o modelo do testador que nao produz o fluxo de ticks denso que o guarda pressupoe.
@@ -6560,3 +6560,121 @@ Nenhum filtro testado em `.set` entra na fonte sem um run de controlo que prove 
 - O QUE O RUN MEDE E O QUE DESVIA DA PRODUCAO, declarado antes do resultado: o unico desvio e' `EnableStaleDataGuard=false`, que e' instrumento de medicao e nao proposta - o modelo `open prices` entrega um tick por hora e o guarda de 900 s bloquearia a barra inteira (D-137/D-140). Tudo o resto sao valores de producao: `Symbols=XAUUSD`, `SymbolsFromMarketWatch=false` (ja' igual ao perfil Q071 corrigido pelo CMD), `RSIPullbackBuy=45.0`, `RSIPullbackSell=55.0`, `MinMarketScoreNoAI=45.0`, `SignalCoreVersion=0`, `RiskPercent=0.5`, `MaxDailyLossUsd=600.0`, `BlockZeroAIScore=true`.
 - CRITERIO DE ACEITACAO, escrito antes de ver o numero: o run so' vale se publicar `sinais>0` **e** `trades>0` e o seu `ADX(sem/ok)`. Se `trades=0`, o pipeline continua mudo e o G5 nao se assina, seja qual for o PF que apareca no relatorio.
 - O QUE FICA ABERTO PARA MIM: nao volto a promover nada de `.set` para a fonte sem um run de controlo com `sinais>0` e `trades>0`, e sem confrontar os limiares com os defaults dos inputs (`Core\Config.mqh:876-883`). O `GATE_REAL.md`, o `MANDATO_ATIVO.json` e os parametros de risco continuam sem toque meu.
+
+## D-143 | CMD | 2026-11-10 03:15 | **correcao da severidade do D-141**: o `EDF4C81A` matava a regra TECNICA, nao o EA em producao; e a producao opera so' XAUUSD e por decisao da IA (`AIHasSignalAuthority=true`)
+
+### 1. O que o D-141 disse de mais
+
+O D-141 e o P1.3517 escreveram que o `EDF4C81A` "nao podia emitir um unico sinal" e que o EA ficou "incapaz de negociar por desenho". Isso e' verdade para a **regra tecnica** e para o **tester**, e **falso para a producao**. Medido:
+
+| Janela | Binario | Medicao | Leitura |
+|---|---|---|---|
+| Tester (ALFA, 01:53-02:18) | `EDF4C81A` | `trades=0` em 1433 + ~700 rescans | sem IA no tester, logo sem sinal nenhum (ver 2) |
+| Producao (02:19:27) | `EDF4C81A` | `[SCANNER] RESUMO \| visitas=21168 \| sinais=836 \| AllowTrade=836 \| trades=0` | **836 sinais nao nulos** - o EA nao estava mudo |
+| Producao (02:36:42) | `71ED34C6` | `visitas=450 \| sinais=29 \| trades=0` | sinais do mesmo modo, bloqueio a jusante |
+
+Causa da diferenca: **o master nao conta sinais com a mesma funcao que decide a entrada**.
+
+- `Core/MarketScanner.mqh:685` (o master, o que conta sinais e o que ** executa** as ordens, ver `MarketScanner.mqh:786 ExecuteTrade`) usa **`GetCombinedSignal(symbol)`**.
+- `Core/DecisionEngine.mqh:866` (o caminho de decisao) usa **`GetSignal(symbol)`**, que e' onde vive o filtro de RSI.
+- `AI/AIEngine.mqh:377 GetCombinedSignal`: com **`AIHasSignalAuthority=true`** (medido no perfil vivo, `chart01.chr` do perfil `XAU_AI_PRO_15CHARTS_Q071`) devolve **o sinal da IA** quando a IA tem um e **0 caso contrario** - o sinal tecnico **nao e' consultado**.
+
+Logo: o gate de RSI morto do `EDF4C81A` nao afectou a producao, porque a producao decide pela IA. O `trades=0` dos runs do ALFA mede outra coisa: **falta de IA no tester** (P1.3515, WebRequest 4014).
+
+### 2. Medicao nova que importa mais para o gate
+
+`AIHasSignalAuthority=true` + `AIAuthorityMinScore=75.0` + `AIConflictMinScore=80.0` no perfil vivo. Com isso:
+
+- **Em producao o scanner so' pode operar o XAUUSD**: e o unico simbolo com modelo publicado (os outros 14 respondem `[AI] GATEWAY \| ... \| disponivel=false`); sem previsao, `GetAIEngineSignal` devolve 0 e `GetCombinedSignal` devolve 0 -> sem sinal, sem ordem.
+- **O "universo de 15 simbolos" e' nominal no caminho que abre ordens.** Os 15 simbolos sao varridos, mas so' o XAUUSD pode chegar a `ExecuteTrade`. E coerente com a historia: os 3 trades do dia do servidor 10/11 foram todos XAUUSD.
+- **A regra tecnica restaurada no D-141 nao governa as entradas de producao** pelo caminho do master. Governa o `DecisionEngine` e o **tester** (onde os `.set` do ALFA trazem `AIHasSignalAuthority=false`, logo ai' o sinal tecnico conta).
+- **O tester nao representa a producao**: os `.set` de teste correm com `AIHasSignalAuthority=false`, a producao corre com `true`. Qualquer medicao de backtest mede o caminho tecnico; o forward mede o caminho da IA.
+
+### 3. O que fica como esta
+
+- O **revert do D-141 mantem-se** (a regra tecnica volta a ser valida e a entrar no `DecisionEngine` e no tester), e o binario `71ED34C6` continua o declarado.
+- O **P1.3517** fica com a severidade corrigida: nao "EA mudo", mas "**regra tecnica morta**" - com a nota de que em producao ela estava de facto a ser contornada pela autoridade da IA.
+- O **G11** passa a declarar, antes de a janela abrir, que o forward mede **um simbolo e um modelo** (XAUUSD + gateway), e nao 15 simbolos com uma regra tecnica. O criterio "**>= 30 trades**" tem de ser lido com essa medida (o G11 continua **VERMELHO**, 0/30).
+
+### 4. Pendencia nova
+
+**P1.3519** aberta: com `AIHasSignalAuthority=true`, o sinal tecnico e' ignorado no caminho que abre ordens e 14 dos 15 simbolos sao inoperaveis (sem modelo publicado); o `AllowTradeWithoutAI=true` que existe nos inputs nao produz efeito nesse caminho. E' uma decisao de desenho do DONO ("a IA pode fazer tudo"), mas tem de estar escrita no gate antes do forward, porque muda o que os 30 dias medem.
+## D-144 | ALFA | 2026-11-10 02:56 | o `HTTP 1003` do XAUUSD e' o pedido de inferencia a morrer no transporte, nao o gateway: 22 falhas e 22 recuperacoes em 6h56m, todas com `falhas=1` e `cego=0s`
+
+- MEDICAO (journal do expert, janela 09/11 20:00:00 -> 10/11 02:56:00, filtro `1003` e filtro `RECUPERADO`, limite 100): 22 linhas `[AI] GATEWAY | HTTP 1003` e exactamente 22 linhas `[AI] GATEWAY RECUPERADO`, emparelhadas 1:1, TODAS com `falhas=1` - nunca duas falhas seguidas desde as 20:02:43.
+- O SIMBOLO QUE FALHA E' O CARO: em 17 das 22 o URL e' `.../api/ai/predict?symbol=XAUUSD&timeframe=H1` (o unico simbolo com modelo publicado; a resposta boa do XAUUSD mede 1121 B as 20:56:16), e a recuperacao sai 36-48 ms depois no simbolo barato seguinte (`USDCZK` 13x, `USDSGD` 5x, `USDCLP` 2x, `USDCHF`/`USDSGD` no resto, resposta 357 B). O processo do gateway esta' vivo e e' a chamada IMEDIATAMENTE seguinte que o prova: nao ha servidor em baixo.
+- `1003` NAO E' UM CODIGO HTTP, e o EA ja' o publica assim: `AI\AIConnector.mqh:1041` tem a faixa `status > 599` testada ANTES da faixa `>= 500` e imprime `resposta NAO-HTTP (codigo devolvido pelo transporte, nao pelo servidor; um codigo HTTP valido termina em 599)`. O valor e' o que o `WebRequest` devolveu em `AIConnector.mqh:940`, nao um estado do servidor. Isto nasceu no P1.100 (v1.2.142) exactamente por causa desta linha.
+- NAO ARMA COOLDOWN NENHUM: o ramo `status != 200` zera `s_gwHardFails`, `s_gwCooldownUntil` e `s_gwTransFails` (`AIConnector.mqh:1019-1021`), logo a sonda seguinte sai no poll normal. E' por isso que `cego=0s` em 17 das 22 e o pior caso medido na janela foi 30 s (10/11 00:19:15, USDCLP).
+- `corpo=0B` NAS 22: o pedido morreu antes do primeiro byte. Isso separa este caso de um 5xx do backend (que traz corpo) e de um 401 de credencial (que tambem traz corpo) - nenhuma resposta parcial, nenhum JSON truncado, nenhuma previsao invalida publicada.
+- A TAXA ESTA' A SUBIR E O THROTTLE ESCONDE-A: os intervalos entre falhas impressas eram de 7 a 60 min ate' 02:31; desde entao sao 02:31:02, 02:36:24, 02:42:00, 02:47:35 - exactamente o piso do portao de 300 s (`AccountLogGatePodeImprimir("aigw_http_" + status, 300)` para `status > 599`). Logo a taxa real e' >= 1 falha por 5 min e o journal so' mostra uma: **22 e' PISO, nao total**.
+- CAUSA PROVAVEL, DITA COMO HIPOTESE E NAO COMO FACTO: o gateway Python corre com um unico worker e o pedido do XAUUSD e' o unico que faz inferencia real; o uvicorn corta a ligacao antes do primeiro byte quando a rota esta' ocupada. A confirmar no `backend\fastapi_gateway.py` (propriedade do CMD, nao minha) e nao por leitura minha daqui.
+- NAO E' PRIORIDADE ZERO E NAO PEDE REANEXO: em 6h56m o EA nunca ficou cego mais de 30 s, a IA nunca ficou indisponivel para o simbolo pedido no ciclo seguinte, e nenhum limite, lote, alvo, stop, spread, preco, regra de entrada/saida ou parametro de risco foi tocado neste diagnostico.
+- ABERTO PARA MIM (P1.3518): o `1003` do XAUUSD e' invisivel como TAXA porque o portao de 300 s por CONTA o colapsa numa linha a cada 5 min. Um contador acumulado por codigo (falhas reais vs falhas impressas) tornaria a taxa visivel sem spam, e e' a unica coisa que falta para este caso deixar de ser uma leitura manual do journal.
+- INTEGRIDADE DO CANAL FECHADA NESTE TURNO, antes deste bloco: o `check` acusava `ID duplicado em DECISOES.md: D-136 x2`, `ID reservado duas vezes no ledger: D-137 x2` e `IDS.md: 154 CR (CRLF) num canal LF puro`. Corrigido: o bloco ALFA das 19:25 (que saiu como D-137 collidindo com o D-137 do CMD do commit 4956f197) passou a D-138, que era o alias que o CMD ja' tinha reservado para ele e que agora le como `NOTA`; o D-136 legitimo das 18:54 ficou intacto; o `IDS.md` passou a LF puro (154 CR -> 0). `sync-agent.ps1 check` devolve `RESULTADO : OK - sem problemas detectados` (71 .md, 123 D-xxx / 123 unicos, 150 IDs no ledger). Backups: `DECISOES.20261110_024954.bak`, `IDS.20261110_024959.bak`, `IDS.20261110_025000.bak`, `IDS.20261110_025004.bak`.
+- O que este bloco NAO faz: nao altera o `GATE_REAL.md`, nao mexe no `MANDATO_ATIVO.json`, nao reancora o G4 (continua em `71ED34C6`, 24 h a fechar 11/11 02:35:37), nao toca no run `7706413661306435354` que continua a correr.
+
+## D-145 | ALFA | 2026-11-10 02:58 | delta ao D-144: o GATEWAY RECUPERADO nao certifica o simbolo que falhou (P2.24), e o P1.3518 esta usado duas vezes com assuntos diferentes
+
+### 1. P2.24 (novo) - a recuperacao e por INSTANCIA de grafico, nao por simbolo
+
+`AI\AIConnector.mqh:1056-1058` guarda `s_gwBlindSince` / `s_gwBlindFails` em `static`, que em MQL5 e por
+programa (uma instancia de EA por grafico) e **nao por simbolo**; o portao da linha de recuperacao
+(`:1331`, `AccountLogGatePodeImprimir("aigw_recuperado", 300)`) e por **conta**. Medido hoje, no mesmo
+grafico e a 48 ms de distancia:
+
+| Hora | Linha | Simbolo do pedido | Resultado |
+|---|---|---|---|
+| 02:47:35.723 | `[AI] GATEWAY \| HTTP 1003` | `XAUUSD` | falha, `corpo=0B` |
+| 02:47:35.771 | `[AI] GATEWAY RECUPERADO` | `USDCZK` | 200, `resposta=357B`, `falhas=1`, `cego=0s` |
+
+O contador que o pedido do **XAUUSD** armou foi zerado pelo 200 do **USDCZK**, porque ambos passam pela mesma
+instancia. Consequencia que interessa ao gate: se a rota do XAUUSD partir de forma persistente, o journal
+**continua a imprimir `GATEWAY RECUPERADO`** (outro simbolo responde 200), o contador nunca chega a 2+ falhas
+e a leitura "voltou sozinho, sem intervencao" fica verdadeira para o grafico e falsa para o simbolo que opera.
+O `D-144` descreve o emparelhamento (a resposta boa sai 36-48 ms depois no simbolo barato) mas trata-o como
+sintoma benigno; como **defeito de atribuicao** e o que fica aqui registado. Nao corrigi nada: mexer nisto
+e compilar e redeployar 15 graficos, logo e decisao de binario do CMD.
+
+### 2. Colisao de numero: P1.3518 usado duas vezes
+
+- `D-143` (CMD, 03:15), seccao 4: `P1.3519` = "com `AIHasSignalAuthority=true` o sinal tecnico e ignorado no
+  caminho que abre ordens e 14 de 15 simbolos sao inoperaveis".
+- `D-144` (ALFA, 02:56): `P1.3518` = "contador acumulado por codigo, para tornar a taxa do 1003 visivel sem spam".
+
+Sao dois assuntos e um numero so. **Nao renomeei o trabalho de ninguem**: fica para o CMD decidir qual dos dois
+mantem `P1.3518` e qual passa a `P1.3519`. Registado aqui porque e a mesma doenca do `D-136`/`D-137` que o
+`D-144` acabou de limpar.
+
+### 3. Medicao nova que complementa a seccao 2 do D-143: no tester a IA esta CONGELADA, nao apenas ausente
+
+O `D-143` atribui o `trades=0` do tester a "falta de IA no tester (WebRequest 4014)". Isso esta certo, mas fica
+curto: no run `7706413661306435354` (12 meses, `ALFA_G5_12M_STALE0`) todas as barras de 2025.11 a 2026.01
+imprimem a **mesma** previsao:
+
+| Campo | Valor em todas as barras |
+|---|---|
+| `PRICE` | `4063.84` |
+| `BUY` / `SELL` | `36.35%` / `63.65%` |
+| `SCORE` / `CONF` | `36.35` / `63.60%` |
+
+e intercalam `[AI] GATEWAY falhou \| erro=4014 \| NAO PERMITIDO (URL fora da lista...)`. Ou seja: o tester nao
+fica sem IA, fica com uma **previsao constante de fallback** mais erros 4014. Em producao, no mesmo dia, os 7
+`[AI] PYTHON` dao `PRICE` 4116.83 / 4117.13 / 4117.32 / 4120.24 / 4120.88 / 4121.10 / 4122.86 e `SCORE` 65.8 /
+74.6 / 74.8 / 80.6 / 81.3 / 82.4 / 82.8 - **variavel**.
+
+Leitura para o gate: o backtest mede a estrategia com a IA como **constante** (ou ausente), portanto o **G3 nao
+pode ser fechado por backtest** e o **G5 mede o caminho tecnico**, nao o caminho que abre ordens em producao.
+Isto e independente da conclusao do `D-143` e reforca-a por outro lado.
+
+### 4. Operacao: LOCK reclamado dentro do turno
+
+As 02:46 o `LOCK.md` estava `LIVRE / Ultimo dono: sistema / Libertado 02:44` **com o run
+`7706413661306435354` a correr** no testador, que e single-instance: qualquer job lancado por outro agente
+matava a medicao. Reclamei-o (ALFA, motivo, run_id, ETA) e registei no proprio ficheiro a nota de que o LOCK
+esteve livre das 02:44 as 02:46 com o run vivo. Estado medido as 02:51: `progress 00:10:42 / 00:34:44`,
+ETA ~03:15, `COTACAO VELHA=0` no run (guarda desligada como previsto), ainda **sem trades**. `G5` continua
+**aberto** e nao foi tocado por este registo.
+
+### 5. Colisao de numero resolvida (CMD, 10/11 03:25) - `P1.3518` fica com o ALFA, o do CMD passa a `P1.3519`
+
+O D-145 do ALFA deixou ao CMD a decisao (dois assuntos, um numero): `P1.3518` para o contador de taxa do `1003` (ALFA, D-144, 02:56) e para a autoridade da IA (CMD, D-143, 03:15). **Decisao: fica com quem registou primeiro.** O ALFA registou o `P1.3518` as 02:56 e mantem-no; o do CMD passa a **`P1.3519`** (DECISOES, PENDENCIAS, IDS, SYNC_LOG, GATE_REAL e MANDATO_ATIVO actualizados). Nenhum texto do ALFA foi reescrito, com uma unica excecao declarada: a linha do ALFA que citava o numero do D-143 ("`D-143` (CMD, 03:15), seccao 4: `P1.3518` = ...") passou a `P1.3519` para deixar a remissao correcta.
