@@ -93,6 +93,16 @@ if (Test-Path -LiteralPath $declF) {
 if ($contaDeclarada -ne '' -and $contaMemoria -ne '' -and $contaDeclarada -ne $contaMemoria) {
   $falhas += ("a conta em memoria e '{0}' e a declarada e '{1}' - o terminal trocou de conta" -f $contaMemoria, $contaDeclarada)
 }
+if ($contaDeclarada -eq '') {
+  # MEDIDO em 10/11 20:00-20:02: o terminal passou por DUAS contas em dois
+  # minutos (450258809 XMGlobal-MT5 20 -> 113568614 MetaQuotes-Demo) e o portao
+  # nao reclamou, porque o dossier ainda nao declarava conta nenhuma.
+  # Um dossier sem conta e um dossier que mede o que calhar: TEM de falhar.
+  $falhas += "o dossier NAO declara a conta - mede-se a conta do terminal em silencio. Declara-a antes de abrir a janela."
+}
+if ($contaMemoria -eq '') {
+  $falhas += "nao foi possivel ler a conta do journal (sem [START] legivel)"
+}
 
 # --- 2. perfil: piso e universo ---
 $piso = ''; $nPisoOk = 0; $nSimbolos = 0; $nChr = 0
@@ -114,28 +124,48 @@ else {
 }
 
 # --- 3. frota (sonda 0) ---
-$lig = 0; $des = 0; $fich = 0
+# MEDIDO em 10/11 20:05: o terminal passou por 3 contas (450258809 XMGlobal,
+# 6419396 Headway-Demo, 113568614 MetaQuotes-Demo) e cada uma deixou os seus
+# `permission_state_*.csv` no MESMO `Files\Data`. Contar ficheiros a scarring
+# dava "32/15 LIGADO" - sem significado. A frota que conta e a do PERFIL
+# VIVO: os simbolos dos `.chr` da conta ativa. As orfas saoitoras.
+$simbolosPerfil = @()
+foreach ($f in @(Get-ChildItem -LiteralPath $chartsDir -Filter '*.chr' -ErrorAction SilentlyContinue)) {
+  try {
+    $t = [System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::Unicode)
+    $m = [regex]::Match($t, '(?m)^symbol=(\S+)')
+    if ($m.Success) { $simbolosPerfil += $m.Groups[1].Value.Trim() }
+  } catch { }
+}
+$lig = 0; $des = 0; $fich = 0; $orfas = 0
 foreach ($f in @(Get-ChildItem -LiteralPath $dataDir -Filter 'permission_state_*.csv' -ErrorAction SilentlyContinue)) {
-  $fich++
+  $sym = $f.BaseName -replace '^permission_state_', ''
+  $doPerfil = $simbolosPerfil -contains $sym
   try {
     $fs = [System.IO.File]::Open($f.FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
     $sr = New-Object System.IO.StreamReader($fs); $t = $sr.ReadToEnd(); $sr.Close()
     $l = @($t -split "`r?`n" | Where-Object { $_.Trim() })
     if ($l.Count -ge 2) {
       $c = $l[$l.Count - 1] -split ';'
-      if ($c.Count -ge 11) { if ($c[4] -eq '1' -and $c[9] -eq '0') { $lig++ } else { $des++ } }
+      if ($c.Count -ge 11) {
+        if ($doPerfil) {
+          $fich++
+          if ($c[4] -eq '1' -and $c[9] -eq '0') { $lig++ } else { $des++ }
+        } else { $orfas++ }
+      }
     }
   } catch { }
 }
-if ($fich -eq 0) { $falhas += 'sem sonda 0 (permission_state_*.csv) - o binario vivo nao a escreve' }
-elseif ($lig -lt 15) { $falhas += ("frota {0}/15 com o bit ligado - falta o F7 do DONO nos {1} restantes" -f $lig, (15 - $lig)) }
+if ($simbolosPerfil.Count -eq 0) { $falhas += 'o perfil nao tem simbolos legiveis' }
+elseif ($fich -eq 0) { $falhas += ("sem sonda 0 para os {0} simbolos do perfil" -f $simbolosPerfil.Count) }
+elseif ($lig -lt $simbolosPerfil.Count) { $falhas += ("frota {0}/{1} com o bit ligado - falta o F7 do DONO nos {2} restantes" -f $lig, $simbolosPerfil.Count, ($simbolosPerfil.Count - $lig)) }
 
 Write-Host ''
 Write-Host '== FECHA DA JANELA ==' -ForegroundColor Cyan
 Write-Host ("binario   : {0} B | MD5 {1} | {2} min estavel | memoria {3} | disco v{4}" -f $info.Length, $md5, $idadeMin, $versaoMemoria, $versaoDisco)
 Write-Host ("conta     : {0} | declarada: {1}" -f $(if ($contaMemoria) { $contaMemoria } else { 'n/d' }), $(if ($contaDeclarada) { $contaDeclarada } else { '(sem conta no dossier)' }))
 Write-Host ("perfil    : {0}/{1} .chr com piso 45.0 | {2}/{3} com 15 simbolos" -f $nPisoOk, $nChr, $nSimbolos, $nChr)
-Write-Host ("frota     : {0}/15 LIGADO | {1} desligado | {2} sondas" -f $lig, $des, $fich)
+Write-Host ("frota     : {0}/{1} LIGADO | {2} desligado | {3} sondas do perfil | {4} orfas de outras contas" -f $lig, $simbolosPerfil.Count, $des, $fich, $orfas)
 Write-Host ''
 
 if ($falhas.Count -gt 0 -and -not $Forcar) {

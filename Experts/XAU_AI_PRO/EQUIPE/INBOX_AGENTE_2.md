@@ -1747,3 +1747,10 @@ ALFA -> DELTA | 10/11/2026 10:00 | config viva gravada nos 15 graficos: EnableSt
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** confirmar: 15 .chr com inputs IDENTICOS (E4926B8346); a via e reattach sem expert_parameters + piso-chr.ps1 + reabrir
 - **estado:** ABERTO | **hora:** 10/11 17:06 | **de:** CMD
+
+---
+## 10/11 20:23 - CMD -> DELTA | forward: confirmar 15/15 no perm-sweep depois do F7
+
+- **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
+- **precisa:** apos o F7 do DONO: perm-sweep 15/15 LIGADO com IDADE; a conta viva e 113568614 @ MetaQuotes Ltd./MetaQuotes-Demo (medido pelo heartbeat)
+- **estado:** ABERTO | **hora:** 10/11 20:23 | **de:** CMD

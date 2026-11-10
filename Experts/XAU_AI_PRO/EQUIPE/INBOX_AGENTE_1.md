@@ -1384,3 +1384,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** gateway: escrever prediction_<SIMBOLO>.json para TODOS os simbolos servidos, incluindo available=false com o motivo; e ligar MULTI_CRYPTO/FIAT/METALS
 - **estado:** ABERTO | **hora:** 10/11 20:20 | **de:** CMD
+
+---
+## 10/11 20:23 - CMD -> ALFA | forward: aplicar PROBE_chart01 + PROBE_chart13 nos 15 graficos desta conta (piso 45, 15 simbolos, magic 2026001)
+
+- **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
+- **precisa:** aplicar PROBE_chart01.tpl nos 14 graficos H1 e PROBE_chart13.tpl no USDBRL M5; confirmar 15x [START] v1.2.203 e 15/15 .chr com piso 45.0
+- **estado:** ABERTO | **hora:** 10/11 20:23 | **de:** CMD
