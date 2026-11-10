@@ -18,8 +18,19 @@
    6. Traces de execucao e `HTTP 1003`.
 
  Escreve:
-   EQUIPE/FORWARD/medicao.jsonl   (uma linha por dia do servidor)
-   EQUIPE/FORWARD/FORWARD.md      (tabela viva, legivel pelo DONO)
+   EQUIPE/FORWARD/medicao.jsonl        (append-only: UMA LINHA POR EXECUCAO,
+                                      com `schema` - e a prova de que o dia
+                                      foi amostrado N vezes. NAO se deduplica:
+                                      a repeticao E a evidencia de cobertura)
+   EQUIPE/FORWARD/medicao_diaria.jsonl (DERIVADO: uma linha por dia do
+                                      servidor, com amostras_no_dia,
+                                      primeira_hora e ultima_hora)
+   EQUIPE/FORWARD/FORWARD.md           (tabela viva, legivel pelo DONO)
+   EQUIPE/FORWARD/ultima_medicao.log   (o log desta execucao - escrito
+                                      AQUI, para nao depender do wrapper:
+                                      em 10/11 o gate foi corrido
+                                      directamente e o log ficou com o
+                                      conteudo do ciclo anterior - R5)
 
  Saida: 0 = conforme | 2 = MD5 divergiu (janela perdida) | 1 = erro
 
@@ -308,6 +319,7 @@ foreach ($k in $iaSimbolos.Keys) { $iaLista += $k }
 [Array]::Sort($iaLista)
 
 $registo = [ordered]@{
+  schema             = 2
   server_date       = $serverDate
   medido_local      = (Get-Date).ToString('dd/MM/yyyy HH:mm:ss')
   md5_ex5           = $md5Atual
@@ -339,6 +351,21 @@ $registo = [ordered]@{
 }
 
 [System.IO.File]::AppendAllText($jsonl, (($registo | ConvertTo-Json -Compress -Depth 6) + "`r`n"), (New-Object System.Text.UTF8Encoding($false)))
+
+# O LOG desta execucao, escrito AQUI (R5): em 10/11 o gate foi corrido
+# directamente e o `ultima_medicao.log` ficou com o conteudo do ciclo
+# anterior - e eu afirmei no relatorio que tinha sido escrito. Quem escreve
+# o log passa a ser o proprio gate, nao o wrapper: deixa de haver um braco
+# que pode ser saltado.
+$logExec = Join-Path $fwdDir 'ultima_medicao.log'
+$linhasLog = @()
+$linhasLog += ('=== ' + (Get-Date).ToString('dd/MM/yyyy HH:mm:ss') + ' | server_date ' + $serverDate + ' ===')
+$linhasLog += ('md5=' + $md5Atual + ' (declarado ' + $md5Declarado + ', divergente=' + $divergente + ')')
+$linhasLog += ('governanca=' + $gov.sha256 + ' | mudou=' + $govMudou)
+$linhasLog += ('frota=' + $permOn + '/' + ($permOn + $permOff) + ' | sem permissao=' + $nSemPerm + ' | 1003=' + $n1003)
+$linhasLog += ('funil: ' + $(if ($funil) { 'sinais=' + $funil.sinais + ' trades=' + $funil.trades + ' AllowTrade=' + $funil.allow_trade_bloqueios } else { 'n/d' }))
+$linhasLog += ('IA disponivel: ' + $gwDisponiveis.Count + ' simbolos')
+[System.IO.File]::WriteAllLines($logExec, $linhasLog, (New-Object System.Text.UTF8Encoding($false)))
 
 # tabela md
 $mdLines = @()
@@ -381,8 +408,50 @@ if ($govMudou) {
 }
 [System.IO.File]::WriteAllLines($md, $tabela, (New-Object System.Text.UTF8Encoding($false)))
 
+# MEDICAO DIARIA DERIVADA (P1.3605).
+#
+# O `medicao.jsonl` e append-only: uma linha por EXECUCAO. Deduplicar
+# apagava a unica evidencia de cobertura (que o dia foi amostrado N vezes) e
+# deixaria a "tabela de 30 dias" indistinguivel de uma tabela lida uma vez
+# por dia. A solucao limpa e DERIVAR: aqui nasce uma linha por
+# `server_date`, com quantas amostras houve, a primeira e a ultima hora, e
+# quais campos faltavam (schema anterior a v2).
+$diario = Join-Path $fwdDir 'medicao_diaria.jsonl'
+$porDia = @{}
+foreach ($r in $mdLines) {
+  $d = [string]$r.server_date
+  if (-not $porDia.ContainsKey($d)) { $porDia[$d] = @() }
+  $porDia[$d] += $r
+}
+$linhasDia = @()
+foreach ($d in ($porDia.Keys | Sort-Object)) {
+  $amostras = $porDia[$d]
+  $ult = $amostras[$amostras.Count - 1]
+  $faltam = @()
+  foreach ($k in @('schema','md5_ex5','governanca_sha256','frota_ligada','sem_permissao','funil','conta','ia_available_gw')) {
+    if (-not ($ult.PSObject.Properties.Name -contains $k)) { $faltam += $k }
+  }
+  $linhasDia += [ordered]@{
+    server_date     = $d
+    amostras_no_dia = $amostras.Count
+    primeira_hora   = $amostras[0].medido_local
+    ultima_hora     = $ult.medido_local
+    md5_ex5         = $ult.md5_ex5
+    md5_ok          = (-not $ult.md5_divergente)
+    governanca      = $ult.governanca_sha256
+    frota_ligada    = $ult.frota_ligada
+    sem_permissao   = $ult.sem_permissao
+    sinais          = $(if ($ult.funil) { $ult.funil.sinais } else { $null })
+    trades          = $(if ($ult.funil) { $ult.funil.trades } else { $null })
+    campos_ausentes = $faltam
+  }
+}
+[System.IO.File]::WriteAllLines($diario, @($linhasDia | ForEach-Object { $_ | ConvertTo-Json -Compress -Depth 6 }), (New-Object System.Text.UTF8Encoding($false)))
+
 Say ("-> " + $jsonl)
+Say ("-> " + $diario)
 Say ("-> " + $md)
+Say ("-> " + $logExec)
 
 if ($divergente) {
   Write-Host "VERMELHO: MD5 divergente. Em disco=$md5Atual declarado=$md5Declarado. Os 30 dias vao a zero ate novo deploy declarado." -ForegroundColor Red

@@ -158,6 +158,18 @@ function Get-ImpressaoInputs([string]$ChartsDir) {
     'RiskPercent','MaxDailyLossPercent','MaxDailyLossUsd','EnableVolatilityFilter',
     'EnableSessionFilter','EnableNewsFilter','SymbolsFromMarketWatch','EnableAutonomousMode',
     'AIHasSignalAuthority','RequireAIJSON','MagicNumber','MaxSpreadPct','StopLossPoints'
+    # P1.3604 (10/11/2026) - A IMPRESSAO DIGITAL TINHA UM PONTO CEGO DE 25% DO DIA.
+    # O AvoidHoursGMT fecha 6 horas (9,11,14,18,20,22) e NAO estava na lista:
+    # zerar essa input mudava o universo medido sem mexer no inputs_sha256.
+    # O mesmo vale para o freio de meta diaria (DailyProfitStopTrading para de
+    # abrir quando o lucro fecha a meta), para o alvo (TakeProfitPoints /
+    # RewardRatio) e para os tectos de exposicao e de posicoes. Todos MEDIDOS
+    # presentes no bloco <inputs> do chart01.chr antes de entrarem aqui.
+    'EnableAvoidHoursGMT','AvoidHoursGMT',
+    'TakeProfitPoints','RewardRatio','RiskPerTradeUsd','Slippage','EnableBreakEven',
+    'MaxOpenPositions','MaxTradesPerDay','EnableExposureCap','MaxExposurePercent',
+    'MaxTotalRiskPercent','EnableDailyProfitTarget','DailyProfitStopTrading',
+    'DailyProfitSlowPercent'
   )
   $saida = @{}
   if (-not (Test-Path -LiteralPath $ChartsDir)) { return @{ sha256 = ''; campos = $saida } }
@@ -166,7 +178,7 @@ function Get-ImpressaoInputs([string]$ChartsDir) {
   try {
     $t = [System.IO.File]::ReadAllText($f[0].FullName, [System.Text.Encoding]::Unicode)
     foreach ($c in $campos) {
-      $m = [regex]::Match($t, [regex]::Escape($c) + "=([^\r\n]+)")
+      $m = [regex]::Match($t, "(?m)^" + [regex]::Escape($c) + "=([^\r\n]+)")
       if ($m.Success) { $saida[$c] = $m.Groups[1].Value.Trim() }
     }
   } catch { }
@@ -189,6 +201,35 @@ function Read-LogCompartilhado([string]$Path) {
 
 if ($Simular) { Write-Host "MODO SIMULACAO: nada sera escrito." -ForegroundColor Cyan; Write-Host "" }
 
+# COTACAO MORTA - lida do [DIAGSCAN] que o proprio EA publica, nao inferida.
+# O [DIAGSCAN] traz "stale=N [USDCLP 9797s, USDCOP 7860s, ...]": N simbolos
+# cuja ultima cotacao ja passou o limite. E diferente de
+# `frota_sensor_sem_leitura`, que conta ficheiros do sensor NAO reescritos.
+# A confusao entre os dois fazia o dossie dizer "0 sem tick" num dia com 3
+# simbolos de cotacao parada (R1 da auditoria DELTA, 10/11/2026).
+function Get-CotacaoMorta([string]$LogDir) {
+  $res = @{ qtd = 0; lista = @(); quando = '' }
+  if (-not (Test-Path -LiteralPath $LogDir)) { return $res }
+  $arquivos = @(Get-ChildItem -LiteralPath $LogDir -Filter '*.log' -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 2)
+  $ultima = $null
+  foreach ($a in $arquivos) {
+    $txt = Read-LogCompartilhado $a.FullName
+    if ($txt -eq '') { continue }
+    foreach ($linha in ($txt -split "`r?`n")) {
+      if ($linha -match '(\d{2}:\d{2}:\d{2})[^\r\n]*\[DIAGSCAN\].*stale=(\d+)\s*\[([^\]]*)\]') {
+        $ultima = @{ qtd = [int]$Matches[2]; lista = $Matches[3].Trim(); quando = ($a.Name + ' ' + $Matches[1]) }
+      }
+    }
+    if ($ultima -ne $null) { break }
+  }
+  if ($ultima -ne $null) {
+    $res.qtd = $ultima.qtd
+    $res.quando = $ultima.quando
+    if ($ultima.lista -ne '') { $res.lista = @($ultima.lista -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }) }
+  }
+  return $res
+}
 # ---------------------------------------------------------------- binario
 if (-not (Test-Path -LiteralPath $ex5)) { Write-Host "ERRO: sem binario em $ex5" -ForegroundColor Red; exit 1 }
 $info = Get-Item -LiteralPath $ex5
@@ -327,6 +368,47 @@ foreach ($k in @('MinAIConfidence','AIUnavailableConfidenceCap','EnableStoplessE
   if ($inputs.campos.ContainsKey($k)) { Write-Host ("   {0} = {1}" -f $k, $inputs.campos[$k]) -ForegroundColor DarkGray }
 }
 
+$cotMorta = Get-CotacaoMorta $logDir
+
+# A ANCORA DA JANELA NAO SE MOVE (D-178).
+#
+# MEDIDO em 10/11/2026 17:45: `janela_inicio_servidor` passou de 22:19 para
+# 22:31 em 12 minutos, porque cada re-declaracao reescrevia o campo. Cada
+# re-declaracao reiniciava os 30 dias - e o `inputs_sha256` mudava sempre
+# que se acrescentava um campo a lista (23 -> 39), o que dava um alarme
+# falso em vez de um evento.
+#
+# REGRA (pedido do DELTA, aceite): a partir de agora a janela e
+# CONGELADA. Uma re-declaracao NAO toca em `janela_inicio_*`: registra-se
+# como EVENTO em `historico_declaracoes[]` (hora, md5, inputs, governanca,
+# frota, motivo). So o CMD reescreve este ficheiro.
+$janelaServidor = $serverNow.ToString('dd/MM/yyyy HH:mm') + ' (hora do SERVIDOR, desvio MEDIDO, no instante da declaracao)'
+$janelaLocal = $agora.ToString('dd/MM/yyyy HH:mm')
+$historico = @()
+$jaDeclarado = $false
+if (Test-Path -LiteralPath $decl) {
+  try {
+    $antigo = Get-Content -LiteralPath $decl -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($antigo.PSObject.Properties.Name -contains 'historico_declaracoes' -and $antigo.historico_declaracoes) {
+      $historico = @($antigo.historico_declaracoes)
+    }
+    if ($antigo.PSObject.Properties.Name -contains 'janela_inicio_servidor' -and $antigo.janela_inicio_servidor) {
+      $janelaServidor = [string]$antigo.janela_inicio_servidor
+      $janelaLocal = [string]$antigo.janela_inicio_local
+      $jaDeclarado = $true
+    }
+  } catch { }
+}
+$historico += [ordered]@{
+  quando            = $agora.ToString('dd/MM/yyyy HH:mm:ss')
+  md5               = $md5
+  inputs_sha256     = $inputs.sha256
+  governanca_sha256 = $gov.sha256
+  frota_ligada      = $ligados
+  versao            = $versaoDeclarada
+  motivo            = 're-declaracao (a janela nao se move; este registo e o evento)'
+}
+
 $declObj = [ordered]@{
   versao                  = $versaoDeclarada
   md5                     = $md5
@@ -340,9 +422,13 @@ $declObj = [ordered]@{
   declarado_por           = 'CMD'
   declarado_em            = $agora.ToString('dd/MM/yyyy HH:mm')
   frota_ligada_no_declaro = $ligados
-  janela_inicio_servidor  = $serverNow.ToString('dd/MM/yyyy HH:mm') + ' (hora do SERVIDOR, desvio MEDIDO, no instante da declaracao)'
-  janela_inicio_local     = $agora.ToString('dd/MM/yyyy HH:mm')
-  frota_sem_tick          = $semFresco
+  janela_inicio_servidor  = $janelaServidor
+  janela_inicio_local     = $janelaLocal
+  janela_congelada        = $jaDeclarado
+  historico_declaracoes   = $historico
+  frota_sensor_sem_leitura = $semFresco
+  frota_cotacao_morta      = $cotMorta.qtd
+  frota_cotacao_morta_lista = $cotMorta.lista
   frota_simbolos          = $simbolosAlvo
   versao_em_memoria       = ($corremNovos.ToString() + '/' + $simbolosAlvo.Count)
   janela_dias             = 30
@@ -352,7 +438,8 @@ $declObj = [ordered]@{
     "Declarado por script: o MD5 e lido do disco, nao escrito a mao.",
     "Frota no momento da declaracao: $ligados/15 com bit de negociacao (sensor: permission_state_*.csv do proprio EA).",
     "Versao em memoria: $corremNovos/$($simbolosAlvo.Count) simbolos com [START] $versaoDeclarada no journal.",
-    "Simbolos com sensor sem tick (contados como ligados): $semFresco.",
+    "Sensor sem leitura recente (contados como LIGADO): $semFresco. NAO e o mesmo que cotacao morta.",
+    ("Cotacao morta na ultima varredura do EA: {0} simbolo(s) {1} - lido do [DIAGSCAN] do EA ({2})." -f $cotMorta.qtd, ($cotMorta.lista -join ", "), $cotMorta.quando),
     "A sonda de script (permission_probe_*.csv) NAO serve como sensor da frota: num script o bit devolve a permissao do terminal (medido 10/11 12:53 vs 12:56, USDCZK).",
     "Rollback: reescrever este ficheiro com o binario anterior (git checkout de EQUIPE/FORWARD/DECLARADO.json)."
   )
