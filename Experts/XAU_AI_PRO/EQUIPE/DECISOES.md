@@ -8993,3 +8993,110 @@ mudar **sem erro nenhum** no journal.
   estado da frota legivel a qualquer momento. **E o que permite bloquear a
   declaracao** em vez de a declarar com a frota fechada.
 
+
+
+---
+
+## D-172 | 10/11/2026 16:50 | a 4a opcao, MEDIDA: o veto de 60 exclui 14 de 15 simbolos por CONSTRUCAO
+
+- **Estado:** FECHADO (CMD, 10/11 16:50). Complementa a politica do DONO
+  (Q-016/Q-021: sem amostra nao ha forward) com a medicao de uma **quarta
+  opcao** que ninguem tinha considerado.
+
+### 1. O forward esta declarado e a correr (D-172)
+
+| | |
+|---|---|
+| Versao em memoria | **v1.2.202**, 15/15 simbolos |
+| Binario em disco | 1 022 276 B @ 16:32:41, MD5 **`D53153D47097615C461F4234D450FFE3`** |
+| Frota (sonda 0) | **15 LIGADO** (bit=1, cod=0), 0 desligado |
+| Governanca | `CB7D8FD8...` (87 `.meta.json`) |
+
+**O "deploy das 20:30" que o relatorio dava como pendente JA ACONTECEU** (os
+15 recarregaram em v1.2.202) e a frota esta com o bit ligado. A declaracao
+foi feita com `Tools/declarar-forward.ps1`, que le o MD5 do disco, le a
+governanca e **recusa** se a frota nao estiver completa. Passou.
+
+### 2. O que o relatorio mediu (aceito)
+
+O XAUUSD deixou de ser bloqueado pela IA: `CONF=60.00` (exactamente o piso) e
+o bloqueio passou para o filtro de tendencia (`ADX=41.4`). **Funciona como
+desenhado.** Os outros 14 continuam `disponivel=false` -> tampa 40 -> abaixo
+do piso.
+
+### 3. A 4a opcao, e a medicao que a torna real
+
+Em vez de (a) `AllowTradeWithoutAI=true` ou (b) baixar so o piso, ha uma via
+que **da edge verdadeira**: os modelos **MULTI de classe**, que ja estao em
+disco e que o resolvedor **nunca aponta a um simbolo**.
+
+| Modelo | Edge | Folds | Acc vs palpite | Amostras |
+|---|---|---|---|---|
+| `MULTI_METALS` | **+0,2497** | **5/5** | 0,583 vs 0,333 | 67 678 |
+| `MULTI_FIAT` | **+0,1853** | **5/5** | 0,519 vs 0,333 | - |
+| `MULTI_CRYPTO` | **+0,1816** | **5/5** | - | - |
+
+**MEDI (CMD, 10/11 16:45, fora de producao):** carreguei o `MULTI_FIAT.pkl`,
+montei as 22 features com `Python/ai/features_estacionarias.py` (o
+`feature_hash_estacionaria()` bate com o do artefacto: `d3dff4e31e42a675`) e
+predi sobre candles reais do MT5:
+
+```
+USDCAD [FIAT]: 599 linhas -> SELL  CONF=37.05% | BUY 32.26 | NEUTRO 30.69
+GBPUSD [FIAT]: 599 linhas -> SELL  CONF=34.67% | BUY 31.26 | NEUTRO 34.07
+NZDUSD [FIAT]: 599 linhas -> NEUTRAL CONF=35.48%
+USDJPY [FIAT]: 599 linhas -> SELL  CONF=38.11%
+```
+
+**Duas conclusoes, ambas medidas:**
+
+1. **A via e TECNICAMENTE EXECUTAVEL.** O construtor de features ja existe
+   (`construir_features_estacionarias`, contrato `25F-est-v1`, 22 features) e
+   o modelo carrega e responde. Falta so: (i) despachar `25F-est-v1` no
+   `inferir()` (hoje so conhece `XAU-30F-v4` e `25F-v2`), e (ii) resolver
+   simbolo -> classe -> `MULTI_FIAT` / `MULTI_METALS` / `MULTI_CRYPTO` como
+   candidato.
+2. **O edge do MULTI e REAL, mas a CONFIANCA por sinal e 34-38%.** O `+0,1853`
+   e edge de acuracia **balanceada** (3 classes, palpite 0,333); a probabilidade
+   que o classificador atribui a classe vencedora e 0,34-0,38. **Isto e
+   estrutural: com `MinAIConfidence=60`, os modelos de 3 classes NUNCA passam
+   o veto.** So o XAUUSD passa, porque o seu modelo e binario (30F) e a
+   confianca chega a 0,60.
+
+### 4. A consequencia que muda a decisao
+
+**O veto de 60 nao esta a excluir "modelos fracos": esta a excluir
+MODELOS DE 3 CLASSES.** Os 14 simbolos que faltam nao tem "falta de edge" -
+têm edge de +0,1853 (o melhor do catalogo) expressedo de uma forma que o
+piso de 60 nao consegue ver.
+
+Por isso, **as opcoes (a) e (b) isoladas medem ruido**:
+- (a) `AllowTradeWithoutAI=true` -> mede o caminho tecnico (PF historico 0,54
+  -> o G11 falha em PF de qualquer maneira);
+- (b) piso a 54 -> so passariam os modelos por SINAL (2-3/5 folds, media ~0)
+  - que e ruido com luz verde. (E nao os MULTI, que ficam em 34-38.)
+
+**A combinacao que funciona e (d)+(b) juntas:** ligar os `MULTI_*` (edge real
++0,18/+0,25, 5/5 folds) **e** baixar o piso para ~45 (abaixo do 34-48
+medido, para que o edge seja visto).
+
+### 5. O que o DONO tem de decidir (e o que os agentes fazem)
+
+| Decisao | Quem | Porquê |
+|---|---|---|
+| Baixar `MinAIConfidence` de 60 para **45** | **DONO** (e um parametro de decisao, nao de risco) | sem isto, so o XAUUSD opera |
+| Autorizar os `MULTI_*` em execucao | **DONO** (e COMERCIAL: `acesso.py` diz *"Free nunca usa multi"*; `live_execution=False` nos artefactos) | e o produto dele |
+| Despachar `25F-est-v1` no `inferir()` + simbolo->classe | **ALFA** (zona `AI/`) | gateway, **sem mexer no `.ex5`** -> a janela dos 30 dias nao se parte |
+| Manter o binario **v1.2.202** congelado | todos | qualquer recompilacao zera os 30 dias |
+
+**A via (d) e do lado do GATEWAY: nao toca no `.ex5`, logo nao reinicia a
+janela.** E a unica das quatro que traz edge em vez de ruido.
+
+### 6. Rigor: uma ressalva honesta
+
+As candles que a prova usou vieram com `timestamp` de **06/10/2026** (um mes
+atras) - a ligacao MT5 deste processo nao devolveu a serie mais recente. A
+**magnitude** da confianca (0,34-0,38) e um propriedade do modelo e nao da
+serie, mas a **leitura com dados frescos tem de ser refeita** antes de
+assentar o valor do piso. Registado como `P1.3602`.
+

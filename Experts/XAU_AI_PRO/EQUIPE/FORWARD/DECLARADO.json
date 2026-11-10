@@ -1,15 +1,15 @@
 {
-    "versao":  "v1.2.200",
-    "md5":  "E5716D156FBEEAC38ECA4E1B6715EC94",
-    "ex5_bytes":  1014520,
-    "ex5_mtime":  "10/11/2026 16:04:50",
+    "versao":  "v1.2.202",
+    "md5":  "D53153D47097615C461F4234D450FFE3",
+    "ex5_bytes":  1022276,
+    "ex5_mtime":  "10/11/2026 16:32:41",
     "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
     "governanca_modelos":  87,
     "declarado_por":  "CMD",
-    "declarado_em":  "10/11/2026 16:13",
+    "declarado_em":  "10/11/2026 16:40",
     "frota_ligada_no_declaro":  15,
-    "janela_inicio_servidor":  "10/11/2026 16:13 (hora do servidor, no instante da declaracao)",
-    "janela_inicio_local":  "10/11/2026 16:13",
+    "janela_inicio_servidor":  "10/11/2026 16:40 (hora do servidor, no instante da declaracao)",
+    "janela_inicio_local":  "10/11/2026 16:40",
     "frota_sem_tick":  0,
     "frota_simbolos":  [
                            "AUDUSD",
@@ -40,7 +40,7 @@
     "notas":  [
                   "Declarado por script: o MD5 e lido do disco, nao escrito a mao.",
                   "Frota no momento da declaracao: 15/15 com bit de negociacao (sensor: permission_state_*.csv do proprio EA).",
-                  "Versao em memoria: 15/15 simbolos com [START] v1.2.200 no journal.",
+                  "Versao em memoria: 15/15 simbolos com [START] v1.2.202 no journal.",
                   "Simbolos com sensor sem tick (contados como ligados): 0.",
                   "A sonda de script (permission_probe_*.csv) NAO serve como sensor da frota: num script o bit devolve a permissao do terminal (medido 10/11 12:53 vs 12:56, USDCZK).",
                   "Rollback: reescrever este ficheiro com o binario anterior (git checkout de EQUIPE/FORWARD/DECLARADO.json)."

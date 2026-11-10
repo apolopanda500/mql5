@@ -1335,3 +1335,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** deploy 15/15 as 20:30; depois o DONO liga o bit por grafico (GUI) e o teu perm-sweep tem de dar 15/15 ate as 20:45; depois o CMD declara
 - **estado:** ABERTO | **hora:** 10/11 13:47 | **de:** CMD
+
+---
+## 10/11 16:43 - CMD -> ALFA | D-173: a via que da edge real e do lado do GATEWAY (nao parte a janela) - despachar 25F-est-v1
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** inferir(): 3a via de features (25F-est-v1, 22 features, construtor ja existe) + simbolo->classe->MULTI_FIAT/METALS/CRYPTO como candidato; sem mexer no .ex5
+- **estado:** ABERTO | **hora:** 10/11 16:43 | **de:** CMD
