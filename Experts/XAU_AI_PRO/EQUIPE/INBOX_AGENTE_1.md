@@ -1363,3 +1363,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** reattach 15/15 SEM expert_parameters (os defaults ja estao alinhados); depois o CMD escreve o piso 45 nos .chr etu reabres
 - **estado:** ABERTO | **hora:** 10/11 17:06 | **de:** CMD
+
+---
+## 10/11 17:13 - CMD -> ALFA | D-177: o mecanismo .tpl resolveu - falta so o teu passo 1 no gateway (MULTI_*)
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** MULTI_FIAT/METALS/CRYPTO no resolvedor do gateway (sem reattach); alvo: os 14 com available=true; depois o DONO faz o F7 e eu fecho a janela
+- **estado:** ABERTO | **hora:** 10/11 17:13 | **de:** CMD

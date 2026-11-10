@@ -1618,3 +1618,64 @@ Continuam abertos do teu lado e nao os fecho eu. Registo que o backtest nao os r
 - `[SCORE]` = 0 e `[CENARIO]` = 0 em producao: o piso e a folga nao tem amostra real. Mercado fechado ate domingo 19:00-20:00 local.
 - **GATE_REAL 2 de 11. 10/10 nao existe.**
 
+
+---
+## 10/11/2026 17:15 - CMD -> DONO: a tua accao - 15 graficos, 1 minuto cada (F7)
+
+- **Estado:** a janela do forward de 30 dias esta a **1 accao tua** de abrir.
+  Tudo o resto ja esta verificado por mim as 17:15.
+
+**O que ja esta pronto e medido (falta so o teu F7):**
+
+| Verificacao | Estado |
+|---|---|
+| Binario | v1.2.203, 1 023 258 B, MD5 `10C4DF68A60CDDB0252F12C30AF4A86A`, **estavel ha 16 min** |
+| Em memoria | **15/15** a correr **v1.2.203** (igual ao disco) |
+| Perfil | **15/15** `.chr` com `MinAIConfidence=45.0` e **15 simbolos** (o universo nao colapsou) |
+| Filtros | 15/15 com `AllowTradeWithoutAI=false`, `EnableStoplessEntry=false`, `RequireStopLoss=true`, `MaxDrawdownPercent=6.0`, `RiskPercent=0.5`, 4 filtros `true` |
+| **Frota** | **0/15 com o bit de negociacao** - este e o unico falta |
+
+### A accao (so a GUI, so tu, por grafico)
+
+Em **cada** um dos 15 graficos:
+1. Clica com o botao direito no grafico -> **Propriedades** (ou duplo clique no EA -> separador **Comum**).
+2. Assinala **"Permitir negociacao algoritmica"**.
+3. OK.
+
+Repete nos 15. (O bit e **por grafico** e a unica via de o repor - nenhuma
+ferramenta o faz: e estado de sessao do terminal, `D-168`/`D-103`.)
+
+### Como se confirma (um comando, meu)
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass -File Tools\fechar-janela.ps1
+```
+
+Ele verifica as **quatro** condicoes (binario estavel, versao em memoria =
+disco, 15/15 com piso 45 e 15 simbolos, 15/15 com o bit) e **so declara se
+as quatro passarem**. Agora sai com codigo 3 a dizer exactamente o que
+falta - que e o que deve acontecer enquanto o F7 nao for feito.
+
+### Ordem recomendada (para a janela medir o universo inteiro)
+
+1. **ALFA** liga no gateway os modelos `MULTI_*` (o passo 1: o `MULTI_FIAT`
+   tem edge **+0,1853** e 5/5 folds, contra os modelos por sinal que temem
+   2-3/5 folds e sao recusados pelo gate de qualidade). **Nao precisa de
+   reattach** - e so gateway.
+2. Confirma que o gateway passa a dar `available=true` aos 14 (hoje so da ao
+   XAUUSD, com conf 54,9 - que ja passa o piso 45).
+3. **TU:** F7 nos 15.
+4. **CMD:** `fechar-janela.ps1` -> a janela abre com 15 simbolos e 4 impressoes.
+
+**Se quiseres abrir a janela ja (so com o XAUUSD a operar), salta o passo 1**
+- mas o forward mede entao **um** simbolo, e o G11 exige **>= 30 trades** em
+30 dias. Com um so simbolo e provavel que a amostra nao chegue. A tua
+decisao.
+
+### Duas coisas que o CMD NAO vai fazer
+
+- **Nao declara** um dossier que descreva uma frota fechada. Declarar com 0/15
+  seria o erro mais caro desta noite.
+- **Nao roda o `MCPServerToken`** (esta em claro nos `.chr` dos 14): rodar
+  parte o acesso MCP do terminal. Fica para depois da janela, registado.
+
