@@ -1,0 +1,24 @@
+{
+  "versao": "v1.2.191",
+  "md5": "71ED34C690C9593D209A69E95F0EFFB6",
+  "ex5_bytes": 977654,
+  "ex5_mtime": "10/11/2026 02:23:07",
+  "declarado_por": "CMD",
+  "declarado_em": "10/11/2026 09:20",
+  "janela_inicio_servidor": "2026-11-11 00:05",
+  "janela_inicio_local": "10/11/2026 21:05",
+  "janela_dias": 30,
+  "criterios": {
+    "pf_min": 1.2,
+    "dd_max_pct": 8.0,
+    "trades_min": 30,
+    "violacoes_risco_max": 0
+  },
+  "regra": "D-139/D-141: qualquer MD5 diferente deste a partir de 2026-11-11 00:05 (hora do servidor) poe os 30 dias a zero.",
+  "notas": [
+    "Deploy medido: 15/15 [START] XAU_AI_PRO v1.2.191 entre 02:35:37.784 e 02:35:37.915.",
+    "Os 15 .chr foram regravados as 02:35:23 - config e binario persistidos em disco.",
+    "A mudanca D-152 (piso de edge 0.05->0.02) e de METADADOS DE MODELO: nao toca no .ex5, logo NAO divide a janela.",
+    "Cobertura de IA medida as 10/11 09:15: 6 simbolos com available=true (XAUUSD, USDCAD, USDCHF, USDJPY, USDBRL, NZDUSD) + 9 available=false."
+  ]
+}
