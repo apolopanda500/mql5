@@ -9463,3 +9463,82 @@ simbolo **sem modelo** e tratado como **IA partida** em vez de "sem sinal".
   caches), sem tocar em `Windows\Installer`, `Package Cache`, `pagefile.sys`,
   registos, perfis, `.git`, `.venv`, `node_modules`, `.pkl` ou dados do projeto.
 
+
+
+---
+
+## D-181 | 10/11/2026 20:55 | o DD de 16,82% e de outra conta: o pico vive em RAM e reinicia no rollover
+
+- **Estado:** FECHADO (CMD, 10/11 20:55), sobre a leitura do DELTA das 20:47.
+
+### 1. O que medi (e o que a leitura do DELTA aponta)
+
+`Files\Data\XAU_AI_PRO_session.csv` (48 B), conteudo bruto:
+
+```
+113568614;2026.11.11;0;0;0;15160.94;1794361711
+```
+
+- `login` = **113568614** (a conta atual, MetaQuotes-Demo) - **correto**.
+- `dia` = 2026.11.11, trades/W/L = 0.
+- **`pico` = 15160.94** - que e o **saldo da conta XMGlobal (450258809)**.
+
+Daqui o DD de `(15160,94 - 12610,68) / 15160,94` = **16,82% exato**, com **zero
+posicoes e zero trades**. E o push ao telefone, 11 vezes em 30 min.
+
+### 2. Onde vive o pico (a correccao ao que eu ia fazer)
+
+**Vive em RAM, no EA, e o ficheiro de sessao e so a persistencia.** Apaguei o
+ficheiro (com backup) e o EA **nao o recriou** com o pico certo: quando voltar a
+gravar, vai voltar a escrever `15160.94`, porque e o valor que tem em memoria
+desde que o terminal estava na conta XMGlobal.
+
+**Conclusao:** o pico tem de ser **reiniciado quando o `login` muda**. E uma
+decisao de codigo do EA (zona ALFA): `Core\RiskEngine.mqh` / `Enterprise\SafetyManager.mqh`
+(a fonte unica de drawdown e o RiskHub).
+
+### 3. A auto-cura que ja esta marcada
+
+O pico reinicia no **rollover do dia do servidor** (o `dia=2026.11.11` no
+ficheiro). O dia do servidor vira as **02:00 = 21:00 local** - dentro de
+minutos. Ate la, o numero de 16,82% e lixo de outra conta; **a partir do
+rollover o pico passa a ser o saldo da conta viva** e o DD volta a 0%.
+
+**O que fica registado no dossier:** os numeros de risco do dia sao
+**contaminados ate ao rollover**, e os do G11 (PF/DD/trades) medem-se do
+**stream de trades** (`Tools\g11-metrics.py`), nao da linha `[STATUS]`.
+
+### 4. O mestre fora da lista (a correccao que o DELTA pede)
+
+MEDIDO: `Profiles\Templates\PROBE_chart01.tpl` tem **`symbol=XAUUSD`**. Como o
+mestre e o grafico onde o template e aplicado, **aplicar o `PROBE_chart01.tpl`
+PRIMEIRO no grafico do XAUUSD** faz do XAUUSD o mestre - e o mestre passa a ter
+a sua propria prova de "AI core available" (`prediction_XAUUSD.json`), em vez de
+depender de `prediction_EURUSD.json` (de **03/11**, fora dos 15, e que o
+`FileIsExist` aceitaria para sempre porque **nao olha a idade**).
+
+Se esse ficheiro desaparecer, ou o mestre cair num simbolo sem JSON, **a frota
+inteira emudece** - a mesma assinatura da P1.3608 (`sinais=0`), com outra causa.
+Fica pedido ao ALFA: mestre num simbolo da lista, e o XAUUSD e o unico que o
+gateway serve.
+
+### 5. BTC/ETH em SAFE_MODE por desenho (confirmado)
+
+`Enterprise\FailureMode.mqh`: `CheckAICoreAvailable()` faz
+`FileIsExist("Data\\prediction_" + _Symbol + ".json")`. Sem ficheiro (e o
+exportador esta morto desde **04/11**), `aiOk=false` -> `FailureClassify(true,
+"AI core unavailable")` -> `MODE_SAFE` -> `[TRADE BLOCK] FAILURE MODE` para
+sempre, a cada ~30-40 s por simbolo.
+
+**Nao e avaria: e o guarda a fazer o que deve.** Duas saidas: fechar os dois
+graficos, ou o gateway escrever `prediction_<SIMBOLO>.json` para todos os
+simbolos servidos (o mesmo patch do `D-180`).
+
+### 6. O que o CMD mexeu
+
+- Nada no EA, nas contas, nas ordens ou nos `.chr`.
+- `Files\Data\XAU_AI_PRO_session.csv`: **backup feito** e ficheiro removido
+  (nao volta com o pico certo - ver §2 - mas nao e pior do que estava).
+- `Tools\fechar-janela.ps1` ja exige a **conta declarada**; o portao continua
+  a recusar a declaracao ate a frota ter o perfil de 15 com o piso 45.
+

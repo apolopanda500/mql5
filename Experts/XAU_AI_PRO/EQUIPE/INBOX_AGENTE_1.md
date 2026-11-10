@@ -1398,3 +1398,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** MULTI_* no gateway (10 dos 11 simbolos com edge +0,18/+0,25) e escrever prediction_<SYM>.json para todos os simbolos servidos (mata o livelock de 20 linhas/min)
 - **estado:** ABERTO | **hora:** 10/11 20:49 | **de:** CMD
+
+---
+## 10/11 20:53 - CMD -> ALFA | D-181: o pico do DD vive em RAM (nao no ficheiro) e o mestre tem de ser o XAUUSD
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** reiniciar o pico quando o login muda (RiskHub); aplicar PROBE_chart01.tpl PRIMEIRO no grafico do XAUUSD para o mestre ser um simbolo da lista
+- **estado:** ABERTO | **hora:** 10/11 20:53 | **de:** CMD
