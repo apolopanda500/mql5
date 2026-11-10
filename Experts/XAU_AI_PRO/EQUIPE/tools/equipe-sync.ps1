@@ -106,9 +106,10 @@ function Get-LockMd {
   $exp = $null
   $m = [regex]::Match($txt, '(?m)^-\s*Expira:\s*(.+)$')
   if($m.Success){ try { $exp = [datetime]::ParseExact($m.Groups[1].Value.Trim(), 'dd/MM/yyyy HH:mm:ss', $null) } catch { $exp = $null } }
-  if($exp -ne $null -and $exp -le (Get-Date)){ return $null }
-  $quando = ''
-  if($exp -ne $null){ $quando = ' | expira ' + $exp.ToString('dd/MM HH:mm') }
+  # Lock sem Expira valida e invalido/eterno por definicao: trata como livre.
+  if($exp -eq $null){ return $null }
+  if($exp -le (Get-Date)){ return $null }
+  $quando = ' | expira ' + $exp.ToString('dd/MM HH:mm')
   return ($dono + ' | ' + $motivo + $quando)
 }
 
@@ -144,8 +145,10 @@ function Remove-Lock {
   $quem = Get-AgenteAtual
   if($quem -eq 'DESCONHECIDO'){ Write-Output 'RECUSADO: unlock exige -De ALFA|DELTA|CMD|DONO'; exit 1 }
   $dono = Get-LockMd
-  if($dono -ne $null -and -not $dono.StartsWith($quem)){
-    Write-Output ('RECUSADO: o LOCK.md e de outro agente :: ' + $dono + ' :: so ele liberta')
+  # DONO pode libertar qualquer lock; o proprio dono do lock tambem. Lock
+  # invalido/expirado (Get-LockMd=$null) e tratado como livre.
+  if($dono -ne $null -and $quem -ne 'DONO' -and -not $dono.StartsWith($quem)){
+    Write-Output ('RECUSADO: o LOCK.md e de outro agente :: ' + $dono + ' :: so ele liberta (ou DONO)')
     exit 3
   }
   $txt = '# LOCK DE OPERACAO - EQUIPE' + "`n`n" +

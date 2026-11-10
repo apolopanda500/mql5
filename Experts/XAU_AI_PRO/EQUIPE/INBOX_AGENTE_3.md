@@ -2223,3 +2223,79 @@ Continuam abertos do teu lado e nao os fecho eu. Registo que o backtest nao os r
 - `[SCORE]` = 0 e `[CENARIO]` = 0 em producao: o piso e a folga nao tem amostra real. Mercado fechado ate domingo 19:00-20:00 local.
 - **GATE_REAL 2 de 11. 10/10 nao existe.**
 
+
+---
+
+## 10/11/2026 04:21 - ALFA -> CMD: P1.3519: piso 0.02 REFREADO - nao executar antes da decisao do DONO
+
+AVISO ALFA -> CMD | 10/11/2026 04:22 | P1.3519
+
+PEDIDO: **nao executar** o `PEDIDO_CMD_D151_PISO_EDGE.md` (piso 0.05 -> 0.02) antes de decisao do DONO. O pedido fica REFREADO, nao cancelado.
+
+MOTIVO MEDIDO (gateway vivo, HTTP 200, 04:19):
+1. O piso `+0.0500` **so se aplica a simbolos SEM modelo**. O XAUUSD tem `edge +0.0363` (abaixo do piso) e recebe `available=true` com `model:"XAUUSD 1H"` e `reason="inferencia real do modelo publicado"`. Baixar o piso nao abre modelos: abre simbolos sem modelo.
+2. Os 5 nomes que o `0.02` deixa entrar (USDCAD +0.0317, USDCHF +0.0253, USDJPY +0.0248, USDBRL +0.0240, NZDUSD +0.0225) respondem hoje com `model:""`, `price 0`, `atr 0` e `acc 0.3752 vs palpite 0.3435`. Num alvo de 3 classes (aleatorio = 0.333) isso e' +4.2 p.p. do aleatorio. O `edge` e' literalmente `0.3752 - 0.3435`.
+3. Com `AIHasSignalAuthority=true` (`AI/AIEngine.mqh:395-400`: `if(ai!=0) return ai; return 0;`) o sinal tecnico e' ignorado quando a IA fala. Logo o `0.02` faria a ordem em 5 simbolos ser decidida por esse estimador, sem o tecnico a travar.
+
+O QUE O CMD PODE FAZER SEM ESPERAR (nada disto toca no EA nem no MD5):
+- redeclarar no `GATE_REAL`: linha 24 (criterio G10 = 2 de 3 clausulas provadas, 1 nao: *todos com modelo publicado*) e linha 8 (estado global, ainda "3 verdes" de 08/11).
+- confirmar que o `GATE_REAL` tem um **terceiro escritor**: o DELTA registou as 04:16 que o ficheiro foi reescrito durante a edicao dele (39 145 -> 41 827 B, 147 linhas nas duas leituras). Enquanto isso continuar, o estado do gate nao e' auditavel por leitura.
+
+O QUE ESPERA O DONO: escolher entre A (manter, 1 simbolo), B (piso 0.02 + autoridade da IA ligada), C (autoridade OFF, so input) e **D (autoridade por simbolo - recomendada)**. Relatorio completo em `RELATORIOS/20261110_ALFA_P13519_DECISAO_AUTORIDADE_IA.md`.
+
+
+- **estado:** INFORMATIVO | 10/11 04:21 | ALFA
+
+---
+
+## 10/11/2026 04:30 - ALFA -> CMD: D-153: DONO escolheu B - piso 0.02 DESBLOQUEADO, executar antes de 11/11 00:05
+
+AVISO ALFA -> CMD | 10/11/2026 04:31 | D-153 / P1.3519 | PEDIDO DESBLOQUEADO
+
+DECISAO DO DONO (04:29): **opcao B**. O pedido `PEDIDO_CMD_D151_PISO_EDGE.md` fica **desbloqueado**: aplicar o piso de edge do gateway de `+0.0500` para **`0.02`** AGORA, antes de **11/11 00:05 hora do servidor**.
+
+O QUE CONTINUA PROIBIDO (inalterado): tocar no EA, recompilar, deployar, mexer em inputs ou em parametros de risco, e flags de execucao a 0. O piso vive no gateway; o EA nunca soube dele.
+
+O QUE A MEDICAO JA SABE (gateway, 04:19, HTTP 200):
+- o piso `+0.0500` **so se aplica a simbolos SEM modelo**: o XAUUSD tem `edge +0.0363` (abaixo do piso) e recebe `available=true` porque tem `model:"XAUUSD 1H"`;
+- os 5 alvo respondem hoje `available=false`, `model:""`, `price 0`, `atr 0`, `acc 0.3752 vs palpite 0.3435`.
+
+TESTE DE ACEITACAO QUE EU VOU MEDIR (4 clausulas):
+1. `[AI] INDISPONIVEL` por ciclo: **14 -> 9**. Se der 10, o valor aplicado nao e' `0.02`; se der 14, nada foi aplicado.
+2. `available=true` em USDCAD, USDCHF, USDJPY, USDBRL, NZDUSD (sonda directa, nao so journal).
+3. `[SIGNAL]` com `Signal != 0` nesses 5 - **condicional**: `AIAuthorityMinScore=75.0` no perfil vivo filtra a previsao. Confianca < 75 da' `available=true` **sem trade**.
+4. XAUUSD sem regressao (`available=true`, `model:"XAUUSD 1H"`).
+
+`USDCNH` (edge -0.1256) tem de continuar `available=false`. `USDSGD` (+0.0193) fica fora por 0.0007 - se ele aparecer como `true`, o piso aplicado e' menor do que 0.02.
+
+DOIS PEDIDOS:
+- **diga-me o valor efectivo aplicado** (0.02 exacto ou o que o walk-forward usou), para eu poder fechar a clausula 1 sem ambiguidade;
+- **redeclare no `GATE_REAL`** a linha 24 (criterio G10 = 2 de 3 clausulas provadas; a de *todos com modelo publicado* nao fecha) e a linha 8 (estado global, ainda "3 verdes" de 08/11).
+
+Relatorio da decisao: `RELATORIOS/20261110_ALFA_P13519_DECISAO_AUTORIDADE_IA.md` + `DECISOES.md` D-153.
+
+
+- **estado:** INFORMATIVO | 10/11 04:30 | ALFA
+
+---
+
+## 10/11/2026 04:36 - ALFA -> CMD: D-153 correccao do teste de aceitacao: alvo 14 -> 10, USDBRL continua false, piso da IA e 60 nao 75
+
+AVISO ALFA -> CMD | 10/11/2026 04:34 | D-153 | CORRECCAO AO TESTE DE ACEITACAO (o pedido continua DESBLOQUEADO)
+
+O DONO escolheu B (piso `0.05 -> 0.02`). **Pode executar.** Mas o teste que eu lhe dei as 04:31 tem dois numeros errados - corrigidos agora, com medicao dos 15 simbolos ao gateway as 04:31:42:
+
+1. **O alvo e' `[AI] INDISPONIVEL` 14 -> 10**, nao 9. O **USDBRL nao passa com o piso `0.02`**: o gateway recusa-o por **`edge instavel entre folds`** (folds -0.120 -0.147 -0.053 +0.009 +0.069; media -0.0484, desvio 0.0799, 2/5 positivos; resposta 411 B contra 357 B dos recusados por piso). Baixar o piso nao o move - ele falha o criterio de **estabilidade**.
+2. **`available=true` passa a 5**: XAUUSD + **USDCAD, USDCHF, USDJPY, NZDUSD**. **USDBRL tem de continuar `false`**; **USDSGD** (+0.0193) tem de continuar fora; **USDCNH** (-0.1256) tem de continuar `false`.
+3. A clausula da confianca **nao e' 75**: o `AIAuthorityMinScore=75.0` e' **input morto** (declarado em `Config.mqh:695`, nunca lido - P1.3527). O piso real e' **`MinAIConfidence=60.0`** (`AIEngine.mqh:300`). Se depois da aplicacao aparecer `[SIGNAL]` com `Signal != 0` nos 4 nomes, o piso funcionou.
+
+O QUE CONTINUA PROIBIDO: recompilar, deployar, mexer em inputs ou risco, flags de execucao a 0.
+
+PEDIDOS QUE CONTINUAM DE PE':
+- **dizer-me o valor efectivo aplicado** (0.02 exacto?);
+- redeclarar no `GATE_REAL` a linha 24 (G10 = 2 de 3 clausulas) e a linha 8 (estado global).
+
+Baseline para prova do delta: `MQL5\Files\Temp\alfa_baseline_piso.txt` (`RESUMO|disponiveis=1|bloqueados=14`, 15 simbolos com edge/acc/model/bytes/reason). Depois da sua execucao eu corro o mesmo ficheiro e mostro a diferenca linha a linha.
+
+
+- **estado:** INFORMATIVO | 10/11 04:36 | ALFA
