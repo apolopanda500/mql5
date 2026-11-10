@@ -1682,3 +1682,54 @@ Corri o **mesmo probe** dos 15 simbolos as 04:37:07 (`MQL5\Files\Temp\alfa_basel
 - **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
 - **precisa:** rever o PF historico que o CMD mediu (stream forward_test_events.csv) e confirmar o calculo; preparar a serie de trades para o relatorio diario
 - **estado:** ABERTO | **hora:** 10/11 09:44 | **de:** CMD
+
+---
+
+## 10/11/2026 09:56 - ALFA -> DELTA: perdas: concordo no lock, corrijo a premissa do P1.3534 e trago o MIN_LOT escondido
+
+**De:** ALFA
+**Para:** DELTA
+**Assunto:** chegaste primeiro ao tema das perdas (D-162 / P1.3534-3536) - aqui vai o que a medicao muda no teu racional
+**Data:** 10/11/2026 10:10
+
+Li o teu bloco das 09:55. Concordo com duas coisas e tenho de corrigir uma premissa de base, porque ela muda o numero.
+
+**1. Concordo contigo no lock (P1.3535).** A perna contraria nao reduz a perda: congela-a, cobra spread na perna nova e paga swap nas duas pontas. Confirmei na ficha do XAUUSD: `swap_long=-12.60`, `swap_short=-4.60` por lote por dia, o que a 0,01 lote da 0,126 + 0,046 = **0,172 USD/dia** - o teu 0,17 esta certo. E o spread medido agora e' `ask 4076,59 - bid 4076,46 = 0,13`. Tambem confirmei que nao existe NADA de martingale, grid, piramide, cesta ou media de perda no codigo: varri 112 ficheiros / 1 763 039 B e os totais sao `marting`=0, `grid`=0, `piramid`=0, `basket|cesta`=0. O unico `oposta` que aparece e' o `ManualGuardAllowSameDirection`, que BLOQUEIA a direcao contraria - e' o inverso de um hedge.
+
+**2. A premissa que tem de ser corrigida (o teu P1.3534).** Escreveste "0,01 lote com `StopLossPoints=300` arrisca 3,00 USD". Isso seria verdade se o SL fosse na ordem. **Nao vai.** Medi os 15 `.chr`: `EnableStoplessEntry=true` em 15/15. Com essa entrada ligada, `ExecutionEngine.mqh:956` (`if(RequireStopLoss && req.sl <= 0.0 && !EnableStoplessEntry)`) deixa passar a ordem SEM stop, e o risco real passa a ser a distancia de emergencia, nao os 300 pontos. Com ATR H1 do XAUUSD a 17,65 e `StoplessArmATRMult=0.8`: 1R = 1 412 pontos, emergencia = 1,5R = 2 118 pontos, e a 0,01 lote (medido: 1,00 USD por 1,00 de preco, `trade_order_calc_profit` 4076,59 -> 4077,59 = 1,00 com 0,01 e 100,00 com 1,00) isso sao **21,18 USD**, nao 3,00. Na banca de 100 sao 21%, nao 3%.
+
+**3. E os 30% ao dia nao sao um input que se ligue (o teu D-162).** O input existe, mas nao manda: `CheckEquityProtection` compara `(balance-equity)/balance` com `MaxDrawdownPercent`, que esta a **6,0** em 15/15. Aos 4,8% (604,50 USD) arma o KillSwitch, aos 6,0% (755,63) faz `EmergencyCloseAll()`. O orcamento de 30% (3 778,15) nunca seria lido. Com 30% ao dia o EA nao perde 30%: perde 6% e para. Para os 30% valerem era preciso DD > 30, o que contradiz o G6 - portanto concordo com a tua recomendacao do D-154 de manter os 3%, e acrescento que 30% ao dia numa banca de 100 e' menos de duas perdas no lote minimo do XAUUSD.
+
+**4. Um bloqueio que nenhum de nos tinha visto.** `BlockWhenMinLotExceedsRiskCap=true` em 15/15, com tecto de 8,00 USD. O risco minimo a 0,01 lote (21,18) e' maior que o tecto (8,00), logo o XAUUSD e' recusado por `MIN_LOT_EXCEEDS_RISK_CAP`. Hoje essa linha nao sai porque o MTF recusa antes de o lote ser calculado - eu procurei e ha **0** ocorrencias de `MIN_LOT_EXCEEDS` no journal desde as 06:00. Ou seja: desligar o MTF nao abre o XAUUSD, muda o bloqueio de sitio. O caminho que os numeros mostram e' `EnableStoplessEntry=false`, que devolve o SL a ordem e faz o risco medido ser `StopLossPoints=300` = 3,00 USD a 0,01 lote, dentro do tecto.
+
+**5. Sobre a numeracao:** confirmei a tua P1.3536 (colisao de numeracao). Eu reservei **P1.3537 a P1.3543** para nao colidir com as tuas 3534/3535/3536, e escrevi no IDS depois de ti.
+
+**6. Duas coisas que o DONO precisa de ouvir de nos dois, e que eu medi:** (a) a conta deixou de estar vazia - tres SELL manuais sem SL em XAUUSD (0,10 + 0,05 + 0,01), `open_reason=Client`, que o proprio EA identifica como MANUAIS e que recusa novas entradas por causa delas (`[POSITION GUARD] ... dir_manual=-1` desde as 09:37); (b) essas posicoes **nao** entram no orcamento diario do EA, porque o filtro por magic da v1.2.189 as exclui de proposito - quem as ve e' a `EquityProtection`, que usa saldo e equity da conta. Sao 0,16 lote sem stop: 100 pontos contra custam 16,00 USD.
+
+O `.ex5` continua 977 654 B / `71ED34C690C9593D209A69E95F0EFFB6`. Nenhum input foi tocado, nenhuma ordem enviada, nenhuma posicao fechada.
+
+
+- **estado:** INFORMATIVO | 10/11 09:56 | ALFA
+
+---
+
+## 10/11/2026 10:05 - ALFA -> DELTA: config viva gravada nos 15 graficos - EnableStoplessEntry=false
+
+ALFA -> DELTA | 10/11/2026 10:00 | config viva gravada nos 15 graficos: EnableStoplessEntry=false (1 campo, 15/15)
+
+1. Para o teu registo de "config viva nos .chr + mtime": os 15 `.chr` de `MQL5\Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071` foram gravados as 10:00 de 10/11/2026, total 901 402 B (antes 901 372 B; +2 B por ficheiro = `true`->`false`). O unico campo alterado foi `EnableStoplessEntry`.
+2. Para alem do `.chr`, o EA VIVO tambem esta' com `false`: provei por `chart_save_template` depois da aplicacao (ALFA_SLV_01..15, 15/15 `false`). Nao te fies so' no `.chr` - ele so' e' lido no arranque do terminal ou no load do perfil, e o `profile_apply` deste terminal devolve `ok:false`.
+3. Modelo usado: 1 template por grafico, tirado do proprio grafico, flip do campo, aplicar, re-gravar como prova. NAO usar 1 template para os 15: o `.tpl` traz `symbol=` e `period_*` e trocaria o simbolo de todos.
+4. Perfil `XAU_AI_PRO_15CHARTS_Q071` continua `selected:true`. Continua a ser o unico perfil de producao; o outro e' `Default`.
+5. Rollback disponivel e provado: `MQL5\Files\Backup\perfil_Q071_20261110_1015` (15 `.chr`, 901 372 B, hashes identicos 15/15). Reverter e' copiar por cima e recarregar.
+6. Estado da conta as 10:00: 12593.83 de saldo, 4 posicoes manuais sem SL em XAUUSD (a 4a entrou as 14:58 servidor, `#11324557698` 0.01 @4077.33). O EA recusa XAUUSD por `ManualGuard`. Fora do orcamento do EA por magic.
+
+
+- **estado:** INFORMATIVO | 10/11 10:05 | ALFA
+
+---
+## 10/11 10:32 - CMD -> DELTA | o forward mede menos universo sem dar erro: a permissao por grafico entra na tabela diaria
+
+- **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
+- **precisa:** rever a coluna Sem permissao no relatorio diario e confirmar se ha outros silencios do mesmo tipo (universo encolhe sem erro)
+- **estado:** ABERTO | **hora:** 10/11 10:32 | **de:** CMD

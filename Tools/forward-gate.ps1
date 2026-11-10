@@ -182,16 +182,49 @@ if ($status) {
   if ($status -match 'Equity=([0-9.]+)') { $conta['equity'] = [double]$Matches[1] }
 }
 
-# IA: simbolos com previsao real no log
+# Contagem EXATA por dia do SERVIDOR.
+#
+# O ficheiro de log e nomeado pela data LOCAL (20261110.log) e o dia do
+# servidor = local + 3 h. Logo o dia do servidor 2026-11-10 comeca as
+# 21:00 do dia local 09 e acaba as 21:00 do dia local 10: atravessa DOIS
+# ficheiros. Somar os ficheiros "de hoje" dava um numero de dois dias.
+# Aqui cada linha e colocada no dia do servidor a que pertence.
+function Get-DiaServidor([string]$NomeFicheiro, [string]$HoraLinha) {
+  if ($NomeFicheiro -notmatch '(\d{8})') { return '' }
+  $d = [datetime]::ParseExact($Matches[1], 'yyyyMMdd', $null)
+  if ($HoraLinha -match '^(\d\d):(\d\d):(\d\d)') {
+    $d = $d.AddHours([int]$Matches[1]).AddMinutes([int]$Matches[2]).AddSeconds([int]$Matches[3])
+  }
+  return $d.AddHours($OffsetServidorHoras).ToString('yyyy-MM-dd')
+}
+
+$diaServidor = $serverDate
+$n1003 = 0; $nPipeline = 0; $nSucesso = 0
+$nSemPerm = 0; $nBatao = 0
+$semPerm = @{}
 $iaSimbolos = @{}
-$n1003 = 0
-$nPipeline = 0
-$nSucesso = 0
-foreach ($l in $linhas) {
-  if ($l -match '\[AI\] PYTHON \| (\w+) \|') { $iaSimbolos[$Matches[1]] = $true }
-  if ($l -match 'HTTP 1003') { $n1003++ }
-  if ($l -match '\[TRADE PIPELINE\]') { $nPipeline++ }
-  if ($l -match '\[SCANNER\] TRADE SUCCESS') { $nSucesso++ }
+foreach ($lf in $logFiles) {
+  $nome = $lf.Name
+  foreach ($l in (Ler-LogLocal $lf.FullName) -split "`r?`n") {
+    $dia = Get-DiaServidor $nome $l
+    if ($dia -ne $diaServidor) { continue }
+    if ($l -match '\[AI\] PYTHON \| (\w+) \|') { $iaSimbolos[$Matches[1]] = $true }
+    if ($l -match 'HTTP 1003') { $n1003++ }
+    if ($l -match '\[TRADE PIPELINE\]') { $nPipeline++ }
+    if ($l -match '\[SCANNER\] TRADE SUCCESS') { $nSucesso++ }
+    # PERMISSAO POR GRAFICO (o "algoritmo desativa-se sozinho"):
+    # num reinicio de grafico o MT5 pode arrancar o EA SEM o bit
+    # MQL_TRADE_ALLOWED. O EA recusa negociar e passa o bastao do pipeline a
+    # outra instancia - mas o simbolo desse grafico fica mudo ate alguem
+    # religar o botao. E silencioso: nao e erro, e uma opcao do operador.
+    if ($l -match 'TRADE BLOCK\] PROGRAMA sem permissao') {
+      $nSemPerm++
+      if ($l -match 'XAU_AI_PRO \(([A-Z]+),') { $k = $Matches[1] } else { $k = '?' }
+      if (-not $semPerm.ContainsKey($k)) { $semPerm[$k] = 0 }
+      $semPerm[$k] = $semPerm[$k] + 1
+    }
+    if ($l -match 'PIPELINE\] SEM PERMISSAO') { $nBatao++ }
+  }
 }
 
 # gateway: available=true por simbolo
@@ -243,6 +276,9 @@ $registo = [ordered]@{
   ia_disponiveis_n  = $gwDisponiveis.Count
   trade_pipeline    = $nPipeline
   trade_success     = $nSucesso
+  sem_permissao     = $nSemPerm
+  sem_permissao_simbolos = $semPerm
+  pipeline_batao    = $nBatao
   webrequest_1003   = $n1003
 }
 
@@ -260,8 +296,8 @@ $tabela += '# FORWARD 30 DIAS - G11 (medicao diaria automatica)'
 $tabela += ''
 $tabela += ("Gerado por ``Tools\forward-gate.ps1``. Dia do servidor = local + $OffsetServidorHoras h.")
 $tabela += ''
-$tabela += '| Dia servidor | MD5 ok | Gov. ok | Ver. memoria | Sinais | AllowTrade(bloq) | ExecFail | Trades | P/L dia | DD % | IA disp. | 1003 |'
-$tabela += '|---|---|---|---|---|---|---|---|---|---|---|---|'
+$tabela += '| Dia servidor | MD5 ok | Gov. ok | Ver. memoria | Sinais | AllowTrade(bloq) | ExecFail | Trades | P/L dia | DD % | IA disp. | 1003 | Sem permissao |'
+$tabela += '|---|---|---|---|---|---|---|---|---|---|---|---|---|'
 foreach ($r in $mdLines) {
   $f = $r.funil; $c = $r.conta
   $ok = if ($r.md5_divergente) { 'NAO' } else { 'sim' }
@@ -272,7 +308,7 @@ foreach ($r in $mdLines) {
   if ($c) { $pl = $c.pl_dia; $dd = $c.amplitude_pct }
   $tabela += ('| ' + $r.server_date + ' | ' + $ok + ' | ' + $gok + ' | ' + $r.versao_em_memoria + ' | ' + $sin +
               ' | ' + $alt + ' | ' + $exf + ' | ' + $trd + ' | ' + $pl + ' | ' + $dd +
-              ' | ' + $r.ia_disponiveis_n + ' | ' + $r.webrequest_1003 + ' |')
+              ' | ' + $r.ia_disponiveis_n + ' | ' + $r.webrequest_1003 + ' | ' + $r.sem_permissao + ' |')
 }
 $tabela += ''
 $tabela += ('**Declarado:** ' + $(if ($declarado) { $declarado.versao + ' MD5 ' + $declarado.md5 + ' (' + $declarado.ex5_bytes + ' B)' } else { 'NADA - ainda nao declarado' }))

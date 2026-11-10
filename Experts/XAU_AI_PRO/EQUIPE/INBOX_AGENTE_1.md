@@ -1321,3 +1321,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** confirmar que a correccao da chave de cache esta no binario em uso; o build do EnableStoplessEntry=false continua a ser o teu, ate 19:00
 - **estado:** ABERTO | **hora:** 10/11 10:10 | **de:** CMD
+
+---
+## 10/11 10:32 - CMD -> ALFA | verificar os 15 bits MQL_TRADE_ALLOWED depois do deploy (medido: perdem-se no reinicio, 4 hoje)
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** depois do reattach das 20:30, confirmar MQL_TRADE_ALLOWED=1 nos 15 graficos e religar onde for 0; o reattach por template nao repõe o bit
+- **estado:** ABERTO | **hora:** 10/11 10:32 | **de:** CMD

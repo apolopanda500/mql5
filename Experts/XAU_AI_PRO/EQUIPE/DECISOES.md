@@ -8605,3 +8605,207 @@ move."*
 - **P0 continua aberto (D-160/D-161)**: `EnableStoplessEntry=true` no perfil
   vivo. Build do ALFA ate as 19:00, deploy 15/15 antes das 20:30.
 
+## D-165 | DELTA | 2026-11-10 10:18 | os manuais foram fechados a mao (+16,85) e a guarda libertou; o bloqueio mudou de dono para o MTF e a prova e' 42 de 42 sinais recusados na VALIDACAO
+
+**Correcao do D-163, que ficou falso em tres minutos.** O D-163 escreveu que o fluxo viavel estava bloqueado por 4 SELL manuais sem stop no unico simbolo com modelo. A partir das 15:16:19 servidor isso deixou de ser verdade medido, e o que bloqueia agora e' outro portao. O resto do D-163 (piso 0,02 vivo, 4/5 folds a recusar, desvio de relogio, cache/processo) continua de pe'.
+
+### 1. Os quatro manuais foram fechados a mao, com lucro, e a guarda largou o simbolo
+
+Medido na historia de ordens do terminal, nao no journal: quatro ordens `buy` com `open_reason=Client`, entre 15:16:19 e 15:16:21 servidor (10:16:19 a 10:16:21 local), fechando as quatro posicoes que estavam abertas desde 14:37:20, 14:37:55, 14:38:34 e 14:58:15.
+
+| posicao | lote | entrada | fecho | lucro |
+|---|---|---|---|---|
+| 11324108563 | 0,10 | 4076,74 | 4075,68 | +10,60 |
+| 11324143493 | 0,01 | 4077,94 | 4075,60 | +2,34 |
+| 11324122370 | 0,05 | 4075,88 | 4075,48 | +2,00 |
+| 11324557698 | 0,01 | 4077,33 | 4075,42 | +1,91 |
+
+Ordens de fecho 11325061381, 11325061720, 11325062017, 11325062480. Total realizado **+16,85 USD**. Saldo **12593,83 -> 12610,68**, equity 12610,68, margem 0,00, **posicoes abertas = 0**, **ordens = 0**. O fecho foi manual (o DONO), nao foi o EA: nenhuma linha `[TRADE]` do EA acompanha estes fechos, e as quatro linhas que sairam foram `[LEARN] OPERACAO MANUAL APRENDIDA`.
+
+Consequencia imediata e medida: o `[POSITION GUARD] XAUUSD | posicao MANUAL aberta no mesmo simbolo | nova entrada recusada | dir_manual=-1`, que saia a cada ciclo desde 09:40 e ainda as 10:16:02.885, **nao voltou a sair**. A ultima ocorrencia e' 10:16:02.885, anterior ao fecho.
+
+### 2. O primeiro ciclo com o caminho livre foi mais longe do que toda a manha - e parou no MTF
+
+As 10:16:21.7, depois do fecho, o XAUUSD atravessou tudo o que antes nao atravessava:
+
+```
+[SCANNER] SIGNAL OK | XAUUSD | Signal=1
+[STATE] XAUUSD | -> SIGNAL_GENERATED
+[VALIDATION] XAUUSD | Spread=13.00 | Max=2445.25
+[VALIDATION] XAUUSD | ADX=37.48 | Min=18.00
+[VALIDATION] REGIME OK | XAUUSD | TREND_UP
+[VALIDATION] AI OK | XAUUSD
+[VALIDATION] BLOCK | MTF | XAUUSD
+DECISION BLOCKED | VALIDATION | Symbol=XAUUSD | Signal=1 | Reason=VALIDATION: MTF
+```
+
+Nao ha' linha `[SCANNER] BLOCK | CanOpen` neste ciclo: a guarda manual nao disparou. O sinal e' BUY, o spread passou com margem enorme (13,00 contra um maximo de 2445,25), o ADX 37,48 esta muito acima do piso 18,00, o regime e' TREND_UP e a IA deu OK. **O unico veto foi o MTF.**
+
+### 3. O MTF esta ligado e e' um filtro de desenho, nao um defeito
+
+`EnableMTFConfirmation` esta declarado **`false`** em `Core/Config.mqh:521`, mas nos 15 graficos vivos esta **`true`** - o valor vem do `.chr`, nao do codigo. Parametros medidos em 15/15: `ConfirmTF1=15` (M15), `MTF_FastEMA=20`, `MTF_SlowEMA=50`, `MTFUseClosedCandle=true`. O portao e' `Core/ValidationEngine.mqh:505-525`, que chama `MTFApproved(signal, symbol)` e devolve `false` sem mais explicacao no journal do que `[VALIDATION] BLOCK | MTF | <simbolo>`.
+
+Leitura do filtro, nao medicao de preco: para um BUY ele exige que a EMA20 do M15 esteja acima da EMA50 do M15 na vela fechada. O XAUUSD esta TREND_UP no H1 e o preco caiu de ~4077 para ~4075,4 nos minutos do fecho - ou seja, o M15 esta a corrigir contra o H1, e o MTF recusa por isso. E' o comportamento que o filtro promete. **Nao e' bug e nao deve ser desligado para "fazer trades"**; se o DONO quiser medir sem ele, e' decisao dele e tem de ficar escrita, porque muda a natureza do que se mede.
+
+### 4. A prova agregada: 42 sinais, 42 bloqueios, todos na validacao
+
+```
+[SCANNER] RESUMO | visitas=4230 | sinais=42 | trades=0 | bloqueios=4230 |
+CanOpen=240 Stale=564 NoSignal=3384 AllowTrade=42 | ADX(sem/ok)=1/15314
+```
+
+O balde `AllowTrade=42` e' o da validacao e **e' exactamente igual ao numero de sinais (42)**. Traduzido: nenhum sinal dos 42 morreu por falta de sinal (NoSignal 3384 sao simbolos sem sinal nenhum), nenhum morreu na guarda manual neste ultimo ciclo (CanOpen 240 e' o acumulado de antes do fecho), e **42 de 42 morreram dentro do `ValidationEngine`** - onde o MTF e' o primeiro veto que esta a disparar.
+
+### 5. O que isto NAO prova, e importa
+
+O veto MTF dispara **antes** da execucao, portanto esconde o estado da permissao por grafico. O ultimo `[TRADE BLOCK] PROGRAMA sem permissao: MQL_TRADE_ALLOWED=0` explicito e' 10:10:05.637 (USDCOP); essa causa e' limitada a 1 linha por hora por conta, logo o silencio desde entao nao prova nem que continua bloqueado nem que ficou livre. **Enquanto o MTF recusar, nao e' possivel remedir a permissao pelo journal** - fica registado como P1.3569 para o proximo ciclo nao repetir a duvida.
+
+### 6. Aprendizagem: os fechos manuais entraram na memoria do modelo
+
+Cada um dos quatro fechos gerou `[LEARN] OPERACAO MANUAL APRENDIDA | XAUUSD | deal=... | profit=...` e o `WR` do XAUUSD subiu de **84,3% para 85,2%** (84,3 -> 84,6 -> 84,9 -> 85,2 a cada deal), com `MEM=25.00`. Ou seja: as decisoes manuais de fecho do DONO alimentam o modelo do XAUUSD. Nao e' erro, mas o dossier tem de dizer que o WR do XAUUSD ja' nao e' so' de operacoes do EA.
+
+### 7. Nota de contabilidade que o dossier nao pode trocar
+
+O `[RESUMO]` das 10:12:57 diz `dia fechado: -61.80 de 40.00 USD (-154%)`. Os 40,00 sao `DailyProfitTargetMaxUsd` (**meta de lucro**), nao um tecto de perda; a leitura correcta ja' esta no P1.3565 do ALFA. Os tectos de perda reais sao `MaxDailyLossPercent=3.0` = **378,31 USD** e `MaxDrawdownPercent=6.0` = **756,64 USD**. Com os +16,85 realizados agora, o dia fica em **-44,95 USD**.
+
+### 8. O que nao foi feito
+
+Nenhuma ordem enviada, nenhum input alterado, nenhuma compilacao, nenhum deploy, nenhum restart, nenhum grafico aberto ou fechado. O `.ex5` continua v1.2.191, 977654 B, MD5 `71ED34C690C9593D209A69E95F0EFFB6`, mtime `2026-11-10T02:23:07`. O `EnableStoplessEntry=false` que o ALFA aplicou (P1.3560) esta' confirmado em 15/15 por leitura directa dos graficos, e o binario nao foi tocado.
+
+### 9. O que isto muda no GATE_REAL
+
+Nada passa a verde. O que muda e' o diagnostico: o G11 (>=30 trades em 30 dias) continua **0/30**, mas a causa medida ja' nao e' "posicao manual a bloquear" e sim "o MTF recusa 42 de 42 sinais". A proxima medicao tem de ser feita num momento em que o M15 esteja alinhado com o H1, senao mede-se o filtro outra vez e nao o EA.
+
+## D-166 | DELTA | 2026-11-10 10:20 | correcao da leitura publicada no D-165: `AllowTrade=42` nao sao 42 sinais autorizados, sao 42 sinais BLOQUEADOS no portao AllowTrade - e a IA ficou UNAVAILABLE com o portao do gateway de pe
+
+**Medido no journal do EA, janela 10:16:00-10:19:00 local (servidor = local +5h):**
+
+- As 10:16:21.867 o EA emite, pela primeira vez nesta ronda, a terceira linha do mesmo veto: `[SCANNER] BLOCK | AllowTrade | XAUUSD | Signal=1 | Motivo=VALIDATION: MTF`, logo depois de `[VALIDATION] BLOCK | MTF` e `DECISION BLOCKED | VALIDATION | Reason=VALIDATION: MTF`.
+- O RESUMO das 10:17:02.054 fecha a aritmetica: `CanOpen=240 Stale=564 NoSignal=3384 AllowTrade=42` com `bloqueios=4230`. 240+564+3384+42 = 4230. **`AllowTrade` e' um balde de BLOQUEIO, nao de permissao.**
+- A conclusao do D-165 mantem-se e fica mais forte: 42 de 42 sinais morreram na VALIDACAO. Mas a forma como a publiquei - "`AllowTrade=42` prova que 42 sinais chegaram ao portao" - estava errada na letra. O numero certo e' que 42 sinais foram RECUSADOS nesse portao. Corrijo aqui; nao reescrevo o D-165.
+- As 10:17:57.939 o `[RESUMO]` diz `IA(XAUUSD)=UNAVAILABLE 0.0%`. As 10:12:57.563 o mesmo campo dizia `IA(XAUUSD)=BUY 62.0% (ha 0s)`. Em cinco minutos a IA deixou de ter decisao fresca. O portao responde (GET a `127.0.0.1:9011/api/ai/predict` = `HTTP 401` sem token, ou seja processo vivo) e nao existe uma unica linha de erro de IA no journal do EA entre as duas leituras.
+- Consequencia viva: com `AllowTradeWithoutAI=true` e `AIHasSignalAuthority=true`, um sinal que passe o MTF pode ser executado sem IA nenhuma. A autoridade da IA esta' ausente hoje e nao trava nada.
+- As 10:17:57.939 o `dia fechado` continua `-61.80 de 40.00 USD (-154%)`, igual ao valor de antes dos +16,85 realizados. O contador do dia **nao** absorve os deals manuais: e' contabilidade de EA (magic), coerente com o P1.3571.
+- Estado da conta as 10:18:58: 0 posicoes EA, 0 manuais, 0 ordens, saldo e equity 12610,68, margem 0, `trades=0`, `[POSITION GUARD]` silencioso desde as 10:16:02.885.
+
+**Nada disto autoriza mexer em nada.** Nao desliguei o MTF, nao toquei em input, nao reiniciei nada. Registo e reporto; a decisao de medir sem MTF ou com IA obrigatoria e' do DONO, por escrito.
+
+## D-167 | DELTA | 2026-11-10 10:33 | o DONO respondeu as tres perguntas e o resultado foi executado na hora: IA obrigatoria em 15/15, MTF fica LIGADO, o forward arranca HOJE as 15:27 servidor e os fechos manuais eram dele
+
+**Respostas do DONO (10:25 local), texto literal resumido:** (1) MTF ligado ou desligado -> "nao sei"; (2) IA obrigatoria -> "sim sempre IA as melhores tops trading 2026. ok. e iniciar hoje e agora forward"; (3) fechos manuais -> "sim ok. 10/10".
+
+**O que foi executado, e como foi provado:**
+
+1. **`AllowTradeWithoutAI=false` em 15/15**, aplicado agora, sem compilar nada. Rota identica a que o ALFA provou (P1.3561): `chart_save_template` por grafico -> flip cirurgico de bytes no `.tpl` (UTF-16LE) -> `chart_apply_template` -> `chart_save_template` de novo como prova. Prova: os 15 `AISWP_*.tpl` lidos de volta dizem `AllowTradeWithoutAI=false`, `path=Experts\XAU_AI_PRO\XAU_AI_PRO.ex5` e o `symbol=` original. Os outros 14 inputs criticos ficaram com uma unica variante em 15/15 (lista completa no P1.3576). **Binario intacto**: MD5 `71ED34C690C9593D209A69E95F0EFFB6`, 977654 B, mtime 02:23:07. Backup dos originais em `MQL5\Files\Backup\AI_SWITCH_20261110\`.
+2. **MTF fica LIGADO.** O DONO nao decidiu; desligar um filtro de desenho para "fazer trades" e' decisao de capital e mudaria o que se mede. Fica como esta' e a consequencia esta' escrita: com o MTF ligado, o forward mede **quantos sinais o filtro M15 deixa passar**, e hoje a resposta medida foi 42 recusados de 42.
+3. **Forward re-ancorado para HOJE.** A ancora passa a ser o instante em que a ultima alteracao de configuracao entrou: **10/11/2026 15:27 servidor** (10:27 local). Janela de 30 dias: **10/11 15:27 -> 10/12/2026 15:27 servidor**. O congelamento D-147 (11/11 00:05 servidor) cai 8h38m depois de a janela abrir, portanto **dentro** dela: a partir dali o binario nao muda e o MD5 de referencia e' o que esta' acima. O CMD tem de reescrever as linhas 136 e 144-145 do `GATE_REAL.md` (ainda dizem "abre 11/11 00:05", "0 de 30"). Eu nao reescrevo GATE_REAL: nao e' meu papel declarar.
+4. **Fechos manuais confirmados como do DONO** (+16,85 USD, 4 deals). Registado: o resultado do dia tem de ser lido como EA + manual, e o contador `dia fechado` do EA nao os soma (P1.3574).
+
+**Tres portas que impedem o forward de produzir qualquer coisa, medidas hoje:**
+
+| Porta | Estado medido | Quem fecha |
+|---|---|---|
+| `MQL_TRADE_ALLOWED=0` (algo trading por programa) | `[TRADE BLOCK]` as 10:27:05.692, persistente desde 10:10:05.637 | **DONO, na GUI** (botao Algo Trading / F7 > Comum) |
+| IA | `[AI] GATEWAY | HTTP 1003`, corpo 0B; ultima opiniao 62,0% < `AIAuthorityMinScore=75,0` | CMD (gateway/Q-021) |
+| MTF (M15 EMA20/50) | 42 recusados de 42 sinais hoje | DONO, se quiser medir sem ele |
+
+**Nao prometo operacao nenhuma com este desenho.** Com IA obrigatoria, gateway a devolver HTTP 1003, limiar de 75% e MTF ligado, o numero esperado de trades e' **zero** ate' as duas primeiras portas serem abertas. O forward comeca hoje como o DONO mandou - e o que ele vai medir nestas primeiras horas e' "sistema parado por pre-condicoes", nao desempenho. Dito por escrito para nao ser lido depois como surpresa.
+
+
+---
+
+## D-165 | 10/11/2026 10:45 | o "algoritmo desativa-se sozinho": e o bit MQL_TRADE_ALLOWED por GRAFICO que se perde no reinicio
+
+- **Estado:** ABERTO (CMD, 10/11 10:45). Pergunta do DONO: *"permitir algoritmo
+  esta desativando sozinho verificar"*.
+- **Resposta curta:** **sim, desativa-se sozinho, e ja foi medido.** Nao e o
+  EA a desligar-se: e o **terminal** que, ao reiniciar um grafico, arranca o EA
+  **sem o bit `MQL_TRADE_ALLOWED` desse grafico**.
+
+### 1. O que o journal mostra (medido, hoje)
+
+```
+10:02:57.242  XAUUSD  [TRADE BLOCK] PROGRAMA sem permissao: MQL_TRADE_ALLOWED=0 (bit POR GRAFICO; terminal e conta OK, a suite pode negociar). Religar em F7 > Comum > 'Permitir negociar'
+10:03:27.570  XAUUSD  [PIPELINE] SEM PERMISSAO | esta instancia nao pode ser dona do pipeline | MQL_TRADE_ALLOWED=0 | bastao libertado para uma instancia com permissao
+10:10:05.637  USDCOP  [TRADE BLOCK] PROGRAMA sem permissao: MQL_TRADE_ALLOWED=0
+10:27:05.692  USDCAD  [TRADE BLOCK] PROGRAMA sem permissao: MQL_TRADE_ALLOWED=0
+10:29:26.988  USDRUB  [TRADE BLOCK] PROGRAMA sem permissao: MQL_TRADE_ALLOWED=0
+```
+
+### 2. A correlacao com os reinicios (esta e a prova)
+
+| Hora | Evento |
+|---|---|
+| 10:02:57 | **XAUUSD reinicia** (`[START]`) -> **no mesmo segundo** perde a permissao |
+| 10:03:27 | XAUUSD **passa o bastao** do pipeline a outra instancia (auto-cura) |
+| 10:10:05 | USDCOP perde a permissao |
+| **10:27:05 - 10:27:10** | **reinicio em massa: 13 `[START]`** -> USDCAD perde a permissao **no mesmo segundo** |
+| 10:29:26 | USDRUB perde a permissao |
+
+**O bit perde-se no reinicio do grafico, nao ao fim de um tempo.** E o
+`[PIPELINE] SEM PERMISSAO | bastao libertado para uma instancia com
+permissao` mostra o EA a **auto-curar-se**: a instancia sem permissao larga o
+bastao e passa-o a outra que o tem. **O desenho esta certo.**
+
+### 3. O que isso custa ao forward - e porque e silencioso
+
+O grafico sem permissao **nao negocia** - e nao ha erro: o EA escreve o
+motivo e recusa. Mas **esse simbolo fica mudo** ate alguem religar o botao
+(F7 > Comum > "Permitir negociar", ou reatribuir o EA com a opcao ligada).
+
+- 4 simbolos perderam a permissao hoje.
+- O G11 exige **>= 30 trades**: cada simbolo mudo e uma fatia do universo que
+  deixa de contribute.
+- O `[PERM]` so e publicado **1x/hora por grafico**, por isso o estado
+  actual de cada um dos 15 **nao e legivel no journal sem esperar** - e o
+  estado que importa e esse.
+
+**E por isso que isto tem de ser verificado e nao assumido**: um binario
+estavel, uma governanca estavel e 15 graficos com bit a zero davam um
+forward "limpo" a medir **metade do universo**.
+
+### 4. O que o CMD ja fez (verificar, todos os dias, sem ninguem pedir)
+
+`Tools/forward-gate.ps1` passou a contar, **por dia do servidor**:
+
+| Campo | O que e |
+|---|---|
+| `sem_permissao` | quantos blocos "PROGRAMA sem permissao" houve no dia |
+| `sem_permissao_simbolos` | quais os simbolos |
+| `pipeline_batao` | quantas vezes o bastao passou para outra instancia |
+
+E a tabela `EQUIPE/FORWARD/FORWARD.md` ganhou a coluna **"Sem permissao"**.
+**Medicao de hoje (dia do servidor 2026-11-10): `sem_permissao=4`,
+`pipeline_batao=1`.**
+
+**Nota de rigor:** a contagem e **exata por dia do servidor** (o ficheiro de log
+e nomeado pela data LOCAL e o dia do servidor = local + 3 h, portanto o dia
+atravessa dois ficheiros - cada linha e colocada no dia a que pertence).
+Antes desta correcao a coluna somava dois dias.
+
+### 5. O que falta (e de quem tem MCP)
+
+1. **ALFA/DELTA (com MCP):** depois do deploy 15/15 das 20:30, **verificar o
+   bit dos 15 graficos** e religar onde for 0. Como verificar: `[PERM]
+   MQL_TRADE_ALLOWED=1` no journal de cada grafico, ou a propriedade do
+   grafico via MCP. Como religar: F7 > Comum > "Permitir negociar", ou
+   reatribuir o EA com a opcao ligada.
+2. **Procedimento (ALFA):** o reattach por template **nao repõe o bit** -
+   por isso, depois de qualquer reattach, a verificacao dos 15 bits tem de
+   ser um passo **obrigatorio** do procedimento, nao uma opcao.
+3. **CMD:** a tabela diaria passa a mostrar a regresso no dia seguinte; se
+   `sem_permissao` subir, o forward esta a medir menos universo - e isso
+   fica registado na linha do dia.
+
+### 6. Permissao ao DONO (a pergunta dele)
+
+**"Permitir que o algoritmo se desative"** - a resposta do CMD: **ja e
+permitido, e e o que DEVE acontecer** quando o bit falta, quando o preco esta
+velho (`COTACAO VELHA`), quando o health falha, quando o circuit breaker
+dispara, quando o tecto diario e o drawdown batem. Um EA que desliga o
+proprio motor quando as condicoes nao sao seguras e **proteccao**, nao defeito.
+
+O que **nao** pode acontecer e o desligamento **silencioso e sem registo** -
+e o que o trabalho de hoje garante: cada auto-desativacao deixa linha com o
+motivo, e a contagem diaria torna visivel quando o universo encolhe.
+
