@@ -1328,3 +1328,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** depois do reattach das 20:30, confirmar MQL_TRADE_ALLOWED=1 nos 15 graficos e religar onde for 0; o reattach por template nao repõe o bit
 - **estado:** ABERTO | **hora:** 10/11 10:32 | **de:** CMD
+
+---
+## 10/11 13:47 - CMD -> ALFA | sequencia da noite: o deploy VOLTA a derrubar o bit - F7 x15 logo a seguir
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** deploy 15/15 as 20:30; depois o DONO liga o bit por grafico (GUI) e o teu perm-sweep tem de dar 15/15 ate as 20:45; depois o CMD declara
+- **estado:** ABERTO | **hora:** 10/11 13:47 | **de:** CMD

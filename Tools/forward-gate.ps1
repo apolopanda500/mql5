@@ -247,6 +247,42 @@ if ($token -ne '') {
   }
 }
 
+# FROTA: estado do bit POR GRAFICO (sonda 0 = o proprio EA escreve).
+#
+# MEDIDO em 10/11/2026 (D-168/D-169): o bit `MQL_TRADE_ALLOWED` e estado de
+# SESSAO do terminal - nao vive no `.chr` nem no `.tpl`, e cai a cada arranque
+# do EA (motivo=7, REASON_TEMPLATE). O v1.2.194 passou a escrever
+# `MQL5\Files\Data\permission_state_<SIMBOLO>.csv` com os cinco bits, o
+# codigo do portao e a etapa - a SONDА 0, a unica autoritativa (num SCRIPT,
+# `MQLInfoInteger(MQL_TRADE_ALLOWED)` devolve a permissao do TERMINAL; num EA
+# devolve a do GRAFIOCO).
+#
+# Sem esta leitura, a frota inteira pode estar fechada e o forward medir
+# metade do universo sem dar um unico erro.
+$permData = Join-Path $Root 'Files\Data'
+$permOn = 0; $permOff = 0; $permSem = 0
+$permLista = @()
+if (Test-Path -LiteralPath $permData) {
+  foreach ($f in @(Get-ChildItem -LiteralPath $permData -Filter 'permission_state_*.csv' -ErrorAction SilentlyContinue)) {
+    $estado = ''
+    try {
+      $fs2 = [System.IO.File]::Open($f.FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+      $sr2 = New-Object System.IO.StreamReader($fs2)
+      $txt2 = $sr2.ReadToEnd(); $sr2.Close()
+      $ls = @($txt2 -split "`r?`n" | Where-Object { $_.Trim() -ne '' })
+      if ($ls.Count -ge 2) {
+        $campos = $ls[$ls.Count - 1] -split ';'
+        if ($campos.Count -ge 11) {
+          $bit = $campos[4]; $cod = $campos[9]; $etapa = $campos[10]
+          if ($bit -eq '1' -and $cod -eq '0') { $permOn++ } else { $permOff++ }
+          $permLista += ($campos[2] + ':bit=' + $bit + ',cod=' + $cod + ',' + $etapa)
+        }
+      }
+    } catch { }
+  }
+}
+if ($permOn -eq 0 -and $permOff -eq 0) { $permSem = 15 }
+
 # ---------------------------------------------------------------- registo
 if (-not (Test-Path -LiteralPath $fwdDir)) { New-Item -ItemType Directory -Path $fwdDir -Force | Out-Null }
 
@@ -279,6 +315,9 @@ $registo = [ordered]@{
   sem_permissao     = $nSemPerm
   sem_permissao_simbolos = $semPerm
   pipeline_batao    = $nBatao
+  frota_ligada      = $permOn
+  frota_desligada   = $permOff
+  frota_estado      = $permLista
   webrequest_1003   = $n1003
 }
 
@@ -296,17 +335,18 @@ $tabela += '# FORWARD 30 DIAS - G11 (medicao diaria automatica)'
 $tabela += ''
 $tabela += ("Gerado por ``Tools\forward-gate.ps1``. Dia do servidor = local + $OffsetServidorHoras h.")
 $tabela += ''
-$tabela += '| Dia servidor | MD5 ok | Gov. ok | Ver. memoria | Sinais | AllowTrade(bloq) | ExecFail | Trades | P/L dia | DD % | IA disp. | 1003 | Sem permissao |'
-$tabela += '|---|---|---|---|---|---|---|---|---|---|---|---|---|'
+$tabela += '| Dia servidor | MD5 ok | Gov. ok | Frota ON | Ver. memoria | Sinais | AllowTrade(bloq) | ExecFail | Trades | P/L dia | DD % | IA disp. | 1003 | Sem permissao |'
+$tabela += '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|'
 foreach ($r in $mdLines) {
   $f = $r.funil; $c = $r.conta
   $ok = if ($r.md5_divergente) { 'NAO' } else { 'sim' }
   $gok = if ($r.governanca_mudou) { 'MUDOU' } else { 'sim' }
+  $frota = if ($r.frota_ligada -gt 0 -or $r.frota_desligada -gt 0) { ([string]$r.frota_ligada + '/' + ([string]$r.frota_ligada + [string]$r.frota_desligada)) } else { 'n/d' }
   $sin = '-'; $alt = '-'; $exf = '-'; $trd = '-'
   if ($f) { $sin = $f.sinais; $alt = $f.allow_trade_bloqueios; $exf = $f.exec_fail; $trd = $f.trades }
   $pl = '-'; $dd = '-'
   if ($c) { $pl = $c.pl_dia; $dd = $c.amplitude_pct }
-  $tabela += ('| ' + $r.server_date + ' | ' + $ok + ' | ' + $gok + ' | ' + $r.versao_em_memoria + ' | ' + $sin +
+  $tabela += ('| ' + $r.server_date + ' | ' + $ok + ' | ' + $gok + ' | ' + $frota + ' | ' + $r.versao_em_memoria + ' | ' + $sin +
               ' | ' + $alt + ' | ' + $exf + ' | ' + $trd + ' | ' + $pl + ' | ' + $dd +
               ' | ' + $r.ia_disponiveis_n + ' | ' + $r.webrequest_1003 + ' | ' + $r.sem_permissao + ' |')
 }

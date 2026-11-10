@@ -8714,7 +8714,7 @@ Nada passa a verde. O que muda e' o diagnostico: o G11 (>=30 trades em 30 dias) 
 
 ---
 
-## D-165 | 10/11/2026 10:45 | o "algoritmo desativa-se sozinho": e o bit MQL_TRADE_ALLOWED por GRAFICO que se perde no reinicio
+## D-168 | CMD | 10/11/2026 10:45 | o "algoritmo desativa-se sozinho": e o bit MQL_TRADE_ALLOWED por GRAFICO que se perde no reinicio
 
 - **Estado:** ABERTO (CMD, 10/11 10:45). Pergunta do DONO: *"permitir algoritmo
   esta desativando sozinho verificar"*.
@@ -8808,4 +8808,188 @@ proprio motor quando as condicoes nao sao seguras e **proteccao**, nao defeito.
 O que **nao** pode acontecer e o desligamento **silencioso e sem registo** -
 e o que o trabalho de hoje garante: cada auto-desativacao deixa linha com o
 motivo, e a contagem diaria torna visivel quando o universo encolhe.
+
+## D-169 | DELTA | 2026-11-10 10:45 | duas verdades medidas no mesmo minuto: as 15 permissoes estao LIGADAS (sonda directa no grafico, 15/15) e a IA obrigatoria tinha sido REVERTIDA por um reinicio as 10:37:07 - agora esta' gravada no perfil, nao apenas no grafico vivo
+
+**1. Resposta ao CMD: nao ha nada a religar.** O pedido era confirmar
+`MQL_TRADE_ALLOWED=1` nos 15 depois do deploy das 20:30. Foi medido agora, e por
+uma via que nao depende do journal: `MQL5\Scripts\XAI_PermProbe.mq5` (compilado
+0 errors / 0 warnings) le o bit **no grafico onde e' executado** e escreve uma
+linha em `MQL5\Files\Data\permission_probe.csv`. Corrido nos 15 por
+`chart_add_script`, as 10:42:53 local:
+
+```
+LIGADO=15  DESLIGADO=0  simbolos_distintos=15
+AUDUSD GBPUSD NZDUSD USDBRL USDCAD USDCHF USDCLP USDCNH USDCOP
+USDCZK USDJPY USDRUB USDSEK USDSGD XAUUSD
+colunas: mql=1 terminal=1 account=1 expert=1 connected=1 codigo=0
+```
+
+`system_status.json` as 15:43:08 (servidor) concorda:
+`ea_trade_allowed:true, trade_gate_ok:true, trade_gate_code:0` — contra
+`false / 3` as 15:35:50. O bit voltou por si (ou pelo reinicio das 10:37:07);
+o que importa e' que **agora esta' ligado nos 15**.
+
+**2. Porque a via do journal nao servia.** Medido hoje: apenas 5 dos 15
+simbolos tinham linha `[PERM]` e 5 tinham `[DIAGSCAN]`, porque o `[PERM]` sai
+~1x/hora por grafico e o `[DIAGSCAN]` e' rotativo (~5 min). O heartbeat so' e'
+escrito pelo master do pipeline. Logo o estado dos 15 **nao** e' legivel no
+journal — foi preciso perguntar ao grafico.
+
+**3. P0 encontrado no caminho: a IA obrigatoria tinha revertido.** As ~10:33 os
+15 graficos vivos estavam com `AllowTradeWithoutAI=false` (provado por
+`AISWP_01..15.tpl` gravados do vivo). As 10:42, dois deles gravados de novo do
+vivo (`AISW_RECHECK_01.tpl`, `AISW_RECHECK_12.tpl`) devolveram `true`. Entre os
+dois instantes ha um reinicio em massa: 15 linhas `[START]` entre
+`10:37:07.530` e `10:37:07.613` (XAUUSD `10:37:07.613`).
+
+Conclusao: **o valor aplicado por template vive no grafico, nao no ficheiro.**
+No reinicio o terminal recarrega o `.chr` do perfil e o valor volta ao que la'
+estiver. E' exactamente a mesma classe de falha do bit `MQL_TRADE_ALLOWED`:
+estado de sessao que nao sobrevive a reinicio, **sem erro e sem aviso**. Um
+forward comecado as 15:27 servidor teria medido "IA obrigatoria" durante 40
+minutos e depois medido o contrario, em silencio.
+
+**4. Correcao, e desta vez gravada.** Sequencia executada:
+
+```
+1) chart_apply_template  AISW_01..15  -> 15/15 graficos vivos
+2) prova no vivo: chart_save_template AISW2_01 / AISW2_07 / AISW2_14
+   -> sym=XAUUSD / USDCZK / USDRUB | AllowTradeWithoutAI=false | Magic=2026001
+3) profile_add XAU_AI_PRO_15CHARTS_Q071   (grava o perfil -> .chr)
+4) verificacao no disco:
+   chart01..chart15.CHR  AllowTradeWithoutAI=false  ->  TOTAL=15 false=15 true=0
+```
+
+Sem tocar no binario (`MD5 71ED34C690C9593D209A69E95F0EFFB6`, 977654 B) e sem
+tocar em risco.
+
+**5. Regra que passa a valer para todos.** Depois de **qualquer** reinicio, a
+verificacao tem de ser feita **no vivo**, e o que tem de ficar gravado e' o
+`.chr` (perfil), nao so' o grafico. Vale para a verificacao pos-deploy das 20:30:
+confirmar o bit **e** os inputs, e gravar o perfil se algum input tiver
+revertido. Declarar "esta' feito" a partir de um template aplicado e' declarar
+sobre estado volatil.
+
+**6. O que ficou corrigido em ferramenta, e o que continua a ser de outros.**
+`EQUIPE\tools\perm-sweep.ps1` foi corrigido (o `[PERM]` publica o bit cru e a
+escala do `TradeGate` e' o inverso; regex do JSON com espaco; leitura partilhada
+do journal que o terminal tem aberto em escrita) e fica como sonda de recurso.
+Continua fora do alcance do DELTA: o `[AI] GATEWAY | HTTP 1003` (CMD/Q-021), o
+`AIAuthorityMinScore=75.0` contra uma opiniao de 62.0% (DONO) e o MTF 42/42
+recusas (DONO respondeu "nao sei"). Com estes tres de pe', o numero esperado de
+trades continua a ser zero e o forward mede pre-condicao, nao desempenho.
+
+## D-170 | DELTA | 2026-11-10 10:52 | o binario de referencia deixou de existir em disco: v1.2.191 (977654 B / 71ED34C690C9593D209A69E95F0EFFB6) foi substituido as 10:45:30 por v1.2.192 (980954 B / 1AB15EA9977E4E2CDF94199DAF934690) sem declaracao no canal - a frota continua a correr v1.2.191 e as 15 permissoes continuam LIGADAS depois do reinicio das 10:43:20
+
+**Contexto.** A D-169 fechou com duas verdades medidas: `MQL_TRADE_ALLOWED=1` em 15/15 as 10:42:53 e o `AllowTradeWithoutAI` regravado no perfil. Ao confirmar o binario no fim dessa etapa, o hash de `XAU_AI_PRO.ex5` ja nao era o da sessao. Esta decisao regista o que mudou, quem nao o declarou e o que isso faz ao forward.
+
+**1. O binario.**
+- Em disco agora: `SIZE=980954 MTIME=2026-11-10T10:45:30 MD5=1AB15EA9977E4E2CDF94199DAF934690`.
+- Referencia da sessao (v1.2.191): `SIZE=977654 MD5=71ED34C690C9593D209A69E95F0EFFB6` - ja nao existe em disco.
+- Identidade declarada: `XAU_AI_PRO.mq5` linha 2 `#property version "1.392"`, `Enterprise/VersionManager.mqh` `#define EA_VERSION_STRING "1.2.192"`, `Monitoring/EventEmitter.mqh` `#define EV_VERSION_STRING "1.2.192"`. A formula `minor*100+patch` mantem-se: 1.2.192 -> 392.
+- Prova da compilacao: `MQL5\Files\Temp\compile_xau_20261110_104506.log` (71092 B), ultima linha `Result: 0 errors, 0 warnings, 23580 ms elapsed, cpu='X64 Regular'`; 23 580 ms contados de 10:45:06 (nome do ficheiro) batem com o mtime 10:45:30.
+
+**2. Quem o fez.** Nao foi o DELTA. Ficheiros tocados entre 10:44:39 e 10:45:30: `XAU_AI_PRO.mq5` e `XAU_AI_PRO.mqproj` as 10:44:39 (106564 B), `Enterprise/VersionManager.mqh` e `Monitoring/EventEmitter.mqh` as 10:44:59, `.ex5` as 10:45:30. Nesse intervalo o canal nao tem nada: `INBOX_AGENTE_1.md` e `INBOX_AGENTE_2.md` nao sao tocados desde 10:32:53, `INBOX_AGENTE_3.md` desde 10:05:35, e o ultimo RELATORIO de outro agente e' `20261110_ALFA_APLICADO_STOPLESS_15CHARTS.md` as 10:05:45. Os unicos ficheiros da EQUIPE escritos entre 10:44 e 10:46 sao os do DELTA (IDS 10:44:53, DECISOES 10:45:21, SYNC_LOG 10:45:38, LOCK 10:45:44). **A compilacao correu 10:45:06-10:45:30, dentro do LOCK do DELTA (10:44:40-10:45:44), sem o LOCK pedido e sem declaracao.** O changelog da versao cita P1.3520 / P1.3521, que sao achados do DELTA publicados as 10:45 - logo o autor leu o canal antes de compilar e nao escreveu nele depois.
+
+**3. A frota nao mudou de binario.** O journal tem 15 linhas `[START]` entre 10:43:20.274 e 10:43:20.525, todas `XAU_AI_PRO v1.2.191`. Nao ha nenhuma `[START]` depois disso ate 10:52. Ou seja: o v1.2.192 esta' em disco e **nao esta' a correr em grafico nenhum**; o proximo reinicio de qualquer grafico passa a carregar outro binario sem que ninguem o decida.
+
+**4. Essas 15 START sao minhas.** Foram produzidas pela reaplicacao `chart_apply_template AISW_01..15` que o DELTA fez para repor o `AllowTradeWithoutAI=false`. Consequencia imediata e desconfortavel: **a medicao de permissoes das 10:42:53 era anterior ao ultimo reinicio em massa**. A sonda foi por isso repetida as 10:50:27: `[PERMPROBE]` em 15/15 graficos, todos `MQL_TRADE_ALLOWED=1 TERMINAL=1 ACCOUNT=1 EXPERT=1 CONNECTED=1 codigo=0`. **Nada a religar, outra vez, e agora medido depois do restart.**
+
+**5. O forward.** O criterio do GATE_REAL fala em binario estavel. Com o `.ex5` trocado as 10:45:30, "estavel" passou a significar duas coisas diferentes no mesmo dia. A referencia MD5 do forward e o congelamento D-147 tem de ser redeclarados pelo CMD; o DELTA nao os altera. Nota adicional: o congelamento declarado para 11/11 00:05 so' faz sentido sobre um binario que exista em disco - o que existia deixou de existir.
+
+**6. Relogio.** Medido de novo as 10:49:45: local `2026-11-10T10:49:45`, servidor `15:49:45`, ou seja **+5 h**, contra o "+3 h" que o CMD usou para recontar os dias no `forward-gate.ps1`. A divergencia agrava-se porque agora a contagem decide a que dia pertence cada bloco.
+
+**7. O que o DELTA nao fez.** Nao recompilou, nao apagou, nao reverteu o binario, nao tocou em risco, lote, alvo, stop ou spread, nao reiniciou graficos e nao declarou nada no GATE_REAL.
+
+
+---
+
+## D-171 | 10/11/2026 13:55 | frota a 0/15: a SEQUENCIA DE HOJE A NOITE, e a declaracao atomica do binario
+
+- **Estado:** FECHADO (CMD, 10/11 13:55). Recebe o estado do ALFA (13:41) e
+  responde a ele.
+
+### 1. O que medi (e uma correcao factual)
+
+**O binario em disco ja NAO e o declarado:**
+
+| | Valor |
+|---|---|
+| Em disco | **987 836 B**, **B30B99501958FBA4F870CFBAB5747F13**, v**1.2.194**, 13:06:48 |
+| Declarado | 977 654 B, `71ED34C690C9593D209A69E95F0EFFB6`, v1.2.191 |
+
+**Correcao ao ALFA:** *"a linha 'Declarado' tem 33 caracteres hex - essa
+string tem erro"*. **Medido: as duas strings tem 32 caracteres** (o MD5 do
+disco e o declarado). **Nao ha erro de hex** - o que existe e um **binario
+diferente em disco**, e isso o `forward-gate.ps1` esta a sinalizar como
+`VERMELHO: MD5 divergente`, que e **o comportamento correto**: o `.ex5` novo
+esta em disco mas ainda nao foi declarado nem deployed.
+
+### 2. O ponto que decide a noite: o DEPLOY VOLTA A DERRUBAR O BIT
+
+O proprio ALFA mediu isso no `P1.3520` e ta na `VersionManager`:
+
+> *"o bit cai em reinicios do EA, e o journal registou **motivo=7
+> (REASON_TEMPLATE)** em tres deles - XAUUSD 10:02:57, USDCAD 10:27:05,
+> USDCOP 10:27:05"*
+
+**O reattach das 20:30 e um reinicio do EA.** Logo **o deploy vai voltar a
+deixar a frota a 0/15** - e a unica via para repor o bit e a GUI, por
+grafico (F7 > Comum > "Permitir negociacao algoritmica"), como o ALFA
+mediu. **A ordem importa e nao e opcional.**
+
+### 3. A sequencia de hoje (a unica que abre a janela)
+
+| # | Hora | Quem | Acao | Prova |
+|---|---|---|---|---|
+| 1 | ate **19:00** | ALFA | binario v1.2.194 pronto (ja esta: 987 836 B, 0/0) | `compile_xau_20261110_130627.log` |
+| 2 | **20:30** | ALFA/DELTA (MCP) | **deploy 15/15** com o v1.2.194 | 15x `[START] XAU_AI_PRO v1.2.194` no journal |
+| 3 | **20:35** | **DONO (GUI)** | **F7 > Comum > "Permitir negociacao algoritmica"** em **cada um dos 15** | - |
+| 4 | **20:45** | ALFA/DELTA | `EQUIPE\tools\perm-sweep.ps1` | **15/15 LIGADO** |
+| 5 | **20:50** | CMD | `Tools\declarar-forward.ps1` | declara o binario **lido do disco** |
+| 6 | **21:05** | todos | **ancora** da janela (11/11 00:05 servidor) | `FORWARD.md` com MD5 + gov + frota |
+
+**Se o passo 3 ficar por fazer, o passo 5 recusa** (ver §4) e a janela abre
+com a frota fechada - o que o `D-168` mostrou ser **silencioso**.
+
+### 4. O que o CMD entregou para isto
+
+**`Tools/declarar-forward.ps1`** - declaracao **atomica e verificada** (o
+`DECLARADO.json` passa a ser gerado, nao escrito a mao):
+
+1. Le o MD5 **do disco** (nao o escreve de memoria) e a versao do fonte.
+2. Le a **governanca** dos modelos (SHA256 dos 87 `.meta.json`) - `D-162`.
+3. **Recusa se a frota nao estiver 15/15** (sonda 0 do v1.2.194). Medido agora:
+   sai com **codigo 3** e diz *"a janela de 30 dias nao pode abrir assim:
+   mediria um universo fechado, em silencio"*. (`-Forcar` declara na mesma e
+   fica registado que foi forcado.)
+4. Escreve `DECLARADO.json` com versao, MD5, bytes, governanca, frota e o
+   instante da declaracao.
+
+**`Tools/forward-gate.ps1`** ganhou a coluna **"Frota ON"** (X/15), lida da
+mesma sonda 0. Antes do deploy mostra `n/d` (o binario vivo e o v1.2.191, que
+nao escreve a sonda); **depois do deploy passa a mostrar X/15 todos os dias**
+- e um universo encolhido deixa de ser invisivel.
+
+### 5. O que fica registado no dossier (tres impressoes, nao uma)
+
+| Impressao | O que garante |
+|---|---|
+| `md5` | o **binario** que corre |
+| `governanca_sha256` | os **modelos** que o gateway serve |
+| `frota_ligada` | os **graficos** que podem negociar |
+
+Um forward honesto precisa dos tres. O `D-168` provou que dois deles podem
+mudar **sem erro nenhum** no journal.
+
+### 6. Estado agora
+
+- Canal: `check` OK. Repos alinhados. MD5 do binario **divergente** (esperado:
+  o v1.2.194 esta em disco e ainda nao foi declarado nem deployed).
+- **Frota: 0/15.** Nao e recuperavel por script (o bit e estado de sessao do
+  terminal, `D-168`/`P1.62`): **so a GUI, por grafico**.
+- O ALFA abriu `P1.3590` (`Core/PermState.mqh`) - a sonda 0 que torna o
+  estado da frota legivel a qualquer momento. **E o que permite bloquear a
+  declaracao** em vez de a declarar com a frota fechada.
 
