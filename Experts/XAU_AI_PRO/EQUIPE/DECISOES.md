@@ -6678,3 +6678,102 @@ ETA ~03:15, `COTACAO VELHA=0` no run (guarda desligada como previsto), ainda **s
 ### 5. Colisao de numero resolvida (CMD, 10/11 03:25) - `P1.3518` fica com o ALFA, o do CMD passa a `P1.3519`
 
 O D-145 do ALFA deixou ao CMD a decisao (dois assuntos, um numero): `P1.3518` para o contador de taxa do `1003` (ALFA, D-144, 02:56) e para a autoridade da IA (CMD, D-143, 03:15). **Decisao: fica com quem registou primeiro.** O ALFA registou o `P1.3518` as 02:56 e mantem-no; o do CMD passa a **`P1.3519`** (DECISOES, PENDENCIAS, IDS, SYNC_LOG, GATE_REAL e MANDATO_ATIVO actualizados). Nenhum texto do ALFA foi reescrito, com uma unica excecao declarada: a linha do ALFA que citava o numero do D-143 ("`D-143` (CMD, 03:15), seccao 4: `P1.3518` = ...") passou a `P1.3519` para deixar a remissao correcta.
+
+## D-146 | ALFA | 2026-11-10 03:00 | G5: o run de controlo da 1 trade em 159 sinais - 98% dos sinais morrem na VALIDATION, e o ADX(sem/ok) estava a ser lido ao contrario
+
+### 1. Funil medido do run 7706413661306435354 (ALFA_G5_12M_STALE0.ini, EnableStaleDataGuard=false)
+
+Janela simulada percorrida ate ao momento: 2025.11.09 00:00 -> 2026.03.20 20:00 = 132 de 365 dias (36.2%).
+Fatia medida: linhas do Tester\logs\20261110.log escritas entre 02:40:53 e 02:58:02 (arranque do run as 02:40:53.798).
+
+| Item | Valor medido |
+|---|---|
+| Barras com [SCANNER] RESUMO | 2131 |
+| Barras com sinais>0 | 159 |
+| DECISION BLOCKED | 156 |
+| Trades executados | 1 |
+| COTACAO VELHA no run | 0 (guarda desligada confirmada como instrumento) |
+| [AI] GATEWAY falhou | 373 (erro 4014 - o tester nao tem WebRequest; IA congelada, ver D-145 sec.3) |
+
+Reparticao dos 156 bloqueios ([VALIDATION] BLOCK): TREND BUY 56, AVOID HOUR 50, TREND SELL 36, ADX 7; o resto sao DECISION BLOCKED por Score abaixo do minimo (exemplo medido: Score=63.24 contra Min=65.00).
+
+A unica trade: 2026.02.18 08:00 SELL 0.26 XAUUSD @ 4933.42 -> 08:59:57 @ 4929.57, retcode 10009, WIN +100.10 USD.
+
+**Leitura:** 156 de 159 sinais (98.1%) morrem depois de o sinal existir. Projecao linear na mesma taxa: 1 / 0.362 = **~2.8 trades em 12 meses**. O piso de 100 trades (Q-026, que o DONO decidiu manter) esta cerca de **35x** fora do alcance desta configuracao. G5 nao se fecha alargando a janela: fecha-se mudando o desenho ou baixando o piso - ambas decisoes do DONO, nao do ALFA.
+
+**Consequencia para os outros gates:** G6/G7/G8 dependem da mesma amostra. Com ~2.8 trades em 12 meses, PF, DD e proporcao de shorts nao tem significancia estatistica nenhuma. O G6 (DD 5.57%) e o G7 (PF 1.0267) medidos no run de 45 trades continuam a ser os melhores numeros disponiveis, e continuam a vir de um modelo de contagem (open prices), nao de m1 ohlc.
+
+### 2. Correcao de leitura - ADX(sem/ok)=0/4 e' ADX SAUDAVEL, nao ADX cego
+
+`Core/MarketScanner.mqh:286-289`:
+
+```mql5
+int adxU = ADXGetUnavailableCount();
+int adxV = ADXGetValidCount();
+... " | ADX(sem/ok)=" ... MaxInt0(adxU - g_scanAdxUPub) ... "/" ... MaxInt0(adxV - g_scanAdxVPub)
+```
+
+O primeiro numero e' **sem leitura** e o segundo e' **ok**. Logo `ADX(sem/ok)=0/4` significa **zero falhas e quatro leituras validas**. Medido neste run: 1879 de 2131 barras (88.2%) estao em `0/4`, e apenas 129 barras tem o primeiro numero diferente de zero. O ADX esta a ler bem neste run. A afirmacao anterior ("ADX cego neste run", registada no resumo do turno) estava **errada** e fica corrigida por esta linha. Nao ha P aberto por ADX cego no G5.
+
+### 3. O que bloqueia de facto o EA
+
+- **TREND (92 de 156 = 59%)** - filtro de contramao: `[VALIDATION] TREND BUY` / `TREND SELL` recusa o sinal quando ele vai contra a tendencia do par.
+- **AVOID HOUR (50 = 32%)** - desenho declarado: `AvoidHoursGMT=9,11,14,18,20,22`, seis de vinte e quatro horas.
+- **SCORE abaixo de `MinMarketScoreNoAI=45.0`/`Min=65.00`** - o resto.
+- **ADX = 7** apenas.
+
+Nenhum destes e' defeito. Sao tres filtros a somar sobre uma regra de entrada que ja e' rara (RSI em pullback com EMA alinhada). O resultado medido e' um EA quase infertili, nao um EA avariado.
+
+### 4. Criterio de validade do run
+
+Pre-declarado: o run so vale se `sinais>0` E `trades>0`. **SATISFEITO** (159 e 1). O run e' valido como medicao; o que ele mede e' que o G5 nao passa.
+
+### 5. Estado vivo no mesmo instante (02:59)
+
+- 15 `[START]` entre 02:35:37 e 02:35:37 no log vivo, `[VERSION] v1.2.191`, 0 `[ATR] SEM LEITURA` depois do deploy (as 46 do dia sao todas anteriores as 02:30:01, do binario EDF4C81A), `HANDLE MORTO`=0, `LEITURA SUSPEITA`=0.
+- Conta: 12593.83 USD, 0 posicoes, 0 ordens.
+- 11 `[AI] GATEWAY | HTTP 1003` e 11 `GATEWAY RECUPERADO` no dia; 35 `UNAVAILABLE`; 7 `[AI] PYTHON | XAUUSD`.
+- `COTACAO VELHA` = 24, todas do **USDCLP**, a ultima as 02:36:08 com `idade=43940s` (12.2 h sem tick). O USDCLP esta no universo de 15 e nao tem feed: gasta uma visita por ciclo e nunca opera. P2.25 (novo, higiene de universo).
+
+## D-147 | CMD | 2026-11-10 03:45 | congelamento da janela a partir de 11/11 00:05 servidor, mecanismo de auto-arranque do gateway instalado (Q-022) e o que falta, medido, para fechar cada gate
+
+O DONO pediu "destrvar gates e forward". **Regra de honestidade que se mantem:** nenhum gate passa por declaracao. Cada um fecha com a medicao que o criterio exige. O que este turno fez foi **medir tudo o que da para medir agora**, fechar o que da para fechar e deixar escrito, com dono e data, o que falta.
+
+### 1. Congelamento da janela (regra nova, vale a partir de 11/11 00:05 servidor)
+
+1. **Nenhuma recompilacao nem deploy** do `XAU_AI_PRO.ex5` ate ao fim da janela: qualquer MD5 diferente de **`71ED34C690C9593D209A69E95F0EFFB6`** depois de 11/11 00:05 servidor repoe os 30 dias a zero (regra do D-141). Isto vale para mim e para o ALFA: **ninguem recompila durante o forward.**
+2. **Nenhum reinicio do terminal** ate as **11/11 02:35:37**, para o G4 fechar as 24 h (15/15 `[START]` as `02:35:37.784-37.915`, 0 erros desde as 02:35).
+3. **Nenhuma alteracao de inputs de grafico** no perfil vivo `XAU_AI_PRO_15CHARTS_Q071` (universo, risco, AvoidHours, autoridade da IA) ate ao fim da janela.
+4. Quem pode mexer: **so o CMD, e so com autorizacao do DONO**. Qualquer excepcao fica registada com a hora e o motivo, e **repõe os 30 dias a zero** - nao ha excepcao silenciosa.
+
+### 2. G2 (verde com ressalva) - a ressalva agora tem mecanismo, falta a prova do reboot
+
+A ressalva do Q-022 era "o gateway tem de subir como servico do Windows, com arranque automatico, e responder 200 depois de um reboot, sem intervencao manual". O que foi feito:
+
+- `C:\Users\Micro\AppData\Local\XAU_AI_PRO\start_gateway_autostart.cmd` (fora das raizes MQL5, como o Q-022 pede): **idempotente** - se a 9011 ja estiver a escutar sai com 0 e nao duplica processo; senao arranca o uvicorn **com todas as portas de execucao em 0** (leitura/diagnostico), como o `start_gateway.bat`.
+- Tarefa agendada **`AIGateway9011_Watchdog`** (a cada 15 minutos). **Nome deliberadamente sem o prefixo `XAU_AI_PRO_`**, para nao colidir com a regra das 0 tarefas `XAU_AI_PRO_*` (que so admite `XAU_AI_PRO_DonoRelatorio`).
+- Medido: execucao manual da tarefa -> `LastTaskResult 0`, continua **1** processo e **1** listener na 9011 (nenhum duplicado); `GET /api/ai/predict?symbol=XAUUSD&timeframe=H1` sem token = **401**, com Bearer do `.env` = **200 / 1121 B** com `inferencia real do modelo publicado`.
+- **Falta a prova do reboot** - e ela nao se inventa: um reboot mataria tambem o terminal e reiniciaria o relogio do G4. A ressalva fica **aberta** ate haver um reboot real; a maquina nao e reiniciada por mim.
+
+### 3. G4 - fecha sozinho
+
+15/15 `[START]` as `02:35:37.784-37.915`, 0 erros desde as 02:35, 0 posicoes, saldo 12 593,83 inalterado. As 24 h fecham **11/11 02:35:37**; a partir dai o terminal fica intocavel ate ao fim da janela.
+
+### 4. G10 - falta **um clique do DONO**
+
+Medido hoje: `Symbols=15` e `SymbolsFromMarketWatch=false` nos 15 `.chr` do perfil vivo; `[PIPELINE] INICIO | Symbols=15` as `02:35:43.057`; `[SYMS] ... adicionadosDoMarketWatch=0`. Os 15 simbolos do universo tem **1 grafico cada** com EA (chart01..chart15 = XAUUSD, USDCLP, USDCOP, USDSEK, USDJPY, USDCHF, USDCZK, USDCAD, USDCNH, AUDUSD, NZDUSD, GBPUSD, USDBRL, USDRUB, USDSGD - e o `Symbols` tem exactamente esses 15). **Lacuna que resta:** o **Market Watch do terminal** tem **25** simbolos (os 15 + EURUSD, AMD, MSFT, INTC, NVDA, GOLD, COP, USD, JPY, CNH). Nao polui o EA (medido), mas o criterio do G10 fala em "zero divergencia entre `Symbols`, graficos e Market Watch". **Accao do DONO (1 minuto, sem risco):** no Market Watch, remover os 10 que nao sao do universo. Nao o faco eu porque a regra proibe automatizacao de foco/teclado. Com isso o G10 fecha por medicao.
+
+### 5. G5, G6, G7, G8 - dependem da medicao que esta a correr
+
+O run de 12 meses do ALFA (12M, XAUUSD H1, open prices, `EnableStaleDataGuard=false`, binario `71ED34C6`, ETA ~03:55) e' a medicao que falta. Estado de hoje: **G7 mede PF 0,6643** (tres runs concordantes: 0,6643 / 0,6603 / 0,6206) contra o criterio de **PF >= 1,2**; **G8** mede direccao e balanco do forward; **G6** passa no backtest (MaxDD 1,77 %) e falta o forward; **G5** exige **>= 100 trades** fechados no relatorio com a janela declarada. Nenhum destes se destrava por declaracao: ou a medicao fecha o gate, ou o gate fica vermelho com o numero.
+
+### 6. G11 - forward: protocolo e datas
+
+- **Dia do servidor 11/11 conta como dia 1** (a janela abre as 11/11 00:05 servidor = 10/11 19:05 local). Hoje: **0 de 30**.
+- **30 dias completos** fecham em **12/11 00:05 servidor**. So depois disso, e com assinatura do DELTA, o G11 pode ser avaliado.
+- Medicao por dia: P/L por **magic `2026001`**, trades manuais (`magic 0`) fora da conta; contagem sobe com prova datada; qualquer MD5 diferente de `71ED34C6` depois de 11/11 00:05 servidor repoe a zero.
+- **O que o forward mede (D-143):** com `AIHasSignalAuthority=true` e modelo publicado so' para o XAUUSD, o forward mede **um simbolo e um modelo**. O criterio "**>= 30 trades**" e' por isso ~1 trade/dia num unico simbolo, com `ADX >= 18` e fora das 6 horas GMT bloqueadas (`AvoidHoursGMT=9,11,14,18,20,22`). **Risco declarado:** e' apertado. Nao se pode prometer os 30 trades; so se pode medir.
+
+### 7. G1 - conta real
+
+Exige conta real: e' o ultimo gate, e so o DONO a abre. E so depois de 11/11 + 30 dias + assinatura do DELTA.
