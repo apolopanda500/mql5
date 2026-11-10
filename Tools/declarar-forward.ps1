@@ -320,12 +320,20 @@ foreach ($dias in 1, 0) {   # do mais ANTIGO para o mais NOVO: o "ultimo [START]
   $p = Join-Path $logDir (($agora.AddDays(-$dias)).ToString('yyyyMMdd') + '.log')
   if (Test-Path -LiteralPath $p) { $logs += $p }
 }
+$contaMemoria = ''
 foreach ($p in $logs) {
   $texto = Read-LogCompartilhado $p
   if ($texto -eq '') { continue }
   foreach ($linha in ($texto -split "`r?`n")) {
     if ($linha -notmatch '\[START\] XAU_AI_PRO (v[0-9]+\.[0-9]+\.[0-9]+).*simbolo=([A-Za-z0-9._#-]+)') { continue }
     $memoria[$Matches[2]] = $Matches[1]
+    # A CONTA tambem e parte da identidade do forward (D-179): MEDIDO em
+    # 10/11 19:45, o terminal trocou de conta NO MESMO SITIO (MetaQuotes-Demo
+    # 113568614 -> Headway-Demo 6419396) e o `.ex5` nao mudou - o portao
+    # passou a medir outra conta sem dar por isso.
+    if ($linha -match 'conta=(\d+)\s*\|\s*([^|]+)\|') {
+      $contaMemoria = $Matches[1].Trim() + ' @ ' + $Matches[2].Trim()
+    }
   }
 }
 $naoCorrem = @(); $semStart = @()
@@ -409,6 +417,17 @@ $historico += [ordered]@{
   motivo            = 're-declaracao (a janela nao se move; este registo e o evento)'
 }
 
+# Fim da janela e registo da decisao do DONO. A ancora NAO se move: isto e
+# so ate quando a janela vale e quem a autorizou (DONO, 10/11/2026 18:08
+# local: "conta a partir de hoje ok"). O dia 1 e o dia da ancora congelada.
+$janelaFim = ''
+try {
+  $so = (([string]$janelaServidor) -replace '\s*\(.*$', '').Trim()
+  $ini = [datetime]::ParseExact($so, 'dd/MM/yyyy HH:mm', $null)
+  $janelaFim = $ini.AddDays(30).ToString('dd/MM/yyyy HH:mm') + ' (servidor)'
+} catch { $janelaFim = 'n/d' }
+$decisaoAncora = 'DONO, 10/11/2026 18:08 local: a janela conta a partir de hoje. Dia 1 = 10/11/2026; 30 dias ate ' + $janelaFim
+
 $declObj = [ordered]@{
   versao                  = $versaoDeclarada
   md5                     = $md5
@@ -425,12 +444,15 @@ $declObj = [ordered]@{
   janela_inicio_servidor  = $janelaServidor
   janela_inicio_local     = $janelaLocal
   janela_congelada        = $jaDeclarado
+  janela_fim              = $janelaFim
+  decisao_ancora          = $decisaoAncora
   historico_declaracoes   = $historico
   frota_sensor_sem_leitura = $semFresco
   frota_cotacao_morta      = $cotMorta.qtd
   frota_cotacao_morta_lista = $cotMorta.lista
   frota_simbolos          = $simbolosAlvo
   versao_em_memoria       = ($corremNovos.ToString() + '/' + $simbolosAlvo.Count)
+  conta                   = $contaMemoria
   janela_dias             = 30
   criterios               = [ordered]@{ pf_min = 1.2; dd_max_pct = 8.0; trades_min = 30; violacoes_risco_max = 0 }
   regra                   = 'D-139/D-141 (MD5) + D-162 (governanca) + D-168 (frota) + P1.3592 (memoria): o binario, os modelos, a frota da permissao E a versao em memoria entram na declaracao. Qualquer um deles mudar durante a janela e um evento registado.'

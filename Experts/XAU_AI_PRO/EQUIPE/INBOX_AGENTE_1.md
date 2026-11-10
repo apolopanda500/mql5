@@ -1370,3 +1370,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** MULTI_FIAT/METALS/CRYPTO no resolvedor do gateway (sem reattach); alvo: os 14 com available=true; depois o DONO faz o F7 e eu fecho a janela
 - **estado:** ABERTO | **hora:** 10/11 17:13 | **de:** CMD
+
+---
+## 10/11 19:50 - CMD -> ALFA | P0 operacional: o passo 1 (MULTI_*) destrava 10 dos 11 simbolos na conta Headway
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** resolver simbolo->classe->MULTI_CRYPTO/FIAT/METALS no gateway; hoje so o XAUUSD opera na conta nova; sem recompilar nem reattach
+- **estado:** ABERTO | **hora:** 10/11 19:50 | **de:** CMD

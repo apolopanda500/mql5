@@ -52,6 +52,7 @@ if ($idadeMin -lt $EstavelMin) { $falhas += ("binario mexido ha {0} min (estavel
 
 # versao em memoria: o ultimo [START] do journal
 $versaoMemoria = ''
+$contaMemoria = ''
 $logDir = Join-Path $Root 'Logs'
 if (Test-Path -LiteralPath $logDir) {
   $lf = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
@@ -59,7 +60,13 @@ if (Test-Path -LiteralPath $logDir) {
     try {
       $fs = [System.IO.File]::Open($lf[0].FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
       $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode); $t = $sr.ReadToEnd(); $sr.Close()
-      foreach ($l in ($t -split "`r?`n")) { if ($l -match '\[START\] XAU_AI_PRO\s+(v[0-9.]+)') { $versaoMemoria = $Matches[1] } }
+      foreach ($l in ($t -split "`r?`n")) {
+        if ($l -match '\[START\] XAU_AI_PRO\s+(v[0-9.]+)') { $versaoMemoria = $Matches[1] }
+        # A CONTA tambem e parte da identidade do forward (D-179).
+        if ($l -match '\[START\] XAU_AI_PRO.*conta=(\d+)\s*\|\s*([^|]+)\|') {
+          $contaMemoria = $Matches[1].Trim() + ' @ ' + $Matches[2].Trim()
+        }
+      }
     } catch { }
   }
 }
@@ -71,6 +78,20 @@ if (Test-Path -LiteralPath $vm) {
 }
 if ($versaoMemoria -ne '' -and $versaoDisco -ne '' -and $versaoMemoria -ne ('v' + $versaoDisco)) {
   $falhas += ("a memoria corre {0} e o disco e v{1} - o deploy nao pegou" -f $versaoMemoria, $versaoDisco)
+}
+
+# --- 1b. A CONTA (D-179) ---
+# MEDIDO em 10/11/2026 19:45: o terminal trocou de conta NO MESMO SITIO
+# (MetaQuotes-Demo 113568614 -> Headway-Demo 6419396). O `.ex5` nao mudou,
+# o MD5 nao mudou, a versao nao mudou - e o portao passou. **A conta e parte
+# da identidade do forward**: sem ela, uma janela declarada para a conta
+# A pode estar a medir a conta B.
+$contaDeclarada = ''
+if (Test-Path -LiteralPath $declF) {
+  try { $dd = Get-Content -LiteralPath $declF -Raw -Encoding UTF8 | ConvertFrom-Json; $contaDeclarada = [string]$dd.conta } catch { }
+}
+if ($contaDeclarada -ne '' -and $contaMemoria -ne '' -and $contaDeclarada -ne $contaMemoria) {
+  $falhas += ("a conta em memoria e '{0}' e a declarada e '{1}' - o terminal trocou de conta" -f $contaMemoria, $contaDeclarada)
 }
 
 # --- 2. perfil: piso e universo ---
@@ -112,6 +133,7 @@ elseif ($lig -lt 15) { $falhas += ("frota {0}/15 com o bit ligado - falta o F7 d
 Write-Host ''
 Write-Host '== FECHA DA JANELA ==' -ForegroundColor Cyan
 Write-Host ("binario   : {0} B | MD5 {1} | {2} min estavel | memoria {3} | disco v{4}" -f $info.Length, $md5, $idadeMin, $versaoMemoria, $versaoDisco)
+Write-Host ("conta     : {0} | declarada: {1}" -f $(if ($contaMemoria) { $contaMemoria } else { 'n/d' }), $(if ($contaDeclarada) { $contaDeclarada } else { '(sem conta no dossier)' }))
 Write-Host ("perfil    : {0}/{1} .chr com piso 45.0 | {2}/{3} com 15 simbolos" -f $nPisoOk, $nChr, $nSimbolos, $nChr)
 Write-Host ("frota     : {0}/15 LIGADO | {1} desligado | {2} sondas" -f $lig, $des, $fich)
 Write-Host ''
