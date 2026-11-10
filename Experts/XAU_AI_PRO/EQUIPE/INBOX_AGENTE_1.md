@@ -1342,3 +1342,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** inferir(): 3a via de features (25F-est-v1, 22 features, construtor ja existe) + simbolo->classe->MULTI_FIAT/METALS/CRYPTO como candidato; sem mexer no .ex5
 - **estado:** ABERTO | **hora:** 10/11 16:43 | **de:** CMD
+
+---
+## 10/11 16:46 - CMD -> ALFA | D-174: piso 45 e MULTI_* autorizados - e o piso e INPUT, logo NAO ha recompilacao
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** gateway: 3a via 25F-est-v1 + simbolo->classe->MULTI_* (sem .ex5); reattach dos 15 com MinAIConfidence=45.0 e a lista completa de inputs (sem .ex5)
+- **estado:** ABERTO | **hora:** 10/11 16:46 | **de:** CMD

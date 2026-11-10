@@ -9100,3 +9100,76 @@ atras) - a ligacao MT5 deste processo nao devolveu a serie mais recente. A
 serie, mas a **leitura com dados frescos tem de ser refeita** antes de
 assentar o valor do piso. Registado como `P1.3602`.
 
+
+
+---
+
+## D-174 | 10/11/2026 17:00 | piso 60->45 e MULTI_* autorizados: o que fazer, e porque a JANELA NAO SE PARTE
+
+- **Estado:** FECHADO (DONO, 10/11 17:00). Registado pelo CMD.
+- **Decisoes do DONO:**
+  1. `MinAIConfidence` **60.0 -> 45.0**.
+  2. **Os modelos `MULTI_*` ficam autorizados** a servir os 14 simbolos
+     (decisao comercial do dono do produto: `acesso.py` diz *"Free nunca usa
+     multi"*, e os artefactos traziam `live_execution=False`).
+
+### 1. A boa noticia: o piso e um INPUT, nao uma constante compilada
+
+Medido no `.chr` vivo (`chart01.chr`, bloco `<expert>`):
+
+```
+MinAIConfidence = 60.0        MinMarketScore = 65.0
+EnableMTFConfirmation = true  MinSimulationProbability = 0.5
+MinSimulationExpectancy = 0.0 AIUnavailableConfidenceCap = 40.0
+EnableStoplessEntry = false   EnableAutonomousMode = true
+AIHasSignalAuthority = true
+```
+
+**`MinAIConfidence` vive no `.chr`.** Logo **mudar 60 -> 45 e uma operacao de
+REATTACH, nao de recompilacao**:
+
+- o `.ex5` **nao muda** -> o MD5 continua `D53153D47097615C461F4234D450FFE3`
+  -> **a janela dos 30 dias NAO se parte** (regra D-139/D-141 respeitada);
+- o reattach tem de levar a **lista completa de inputs** (e o `P1.126` ja mediu
+  quais nao podem ser arrastados: `MaxDrawdownPercent=6.0`,
+  `EnableMTFConfirmation=true`, `AIHasSignalAuthority=true`,
+  `SymbolsFromMarketWatch=false`, `Symbols`=15, `StopLossPoints=300`,
+  `LadderArmUsd=5.0`, `MaxDailyLossPercent=3.0`, `EnableMoneyLadder=true`).
+
+**E o `EnableStoplessEntry=false` JA ESTA VIVO no perfil** (medido agora) - o
+P0 do `D-160`/`D-161` esta fechado em producao.
+
+### 2. O que cada um faz (e o que nao pode mexer no binario)
+
+| # | Quem | Acao | Toca no `.ex5`? |
+|---|---|---|---|
+| 1 | **ALFA** | `inferir()`: 3a via de features `25F-est-v1` (22 features, `construir_features_estacionarias` ja existe, hash `d3dff4e31e42a675` bate) + resolver simbolo->classe e apontar `MULTI_FIAT` / `MULTI_METALS` / `MULTI_CRYPTO` como candidato | **NAO** (e gateway) |
+| 2 | **ALFA/DELTA** | reattach dos 15 com `MinAIConfidence=45.0` e a lista completa de inputs | **NAO** (e input) |
+| 3 | **DELTA** | `perm-sweep.ps1` -> **15/15 LIGADO** + `[START] XAU_AI_PRO v1.2.202` x15 | NAO |
+| 4 | **CMD** | verificar e **re-declarar** (o binario e o mesmo; a governanca pode mudar) | NAO |
+
+### 3. O que a medicao do D-172 obriga a dizer sobre o piso 45
+
+O veto medido para os modelos de 3 classes ficou em **0,34-0,38** e o
+per-symbol em **~0,34-0,42**. Com o piso em **45**:
+
+- os `MULTI_*` passam **quando a sua confianca chega a 45+** - que e o
+  comportamento correto de um piso: o modelo e ouvido **quando tem conviccao**,
+  e as chamadas de 0,34-0,38 continuam fora (sao as de classe NEUTRAL ou de
+  conviccao baixa);
+- os modelos **por sinal** (2-3/5 folds, media ~0) ficam **de fora** na
+  maioria das vezes - que e o que se quer, porque sao ruido.
+
+**Ressalva (`P1.3602`):** a prova do `D-172` usou candles de **06/10** (um mes
+atras). A magnitude da confianca e do modelo, mas **o valor final do piso tem
+de ser conferido com candles frescas** depois do passo 1, para se saber que
+proporcao dos sinais dos `MULTI_*` passa. Se a leitura fresca der confiancas
+abaixo de 45, o piso tem de descer outra vez - e isso e do DONO.
+
+### 4. O que fica congelado
+
+`v1.2.202` / MD5 `D53153D47097615C461F4234D450FFE3` / 1 022 276 B. **Nao ha
+mais nenhuma recompilacao do EA ate ao fim da janela** - so inputs, so
+gateway. Se o `.ex5` mudar, os 30 dias voltam a zero e o `forward-gate` /
+`pulso` dizem logo `md5_ok=false`.
+

@@ -1733,3 +1733,10 @@ ALFA -> DELTA | 10/11/2026 10:00 | config viva gravada nos 15 graficos: EnableSt
 - **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
 - **precisa:** rever a coluna Sem permissao no relatorio diario e confirmar se ha outros silencios do mesmo tipo (universo encolhe sem erro)
 - **estado:** ABERTO | **hora:** 10/11 10:32 | **de:** CMD
+
+---
+## 10/11 16:46 - CMD -> DELTA | D-174: reattach com piso 45 sem recompilar - verifica 15/15 e [START] v1.2.202
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** depois do reattach: perm-sweep 15/15 LIGADO + 15x [START] v1.2.202 + MinAIConfidence=45 nos .chr
+- **estado:** ABERTO | **hora:** 10/11 16:46 | **de:** CMD
