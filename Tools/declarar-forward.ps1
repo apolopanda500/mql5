@@ -93,6 +93,89 @@ function Get-Governanca([string]$ModelosDir) {
   return @{ sha256 = ([System.BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($sb.ToString()))) -replace '-', ''); n = $n }
 }
 
+# DESVIO ENTRE A HORA LOCAL E A HORA DO SERVIDOR - MEDIDO, NAO CHUTADO.
+#
+# MEDIDO em 10/11/2026 16:49: o stream do proprio EA (`forward_test_events.csv`)
+# escrevia `2026.11.10 21:48:50` no mesmo instante em que o journal escrevia
+# `16:48:12`. Logo o servidor = local + 5 h. A constante que eu usava (+3)
+# estava errada e punha as linhas do dia no balde errado.
+#
+# Aqui o desvio e MEDIDO a cada execucao: o stream do EA tem hora do SERVIDOR
+# e o journal tem hora LOCAL. Se um dos dois estiver velho (broker fechado,
+# stream parado), cai-se no valor de recurso - e a medicao e a que vale.
+function Get-OffsetServidor([string]$RootDir) {
+  $fallback = 5
+  try {
+    $stream = Join-Path $RootDir 'Files\Data\forward_test_events.csv'
+    $logs = Join-Path $RootDir 'Logs'
+    $server = $null; $local = $null
+
+    if (Test-Path -LiteralPath $stream) {
+      $fs = [System.IO.File]::Open($stream, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+      $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode)
+      $t = $sr.ReadToEnd(); $sr.Close()
+      $ult = @($t -split "`r?`n" | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 1)
+      if ($ult.Count -gt 0 -and $ult[0] -match '^(\d{4})\.(\d{2})\.(\d{2}) (\d{2}):(\d{2}):(\d{2})') {
+        $server = [datetime]::new([int]$Matches[1], [int]$Matches[2], [int]$Matches[3], [int]$Matches[4], [int]$Matches[5], [int]$Matches[6])
+      }
+    }
+
+    if (Test-Path -LiteralPath $logs) {
+      $lf = @(Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
+      if ($lf.Count -gt 0) {
+        $fs = [System.IO.File]::Open($lf[0].FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+        $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode)
+        $t = $sr.ReadToEnd(); $sr.Close()
+        $ult = @($t -split "`r?`n" | Where-Object { $_.Trim() -ne '' } | Select-Object -Last 1)
+        if ($ult.Count -gt 0 -and $ult[0] -match '^\S+\s+\S+\s+(\d\d):(\d\d):(\d\d)\.\d+') {
+          $hoje = Get-Date
+          $local = $hoje.Date.AddHours([int]$Matches[1]).AddMinutes([int]$Matches[2]).AddSeconds([int]$Matches[3])
+          if ($local -gt $hoje) { $local = $local.AddDays(-1) }
+        }
+      }
+    }
+
+    if ($server -ne $null -and $local -ne $null) {
+      $delta = [math]::Round(($server - $local).TotalHours)
+      if ($delta -ge 0 -and $delta -le 14) { return $delta }
+    }
+  } catch { }
+  return $fallback
+}
+
+# IMPRESSAO DIGITAL DOS INPUTS DE DECISAO.
+#
+# O `DECLARADO.json` declara o BINARIO, a GOVERNANCA e a FROTA. Faltava o
+#-terceiro: os INPUTS. O `MinAIConfidence` (60 -> 45) e o
+# `AIUnavailableConfidenceCap` (40) decidem se ha trades - e vivem no `.chr`,
+# nao no `.ex5`. Sem esta impressao, a janela declarada fica cega a uma
+# alteracao que decide o resultado (mesma classe do `D-168`).
+function Get-ImpressaoInputs([string]$ChartsDir) {
+  $campos = @(
+    'MinAIConfidence','AIUnavailableConfidenceCap','MinMarketScore','MinMarketScoreNoAI',
+    'MinSimulationProbability','MinSimulationExpectancy','EnableMTFConfirmation',
+    'EnableStoplessEntry','AllowTradeWithoutAI','RequireStopLoss','MaxDrawdownPercent',
+    'RiskPercent','MaxDailyLossPercent','MaxDailyLossUsd','EnableVolatilityFilter',
+    'EnableSessionFilter','EnableNewsFilter','SymbolsFromMarketWatch','EnableAutonomousMode',
+    'AIHasSignalAuthority','RequireAIJSON','MagicNumber','MaxSpreadPct','StopLossPoints'
+  )
+  $saida = @{}
+  if (-not (Test-Path -LiteralPath $ChartsDir)) { return @{ sha256 = ''; campos = $saida } }
+  $f = @(Get-ChildItem -LiteralPath $ChartsDir -Filter 'chart01.chr' -ErrorAction SilentlyContinue | Select-Object -First 1)
+  if ($f.Count -eq 0) { return @{ sha256 = ''; campos = $saida } }
+  try {
+    $t = [System.IO.File]::ReadAllText($f[0].FullName, [System.Text.Encoding]::Unicode)
+    foreach ($c in $campos) {
+      $m = [regex]::Match($t, [regex]::Escape($c) + "=([^\r\n]+)")
+      if ($m.Success) { $saida[$c] = $m.Groups[1].Value.Trim() }
+    }
+  } catch { }
+  $sb = New-Object System.Text.StringBuilder
+  foreach ($c in $campos) { $null = $sb.Append($c + '=' + $(if ($saida.ContainsKey($c)) { $saida[$c] } else { '?' }) + "`n") }
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  return @{ sha256 = ([System.BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($sb.ToString()))) -replace '-', ''); campos = $saida }
+}
+
 # Le um ficheiro de log que o terminal tem aberto (FILE_SHARE_READ|WRITE).
 function Read-LogCompartilhado([string]$Path) {
   try {
@@ -232,6 +315,18 @@ $gov = Get-Governanca (Join-Path $Root 'Files\XAU_AI_PRO\Python\models')
 Write-Host ("governanca        : {0} ({1} meta.json)" -f $gov.sha256, $gov.n)
 
 # ---------------------------------------------------------------- escrever
+$agora = Get-Date
+$offset = Get-OffsetServidor $Root
+$serverNow = $agora.AddHours($offset)
+Write-Host ("hora do servidor  : {0} (local {1} + {2} h, desvio MEDIDO)" -f $serverNow.ToString('dd/MM/yyyy HH:mm'), $agora.ToString('dd/MM/yyyy HH:mm'), $offset)
+
+$chartsDir = Join-Path $Root 'Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071'
+$inputs = Get-ImpressaoInputs $chartsDir
+Write-Host ("inputs (chart01) : {0}" -f $inputs.sha256)
+foreach ($k in @('MinAIConfidence','AIUnavailableConfidenceCap','EnableStoplessEntry','AllowTradeWithoutAI','MaxDrawdownPercent','RiskPercent')) {
+  if ($inputs.campos.ContainsKey($k)) { Write-Host ("   {0} = {1}" -f $k, $inputs.campos[$k]) -ForegroundColor DarkGray }
+}
+
 $declObj = [ordered]@{
   versao                  = $versaoDeclarada
   md5                     = $md5
@@ -239,10 +334,13 @@ $declObj = [ordered]@{
   ex5_mtime               = $info.LastWriteTime.ToString('dd/MM/yyyy HH:mm:ss')
   governanca_sha256       = $gov.sha256
   governanca_modelos      = $gov.n
+  inputs_sha256           = $inputs.sha256
+  inputs                  = $inputs.campos
+  offset_servidor_h       = $offset
   declarado_por           = 'CMD'
   declarado_em            = $agora.ToString('dd/MM/yyyy HH:mm')
   frota_ligada_no_declaro = $ligados
-  janela_inicio_servidor  = $agora.ToString('dd/MM/yyyy HH:mm') + ' (hora do servidor, no instante da declaracao)'
+  janela_inicio_servidor  = $serverNow.ToString('dd/MM/yyyy HH:mm') + ' (hora do SERVIDOR, desvio MEDIDO, no instante da declaracao)'
   janela_inicio_local     = $agora.ToString('dd/MM/yyyy HH:mm')
   frota_sem_tick          = $semFresco
   frota_simbolos          = $simbolosAlvo

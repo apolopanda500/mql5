@@ -9173,3 +9173,115 @@ mais nenhuma recompilacao do EA ate ao fim da janela** - so inputs, so
 gateway. Se o `.ex5` mudar, os 30 dias voltam a zero e o `forward-gate` /
 `pulso` dizem logo `md5_ok=false`.
 
+
+
+---
+
+## D-175 | 10/11/2026 16:55 | os DEFAULTS COMPILADOS sao o oposto do perfil vivo: 13 armadilhas silenciosas
+
+- **Estado:** FECHADO (CMD, 10/11 16:55). Medido por leitura de
+  `Core\Config.mqh` e dos `.chr` vivos.
+- **Corrijo as duas coisas que o DELTA acertou no meu trabalho** (ver §4).
+
+### 1. O achado: um reattach parcial reativa o risco, em silencio
+
+O `.chr` vivo tem os **13** inputs de decisao com os valores **seguros**. O
+**codigo compilado** tem, para os mesmos 13, o **oposto**:
+
+| Input | Vivo (.chr) | Default compilado | O que um reattach parcial faria |
+|---|---|---|---|
+| `EnableStoplessEntry` | false | **true** | voltava a **entrar sem stop** (o P0 do `D-160`) |
+| `AllowTradeWithoutAI` | false | **true** | voltava a **operar sem a IA** |
+| `MaxDrawdownPercent` | 6.0 | **50.0** | **8x** o drawdown tolerado |
+| `RiskPercent` | 0.5 | **1.0** | **2x** o risco por operacao |
+| `EnableSessionFilter` | true | **false** | desliga o filtro de sessao |
+| `EnableVolatilityFilter` | true | **false** | desliga o filtro de volatilidade |
+| `EnableMTFConfirmation` | true | **false** | desliga a confirmacao multi-timeframe |
+| `EnableNewsFilter` | true | **false** | desliga o filtro de noticias |
+| `SymbolsFromMarketWatch` | false | **true** | o universo passa a herdar o Market Watch (o `P1.3497`) |
+| `EnableAutonomousMode` | true | **false** | a IA deixa de vetar |
+| `AIHasSignalAuthority` | true | **false** | o sinal tecnico volta a decidir sozinho |
+| `RequireAIJSON` | true | **false** | aceita previsao sem JSON |
+| `MinAIConfidence` | 60.0 (-> 45.0) | 60.0 | o piso volta ao valor antigo |
+
+**Isto e exatamente a classe do `D-168`:** uma mudanca que decide se ha trades
+que **nao deixa rasto nenhum no journal**. O `D-168` foi o bit de permissao a
+cair; este e o **perfil de risco inteiro a reverter**.
+
+**E o ALFA ja tinha avisado, no relatorio:** *"um reattach com lista parcial
+repõe os outros 323 inputs nos defaults do codigo... passava-se de entradas
+com stop para entradas sem stop, em silencio, na vespera da janela"*. **Esta
+confirmado por leitura do codigo.**
+
+### 2. A correcao que mata a classe inteira (e o que custa)
+
+**Os defaults compilados passam a ser os valores SEGUROS.** A partir dai, um
+reattach parcial **nao muda nada** - porque o default ja e o valor certo:
+
+```
+Core\Config.mqh:
+  EnableStoplessEntry     = false   (hoje true)
+  AllowTradeWithoutAI     = false   (hoje true)
+  MaxDrawdownPercent      = 6.0     (hoje 50.0)
+  RiskPercent             = 0.5     (hoje 1.0)
+  EnableSessionFilter     = true    (hoje false)
+  EnableVolatilityFilter  = true    (hoje false)
+  EnableMTFConfirmation   = true    (hoje false)
+  EnableNewsFilter        = true    (hoje false)
+  SymbolsFromMarketWatch  = false   (hoje true)
+  EnableAutonomousMode    = true    (hoje false)
+  AIHasSignalAuthority    = true    (hoje false)
+  RequireAIJSON           = true    (hoje false)
+  MinAIConfidence         = 45.0    (hoje 60.0) - decisao do DONO (D-174)
+```
+
+**Custo: uma recompilacao -> o MD5 muda -> a janela dos 30 dias recomeca.**
+**Valor: a janela que recomeca e uma janela que mede o binario FINAL, com os
+defaults ja seguros.** E o que o forward tem de ser.
+
+**E o custo real e quase nulo:** a janela declarada as 16:40 mediu **0 trades**
+em ~1 h (o unico simbolo com IA era o XAUUSD, e com o piso a 60 e o cap a 40
+os outros 14 seguiam vetados). Perde-se uma hora que nao produziu amostra
+nenhuma, e compra-se a eliminacao definitiva da classe de defeito.
+
+### 3. A sequencia (UM unico disparo, com o binario final)
+
+| # | Quem | Acao | Toque no `.ex5` |
+|---|---|---|---|
+| 1 | **ALFA** | `Core\Config.mqh`: os 13 defaults acima; compilar (0/0) | **SIM** (1 unica vez) |
+| 2 | **ALFA** | gateway: 3a via `25F-est-v1` + `MULTI_*` (D-172) | nao |
+| 3 | **ALFA/DELTA** | deploy **15/15** com a cadeia completa de **323 pares** (`Files\Temp\reattach_inputs_45.txt`, ja validada: 0 duplicados, 0 invalidas) + `MinAIConfidence=45.0` | nao |
+| 4 | **DONO (GUI)** | F7 > Comum > "Permitir negociacao algoritmica" nos 15 | nao |
+| 5 | **DELTA** | `perm-sweep.ps1` -> **15/15 LIGADO** com IDADE | nao |
+| 6 | **CMD** | `declarar-forward.ps1` -> MD5 + governanca + **inputs** + frota + memoria | nao |
+| 7 | **CMD** | `forward-gate` / `pulso` a medir a partir dai | nao |
+
+**O passo 3 e o unico que pode correr mal, e e o que o DELTA validou
+deterministicamente.** Os 14 graficos partilham a assinatura
+`BC40BFB010`; so o XAUUSD difere (`C7C2ED41AF`) - o que da **duas** strings,
+nao 15.
+
+### 4. As duas correcoes ao meu trabalho (aceitas e aplicadas)
+
+**(a) O `DECLARADO` via os inputs.** Corrigido: `declarar-forward.ps1` le
+agora os **23 inputs de decisao** do `chart01.chr` e grava
+`inputs_sha256` + os valores. Sem isto, a janela declarada era cega a uma
+alteracao que decide se ha trades.
+
+**(b) `declarar-forward.ps1` gravava a HORA LOCAL no campo
+`janela_inicio_servidor`.** Corrigido, e **o desvio passa a ser MEDIDO** em
+vez de estar chumbado: o stream do proprio EA (`forward_test_events.csv`) tem
+hora do **SERVIDOR** e o journal tem hora **LOCAL**.
+**MEDIDO agora: `2026.11.10 21:48:50` (stream) <-> `16:48:12` (journal) =>
+servidor = local + 5 h.** A constante que eu usava (+3) **estava errada** e
+punha as linhas do dia no balde errado - corrigida tambem no
+`forward-gate.ps1`, que passa a medir o desvio em vez de o supor.
+
+### 5. O que fica congelado a partir do passo 6
+
+O binario novo (com os defaults seguros) vira **o** binario do forward, e o
+`DECLARADO` passa a ter **quatro** impressoes: `md5` (binario),
+`governanca_sha256` (modelos), `inputs_sha256` (perfil de risco e decisao) e
+`frota_ligada` (graficos que podem negociar). As quatro podem mudar; cada
+mudanca fica registada como evento.
+

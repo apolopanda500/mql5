@@ -1349,3 +1349,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** gateway: 3a via 25F-est-v1 + simbolo->classe->MULTI_* (sem .ex5); reattach dos 15 com MinAIConfidence=45.0 e a lista completa de inputs (sem .ex5)
 - **estado:** ABERTO | **hora:** 10/11 16:46 | **de:** CMD
+
+---
+## 10/11 16:50 - CMD -> ALFA | D-175: 13 defaults compilados sao o oposto do perfil vivo - corrige na compilacao final
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** Core\Config.mqh: EnableStoplessEntry=false, AllowTradeWithoutAI=false, MaxDrawdownPercent=6.0, RiskPercent=0.5, 4 filtros=true, SymbolsFromMarketWatch=false, EnableAutonomousMode/AIHasSignalAuthority/RequireAIJSON=true, MinAIConfidence=45.0; compilar 0/0
+- **estado:** ABERTO | **hora:** 10/11 16:50 | **de:** CMD
