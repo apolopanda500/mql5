@@ -1696,3 +1696,25 @@ Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`),
 **O que fecha este P1:** provar a colisao da chave da cache com dois indicadores no mesmo simbolo/periodo e corrigir a chave (incluir tipo e parametros), com teste de regressao que leia EMA, RSI e ADX no mesmo simbolo e confirme escalas distintas.
 
 **Nota de IDs:** o ID e' de serie **P1.3516**; o alocador nao foi usado para nao gastar um alias fora da serie (o ultimo devolveu `P1.11421`).
+
+### P1.3517 - FECHADO (10/11 02:40, D-141) - filtro de entrada impossivel por construcao: BUY pedia RSI<45 **E** RSI>50, SELL pedia RSI>55 **E** RSI<50; o EA em 15/15 nao podia emitir sinal nenhum
+
+**Medido no binario `EDF4C81A` (deploy 01:53:23, 15/15, 0 erros no log):** `Core/SignalCore.mqh` com `if(fast[1]>slow[1] && rsi[1]<RSIPullbackBuy && rsi[1]>50.0 && rsi[1]<rsi[2])` e `else if(fast[1]<slow[1] && rsi[1]>RSIPullbackSell && rsi[1]<50.0 && rsi[1]>rsi[2])`, com os defaults `RSIPullbackBuy=45.0` e `RSIPullbackSell=55.0`. As duas conjuncoes sao vazias por aritmetica: nenhum valor de RSI satisfaz uma das condicoes. O proprio texto de diagnostico do build denunciava o problema: `[SIGNAL] NEUTRO | ... | pede: BUY RSI<45.0 (>50) a recuar`.
+
+**Prova independente (runs do ALFA com este binario):** `01:53:40`-`02:01:33`, 1433 `[SCANNER] RESUMO`, `sinais=96`, `trades=0`, saldo final = deposito inicial; `02:02:35`-`02:18:47`, ~700 `[SCANNER] RESUMO`, `trades=0`, `[SESSION] estado salvo ... trades=0`.
+
+**Origem:** o commit `7bc9b139` (ALFA) promoveu para a fonte o filtro "metade forte" (55/45, 60/40, 65/35, 70/30) que so tinha sido testado em `.set`. A combinacao nunca foi confrontada com os defaults do build.
+
+**Correcao (CMD, D-141):** filtro revertido para a regra validada (BUY `rsi[1]<RSIPullbackBuy && rsi[1]>rsi[2]`, SELL `rsi[1]>RSIPullbackSell && rsi[1]<rsi[2]`), texto de diagnostico corrigido, compilado 0 errors/0 warnings as `02:23:07` -> binario **977 654 B**, MD5 **`71ED34C690C9593D209A69E95F0EFFB6`**, deploy 15/15 as `02:23:51.564-51.643`, backup em `Files/Backup/XAU_AI_PRO_v12191hotfix_71ED34C6.ex5`. A guarda de plausibilidade do `F0AC8D28` (P1.3516) ficou intacta.
+
+**Regra que fica escrita (protocolo G5):** nenhum filtro testado em `.set` entra na fonte sem um run de controlo que prove que o EA ainda emite sinais com a combinacao final (`sinais>0` e `trades>0`).
+
+**Nota de IDs:** o ID e' de serie **P1.3517**; o alocador nao foi usado para nao gastar um alias fora da serie.
+
+**P1.3499 (regressao do universo) - nota de D-141, CMD, 02:35:** o mesmo defeito que o D-120 fechou voltou a acontecer e foi corrigido no perfil **vivo** `XAU_AI_PRO_15CHARTS_Q071` (o `ProfileLast` do `config/common.ini`), pondo `SymbolsFromMarketWatch=false` nos 15 `chart*.chr`; medicao: `[SYMS] ... ativos=25 | mwAdicionados=10` as 02:24 e `[PIPELINE] INICIO | Symbols=25` as 02:30:02 -> `[PIPELINE] INICIO | Symbols=15` as **02:35:43.057**. Cópia do perfil antes da alteração em `Files/Backup/profile_Q071_pre_D141_20261110_0235`.
+
+**Aprendizado que fica:** o perfil de Charts em uso **nao** e o `Default`; o `common.ini` (`ProfileLast`) e' a fonte de verdade. Qualquer alteração de inputs de grafico tem de ser feita no perfil carregado, com o terminal fechado, e verificada por `[PIPELINE] INICIO | Symbols=`.
+
+**Nota de D-141 (CMD, 02:35):** o mesmo defeito voltou a acontecer e foi corrigido no perfil **vivo** `XAU_AI_PRO_15CHARTS_Q071` (o `ProfileLast` do `config/common.ini`), pondo `SymbolsFromMarketWatch=false` nos 15 `chart*.chr`; medicao: `[SYMS] ... ativos=25 | mwAdicionados=10` as 02:24 e `[PIPELINE] INICIO | Symbols=25` as 02:30:02 -> `[PIPELINE] INICIO | Symbols=15` as **02:35:43.057**. Cópia do perfil antes da alteração em `Files/Backup/profile_Q071_pre_D141_20261110_0235`.
+
+**Aprendizado que fica:** o perfil deCharts em uso **nao** e o `Default`; o `common.ini` (`ProfileLast`) e' a fonte de verdade. Qualquer alteração de inputs de grafico tem de ser feita no perfil carregado, com o terminal fechado, e verificada por `[PIPELINE] INICIO | Symbols=`.
