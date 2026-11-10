@@ -2,23 +2,29 @@
 =====================================================================
  forward-gate.ps1 - medicao diaria do forward de 30 dias (G11)
 =====================================================================
+ SEM DEPENDENCIA DE MODULOS: usa apenas cmdlets do modulo Management
+ (Get-Item, Get-ChildItem, Test-Path, Get-Content) e .NET puro. O
+ modulo Utility NAO carrega no Windows PowerShell 5.1 desta maquina
+ (medido 10/11/2026: `Get-FileHash` nao e reconhecido), por isso o hash
+ e calculado com `System.Security.Cryptography.MD5` e nenhuma selecao
+ usa `Select-Object`/`Where-Object`/`Measure-Object`.
+
  O que mede, todos os dias, com numero e hora:
    1. MD5 do .ex5 em disco vs MD5 DECLARADO. Divergencia = janela a zero.
    2. Versoes a correr ([START]) - um build novo divide os 30 dias.
    3. Funil: visitas, sinais, AllowTrade (bloqueios), ExecFail, trades.
-   4. Cobertura de IA: simbolos do universo com previsao real (available=true).
+   4. Cobertura de IA: simbolos do universo com previsao real.
    5. P/L do dia, trades do dia, PerdaDia %, Amplitude (DD) % do [STATUS].
-   6. Traces de execucao: [TRADE PIPELINE], [SCANNER] TRADE SUCCESS.
+   6. Traces de execucao e `HTTP 1003`.
 
  Escreve:
    EQUIPE/FORWARD/medicao.jsonl   (uma linha por dia do servidor)
    EQUIPE/FORWARD/FORWARD.md      (tabela viva, legivel pelo DONO)
 
- Saida: 0 = tudo conforme | 2 = MD5 divergiu (janela perdida) | 1 = erro
+ Saida: 0 = conforme | 2 = MD5 divergiu (janela perdida) | 1 = erro
 
  USO
    powershell -NoProfile -ExecutionPolicy Bypass -File Tools\forward-gate.ps1
-   powershell -NoProfile -ExecutionPolicy Bypass -File Tools\forward-gate.ps1 -Detalhe
 =====================================================================
 #>
 [CmdletBinding()]
@@ -31,19 +37,27 @@ $ErrorActionPreference = 'Stop'
 if ($Root -eq '') { $Root = Split-Path -Parent $PSScriptRoot }
 $Root = (Resolve-Path -LiteralPath $Root).Path
 
-$equipe  = Join-Path $Root 'Experts\XAU_AI_PRO\EQUIPE'
-$fwdDir  = Join-Path $equipe 'FORWARD'
-$ex5     = Join-Path $Root 'Experts\XAU_AI_PRO\XAU_AI_PRO.ex5'
-$logDir  = Join-Path $Root 'Logs'
-$appDir  = Join-Path $Root 'Files\XAU_AI_PRO'
-$jsonl   = Join-Path $fwdDir 'medicao.jsonl'
-$md      = Join-Path $fwdDir 'FORWARD.md'
-$decl    = Join-Path $fwdDir 'DECLARADO.json'
+$equipe = Join-Path $Root 'Experts\XAU_AI_PRO\EQUIPE'
+$fwdDir = Join-Path $equipe 'FORWARD'
+$ex5    = Join-Path $Root 'Experts\XAU_AI_PRO\XAU_AI_PRO.ex5'
+$logDir = Join-Path $Root 'Logs'
+$appDir = Join-Path $Root 'Files\XAU_AI_PRO'
+$jsonl  = Join-Path $fwdDir 'medicao.jsonl'
+$md     = Join-Path $fwdDir 'FORWARD.md'
+$decl   = Join-Path $fwdDir 'DECLARADO.json'
 
-# Desvio do servidor em relacao a hora local (medido: -03:00 => servidor = local + 3h)
 $OffsetServidorHoras = 3
 
 function Say($t) { if ($Detalhe) { Write-Host $t } }
+
+function Get-MD5([string]$Path) {
+  $fs = [System.IO.File]::OpenRead($Path)
+  try {
+    $md5 = [System.Security.Cryptography.MD5]::Create()
+    $bytes = $md5.ComputeHash($fs)
+    return ([System.BitConverter]::ToString($bytes) -replace '-', '')
+  } finally { $fs.Close() }
+}
 
 function Ler-LogLocal([string]$Path) {
   if (-not (Test-Path -LiteralPath $Path)) { return '' }
@@ -56,18 +70,21 @@ function Ler-LogLocal([string]$Path) {
 
 # ---------------------------------------------------------------- declaracao
 $md5Atual = ''
-$ex5Info  = $null
+$ex5Info = $null
 if (Test-Path -LiteralPath $ex5) {
   $ex5Info = Get-Item -LiteralPath $ex5
-  $md5Atual = (Get-FileHash -LiteralPath $ex5 -Algorithm MD5).Hash
+  $md5Atual = Get-MD5 $ex5
 }
 
 $declarado = $null
 if (Test-Path -LiteralPath $decl) {
   try { $declarado = Get-Content -LiteralPath $decl -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $declarado = $null }
 }
-$md5Declarado = if ($declarado) { [string]$declarado.md5 } else { '' }
-$versaoDeclarada = if ($declarado) { [string]$declarado.versao } else { '' }
+$md5Declarado = ''; $versaoDeclarada = ''
+if ($declarado) {
+  $md5Declarado = [string]$declarado.md5
+  $versaoDeclarada = [string]$declarado.versao
+}
 $divergente = ($md5Declarado -ne '' -and $md5Atual -ne $md5Declarado)
 
 # ---------------------------------------------------------------- logs
@@ -76,26 +93,29 @@ $serverDate = $serverNow.ToString('yyyy-MM-dd')
 
 $logFiles = @()
 if (Test-Path -LiteralPath $logDir) {
-  $logFiles = Get-ChildItem -LiteralPath $logDir -Filter '*.log' -ErrorAction SilentlyContinue |
-              Where-Object { $_.LastWriteTime -ge (Get-Date).AddDays(-2) } | Sort-Object Name
+  $todos = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -ErrorAction SilentlyContinue)
+  foreach ($lf in $todos) {
+    if ($lf.LastWriteTime -ge (Get-Date).AddDays(-2)) { $logFiles += $lf }
+  }
 }
 $texto = ''
 foreach ($lf in $logFiles) { $texto += (Ler-LogLocal $lf.FullName) + "`n" }
-$linhas = $texto -split "`r?`n"
-
+$linhas = @($texto -split "`r?`n")
 Say ("linhas lidas: " + $linhas.Count)
 
 # [START] por versao
-$starts = @($linhas | Where-Object { $_ -match '\[START\] XAU_AI_PRO' })
 $versoes = @{}
-foreach ($s in $starts) {
-  if ($s -match 'XAU_AI_PRO\s+(v[0-9.]+)') {
-    $v = $Matches[1]
+$nStarts = 0
+foreach ($l in $linhas) {
+  if ($l -match '\[START\] XAU_AI_PRO\s+(v[0-9.]+)') {
+    $v = $Matches[1]; $nStarts++
     if (-not $versoes.ContainsKey($v)) { $versoes[$v] = 0 }
-    $versoes[$v]++
+    $versoes[$v] = $versoes[$v] + 1
   }
 }
-$versaoCorrer = if ($versoes.Count -gt 0) { ($versoes.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 1).Key } else { '' }
+$versaoCorrer = ''
+$melhor = -1
+foreach ($k in $versoes.Keys) { if ($versoes[$k] -gt $melhor) { $melhor = $versoes[$k]; $versaoCorrer = $k } }
 
 # funil: ultimo [SCANNER] RESUMO
 $resumo = ''
@@ -112,7 +132,7 @@ if ($resumo) {
   if ($resumo -match 'NoSignal=(\d+)') { $funil['no_signal'] = [int]$Matches[1] }
 }
 
-# [STATUS] HEALTHY: estado da conta e do dia
+# [STATUS] HEALTHY
 $status = ''
 foreach ($l in $linhas) { if ($l -match '\[STATUS\] HEALTHY') { $status = $l } }
 $conta = @{}
@@ -129,18 +149,25 @@ if ($status) {
   if ($status -match 'Equity=([0-9.]+)') { $conta['equity'] = [double]$Matches[1] }
 }
 
-# IA: simbolos com previsao real hoje (do log do gateway)
+# IA: simbolos com previsao real no log
 $iaSimbolos = @{}
+$n1003 = 0
+$nPipeline = 0
+$nSucesso = 0
 foreach ($l in $linhas) {
   if ($l -match '\[AI\] PYTHON \| (\w+) \|') { $iaSimbolos[$Matches[1]] = $true }
+  if ($l -match 'HTTP 1003') { $n1003++ }
+  if ($l -match '\[TRADE PIPELINE\]') { $nPipeline++ }
+  if ($l -match '\[SCANNER\] TRADE SUCCESS') { $nSucesso++ }
 }
-# gateway: available=true por simbolo do universo
-$universo = @()
+
+# gateway: available=true por simbolo
 $token = ''
 $envFile = Join-Path $appDir '.env'
 if (Test-Path -LiteralPath $envFile) {
-  $t = (Get-Content -LiteralPath $envFile -Encoding UTF8 | Where-Object { $_ -match 'XAU_GATEWAY_TOKEN' } | Select-Object -First 1)
-  if ($t) { $token = ($t -split '=')[1].Trim() }
+  foreach ($l in @(Get-Content -LiteralPath $envFile -Encoding UTF8)) {
+    if ($l -match 'XAU_GATEWAY_TOKEN') { $token = ($l -split '=')[1].Trim(); break }
+  }
 }
 $gwDisponiveis = @()
 if ($token -ne '') {
@@ -154,41 +181,42 @@ if ($token -ne '') {
   }
 }
 
-$traces = @($linhas | Where-Object { $_ -match '\[TRADE PIPELINE\]' }).Count
-$sucesso = @($linhas | Where-Object { $_ -match '\[SCANNER\] TRADE SUCCESS' }).Count
-$timeouts = @($linhas | Where-Object { $_ -match 'HTTP 1003' }).Count
-
 # ---------------------------------------------------------------- registo
 if (-not (Test-Path -LiteralPath $fwdDir)) { New-Item -ItemType Directory -Path $fwdDir -Force | Out-Null }
 
+$iaLista = @()
+foreach ($k in $iaSimbolos.Keys) { $iaLista += $k }
+[Array]::Sort($iaLista)
+
 $registo = [ordered]@{
-  server_date        = $serverDate
-  medido_local       = (Get-Date).ToString('dd/MM/yyyy HH:mm:ss')
-  md5_ex5            = $md5Atual
-  md5_declarado      = $md5Declarado
-  md5_divergente     = $divergente
-  ex5_bytes          = if ($ex5Info) { $ex5Info.Length } else { 0 }
-  ex5_mtime          = if ($ex5Info) { $ex5Info.LastWriteTime.ToString('dd/MM HH:mm:ss') } else { '' }
-  versao_declarada   = $versaoDeclarada
-  versao_em_memoria  = $versaoCorrer
-  starts_total       = $starts.Count
-  funil              = $funil
-  conta              = $conta
-  ia_simbolos_log    = @($iaSimbolos.Keys | Sort-Object)
-  ia_available_gw    = $gwDisponiveis
-  ia_disponiveis_n   = $gwDisponiveis.Count
-  trade_pipeline     = $traces
-  trade_success      = $sucesso
-  webrequest_1003    = $timeouts
+  server_date       = $serverDate
+  medido_local      = (Get-Date).ToString('dd/MM/yyyy HH:mm:ss')
+  md5_ex5           = $md5Atual
+  md5_declarado     = $md5Declarado
+  md5_divergente    = $divergente
+  ex5_bytes         = if ($ex5Info) { $ex5Info.Length } else { 0 }
+  ex5_mtime         = if ($ex5Info) { $ex5Info.LastWriteTime.ToString('dd/MM HH:mm:ss') } else { '' }
+  versao_declarada  = $versaoDeclarada
+  versao_em_memoria = $versaoCorrer
+  starts_total      = $nStarts
+  funil             = $funil
+  conta             = $conta
+  ia_simbolos_log   = $iaLista
+  ia_available_gw   = $gwDisponiveis
+  ia_disponiveis_n  = $gwDisponiveis.Count
+  trade_pipeline    = $nPipeline
+  trade_success     = $nSucesso
+  webrequest_1003   = $n1003
 }
 
-$linha = ($registo | ConvertTo-Json -Compress -Depth 6)
-[System.IO.File]::AppendAllText($jsonl, $linha + "`r`n", (New-Object System.Text.UTF8Encoding($false)))
+[System.IO.File]::AppendAllText($jsonl, (($registo | ConvertTo-Json -Compress -Depth 6) + "`r`n"), (New-Object System.Text.UTF8Encoding($false)))
 
 # tabela md
 $mdLines = @()
 if (Test-Path -LiteralPath $jsonl) {
-  $mdLines = Get-Content -LiteralPath $jsonl -Encoding UTF8 | Where-Object { $_.Trim() -ne '' } | ForEach-Object { $_ | ConvertFrom-Json }
+  foreach ($l in @(Get-Content -LiteralPath $jsonl -Encoding UTF8)) {
+    if ($l.Trim() -ne '') { $mdLines += ($l | ConvertFrom-Json) }
+  }
 }
 $tabela = @()
 $tabela += '# FORWARD 30 DIAS - G11 (medicao diaria automatica)'
@@ -200,15 +228,13 @@ $tabela += '|---|---|---|---|---|---|---|---|---|---|---|'
 foreach ($r in $mdLines) {
   $f = $r.funil; $c = $r.conta
   $ok = if ($r.md5_divergente) { 'NAO' } else { 'sim' }
-  $tabela += ('| ' + $r.server_date + ' | ' + $ok + ' | ' + $r.versao_em_memoria +
-              ' | ' + $(if ($f) { $f.sinais } else { '-' }) +
-              ' | ' + $(if ($f) { $f.allow_trade_bloqueios } else { '-' }) +
-              ' | ' + $(if ($f) { $f.exec_fail } else { '-' }) +
-              ' | ' + $(if ($f) { $f.trades } else { '-' }) +
-              ' | ' + $(if ($c) { $c.pl_dia } else { '-' }) +
-              ' | ' + $(if ($c) { $c.amplitude_pct } else { '-' }) +
-              ' | ' + $r.ia_disponiveis_n +
-              ' | ' + $r.webrequest_1003 + ' |')
+  $sin = '-'; $alt = '-'; $exf = '-'; $trd = '-'
+  if ($f) { $sin = $f.sinais; $alt = $f.allow_trade_bloqueios; $exf = $f.exec_fail; $trd = $f.trades }
+  $pl = '-'; $dd = '-'
+  if ($c) { $pl = $c.pl_dia; $dd = $c.amplitude_pct }
+  $tabela += ('| ' + $r.server_date + ' | ' + $ok + ' | ' + $r.versao_em_memoria + ' | ' + $sin +
+              ' | ' + $alt + ' | ' + $exf + ' | ' + $trd + ' | ' + $pl + ' | ' + $dd +
+              ' | ' + $r.ia_disponiveis_n + ' | ' + $r.webrequest_1003 + ' |')
 }
 $tabela += ''
 $tabela += ('**Declarado:** ' + $(if ($declarado) { $declarado.versao + ' MD5 ' + $declarado.md5 + ' (' + $declarado.ex5_bytes + ' B)' } else { 'NADA - ainda nao declarado' }))
@@ -227,5 +253,5 @@ if ($divergente) {
 }
 Write-Host ("OK forward: " + $serverDate + " | sinais=" + $(if ($funil) { $funil.sinais } else { '?' }) +
             " | trades=" + $(if ($funil) { $funil.trades } else { '?' }) +
-            " | IA=" + $gwDisponiveis.Count + " simbolos | 1003=" + $timeouts) -ForegroundColor Green
+            " | IA=" + $gwDisponiveis.Count + " simbolos | 1003=" + $n1003) -ForegroundColor Green
 exit 0

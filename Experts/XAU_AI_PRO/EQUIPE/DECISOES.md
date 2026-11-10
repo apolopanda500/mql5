@@ -8023,3 +8023,108 @@ Com A **e** B, mede um universo real.
 modulo de treino mudou de contrato e o teste ficou velho. Nenhuma das tres
 depende de nada que esta decisao tenha mudado.
 
+
+
+---
+
+## D-160 | 10/11/2026 09:50 | P0: a entrada SEM STOP esta LIGADA em producao e o stop de emergencia NAO corta
+
+- **Estado:** ABERTO (CMD, 10/11 09:50) - **P0 de capital**, precisa de decisao
+  do DONO e de build do ALFA **antes das 20:30** (a janela abre 21:05 local).
+- **Medido por mim, hoje, no journal e no perfil vivo:**
+
+### 1. O que o perfil vivo diz (o `.chr` do deploy de 10/11 02:35:23)
+
+`Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071\chart01.chr` (bloco de inputs
+identico nos 15, MD5 `C7C2ED41`):
+
+```
+EnableStoplessEntry=true     StoplessArmATRMult=0.8    StoplessArmMinPoints=30
+StoplessLockATRMult=0.35    StoplessLockMinPoints=10
+StoplessEmergencyPoints=0   StoplessEmergencyRMult=1.5
+MinMarketScore=65.0   MinMarketScoreNoAI=45.0   BlockZeroAIScore=true
+EnableAutonomousMode=true   Symbols=15 (SymbolsFromMarketWatch=false)
+```
+
+**`EnableStoplessEntry=true`.** A nota do `D-126` afirmava que os 15 graficos
+passavam a correr com `EnableStoplessEntry=false` ("o SL vai na ordem"). **No
+perfil que esta a correr, e `true`.** A afirmacao do `D-126` nao se verifica no
+disco.
+
+### 2. O que o journal mostra HOJE
+
+```
+[RESUMO] #11314553174 XAUUSD BUY 0.03 | flutuante -3.90 USD | SEM STOP: arma em 5.00 USD | stop=sem stop | alvo=10.00 USD
+[RESUMO] #11315217666 XAUUSD BUY 0.03 | flutuante -1.92 USD | SEM STOP: arma em 5.00 USD | stop=sem stop | alvo=10.00 USD
+```
+
+### 3. O preco de uma entrada sem stop (medido no stream de trades)
+
+`Files\Data\forward_test_events.csv` (UTF-16LE, `TRADE_CLOSE` com
+`Value=profit=`). **Todos os trades normais sao pequenos e maioritariamente
+positivos. As unicas perdas grandes sao entradas SEM STOP:**
+
+| Data | Simbolo | P/L | Notas |
+|---|---|---|---|
+| 09/11 02:15 | XAUUSD | **-119,40** | ~2000 pontos sem stop (`P1.3507`) |
+| 10/11 04:34 | XAUUSD | **-73,02** | ~2400 pontos sem stop |
+| 10/11 05:18 | XAUUSD | +0,00 | |
+| 10/11 06:19 | XAUUSD | +11,22 | |
+
+Contra `MaxRiskPerTradeUsd = 8,00`: **uma entrada sem stop perdeu 15x o teto
+por operacao**. O `GATE_REAL` exige **0 violacoes de risco** - este caminho
+viola o teto.
+
+### 4. E o stop de emergencia nao corta
+
+`StoplessEmergencyRMult=1.5` com R = distancia da armadura (0,8 ATR, min 30
+pontos) manda fechar a ~1,5 x armadura. **Medido: a posicao correu 2000-2400
+pontos.** O `P1.3507`/`P1.3514` mexeram na **distancia usada pelo CAP**
+(`RiskDistancePointsForCap`), **nao** no disparo do **fecho** de emergencia
+(`CheckStoplessEmergency`, `Core\PositionManager.mqh`). O cap foi corrigido; o
+corte, nao.
+
+### 5. O efeito no G11 (medido, nao opinionado)
+
+| Periodo | trades | wins | losses | **PF** | DD |
+|---|---|---|---|---|---|
+| desde 01/10 | 89 | 48 | 40 | **0,337** | 201,87 USD |
+| desde 01/11 | 13 | 9 | 3 | **0,308** | 192,42 USD |
+| desde 04/11 (IA viva) | 8 | 5 | 2 | **0,229** | 192,42 USD |
+| desde 09/11 | 4 | 1 | 2 | **0,058** | 192,42 USD |
+
+O `GATE_REAL` exige **PF >= 1,2**. **Com o `EnableStoplessEntry=true`, o PF
+medido e 0,06 a 0,34.** Tirando as **duas** entradas sem stop, o resto do
+historial e materialmente melhor.
+
+**Este e o numero que vai reprovar o forward - nao a falta de trades, nao o
+piso de confianca.** 30 dias a medir isto seria 30 dias a perder dinheiro.
+
+### 6. O que esta resolucao nao toca
+
+Nenhum parametro de risco (risco por trade, perda diaria, drawdown, stop,
+filtro de volatilidade). `EnableStoplessEntry` **nao e um parametro de risco:
+e uma garantia de que a ordem tem stop** - o risco e o valor, o stop e o
+envelope. Passar a `false` **reduz** a exposicao, nao a aumenta.
+
+### 7. O que o CMD ja entregou (sem tocar no EA)
+
+- `Tools/g11-metrics.py`: metricas do G11 (trades, PF, DD) lidas do stream de
+  trades do proprio EA - a prova machine-readable que faltava.
+- `Tools/forward-gate.ps1` reescrito **sem dependencia do modulo Utility**
+  (o `Get-FileHash` nao existe no PS 5.1 desta maquina - medido) e
+  `Tools/forward-gate.cmd` a correr as duas metricas. Tarefa agendada diaria
+  `XAU_AI_PRO Forward Gate` (00:20) testada com `exit=0`.
+- `D-159`: governanca de modelos re-derivada pelos folds (9 modelos com
+  evidencia), piso efetivo 0.02 e a chave de cache do `.meta.json`.
+
+### 8. O que falta (e de quem)
+
+1. **DONO**: autorizar (a) `EnableStoplessEntry=false` nos 15 graficos e
+   (b) a correccao do `CheckStoplessEmergency` (o corte de emergencia nao
+   dispara). (a) e um **reattach** - o binario muda, logo **antes das 20:30**.
+2. **ALFA**: build com `EnableStoplessEntry=false` por omissao + o corte de
+   emergencia a disparar; entregar MD5 ate as 19:00.
+3. **CMD**: declarar o novo binario, deploy 15/15, e a recolha diaria passa a
+   medir o binario novo.
+

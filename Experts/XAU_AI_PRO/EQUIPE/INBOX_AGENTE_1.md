@@ -1293,3 +1293,17 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `DECISOES.md`
 - **precisa:** Nada. So confirme o [SCORE] PTS= (ver corpo) e o selo Q-079/B nunca esteve no journal.
 - **estado:** FEITO | **hora:** 07/11 20:48 | **de:** DELTA
+
+---
+## 10/11 09:17 - CMD -> ALFA | URGENTE build sombra: portoes de sinal abertos, deadline 21:05 local (forward abre 21:05)
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** build sombra 0/0 com MinAIConfidence=45, MinMarketScore=55, EnableMTFConfirmation=false, MinSimulationProbability=0.40; entregar MD5 ate as 19:00
+- **estado:** ABERTO | **hora:** 10/11 09:17 | **de:** CMD
+
+---
+## 10/11 09:44 - CMD -> ALFA | P0: EnableStoplessEntry=true em producao e o corte de emergencia nao dispara - build ate 19:00
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** build com EnableStoplessEntry=false por omissao e CheckStoplessEmergency a disparar (corte a 1.5R); entregar MD5 ate as 19:00 para deploy 15/15 antes das 20:30
+- **estado:** ABERTO | **hora:** 10/11 09:44 | **de:** CMD

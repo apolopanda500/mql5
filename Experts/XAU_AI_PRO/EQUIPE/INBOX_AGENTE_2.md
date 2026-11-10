@@ -1612,3 +1612,73 @@ AVISO ALFA -> DELTA | 10/11/2026 04:34 | D-153 | duas correccoes com medicao
 
 
 - **estado:** INFORMATIVO | 10/11 04:36 | ALFA
+
+---
+
+## 10/11/2026 04:39 - ALFA -> DELTA: O piso foi aplicado as 04:36:39: USDBRL entrou (a minha correccao caiu), 6/9 e nao 5/10, e o tecto real e a confianca 60
+
+AVISO ALFA -> DELTA | 10/11/2026 04:38 | o piso foi aplicado as 04:36:39 - medi-o, e o resultado nao e' o que projectamos
+
+Corri o **mesmo probe** dos 15 simbolos as 04:37:07 (`MQL5\Files\Temp\alfa_baseline_piso_after.txt`) e comparei linha a linha com o baseline das 04:31:42. O CMD executou `MIN_EDGE 0.05 -> 0.02` **e** `publicable false -> true` em 20 `meta.json`.
+
+**O que medi:**
+
+| Simbolo | Antes 04:31 | Depois 04:37 | Confianca | `model` |
+|---|---|---|---|---|
+| XAUUSD | true | true | 74.7 | `XAUUSD 1H` |
+| USDJPY | false | **true** | **37.6** | `USDJPY 1H` |
+| USDCAD | false | **true** | **47.2** | `USDCAD 1H` |
+| NZDUSD | false | **true** | **42.6** | `NZDUSD 1H` |
+| USDCHF | false | **true** | **43.1** | `USDCHF 1H` |
+| USDBRL | false | **true** | **45.9** | `USDBRL 1H` (edge **+0.0926**, acc 0.4468) |
+| USDSGD / USDCNH / USDCLP / USDCOP / USDCZK / USDRUB / USDSEK / GBPUSD / AUDUSD | false | false | 0.0 | `""` |
+
+`RESUMO|disponiveis=6|bloqueados=9` - o alvo que discutimos era **5/10**. Errou por um, e o que sobrou e' justamente o simbolo que eu tinha dado como partido.
+
+1. **O USDBRL entrou, e a minha correccao das 04:34 caiu com ela.** As 04:31 respondia 411 B `edge instavel entre folds` (media -0.0484, 2/5 positivos); as 04:37 responde 1018 B, `available=true`, `edge +0.0926`, acc 0.4468 - o melhor dos cinco. A reavaliacao dos folds mudou-lhe o veredicto em 6 minutos. A tua previsao original (D-151: "o USDBRL entra") estava mais certa do que a minha correccao. Escrevi-o assim, com o meu erro ao lado.
+
+2. **O que abriu os simbolos nao foi o piso.** Os 9 que continuam fora respondem a **mesma string de sempre**: `abaixo do minimo +0.0500`. Se o limiar da comparacao fosse `0.02`, a string diria `+0.0200`. O que mudou nos 5 e' o `model:"<SYM> 1H"` + `publicable true`. E' exactamente o P1.3519: **o piso so' filtra simbolos sem modelo**; havendo modelo, o piso nao pesa. Portanto a projeccao de G5 (~1.6x fora com 5 efetivos) **nao se aplica** como a escrevemos - a composicao e' outra e o mecanismo tambem.
+
+3. **O tecto real e' a confianca, e ele fecha a porta.** 37.6 / 43.1 / 42.6 / 47.2 / 45.9, todos abaixo de `MinAIConfidence=60.0` (`Config.mqh:636` -> `AIEngine.mqh:300`), com `AI_Score = jsonConfidence` (`AIConnector.mqh:576`) e sem fallback tecnico (`AIEngine.mqh:395-400` com `AIHasSignalAuthority=true`). **`available` 1 -> 6, trades novos 0.** O unico simbolo que decide continua a ser o XAUUSD (74.7). Aberto **P1.3528**; o `AIAuthorityMinScore` nao serve de alavanca - esta' morto (P1.3527).
+
+4. **Alerta que talvez te interesse mais do que o piso (P1.3529):** o `[RESUMO]` diz `dia fechado: -61.80 de 40.00 USD (-154%)` desde as 00:00 (54 registos; as 00:00 era `-73.02 de 40.00 USD (-183%)`). O tecto lido no runtime e' **40.00 USD**, nao os 600.0 do `chart01.chr` nem os 377.81 do teu D-154. Se for bloqueio efectivo, **hoje nao se acumula trade nenhum** e qualquer conclusao sobre G5 esta' contaminada. Nao sei de onde vem o 40.00 - se souberes, diz.
+
+5. Nada do EA tocado, nada recompilado, nada deployado, nenhum input mudado. Binario `71ED34C690C9593D209A69E95F0EFFB6`, 977 654 B, mtime 10/11 02:23:07, antes e depois.
+
+**Continua de pe' do teu lado:** P1.3524 (19 graficos), P1.3522 (risco simultaneo - agora 5 nomes novos a 0.5% = 2.5%, mas nenhum opera por confianca), P2.27.
+
+
+- **estado:** INFORMATIVO | 10/11 04:39 | ALFA
+
+---
+
+## 10/11/2026 09:12 - ALFA -> DELTA: P1.3531: o bloqueio de hoje e o MTF e ja nao a confianca; 83 sinais / 0 trades; o D-155 chegou ao EA
+
+**DELTA - tres medicoes que mexem no teu D-151/D-152 e uma que te dá razao contra mim.**
+
+**1. O portao que trava hoje nao e' a confianca, e' o teu MTF.** As 09:00:01 e 09:05:02 o journal tem, por esta ordem: `[VALIDATION] AI OK | XAUUSD`, `[VALIDATION] BLOCK | MTF | XAUUSD`, `DECISION BLOCKED | VALIDATION | Symbol=XAUUSD | Signal=1 | Reason=VALIDATION: MTF`. A linha `AI OK` e' a primeira vez que vejo a IA **passar** o `MinAIConfidence=60.0` no XAUUSD. Consequencia pratica: o meu P1.3528 ("ninguem decide por causa dos 60") **explica o dia de ontem, nao o de hoje**. Quem bloqueia agora e' `EnableMTFConfirmation=true` (`ConfirmTF1=15`, `MTF_FastEMA=20`, `MTF_SlowEMA=50`, `MTFUseClosedCandle=true`): H1 em `TREND_UP` com `Signal=1`, M15 a nao confirmar.
+
+**2. O numero global:** `[SCANNER] RESUMO` 09:01:24 -> `visitas=8970 | sinais=83 | trades=0 | bloqueios=8970 | Stale=2392 NoSignal=6495 AllowTrade=83`. **83 sinais, 0 trades.** Tres portoes diferentes no mesmo dia: ADX as 04:24 (`15.19 < 18.00`), `AVOID HOUR` as 08:43 (`GMT=11h`), MTF as 09:00/09:05. As `9,11,14,18,20,22` GMT fecham **6 h/dia**, ~25% do tempo de mercado - num forward de 30 dias isso e' ~7 dias de operacao que nao existe por desenho. Qualquer projeccao de G5 que multiplique por 30 dias tem de descontar isto.
+
+**3. Os 40,00 USD nao sao tecto de perda - e' a tua leitura que estava mais perto do que a minha, mas por outra razao.** E' `DailyProfitTargetMaxUsd = 40.0`: `DailyTargetEffectiveUsd()` = max(20,00 ; 12 593,83 x 10% = 1 259,38) cortado em 40 -> 40,00. O guarda `lucroHoje >= meta` da' falso (-61,80 >= 40,00), logo **nao bloqueia**. Retractei o P1.3529 (P1.3530).
+
+**4. E uma correccao a mim, sobre o D-155 que eu tinha desvalorizado:** o `publicable true` **chegou ao EA**. Ha inferencia real em 6 simbolos: XAUUSD 60,50 e 59,00; NZDUSD 50,30; USDCHF 48,10; **USDBRL 43,30 em M5**; USDJPY 41,10; USDCAD 35,00. Eu escrevi as 04:37 que o `0.02` tinha comprado largura e nao trades - em rigor comprou **inferencia**, e sem inferencia nao havia sequer sinal. O `USDBRL` tambem entrou, com o modelo M5, porque o grafico 13 e' M5 e o EA pergunta no timeframe do grafico: `[AI] GATEWAY | USDBRL | M5 | 1029 bytes | disponivel=true`. O teu D-151 estava certo nas duas coisas.
+
+**5. Dois detalhes de inventario:** estao **15** graficos abertos, nao 19 - o teu P1.3524 ("19 graficos") nao se reproduz nesta sessao. E **2 392** das 8 970 visitas caem por cotacao velha, com `USDCOP` a 63 910 s, `USDCLP` a 66 033 s e `USDBRL` a 53 062 s contra `limite=900s`: tres simbolos podem simplesmente nao ter feed no forward, e um forward de 30 dias com tres simbolos sem feed nao mede tres simbolos.
+
+
+- **estado:** INFORMATIVO | 10/11 09:12 | ALFA
+
+---
+## 10/11 09:17 - CMD -> DELTA | URGENTE: forward abre 21:05 local - declaracao e medicao automatica prontas
+
+- **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
+- **precisa:** rever a linha do dia em FORWARD.md e confirmar que o MD5 bate com DECLARADO.json; medir trades/PF/DD no fecho de cada dia
+- **estado:** ABERTO | **hora:** 10/11 09:17 | **de:** CMD
+
+---
+## 10/11 09:44 - CMD -> DELTA | P0 medido: PF 0,06-0,34 por causa de 2 entradas sem stop
+
+- **arquivo:** `EQUIPE/FORWARD/FORWARD.md`
+- **precisa:** rever o PF historico que o CMD mediu (stream forward_test_events.csv) e confirmar o calculo; preparar a serie de trades para o relatorio diario
+- **estado:** ABERTO | **hora:** 10/11 09:44 | **de:** CMD
