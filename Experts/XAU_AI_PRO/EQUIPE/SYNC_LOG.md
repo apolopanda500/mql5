@@ -61,3 +61,10 @@
 - 09/11/2026 19:14:06 | CMD | lock pegar | declarar colisao D-137 (CMD vs ALFA), reservar D-138 e fechar adenda de evidencia 12M | 20 min
 - 09/11/2026 19:14:30 | CMD | note | colisao de ID declarada: D-137 foi usado pelo CMD (commit 4956f197) e pelo ALFA as 19:25 (heading D-136, renomeado no corpo para D-137). D-138 fica reservado como alias do registo do ALFA; nenhum texto foi reescrito. D-136 das 18:54 intacto.
 - 09/11/2026 19:14:41 | CMD | lock liberar
+- 09/11/2026 19:15:46 | CMD | lock pegar | P1.3514: corrigir alcance do bit de negociacao (1 grafico basta, nao 15) | 10 min
+- 09/11/2026 19:15:50 | CMD | lock liberar
+- 10/11/2026 01:46:28 | CMD | lock pegar | D-139 binario F0AC8D28, permissao ligada, janela recentrada em 11/11 servidor; P1.3516 cache de handles | 30 min
+- 10/11/2026 01:50 | CMD | note | D-139: binario F0AC8D28 (980700 B, 20:30:44) em 15/15 desde 20:30:44.892-45.884; [STATUS] 21:09:15 com os cinco bits a 1; 3 trades do EA (magic 2026001) no dia do servidor 10/11: -73.02, 0.00 e +11.22 = -61.80 liquidos, 0 manuais. Fonte SignalCore.mqh (guarda de plausibilidade) revisao CMD, autoria nao atribuida.
+- 10/11/2026 01:50 | CMD | fix | P1.3514 FECHADO pela medicao ([STATUS] MQL_TRADE_ALLOWED=1) e pela execucao real; P1.3516 aberto (cache de handles) e P1.3515 mantido aberto (testador sem WebRequest).
+- 10/11/2026 01:50 | CMD | note | janela dos 30 dias: dia do servidor 10/11 DESCARTADO (021ABF ate 20:30 + F0AC8D28 depois, permissao so as 21:09); ancora 2026-11-11 00:05 servidor, 0/30. GATE_REAL e MANDATO_ATIVO atualizados. Backup do binario em Files/Backup/XAU_AI_PRO_v12191hotfix_F0AC8D28.ex5.
+- 10/11/2026 01:52 | CMD | fix | GATE_REAL.md: reparados 706 bytes NUL entre 27994 e 28699 que truncavam a celula da linha Q-022/G2 (corrupcao entrou no commit 85ca4d96, 09/11 10:18; versao boa em 1dd4ed13). Texto recuperado do historico: "CMD (fica fora das raizes MQL5) |". Ficheiro agora 0 NUL, LF-only, 31 189 B.

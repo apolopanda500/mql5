@@ -1656,7 +1656,7 @@ O repo de trading nao tinha workflow de gitleaks; a unica config era um `.gitlea
 
 Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`), `.github/workflows/security.yml` com gitleaks-action@v3, config explicita e versao fixada em 8.30.1. Prova local: **472 -> 0** (`no leaks found`, 549 commits, 205,45 MB). O ficheiro antigo ficou em `Files/Backup/pre_gitleaks_20261109/gitleaks.toml.pre_v819` e foi removido do sitio.
 
-### P1.3514 - ABERTO (DONO/UI) - MQL_TRADE_ALLOWED=0 em 15/15: o EA esta' anexado mas sem permissao de negociacao por grafico
+### P1.3514 - FECHADO (10/11 01:50) - MQL_TRADE_ALLOWED=0 em 15/15: o EA estava anexado mas sem permissao de negociacao por grafico
 
 **Medido 09/11 18:45:11** (`MQL5\logs\20261109.log`, USDSEK H1): `[TRADE BLOCK] PROGRAMA sem permissao: MQL_TRADE_ALLOWED=0 (bit POR GRAFICO; terminal e conta OK, a suite pode negociar)`. O mesmo bloco aparece de hora a hora desde 14:29. Os outros quatro bits estao a 1 (`TERMINAL_TRADE_ALLOWED`, `ACCOUNT_TRADE_ALLOWED`, `ACCOUNT_TRADE_EXPERT`, `TERMINAL_CONNECTED`) e `GET /api/ai/predict` responde 200, logo o problema nao e' conta, broker, ligacao nem gateway.
 
@@ -1684,3 +1684,15 @@ Fechado em D-125: `.gitleaks.toml` na raiz em formato v8.25+ (`[[allowlists]]`),
 **O que fecha este P1:** provar uma de duas vias - (a) `WebRequest` permitido e a funcionar dentro do agente de teste (URL na allowlist do agente, nao so' do terminal), ou (b) um modo de backtest em que a IA seja explicitamente declarada como ausente (IA OFF) e os resultados assinados como "EA sem IA". A opcao (b) ja' tem controlo em preparacao (`ALFA_G5_A_CTRL60.set`), mas o controlo ainda nao foi corrido nem lido.
 
 **Nota de IDs:** o alocador devolveu `P1.11421`; o ID da serie e' **P1.3515** (`P1.11421` fica como alias reservado).
+
+### P1.3516 - ABERTO (CODIGO/CACHE) - a cache de handles de indicadores devolve series de outro indicador (EMA em escala de oscilador, EMA lenta a 0.00); a guarda do `F0AC8D28` e' mitigacao, nao correcao
+
+**Medido no testador (09/11, registo do D-136/D-137):** `[SIGNAL] NEUTRO | XAUUSD | tendencia=ALTA | EMA50=31.14 EMA200=0.00 | RSI[1]=64.03` com XAUUSD a ~4000 USD, em 3 meses de 2026.08.08 a 2026.11.08. `CopyBuffer` devolvia **SUCESSO**, mas a serie lida vinha em escala de oscilador (0-100) e a lenta vinha 0.00. Consequencia: `fast[1] > slow[1]` sempre verdadeiro e `rsi[1] < 45` nunca verdadeiro -> **845 varreduras, 845 NoSignal, 0 sinais** no periodo.
+
+**Causa provavel (a confirmar):** a cache de handles introduzida na v1.2.161 indexa por simbolo+periodo sem incluir o tipo/parametros do indicador, pelo que um handle de RSI/ADX pode ser reutilizado como handle de EMA. Nao foi provado em leitura de codigo ainda; fica como hipotese principal a medir.
+
+**Mitigacao entregue no `F0AC8D28` (09/11 20:30:44, 15/15):** guarda de plausibilidade em `Core/SignalCore.mqh` - se a EMA estiver a mais de 25 % do bid ou `<= 0`, descarta a cache e rele com handles temporarios; se continuar implausivel, devolve 0 e registra `[SIGNAL] SEM LEITURA`. Isto evita o "EA mudo", mas **nao** corrige a chave da cache: o custo (handles temporarios por barra) e o risco de leitura errada persistem.
+
+**O que fecha este P1:** provar a colisao da chave da cache com dois indicadores no mesmo simbolo/periodo e corrigir a chave (incluir tipo e parametros), com teste de regressao que leia EMA, RSI e ADX no mesmo simbolo e confirme escalas distintas.
+
+**Nota de IDs:** o ID e' de serie **P1.3516**; o alocador nao foi usado para nao gastar um alias fora da serie (o ultimo devolveu `P1.11421`).

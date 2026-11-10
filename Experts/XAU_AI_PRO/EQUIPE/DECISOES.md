@@ -6440,3 +6440,52 @@ O agente de teste correu varios jobs no mesmo dia. Resultados lidos do log do ag
 - NUMERACAO, corrigida antes do commit: este registo foi escrito primeiro como D-136 e passou a D-137 ao verificar que o D-136 ja existia desde as 18:54 (DECISOES L6385 e IDS L141, o backtest medido sem IA por WebRequest 4014). Aplicada a regra do D-133: reserva-se o numero nos dois ficheiros antes de escrever e, quando colide, cede quem escreve depois. Nenhum dos dois registos foi reescrito.
 - DEFEITO DE EOL ALHEIO, REPARADO E DECLARADO: o IDS.md tinha 3 LF sem CR (bytes 24137, 24267 e 24512 de um ficheiro com 24513 B), herdados do registo das 18:54; passaram a CRLF. Ficheiro com CR = LF e o registo seguinte ja nao cria uma linha orfa.
 - O registo D-136 das 18:54 fica como esta e continua valido: confirma por outro caminho (WebRequest 4014 no testador) que o backtest corre sem IA. O meu bullet da cadeia da IA nao o contradiz, completa-o: sem IA nao houve veto de score zero (0 linhas "[ADV AI] BLOQUEADO" em 87 MB), portanto os trades do backtest nao foram suprimidos pela IA, foram suprimidos pelo guarda de cotacao velha.
+
+## D-139 | CMD | 2026-11-10 01:50 | binario `F0AC8D28` (hotfix de plausibilidade do sinal) esta' em 15/15, a permissao algoritmica foi ligada, o EA ja' negoceia; a janela dos 30 dias passa a contar de **11/11 00:05 servidor** porque o dia 10/11 correu com dois binarios e sem permissao na primeira metade
+
+### 1. O que mudou desde o D-137 (medido, nao inferido)
+
+| Facto | Medicao |
+|---|---|
+| Compilacao | `logs/metaeditor.log`: inicio `09/11 20:30:23.130`, fim `20:30:44.565` + `20:30:44.579 compile succeeded`, **0 errors, 0 warnings**, 21 405 ms |
+| Binario | `MQL5\Experts\XAU_AI_PRO\XAU_AI_PRO.ex5`, **980 700 B**, mtime `09/11 20:30:44`, MD5 **`F0AC8D2801A42FD8A0B883C595D72799`** |
+| Fonte | `Core/SignalCore.mqh`, 19 960 B, mtime `09/11 20:30:14`; nenhum `.mq5/.mqh` mais recente que 20:30:14, logo o `.ex5` corresponde a' arvore de trabalho |
+| Deploy | 15/15 `[START] XAU_AI_PRO v1.2.191` entre `20:30:44.892` (XAUUSD) e `20:30:45.884` (USDSGD) |
+| Permissao | `[STATUS] 21:09:15.261` XAUUSD: `MQL_TRADE_ALLOWED=1 | TERMINAL_TRADE_ALLOWED=1 | ACCOUNT_TRADE_ALLOWED=1 | ACCOUNT_TRADE_EXPERT=1 | TERMINAL_CONNECTED=1` |
+| Erros desde 20:31 | **0** (journal 09/11 20h+ e 10/11) |
+| Backup | `Files/Backup/XAU_AI_PRO_v12191hotfix_F0AC8D28.ex5` |
+
+### 2. O que a fonte nova faz (revisao linha a linha pelo CMD)
+
+`SignalCore.mqh` ganhou uma **guarda de plausibilidade** antes do calculo do sinal: se `fast[1]` ou `slow[1]` forem `<= 0` ou estiverem a mais de **25 %** do `bid` do proprio simbolo, a cache de handles e' descartada (`SignalCacheDrop`), o sinal e' relido com handles temporarios (`iMA` + `CopyBuffer`) e, se ainda assim for implausivel, a funcao devolve **0** (sem sinal) e registra `[SIGNAL] SEM LEITURA`. Nao toca em risco, lote, SL, TP, spread, `MagicNumber`, universo, conta ou graficos. A motivacao escrita no codigo e' a medicao do testador em que `EMA50=31.14 EMA200=0.00` com XAUUSD a ~4000 (serie em escala de oscilador na cache).
+
+**Autoria:** a alteracao nao foi escrita nesta sessao CMD e o ALFA declarou no seu turno que nao compilou nada; a assinatura do comentario e' `v1.2.192 - P1.3515`. Fica registada como **autoria nao atribuida** ate' prova em contrario. O CMD reviu o diff, confirmou que compila sem erros e que o binario em disco corresponde a' fonte, e nao alterou uma linha.
+
+### 3. O EA ja' negoceia (historia da conta, lida via `MetaTrader5` 5.0.6231, so' leitura)
+
+Dia do servidor **10/11**, deals com `magic=2026001` (EA; manuais `magic=0` excluidos):
+
+| Deal | Tipo | Volume | Resultado | Preco |
+|---|---|---|---|---|
+| `11070368335` | saida | 0.03 | **-73.02** | 4115.54 |
+| `11070798137` | saida | 0.03 | **0.00** (`[sl 4113.20]`) | 4113.20 |
+| `11071375429` | saida | 0.03 | **+11.22** | 4114.81 |
+
+3 entradas + 3 saidas, **1 win / 1 loss / 1 breakeven**, liquido **-61.80 USD**; 0 deals manuais no dia. Saldo `12 655.63 -> 12 593.83`. Prova de que o portao abriu e o pipeline executa.
+
+### 4. Janela dos 30 dias: dia 10/11 DESCARTADO, inicio **2026-11-11 00:05 servidor**
+
+- A regra escrita no D-128 diz "00:05" sem fuso. O canal carimba em hora **local** e a tarefa `XAU_AI_PRO_ForwardInicio` era `00:05` local. Por essa leitura, o deploy das `20:30:44` locais de 09/11 seria **antes** do inicio e nao dividiria a janela.
+- Mas o **dia de negociacao e' do servidor** (medido: o dia vira as 19:00 locais) e o dia do servidor 10/11 comecou as 19:00 locais de 09/11. Entre 19:00 e 20:30 locais correu **`021ABF`**, e a permissao algoritmica so' foi ligada as **21:09 locais (02:09 servidor)**. Ou seja, o dia do servidor 10/11 tem **dois binarios** e a primeira metade sem permissao.
+- **Decisao:** aplica-se o precedente do D-120 (dia contaminado nao conta). O dia 10/11 fica como **evidencia** (3 trades, -61.80) e **nao** entra nos 30. A janela ancora em **2026-11-11 00:05 hora do servidor** (10/11 19:05 local), **0 de 30**.
+- **Regra corrigida e fechada:** a janela passa a ser medida em **dias do servidor**; qualquer MD5 diferente de `F0AC8D2801A42FD8A0B883C595D72799` depois de **11/11 00:05 servidor** poe os 30 dias a zero. Nao se recompila o EA dentro da janela, nem para mudar o rotulo.
+
+### 5. Rotulo vs conteudo
+
+`VersionManager.mqh` continua `EA_VERSION_STRING "1.2.191"` e o comentario novo diz `v1.2.192`. **Nao se corrige agora**: compilar outra vez produziria MD5 novo **dentro** da janela e reiniciaria os 30 dias. Fica declarado **v1.2.191 hotfix `F0AC8D28`**; a divergencia de rotulo e' cosmetica e esta' registada aqui.
+
+### 6. Pendencias que este turno fecha e abre
+
+- **P1.3514 FECHADO:** a permissao algoritmica foi ligada no XAUUSD (`[STATUS]` dos cinco bits a 1 as 21:09:15) e ha' trades reais do EA.
+- **P1.3516 ABERTO (novo):** causa-raiz da serie de EMA em escala errada - a cache de handles (v1.2.161) devolveu serie de outro indicador. A guarda do `F0AC8D28` e' **mitigacao**, nao correcao da cache.
+- **P1.3515 continua ABERTO:** o testador continua sem `WebRequest`; a guarda nao resolve isso e G3/G5/G7/G8 continuam nao assinaveis a partir do testador.
