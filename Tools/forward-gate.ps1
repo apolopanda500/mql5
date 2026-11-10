@@ -59,6 +59,32 @@ function Get-MD5([string]$Path) {
   } finally { $fs.Close() }
 }
 
+# IMPRESSAO DIGITAL DA GOVERNANCA DOS MODELOS.
+#
+# PORQUE EXISTE (medido 10/11/2026, D-162): o binario esta no MD5, mas o
+# CONJUNTO DE MODELOS que o gateway serve NAO esta. O `publicable`, o
+# `min_edge` e o `publish_reason` vivem em `Python\models\*.meta.json` - e o
+# EA decide com eles. Um reinicio do gateway, ou uma publicacao nova de
+# modelos, muda o comportamento do EA **com o mesmo binario**: os 30 dias
+# mediam um alvo que se mexe. Por isso o `.ex5` E a governanca entram os dois
+# na declaracao, e a mudanca da governanca e registada como evento.
+function Get-Governanca([string]$ModelosDir) {
+  if (-not (Test-Path -LiteralPath $ModelosDir)) { return @{ sha256 = ''; n = 0 } }
+  $nomes = @()
+  foreach ($f in @(Get-ChildItem -LiteralPath $ModelosDir -Filter '*.meta.json' -ErrorAction SilentlyContinue)) { $nomes += $f.Name }
+  [Array]::Sort($nomes)
+  $sb = New-Object System.Text.StringBuilder
+  $n = 0
+  foreach ($nome in $nomes) {
+    $p = Join-Path $ModelosDir $nome
+    $null = $sb.Append($nome + ':' + (Get-MD5 $p) + "`n")
+    $n++
+  }
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  $bytes = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($sb.ToString()))
+  return @{ sha256 = ([System.BitConverter]::ToString($bytes) -replace '-', ''); n = $n }
+}
+
 function Ler-LogLocal([string]$Path) {
   if (-not (Test-Path -LiteralPath $Path)) { return '' }
   try {
@@ -86,6 +112,13 @@ if ($declarado) {
   $versaoDeclarada = [string]$declarado.versao
 }
 $divergente = ($md5Declarado -ne '' -and $md5Atual -ne $md5Declarado)
+
+# governanca dos modelos (ver Get-Governanca): o binario esta no MD5, os
+# modelos NAO - e o EA decide com os dois.
+$gov = Get-Governanca (Join-Path $appDir 'Python\models')
+$govDeclarada = ''
+if ($declarado -and $declarado.PSObject.Properties.Name -contains 'governanca_sha256') { $govDeclarada = [string]$declarado.governanca_sha256 }
+$govMudou = ($govDeclarada -ne '' -and $gov.sha256 -ne $govDeclarada)
 
 # ---------------------------------------------------------------- logs
 $serverNow = (Get-Date).AddHours($OffsetServidorHoras)
@@ -194,6 +227,10 @@ $registo = [ordered]@{
   md5_ex5           = $md5Atual
   md5_declarado     = $md5Declarado
   md5_divergente    = $divergente
+  governanca_sha256 = $gov.sha256
+  governanca_declarada = $govDeclarada
+  governanca_mudou   = $govMudou
+  governanca_modelos = $gov.n
   ex5_bytes         = if ($ex5Info) { $ex5Info.Length } else { 0 }
   ex5_mtime         = if ($ex5Info) { $ex5Info.LastWriteTime.ToString('dd/MM HH:mm:ss') } else { '' }
   versao_declarada  = $versaoDeclarada
@@ -223,24 +260,31 @@ $tabela += '# FORWARD 30 DIAS - G11 (medicao diaria automatica)'
 $tabela += ''
 $tabela += ("Gerado por ``Tools\forward-gate.ps1``. Dia do servidor = local + $OffsetServidorHoras h.")
 $tabela += ''
-$tabela += '| Dia servidor | MD5 ok | Ver. memoria | Sinais | AllowTrade(bloq) | ExecFail | Trades | P/L dia | DD % | IA disp. | 1003 |'
-$tabela += '|---|---|---|---|---|---|---|---|---|---|---|'
+$tabela += '| Dia servidor | MD5 ok | Gov. ok | Ver. memoria | Sinais | AllowTrade(bloq) | ExecFail | Trades | P/L dia | DD % | IA disp. | 1003 |'
+$tabela += '|---|---|---|---|---|---|---|---|---|---|---|---|'
 foreach ($r in $mdLines) {
   $f = $r.funil; $c = $r.conta
   $ok = if ($r.md5_divergente) { 'NAO' } else { 'sim' }
+  $gok = if ($r.governanca_mudou) { 'MUDOU' } else { 'sim' }
   $sin = '-'; $alt = '-'; $exf = '-'; $trd = '-'
   if ($f) { $sin = $f.sinais; $alt = $f.allow_trade_bloqueios; $exf = $f.exec_fail; $trd = $f.trades }
   $pl = '-'; $dd = '-'
   if ($c) { $pl = $c.pl_dia; $dd = $c.amplitude_pct }
-  $tabela += ('| ' + $r.server_date + ' | ' + $ok + ' | ' + $r.versao_em_memoria + ' | ' + $sin +
+  $tabela += ('| ' + $r.server_date + ' | ' + $ok + ' | ' + $gok + ' | ' + $r.versao_em_memoria + ' | ' + $sin +
               ' | ' + $alt + ' | ' + $exf + ' | ' + $trd + ' | ' + $pl + ' | ' + $dd +
               ' | ' + $r.ia_disponiveis_n + ' | ' + $r.webrequest_1003 + ' |')
 }
 $tabela += ''
 $tabela += ('**Declarado:** ' + $(if ($declarado) { $declarado.versao + ' MD5 ' + $declarado.md5 + ' (' + $declarado.ex5_bytes + ' B)' } else { 'NADA - ainda nao declarado' }))
+$tabela += ''
+$tabela += ('**Governanca dos modelos:** ' + $gov.sha256 + ' (' + $gov.n + ' meta.json) - o binario esta no MD5, os modelos NAO: esta impressao e o que impede os 30 dias de medirem um alvo que se mexe.')
 if ($divergente) {
   $tabela += ''
   $tabela += '> **VERMELHO: MD5 DIVERGENTE.** O binario em disco NAO e o declarado. Pela regra D-139/D-141 os 30 dias voltam a zero.'
+}
+if ($govMudou) {
+  $tabela += ''
+  $tabela += '> **AMARELO: GOVERNANCA MUDOU.** O conjunto de .meta.json em vigor ja nao e o declarado. O EA pode estar a decidir com outros modelos COM O MESMO BINARIO. Registar o porquê.'
 }
 [System.IO.File]::WriteAllLines($md, $tabela, (New-Object System.Text.UTF8Encoding($false)))
 

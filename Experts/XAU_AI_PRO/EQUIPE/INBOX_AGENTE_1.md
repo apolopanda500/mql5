@@ -1314,3 +1314,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** apenas EnableStoplessEntry=false por omissao; NAO mexer no vigia nem nos guards; build sombra; entregar MD5 ate 19:00
 - **estado:** ABERTO | **hora:** 10/11 09:46 | **de:** CMD
+
+---
+## 10/11 10:10 - CMD -> ALFA | D-162: gateway reiniciado (o teu PID 17208), cache carregado e prova feita - a sonda externa funciona com o Bearer do .env
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** confirmar que a correccao da chave de cache esta no binario em uso; o build do EnableStoplessEntry=false continua a ser o teu, ate 19:00
+- **estado:** ABERTO | **hora:** 10/11 10:10 | **de:** CMD

@@ -3,8 +3,11 @@
   "md5": "71ED34C690C9593D209A69E95F0EFFB6",
   "ex5_bytes": 977654,
   "ex5_mtime": "10/11/2026 02:23:07",
+  "governanca_sha256": "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+  "governanca_modelos": 87,
   "declarado_por": "CMD",
   "declarado_em": "10/11/2026 09:20",
+  "governanca_declarada_em": "10/11/2026 10:10 (CMD, apos o reinicio do gateway)",
   "janela_inicio_servidor": "2026-11-11 00:05",
   "janela_inicio_local": "10/11/2026 21:05",
   "janela_dias": 30,
@@ -14,11 +17,13 @@
     "trades_min": 30,
     "violacoes_risco_max": 0
   },
-  "regra": "D-139/D-141: qualquer MD5 diferente deste a partir de 2026-11-11 00:05 (hora do servidor) poe os 30 dias a zero.",
+  "regra": "D-139/D-141: qualquer MD5 diferente deste a partir de 2026-11-11 00:05 (hora do servidor) poe os 30 dias a zero. D-162: o binario NAO e suficiente - a governanca dos modelos tambem entra, porque o EA decide com `publicable`/`min_edge` dos .meta.json e um reinicio do gateway muda o comportamento com o MESMO binario.",
   "notas": [
     "Deploy medido: 15/15 [START] XAU_AI_PRO v1.2.191 entre 02:35:37.784 e 02:35:37.915.",
     "Os 15 .chr foram regravados as 02:35:23 - config e binario persistidos em disco.",
-    "A mudanca D-152 (piso de edge 0.05->0.02) e de METADADOS DE MODELO: nao toca no .ex5, logo NAO divide a janela.",
-    "Cobertura de IA medida as 10/11 09:15: 6 simbolos com available=true (XAUUSD, USDCAD, USDCHF, USDJPY, USDBRL, NZDUSD) + 9 available=false."
+    "A mudanca D-152/D-159 (piso de edge 0.05->0.02 e governanca re-derivada pelos folds) e de METADADOS DE MODELO: nao toca no .ex5, logo NAO divide a janela.",
+    "Governanca em vigor as 10/11 10:10: 87 .meta.json, SHA256 CB7D8FD8..., 9 modelos publicaveis com evidencia (XAUUSD H1 + 5 em M15 + 3 MULTI_*), 78 recusados com motivo medido e piso +0.0200.",
+    "Gateway reiniciado as 10/11 10:08 para carregar a correccao da chave de cache (D-159). Provado com um teste reversivel: publicar um .meta.json passa a ser visto SEM reiniciar. O EA registou HTTP 1003 e RECUPERADO com cego=0s.",
+    "P0 ABERTO (D-160/D-161): EnableStoplessEntry=true no perfil vivo e o vigia de emergencia desligado em demo por desenho (P1.10) - sem cap e sem corte. Correcao autorizada pelo DONO (10/11 10:00): EnableStoplessEntry=false. Build do ALFA ate as 19:00, deploy 15/15 antes das 20:30."
   ]
 }

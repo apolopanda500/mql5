@@ -8232,3 +8232,376 @@ vigia como rede de seguranca para o futuro).
 - `D-160` mantem-se como o registo do **achado**; esta decisao e a correcao da
   sua **causa**.
 
+## D-162 | DELTA | 2026-11-10 09:55 | perdas, metas e recuperacao: o DONO fixou 30% da banca ao dia, "metodo 5 USD" por lote e saida/oposicao em posicao perdedora - 2 dos 7 itens existem, 3 precisam de codigo, 1 e' impossivel e 1 e' recusado com numeros
+
+> **Numeracao (D-162):** este bloco nasceu como `D-159` as 09:55. O CMD ja' tinha reservado `D-159` (09:37:47), `D-160` (09:44:11) e `D-161` (09:46:05). Por precedencia (D-145) o meu identificador e' **`D-162`**. Colisao declarada em **P1.3536**.
+
+- **Estado:** especificacao escrita em `EQUIPE/ESPEC_PERDAS_E_RECUPERACAO.md` (9 743 B). **Nada aplicado**: todo o item que muda comportamento reescreve `.chr` ou o binario, logo **30 dias a zero** (D-147).
+- **Pedido do DONO (textual, 09:49):** banca 100 = perder no maximo **30% ao dia**; ensinar o EA a **separar perdas de lucros**; saber que depois de -30% **nao opera no dia seguinte com a mesma banca**; por lote 0,01 com **"metodo 5 USD"** e stop acima da entrada a garantir lucro; e, se ficar negativo e nao reverter, **sair ou segurar e tentar diminuir com operacoes opostas**.
+
+### 1. Os sete itens, com veredicto medido
+
+| # | Item | Existe? | Onde |
+|---|---|---|---|
+| 1 | 30% ao dia na banca de 100 | formula existe, valor e' 3% | `OrcamentoDiarioPerda`, `Config.mqh:1092-1100` - e' **input** |
+| 2 | separar perdas de lucros | separa por **magic**, soma **liquido** | **lacuna** - `SafetyManager.mqh:676-682` |
+| 3 | banca que encolhe | lote acompanha, orçamento nao | **lacuna** - P1.3526 (`Init` :146-147, `SetLimits` :218 sem consumidores) |
+| 4 | 0,01 lote + metodo 5 USD | **sim** | `LadderArmUsd=5.0`, `LadderLockUsd=1.0`, `LadderLockTriggerUsd=7.0`, `LadderTpUsd=10.0` |
+| 5 | stop acima da entrada a garantir lucro | **impossivel na abertura**; existe depois do movimento | `BreakEvenInR=true`, `TriggerR=0.6`, `LockR=0.3` |
+| 6 | sair de posicao perdedora | SL 300 pts + parcial 30% + streak brake; **sem time stop** | busca `MaxHoldMinutes|TimeStop` = **0 ocorrencias** |
+| 7 | operacoes opostas para reduzir prejuizo | **nao reduz** - congela e custa | medido abaixo |
+
+### 2. A lacuna do item 2 e' aritmetica, nao conceptual
+
+`eaDaily += DEAL_PROFIT + SWAP + COMMISSION` com sinal e `m_daily_profit = eaDaily`; depois
+`:704 perda = (m_daily_profit < 0.0) ? MathAbs(m_daily_profit) : 0.0`. Logo um dia com **+80 e depois -100** chega ao gate como **-20**: o orçamento de 30 so' cai com **-110**. **O lucro do dia compra tolerancia de perda** - o oposto do que o DONO pediu. Correccao (v1.2.192): caixa A = soma dos deals **negativos** (e' ela que consome o orçamento), caixa B = positivos, sem abatimento; o dia fecha quando A >= orçamento ou o liquido <= -orçamento.
+
+### 3. Item 3 em numeros (banca 100 -> 70)
+
+| Dia | Banca | 30% correcto | Orçamento real (congelado) | Perda permitida sobre a banca viva |
+|---|---|---|---|---|
+| 1 | 100,00 | 30,00 | 30,00 | 30% |
+| 2 | 70,00 | **21,00** | **30,00** | **43%** |
+| 3 | 49,00 | 14,70 | 30,00 | **61%** |
+
+### 4. Item 4 - medido com o simbolo real
+
+`contract_size=100`, `tick_size=0.01`, `tick_value=0.10`, `volume_min=0.01`, bid **4077,00** / ask **4077,13** (spread **13 pts**), `swap_long=-12,60` / `swap_short=-4,60` por lote/dia. `trade_order_calc_profit` 0,01 lote de 4000 a 4005 = **5,00 USD exactos**. A 0,01: `StopLossPoints=300` = **3,00 USD = R**; 5,00 = **1,67 R**; 10,00 = **3,33 R**; spread 0,13 (4,3% de R); swap 0,126/dia. **Alerta:** na banca de 100, `RiskPercent=0.5` pede 0,50 USD por trade mas o lote minimo arrisca **3,00** - e `BlockWhenMinLotExceedsRiskCap=true` (`Config.mqh:1465`, `ExecutionEngine.mqh:633`) **bloqueia a entrada**. Com banca 100 e os inputs de hoje o EA **nao opera**.
+
+### 5. Item 7 recusado com numeros
+
+Lock de 0,01 contra 0,01 nao reduz a perda: fixa-a e cobra spread 0,13 na perna nova mais **0,17 USD/dia** de swap (0,126 + 0,046). Nao melhora o resultado enquanto estiver de pe', agrava `MaxExposurePercent=20.0` e `MaxCorrelatedTrades=3`. Alternativas que reduzem de facto: parcial de 30%, lote mais pequeno, aceitar o SL. Fica registado como decisao possivel do DONO, com o custo ao lado - nao como recuperacao.
+
+### 6. Classificacao
+
+- **Ja' existe (nada a fazer):** metodo 5 USD (5 / tranca 1,00 em 7,00 / alvo 10,00) e break-even a garantir lucro (0,6 R -> +0,3 R).
+- **Input (aplicar fora da janela):** `MaxDailyLossPercent=30.0`, `RiskPercent=3.0`, `MaxRiskPerTradeUsd=3.0` para a banca de 100.
+- **Codigo v1.2.192:** perdas/lucros em caixas separadas, orçamento a reescalar no rollover + sombra pos-perda, `MaxHoldMinutes`/`MaxHoldMinutesInLoss`, escada de meta 15/30/50% (D-158).
+- **Dentro da janela:** manter 3,0% (377,81/dia) e `RiskPercent=0.5`. 30% aqui = 3 778,15 num dia e o dossier morre na primeira sessao.
+### 11. Especificacao de PERDAS pedida pelo DONO (10:10) - o que ja existe, o que nao existe, e porque os 30% ao dia nao podem existir hoje
+
+Pedido do DONO, em quatro partes: (1) banca de 100, aceitar perder no maximo 30% ao dia; (2) o EA tem de separar perdas de lucros e saber que depois de um dia de -30% o dia seguinte nao opera com a mesma banca; (3) 0,01 lote com "metodo 5 USD" e stop um pouco acima da entrada a garantir lucro; (4) se ficar negativo e nao reverter, sair ou segurar e tentar reduzir com operacoes opostas.
+
+Medido neste terminal, com os 15 graficos vivos e a conta 113568614.
+
+#### 11.1 Os 30% ao dia: o limite existe, mas e' INALCANCAVEL com o DD em 6%
+
+| passo | formula | valor com saldo 12 593,83 |
+|---|---|---|
+| orcamento diario | `MIN(saldo x MaxDailyLossPercent/100 ; MaxDailyLossUsd)` = `MIN(12 593,83 x 3,0% ; 600)` | **377,81** |
+| se o DONO puser 30% | `MIN(12 593,83 x 30% ; 600)` | 600,00 (**o USD morde primeiro**) |
+| aviso de capital | `CheckEquityProtection` aos `0,8 x 6,0%` = 4,8% | 604,50 - arma o KillSwitch |
+| corte total | `CheckEquityProtection` aos `6,0%` | 755,63 - `EmergencyCloseAll()` |
+
+`EquityProtection.mqh` calcula `drawdown = (balance - equity)/balance * 100` e, ao chegar aos 6%, fecha tudo. Portanto **aos 755,63 USD de perda flutuante a conta ja esta plana**. O limite de 3 778,15 (30%) nunca seria lido. E aos 604,50 o KillSwitch ja bloqueou as entradas ate reiniciar o EA.
+
+Para os 30% passarem a valer era preciso `MaxDrawdownPercent > 30`, que contradiz o portao G6 (DD <= 8%), o P1.3522 (risco simultaneo) e a recomendacao do DELTA no D-154 (manter 3%). **Resposta: nao e' um input a mudar, e' uma decisao de risco que tem de ser tomada com o numero na frente.**
+
+#### 11.2 Separar perdas de lucros: ja esta separado por MAGIC, mas o orcamento e' LIQUIDO
+
+O que a v1.2.189 (P1.3499) ja resolveu: `LucroRealizadoHojeUSD()` e o `m_daily_profit` do `SafetyManager` filtram `DEAL_MAGIC == MagicNumber`. Um lucro MANUAL de +117,20 deixou de re-armar o EA depois de o EA ter estourado o orcamento. Essa parte esta feita e medida.
+
+O que **nao** existe: contador de perda BRUTA. `SafetyManager.mqh:682` faz `m_daily_profit = eaDaily;`, uma soma unica de `DEAL_PROFIT + DEAL_SWAP + DEAL_COMMISSION` de todos os deals do dia com o magic. Um dia com +200 de lucro e -300 de perda fecha em **-100** e o gate de 377,81 nao dispara. Se o DONO quer "aceitar perder 30%", o numero honesto e' a perda BRUTA, nao o liquido - senao dentro do mesmo dia o lucro paga a perda e o limite nunca chega.
+
+O "dia seguinte com banca menor" **ja funciona**: no rolamento do dia, `SafetyManager.mqh:601-612` faz `m_daily_start_balance = RiskHubGet("STARTBAL", AccountInfoDouble(ACCOUNT_BALANCE))`, ou seja rele o saldo ACTUAL. E `RiscoPorTradeUsd()` (Config.mqh:~1369) recalcula `saldo x RiskPerTradePercent/100` a cada chamada. Banca menor -> orcamento menor e lote menor, sem reiniciar o EA. O que NAO escala sao os valores absolutos: `MaxDailyLossUsd=600`, `MaxRiskPerTradeUsd=8.0`, `MaxTotalRiskOpenUsd=60`, `RiskPerTradeUsd=2.0`.
+
+#### 11.3 "0,01 lote com metodo 5 USD": a unidade medida e o que ela obriga
+
+Medido com `trade_order_calc_profit` nesta conta, XAUUSD:
+
+| volume | movimento de 1,00 no preco | resultado |
+|---|---|---|
+| 0,01 | 4076,59 -> 4077,59 | **1,00 USD** |
+| 1,00 | 4076,59 -> 4077,59 | **100,00 USD** |
+
+Logo **0,01 lote = 1,00 USD por cada 1,00 de preco**, ou 0,01 USD por ponto. A escada (`EnableMoneyLadder=true`, `LadderArmUsd=5.0`, `LadderLockUsd=1.0` em `LadderLockTriggerUsd=7.0`, `LadderTpUsd=10.0`) ja implementa exactamente o que o DONO descreveu: arma o stop na ENTRADA aos 5 USD, trava 1 USD aos 7, fecha aos 10. E o `armUsd` deixou de ser codigo morto na v1.2.69 (`MoneyLadder.mqh:247`, `double armUsd = LadderArmUsd;`).
+
+O que o DONO nao tinha medido: **a 0,01 lote, 5 USD sao 500 pontos de movimento a favor**. A 0,05 lote sao 100 pontos. A escada esta em DOLARES, portanto quanto menor o lote, mais longe tem de ir o preco para a mesma escada. Com ATR H1 do XAUUSD a 17,65 e `StoplessArmATRMult=0.8`: 1R = 1 412 pontos, e o corte de emergencia a 1,5R = **2 118 pontos = 21,18 USD a 0,01 lote**. Ou seja:
+
+- para armar (5 USD) o preco tem de andar **500 pontos a favor**;
+- se andar contra, o vigia so corta aos **2 118 pontos**;
+- a relacao e' 1 armadura para 4,2 perdas iguais. Numa banca de 100 USD, **uma** perda no corte de emergencia custa **21% da banca**.
+
+#### 11.4 "Operacoes opostas": nao existe nada disso no codigo
+
+Varredura completa (112 ficheiros, 1 763 039 B) por `marting`, `grid`, `piramid`, `basket|cesta`, `hedg`, `oposta|opposite`, `averag|mediar`, `revert|reverse`:
+
+| termo | ocorrencias | o que e' |
+|---|---|---|
+| `marting` | **0** | nao existe |
+| `grid` | **0** | nao existe |
+| `piramid` | **0** | nao existe |
+| `basket`/`cesta` | **0** | nao existe |
+| `hedg` | 2 | um `TRADE_RETCODE_HEDGE_PROHIBITED` e um comentario "a conta e hedging" |
+| `oposta` | 4 | `ManualGuardAllowSameDirection`: BLOQUEIA a direcao oposta, e' o contrario de um hedge |
+| `averag` | 26 | `AverageWin`, `AverageLoss`, `GetAverageATR` - nenhuma media de perda |
+
+O que **existe** para uma operacao que ficou negativa, e que o DONO pode usar hoje:
+
+| mecanismo | onde | o que faz |
+|---|---|---|
+| SL na ordem | `ExecutionEngine.mqh:956` | so quando `EnableStoplessEntry=false`; hoje esta `true`, logo a ordem sai SEM SL |
+| vigia de emergencia | `PositionManager.mqh:701-760`, chamado em `:988` | fecha a mercado quando a perda >= `StoplessEmergencyRMult` x 1R = 1,5R, **so** em posicoes com `POSITION_SL == 0` |
+| parcial | `PositionManager.mqh:608-654` | fecha parte (`EnablePartialClose=true`) quando o preco anda 1 ATR |
+| freio de sequencia | `XAU_AI_PRO.mq5:265-300` | 3 perdas seguidas -> pausa de 240 minutos |
+| proteccao de capital | `EquityProtection.mqh:89-140` | 4,8% arma o KillSwitch, 6% fecha tudo |
+
+**Resposta honesta ao DONO:** o EA sabe SAIR (vigia a 1,5R, parcial, freio, corte total). Nao sabe fazer operacao oposta, e nao vou apresentar isso como se fosse seguro. Abrir uma perna contraria a uma perda nao reduz a perda: congela-a, cobra o spread duas vezes (0,13 de spread = 0,13 USD a 0,01 lote por perna) e paga swap nas duas pontas (`swap_long=-12.60`, `swap_short=-4.60` na ficha do XAUUSD). O que reduz perda e' corte, nao perna contraria.
+
+#### 11.5 A banca de 100 com os inputs de hoje: o XAUUSD nem entra
+
+| input | valor vivo (15/15) | o que significa numa banca de 100 |
+|---|---|---|
+| `MaxDailyLossPercent` | 3,0 | 3,00 USD/dia |
+| `MaxDailyLossUsd` | 600,0 | nunca morde (so morde acima de 20 000 de banca) |
+| `MaxRiskPerTradeUsd` | 8,0 | 8% da banca por operacao - 2,7x o orcamento do dia |
+| `MaxTotalRiskOpenUsd` | 60,0 | 60% da banca em risco aberto |
+| `MaxDrawdownPercent` | 6,0 | 6,00 USD e a conta fecha |
+| `RiskPerTradePercent` | 0,5 | 0,50 USD de referencia - este e' o que escala |
+| `StopLossPoints` | 300 | 3,00 USD a 0,01 lote, **se** houver SL |
+
+E o bloqueio escondido: `BlockWhenMinLotExceedsRiskCap=true` em 15/15. Com o tecto em 8,00 USD e o risco minimo de 21,18 USD a 0,01 lote, o XAUUSD e' recusado por `MIN_LOT_EXCEEDS_RISK_CAP`. Hoje nao se ve essa linha porque o MTF bloqueia antes. **Desligar o MTF nao abre o XAUUSD: muda o bloqueio de sitio.**
+
+A saida que os numeros mostram: `EnableStoplessEntry=false` devolve o SL a ordem (`StopLossPoints=300` -> 3,00 USD a 0,01 lote, dentro do tecto de 8,00) e o vigia deixa de ser a unica coisa entre a conta e o preco. E' exactamente o que a v1.2.189 diz que devia estar ligado, e nao esta.
+### 12. Correccao de 10:05 - eu li o prazo do D-147 ao contrario, e isso tira um dia ao DONO
+
+O que eu publiquei ha 10 minutos (P1.3537-P1.3543 e o relatorio `20261110_ALFA_PERDAS_ESPECIFICACAO_E_PLANO_12NOV.md`) diz duas vezes que a configuracao de perdas "so pode ser aplicada depois de 12/11". **Esta errado, e o erro e' meu.**
+
+O texto do D-147, lido de novo no proprio `DECISOES.md`:
+
+> Congelamento da janela (**regra nova, vale a partir de 11/11 00:05 servidor**)
+> 1. Nenhuma recompilacao nem deploy do `XAU_AI_PRO.ex5` ate ao fim da janela...
+> 3. Nenhuma alteracao de inputs de grafico no perfil vivo `XAU_AI_PRO_15CHARTS_Q071`... ate ao fim da janela.
+> 4. Quem pode mexer: **so o CMD, e so com autorizacao do DONO**.
+
+A epigrafe vale para o bloco inteiro. As quatro regras comecam as **11/11 00:05**, nao hoje. Hoje e' 10/11 10:00.
+
+#### 12.1 As duas leituras, e porque a diferenca e' de um dia inteiro
+
+| leitura | o que implica | certo? |
+|---|---|---|
+| minha, 09:56 | congelado ja; aplicar so depois de 12/11 | **errado** |
+| a do texto | congelado a partir de 11/11 00:05; hoje pode-se | certo |
+
+E a consequencia pratica e' o **inverso** do que eu escrevi:
+
+- mudar inputs **depois** de 11/11 00:05 -> repoe os 30 dias a zero (regra 4: "qualquer excepcao ... repoe os 30 dias a zero");
+- mudar inputs **hoje** -> o forward de 30 dias comeca as 11/11 00:05 ja com a configuracao certa, e nada e' reposto.
+
+Ou seja: **o dia para configurar as perdas e' hoje**, e quem executa e' o CMD, com autorizacao do DONO (regra 4).
+
+#### 12.2 O que fica corrigido no relatorio
+
+O ficheiro `EQUIPE/RELATORIOS/20261110_ALFA_PERDAS_ESPECIFICACAO_E_PLANO_12NOV.md` foi corrigido no mesmo turno, com 5 substituicoes verificadas (cada uma tinha de ocorrer exactamente 1 vez):
+
+1. o titulo deixa de dizer "plano de 12/11" e passa a dizer "aplicar ANTES de 11/11 00:05";
+2. a linha da janela D-147 passa a dizer que ela **abre** as 11/11 00:05;
+3. o cabecalho da seccao 4 deixa de dizer "depois da janela";
+4. a frase "nada disto pode ser aplicado agora" passa a "pode ser aplicado hoje, e tem de ser hoje";
+5. a linha da seccao 5 sobre compile passa a "nenhum compile durante a janela (11/11 00:05 -> fim)".
+
+#### 12.3 O que isto muda na lista de decisoes do DONO
+
+As sete pendencias P1.3537-P1.3543 continuam validas na integra; muda o **prazo**, nao o conteudo. Por ordem de urgencia para as proximas horas:
+
+| ordem | accao | quem | porque primeiro |
+|---|---|---|---|
+| 1 | decidir `EnableStoplessEntry` true -> **false** | DONO decide, CMD executa | e' o que destrava o `MIN_LOT_EXCEEDS_RISK_CAP` no XAUUSD e devolve o SL a ordem (21,18 -> 3,00 USD a 0,01 lote) |
+| 2 | decidir `MaxRiskPerTradeUsd` 8,0 -> **3,0** e `MaxTotalRiskOpenUsd` 60 -> **10** | DONO decide, CMD executa | 8,0 e' 8% de uma banca de 100 |
+| 3 | decidir se os 30% ao dia ficam em 3% (recomendado) ou sobem | DONO | com DD a 6,0 os 30% nunca sao lidos (P1.3537) |
+| 4 | as tres SELL manuais sem SL | DONO | nao entram no orcamento do EA (P1.3543) |
+| 5 | contador de perda BRUTA, escada em ATR, etiqueta do RESUMO, `AIAuthorityMinScore` | codigo | so se houver recompilar **antes** das 11/11 00:05 |
+
+**Nao toquei em nenhum input.** Continuo a ser o ALFA: meco e reporto; a regra 4 do D-147 da essa caneta ao CMD com autorizacao do DONO.
+
+## D-163 | DELTA | 2026-11-10 10:14 | o piso 0,02 esta' vivo e nao abriu cobertura nenhuma (o que recusa agora e' 4/5 folds); o fluxo viavel e' bloqueado por 4 SELL manuais sem stop no unico simbolo com modelo; e as duas horas do plano caem depois da janela
+
+**Tudo medido no relogio do terminal. Offset confirmado: servidor = local + 5h** (`get_time_information` devolveu utc 13:01:13Z, local 10:01:13, servidor 15:01:13). A janela abre **11/11 00:05 servidor = 10/11 19:05 local**; as 10:02 local faltavam **9h 03m**.
+
+### 1. O piso 0,02 chegou ao processo vivo e nao serviu para nada
+
+Depois das 09:35 **nenhuma recusa cita +0.0500**; todas dizem `abaixo do minimo +0.0200`. O item 1 desta ronda esta' cumprido. Mas o que recusa os candidatos agora e' outra porta:
+
+| simbolo | edge | folds positivos | media | o que recusa AGORA |
+|---|---|---|---|---|
+| USDCAD | +0.0317 | 3/5 | +0.0015 | instavel (nao o piso) |
+| USDCHF | +0.0253 | 3/5 | +0.0000 | instavel |
+| USDJPY | +0.0248 | 3/5 | -0.0145 | instavel |
+| NZDUSD | +0.0225 | 2/5 | -0.0081 | instavel |
+| USDBRL | +0.0240 | 2/5 | -0.0124 | instavel |
+| USDSGD | +0.0193 | 3/5 | +0.0167 | piso **e** instavel |
+| USDRUB | +0.0166 | 2/5 | -0.0700 | piso **e** instavel |
+| USDSEK | -0.0403 | 2/5 | -0.0105 | piso **e** instavel |
+| GBPUSD | -0.0207 | 3/5 | +0.0141 | piso **e** instavel |
+| XAUUSD | - | - | - | **unico `disponivel=true`** |
+
+Os cinco que a D-152 esperava ganhar recusam todos por `stable`, que exige 4/5 folds. **Baixar o piso mais nao ganha um unico simbolo: o USDSGD a 0,0193 recusaria na mesma.** O bloqueio mudou de lugar - do piso para a qualidade dos folds. A decisao do DONO era necessaria e ficou insuficiente, e o dossier **nao** pode escrever "cobertura criada".
+
+### 2. O que bloqueia os 609 sinais: 4 SELL manuais sem stop, no unico simbolo com modelo
+
+`get_trading_open_positions` as 10:02 local: **4 posicoes XAUUSD SELL, `reason: Client`**, abertas a 14:37:20 / 14:37:55 / 14:38:34 / **14:58:15** servidor, volumes 0,10 + 0,05 + 0,01 + 0,01 = **0,17 lotes**, **todas sem stop loss** (so' take profit). Flutuante +29,96, margem 693,02, equity 12 623,79.
+
+Sao **quatro**, nao tres: a quarta abriu as 09:58 local, **depois** da contagem do P1.3543 (10:10). A exposicao manual esta' a crescer durante a medicao.
+
+O journal repete 22 vezes, de minuto a minuto (09:40:20 -> 10:01:32):
+
+```
+[POSITION GUARD] XAUUSD | posicao MANUAL aberta no mesmo simbolo | nova entrada recusada | dir_manual=-1 | desligue EnableManualExposureGuard para ignorar
+```
+
+`EnableManualExposureGuard=true` no perfil vivo. Como o XAUUSD e' o **unico** simbolo com modelo publicado, este guard bloqueia **100% do fluxo viavel**: `[SCANNER] RESUMO 09:31:50 | visitas=9240 | sinais=609 | trades=0 | bloqueios=9240`.
+
+**A interaccao que faltava ver:** com `EnableStoplessEntry=true` e `StoplessEmergencyRMult=1.5` (P1.3542, que confirmei no perfil), o vigia de 1,5R so' socorre posicoes com `MagicNumber=2026001`. As quatro manuais sao magic 0 - **nao tem SL e nao tem vigia nenhum**. 0,17 lote de ouro = 17 oz: 1 USD de movimento = 17,00 USD, contra um tecto por operacao de 8,00.
+
+### 3. As duas horas do plano caem DEPOIS da janela
+
+- "ALFA MD5 ate' 19:00": se for **local**, = 00:00 servidor, **5 minutos antes** da janela; se for **servidor**, ja' passou (eram 14:00 local) e o `.ex5` continua a ser o de 02:23:07.
+- "deploy 15/15 em producao antes das 20:30": se for **local**, = **01:30 servidor de 11/11**, ou seja **1h25 DEPOIS** de a janela abrir, com `EnableStoplessEntry=true`. Se for **servidor**, = 15:30 local, em minutos.
+
+Nenhuma das leituras satisfaz as duas condicoes ao mesmo tempo. **Isto tem de ser decidido por escrito antes de se continuar** (P1.3546).
+
+### 4. A correcao do cache nao esta' no processo que esta' a servir
+
+`backend\ai_inference.py` foi gravado as **09:38:03**; o processo que serve o 9011 (PID 17208) arrancou as **09:35:39**. O Python carrega o modulo no import, portanto **o processo corre o codigo antigo** (chave de cache so' com o mtime do `.pkl`). A prova de que foi o reinicio - e nao a correcao - que fez o piso valer: os 92 `.meta.json` sao todos de **09:34:15**, anteriores ao arranque.
+
+**Regra que fica:** depois de publicar qualquer `.meta.json`, o gateway **tem** de ser reiniciado, ate' um arranque carregar o ficheiro de 09:38:03. Sem isso, um modelo republicado as 18:00 continua a servir a metadada das 09:34. **P1.3545.**
+
+### 5. O vigia do dia 1 nao ve o dia 1 comecar
+
+`schtasks /query "\XAU_AI_PRO Forward Gate"`: proxima execucao **11/11 00:20:00**, hora **local** do Agendador = **11/11 05:20 servidor**, 5h15 depois de a janela abrir. Nao existe execucao em 10/11 19:05 local. **P1.3547.**
+
+### 6. Binario e frota
+
+`*.ex5` sob `Experts\XAU_AI_PRO`: `DiagGateSelfTest.ex5` 18 634 B e `XAU_AI_PRO.ex5` **977 654 B | 11-10 02:23:07 | 71ED34C690C9593D209A69E95F0EFFB6**. **Nao existe nenhum ficheiro de 929 558 B nem de 931 006 B** (mantem-se o P1.3520).
+
+Nao houve reattach: **zero** `[START]` entre 08:30 e 10:05 e **zero** `shutdown` no journal do terminal. Frota e ancora G4 intactas, D-147 respeitado.
+
+### 7. Os indicadores do XAUUSD devolvem lixo
+
+09:45:09 `[ATR] HANDLE RECRIADO | XAUUSD | erro=4807 (ERR_INDICATOR_WRONG_HANDLE)`; 10:00:00 `[ADX] SEM LEITURA | XAUUSD | ADX=0.00`; 10:00:00 `[DATA] SEM LEITURA | XAUUSD | ATR=15.33 | ADX=-1.00 | RSI=3.55`. Um RSI de 3,55 num H1 de ouro nao e' leitura plausivel, e com `fail-open` o ADX invalido passa como neutro. O pipeline corre no grafico do GBPUSD (`dono=35819305996467`) e le' dados do XAUUSD. **P1.3548.**
+
+### 8. D-160/D-161: confirmo o ALFA, nao a correcao
+
+O perfil diz `EnableStoplessEntry=true`, `StoplessEmergencyRMult=1.5`, `BlockWhenMinLotExceedsRiskCap=true`. A D-161 ("o vigia esta' desligado em demo por desenho") nao se sustenta no ficheiro; a P1.3542 do ALFA sustenta-se.
+
+**Nao toquei em nada:** 0 ficheiros do EA, 0 recompilacoes, 0 reinicios, 0 ordens, 0 alteracoes de input. MD5 inalterado.
+### 13. APLICADO em 10/11 10:20 - `EnableStoplessEntry=false` em 15/15 (ordem do DONO: "aplicar autorizado avancar iniciar forward")
+
+**Mudou exactamente uma coisa.** `EnableStoplessEntry` passou de `true` para `false` nos 15 graficos do perfil `XAU_AI_PRO_15CHARTS_Q071`. Nada mais. Isto faz o SL ir na propria ordem (`StopLossPoints=300`) em vez de a posicao nascer sem stop e ser vigiada por software. No XAUUSD a 0,01 lote, 300 pontos = **3,00 USD** de risco, dentro do tecto `MaxRiskPerTradeUsd=8.00` - e por isso desbloqueia o `MIN_LOT_EXCEEDS_RISK_CAP` que eu reportei em P1.3540 (21,18 USD com o vigia a 1,5R).
+
+**Prova em cadeia, e nao por leitura de ficheiro:**
+
+| passo | ferramenta | resultado medido |
+|---|---|---|
+| 1 | `get_expert_advisor_parameters` | `EnableStoplessEntry` = input indice 192, `bool`, default `true` -> nao exige recompilar |
+| 2 | leitura dos 15 `.chr` | `EnableStoplessEntry=true` 15/15, 901 372 B |
+| 3 | `alfa_aplicar_stopless_v2.ps1` | round-trip byte-a-byte OK 15/15 **antes** de gravar; releitura `false=15 true=0 semCampo=0 bomDuplo=0`; 901 402 B |
+| 4 | `profile_apply` | `ok:false` (2x) - nao ha ferramenta para escrever input de EA vivo |
+| 5 | 15 x `chart_save_template` + flip + 15 x `chart_apply_template` | `ok:true` 15/15 |
+| 6 | 15 x `chart_save_template` (prova) | `ALFA_SLV_01..15`: `false` **15/15**, EA presente 15/15 |
+| 7 | `Get-FileHash` no fim | 977 654 B, MD5 `71ED34C690C9593D209A69E95F0EFFB6`, mtime `2026-11-10T02:23:07` |
+
+**Porque o passo 6 e' a prova que conta.** Ler o `.chr` prova o disco, nao o EA em memoria. O re-save do template le' o EA vivo - e' a unica leitura autoritativa dos 323 inputs disponivel aqui.
+
+**Campos que nao podiam ser arrastados, medidos antes e depois (15/15 iguais):** `MaxDrawdownPercent=6.0`, `EnableMTFConfirmation=true`, `AIHasSignalAuthority=true`, `SymbolsFromMarketWatch=false`, `Symbols` = 15 simbolos (XAUUSD,USDCLP,USDCOP,USDCZK,USDRUB,USDSGD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH), `StopLossPoints=300`, `LadderArmUsd=5.0`, `MaxDailyLossPercent=3.0`, `EnableMoneyLadder=true`.
+
+**A armadilha que quase custou caro.** O `.tpl` do MT5 carrega `symbol=`, `period_type`, `period_size`, `digits` e a escala fixa. Aplicar um unico template aos 15 graficos teria transformado os 15 em USDCZK. Foram feitos 15 templates distintos, um por grafico.
+
+**Rasto operacional desta ronda.** O `profile_apply` deste terminal devolve `ok:false`; o canal esteve bloqueado por lock do DELTA (`edit`, ate' 10:18) e recusou 5 escrituras minhas; o `PENDENCIAS.md`, que vive fora de `EQUIPE/` e nao tem lock, aceitou o bloco e duplicou-o numa segunda passagem - corrigido por cirurgia de bytes, uma copia unica, tamanho final 162 174 B. Os meus IDs desta ronda sao P1.3560..P1.3566 porque o DELTA tomou P1.3545..P1.3550 enquanto o lock estava dele.
+
+**O que NAO foi feito, e nao por falta de autorizacao.** (a) `MaxRiskPerTradeUsd` 8.0 -> 3.0 e `MaxTotalRiskOpenUsd` 60 -> 10 continuam por decidir; (b) `MaxDailyLossPercent` continua 3.0 - os 30% do DONO sao inalcancaveis com `MaxDrawdownPercent=6.0` (P1.3537); (c) as 4 posicoes manuais sem SL continuam abertas e nao lhes toquei; (d) o contador de perda BRUTA continua por escrever (P1.3538) porque exige recompilar, e recompilar agora mudava o MD5 e reiniciava os 30 dias.
+
+
+---
+
+## D-164 | 10/11/2026 10:15 | gateway: reiniciado para carregar o fix do cache, e a GOVERNANCA dos modelos entra no dossier
+
+- **Estado:** FECHADO (CMD, 10/11 10:15). Responde ao relatorio do ALFA sobre
+  o `P1.3545` e ao pedido dele dentro dele.
+
+### 1. O que o ALFA mediu (aceito, e confirmado por mim)
+
+- O gateway e o processo Python em `127.0.0.1:9011` (PID **17208**), e o EA
+  pergunta-lhe por simbolo a cada `AIPollSeconds=15`.
+- A governanca (`publicable`, `min_edge`, `publish_reason`) vive nos
+  `.meta.json` e era lida uma vez para memoria; a chave de cache comparava
+  **so o mtime do `.pkl`**. Um `.meta.json` publicado nao mexe no `.pkl` ->
+  o processo continuava a servir a governanca antiga.
+- O piso 0,02 valeu **porque houve reinicio**, nao porque houve correccao.
+- A tarefa `AIGateway9011_Watchdog` (PT15M) e idempotente por desenho
+  ("se a porta 9011 ja estiver a ouvir, sai sem fazer nada"): ressuscita um
+  gateway morto, **nunca recicla um vivo**. Logo nao ha reinicio automatico.
+
+### 2. O que eu fiz (o pedido dele, executado)
+
+1. **Gateway reiniciado** as **10:11** (o PID 17208 foi terminado e o
+   `start_gateway_autostart.cmd` levantou outro): `uptime_sec=19` confirmado.
+   A correccao da chave de cache (`D-159`) **passou a estar carregada** - ate
+   as 09:38 ela estava so no disco.
+2. **Prova de que o fix funciona** (teste reversivel, feito as 10:12):
+   publiquei `PROVA_CACHE_MUDA_SEM_REINICIO` no `publish_reason` do
+   `EURUSD_H1.meta.json`; o `/api/ai/predict` passou a devolver essa frase
+   **sem reiniciar** (`uptime_sec=34`, o mesmo processo); o ficheiro foi
+   restaurado byte a byte e a recusa voltou ao texto medido. **A cache passa
+   a invalidar com o mtime do `.meta.json`.** Publicar modelos novos passa
+   a ter efeito imediato - **sem** reinicio e **sem**_md5.
+
+### 3. Uma correcao ao relatorio dele: a sonda externa FUNCIONA
+
+Ele escreveu que *"a verificacao tem de ser pelo journal do EA, nao por uma
+sonda minha - eu tentei GET /api/ai/predict e recebi 401 sem token. O EA
+responde 200 porque fala por outro caminho"*.
+
+**Nao e assim.** O gateway exige `Authorization: Bearer <XAU_GATEWAY_TOKEN>`
+(o token de 64 caracteres esta em `Files\XAU_AI_PRO\.env`), e o EA usa
+**exatamente o mesmo** mecanismo (`AIGatewayTokenEfetivo()` em
+`AI\AIConnector.mqh`). Medido agora:
+
+| Sonda | Resultado |
+|---|---|
+| `GET /api/ai/predict` **sem** token | **401** (o que ele viu) |
+| `GET /api/ai/predict` **com** o Bearer do `.env` | **200** com a inferencia real |
+| `GET /api/health` com o Bearer | **200** `{"ok":true,"uptime_sec":...}` |
+
+O caminho e o mesmo; faltava o `Bearer`. **A verificacao por fora e possivel
+e e melhor** (da para ler o que o gateway diz sem esperar pelo ciclo do EA).
+
+### 4. O ponto do dossier (P1.3545) - IMPLEMENTADO
+
+Ele levantou o que importa: *"o gateway nao esta no MD5. Se um reinicio mudar
+que modelos estao disponiveis, o EA muda de comportamento com o mesmo
+binario. Entao, as 19:05, o dossier tem de registar o estado do gateway - que
+conjunto de `.meta.json` estava em vigor - ou os 30 dias medem um alvo que se
+move."*
+
+**Concordo, e implementei:**
+
+- `EQUIPE/FORWARD/DECLARADO.json` ganhou **`governanca_sha256`**:
+  `CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7`
+  (87 `meta.json`, SHA256 sobre `nome:md5` ordenado).
+- `Tools/forward-gate.ps1` mede **a mesma impressao todos os dias** e
+  escreve-a na linha do dia (`medicao.jsonl`) e na tabela (`FORWARD.md`), com
+  uma coluna **"Gov. ok"**.
+- Se a governanca mudar, a linha fica **AMARELA**:
+  *"O conjunto de .meta.json em vigor ja nao e o declarado. O EA pode estar a
+  decidir com outros modelos COM O MESMO BINARIO. Registar o porquê."*
+  **Nao e VERMELHO** porque publicar modelos novos e legitimo e nao zera os
+  30 dias - mas tem de ficar registado, senao a janela mede um alvo movel.
+
+**A declaracao passa a ter duas impressoes**: `md5` (o binario) e
+`governanca_sha256` (os modelos). As duas sao verificaveis a qualquer momento.
+
+### 5. O que muda no processo (e o que nao muda)
+
+- O `AIGateway9011_Watchdog` **fica como esta**: e correto ressuscitar um
+  gateway morto e **nao** reciclar um vivo sem motivo. Um reinicio e um ato
+  deliberado do CMD, com a impressao da governanca registada antes e depois.
+- O MD5 **nao muda** (`71ED34C6`), a janela **nao se divide**, e o
+  `.ex5` nao foi tocado.
+- Custo do reinicio medido: o EA registou `HTTP 1003` e `RECUPERADO |
+  cego=0s` as **09:59:50** - segundos de cegueira, e com
+  `AIHasSignalAuthority=true` nesses segundos ele nao opera. O menor dos
+  riscos, como o ALFA mediu.
+- **P0 continua aberto (D-160/D-161)**: `EnableStoplessEntry=true` no perfil
+  vivo. Build do ALFA ate as 19:00, deploy 15/15 antes das 20:30.
+
