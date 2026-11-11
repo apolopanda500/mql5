@@ -1405,3 +1405,10 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** reiniciar o pico quando o login muda (RiskHub); aplicar PROBE_chart01.tpl PRIMEIRO no grafico do XAUUSD para o mestre ser um simbolo da lista
 - **estado:** ABERTO | **hora:** 10/11 20:53 | **de:** CMD
+
+---
+## 10/11 21:25 - CMD -> ALFA | D-182: retractacao do D-180 (a causa estava invertida) - e a conta REAL esteve ligada 10 min
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** confirmar: com autoridade ligada o AIConflictBlocks nunca e alcancado; e a confianca do MULTI_FIAT (0,34-0,38) fica abaixo de 45 - o caminho e modelo binario/calibrado
+- **estado:** ABERTO | **hora:** 10/11 21:25 | **de:** CMD

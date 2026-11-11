@@ -9542,3 +9542,122 @@ simbolos servidos (o mesmo patch do `D-180`).
 - `Tools\fechar-janela.ps1` ja exige a **conta declarada**; o portao continua
   a recusar a declaracao ate a frota ter o perfil de 15 com o piso 45.
 
+
+
+---
+
+## D-182 | 10/11/2026 21:05 | RETRACTACAO do D-180: a causa esta invertida, e houve uma conta REAL ligada
+
+- **Estado:** FECHADO (CMD, 10/11 21:05). **Retrato o `D-180`** depois de
+  verificado o codigo linha a linha, a pedido do ALFA. E acrescento o
+  achado de seguranca.
+
+### 1. O que eu errei no `D-180` (verificado no codigo)
+
+**Erro 1 - a causa dos 0 trades esta invertida.** Escrevi *"contradição =
+sem sinal"*. O codigo (`AI/AIEngine.mqh:446-455`) diz:
+
+```
+if(AIHasSignalAuthority)
+  {
+   if(ai!=0) return ai;
+   return 0;          // sem fallback tecnico
+  }
+...
+if(tech!=0 && ai!=0 && tech!=ai && AIConflictBlocks(tech,ai,symbol)) return 0;  // NUNCA ALCANCADO
+```
+
+**A autoridade devolve ANTES de qualquer resolucao de conflito.** Com
+`AIHasSignalAuthority=true`, `AIConflictBlocks` e codigo morto nesta
+configuracao (confirmado: `[AI CONFLICT]` = **0 registos** no dia). O
+mecanismo real e **"a IA devolveu 0 -> 0"**, e a IA devolve 0 porque
+`AIEngine.mqh:354`:
+
+```
+if(AI_Score<MinAIConfidence) return 0;
+```
+
+**Erro 2 - assumi que o piso 45 estava vivo.** **Nao estava:** o piso vivo
+nos 5 graficos e **60.0** (so o `chart01` tem o bloco `<inputs>` completo; os
+outros 4 perderam-no e usam o default compilado, tambem 60). O meu proprio
+portao media *"piso 45 so em 0/5"* e eu li isso como se o piso estivesse
+aplicado. **Na verdade era o contrario: o piso nunca chegou a ser 45.**
+
+**Erro 3 - a medicao.** "~20 linhas/min em 2 simbolos" -> **16/min no pico,
+12 simbolos** (BTC 152, ETH 146, BNB/DOGE/SOL/XAUT 32-34, XRP 31, ETHUSD 27,
+AMD 18, NVDA 17, NASDAQ-100 16, US500 16). "`[EXECUTION]` x3" -> **1 ordem
+real** (as outras 2 sao "SmartExecution initialized").
+
+### 2. O corolario que inverte o problema (do ALFA, confirmado)
+
+Com o piso a **45**, as 20:01:22 o EA teria **VENDIDO XAUUSD** (IA SELL
+51,99% > BUY 48,01%, autoridade ligada) **contra** o tecnico BUY. **Baixar o
+piso nao resolve: troca "nao opera" por "opera contra o tecnico" com um
+classificador que e uma moeda ao ar (50 SELL / 36 BUY em 86 leituras).**
+
+**Retiro a minha recomendacao do piso 45 (`D-174`).** O `MinAIConfidence` esta
+calibrado para modelos **BINARIOS** (o XAUUSD e 30F-v4, acc 0,5361 -> conf
+0,54-0,60). Para modelos de **3 CLASSES** a escala e outra: o `MULTI_FIAT`
+(edge +0,1853) dava **confianca 0,34-0,38** na medicao do `D-172`. Ou
+seja: **baixar o piso para 45 NAO traz os MULTI_* para dentro** (37 < 45), e
+o que traz e o ruido dos modelos por sinal (2-3/5 folds, media ~0).
+
+**Logo o "caminho critico" nao e so ligar os MULTI_*: e tornar a confianza
+comparavel.** Opcoes reais, todas de DONO:
+1. **Modelos binarios ou calibrados** para os simbolos (o unico caminho que da
+   edge E uma escala de confianca honesta).
+2. **`AIHasSignalAuthority=false`** -> o tecnico decide e a IA so veta quando e
+   confiavel: da amostra, mas mede o caminho tecnico (PF historico 0,54 -> o G11
+   falha em PF).
+3. **Piso por familia de modelo** (um input so, mas o codigo decide a escala)
+   - codigo do EA, logo recompilacao.
+4. **Nao operar** ate 1) existir: a janela mede nada.
+
+### 3. SEGURANCA: uma conta REAL esteve ligada 10 minutos
+
+MEDIDO no journal de hoje: **conta 201124748 @ Jarocel (Pty) Ltd/Headway-Real,
+saldo 15,00**, com o EA anexado a **15+ graficos** (19:18:15 -> 19:23:52, mais
+`[SESSION] estado salvo` as 19:28:57) - e com **`EnableAutonomousMode=true`** e
+`AIHasSignalAuthority=true` vivos. Os graficos dessa conta eram ate acoes
+(AMD, NVDA, GOOGL, TSLA, MSFT, AUS200, US500, NASDAQ-100).
+
+**Nao houve ordem nessa conta**: o unico `[EXECUTION]` do dia e o BUY 0,03 XAUUSD
+as 01:00:00 (conta demo). **Foi um quase-incidente, e nao um incidente.**
+
+**Duas regras que daqui saem (as duas para o DONO):**
+- **Nunca anexar o EA a uma conta real enquanto `EnableAutonomousMode=true`.**
+  Hoje a protecao foi o acaso (a IA nao tinha modelo nenhum nessa conta).
+- A conta real estava a ser usada como **"conta nova para as missoes"** - e o
+  servidor `Headway-Real` tem saldo 15,00. Se a missao for num saldo de 15, a
+  conta tem de ser **demo**, ou o tamanho da posicao tem de ser 0.01 e o
+  tecto diario 15 USD - o que e uma decisao de risco do DONO, nao minha.
+
+### 4. O que o CMD corrigiu no portao (o ALFA pediu, e tem razao)
+
+O portao **nao** recusa mais por "piso 45" (um valor fixo que ja nao e o
+declarado) nem por "contradição". Passou a comparar **campo a campo** os
+inputs vivos com os declarados. Agora diz:
+
+```
+perfil    : 5 .chr | inputs a bater com o declarado: NAO | divergencias: 1
+FALTA: os inputs vivos nao batem com os declarados (1): MinAIConfidence : vivo=60.0 declarado=45.0
+FALTA: o perfil tem 5 graficos e o dossier declara 15 - falta aplicar o perfil completo
+FALTA: o dossier NAO declara a conta - mede-se a conta do terminal em silencio
+```
+
+**E o `DECLARADO.json` esta stale (declara 45 quando o vivo e 60) - vai ser
+re-escrito quando a declaracao for feita de novo, com a conta certa.**
+
+### 5. Estado da janela
+
+**Invalida antes de qualquer analise.** A conta migrou **4 vezes em 43 min**
+(113568614 MetaQuotes-Demo -> 201124748 Headway-Real -> 6419396/6419399
+Headway-Demo -> 450258809 XMGlobal -> 113568614), com 42 min 58 s de escuridao.
+O binario ficou intacto (1 023 258 B, 10C4DF68), mas **a identidade da conta
+mudou varias vezes** - e e por isso que o portao passou a exigir a **conta
+declarada**.
+
+O perfil caiu de **15 para 5** `.chr` (mtime 20:02:16) e a build 6316 esta
+descarregada e pendente: **quando o terminal reiniciar, volta o perfil de 5.**
+O perfil de 15 tem de estar aplicado **antes** desse reinicio.
+

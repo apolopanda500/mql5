@@ -104,23 +104,48 @@ if ($contaMemoria -eq '') {
   $falhas += "nao foi possivel ler a conta do journal (sem [START] legivel)"
 }
 
-# --- 2. perfil: piso e universo ---
-$piso = ''; $nPisoOk = 0; $nSimbolos = 0; $nChr = 0
-foreach ($f in @(Get-ChildItem -LiteralPath $chartsDir -Filter '*.chr' -ErrorAction SilentlyContinue | Sort-Object Name)) {
-  $nChr++
+# --- 2. perfil: os inputs vivos tem de bater com os declarados, CAMPO A CAMPO
+# NAO se procura um "piso 45" fixo: o valor declarado pode mudar (e ja mudou),
+# e o que interessa e saber se o que esta a correr e o que foi declarado.
+# MEDIDO em 10/11 20:50: nos 5 graficos vivos so o chart01 tem o bloco
+# <inputs> completo (piso 60.0); os outros 4 perderam-no. O portao tem de
+# dizer isso com nome de campo, nao "falta o piso 45".
+$inputsDeclarados = $null
+$chartCount = 0
+if (Test-Path -LiteralPath $declF) {
+  try { $dd2 = Get-Content -LiteralPath $declF -Raw -Encoding UTF8 | ConvertFrom-Json; $inputsDeclarados = $dd2.inputs } catch { }
+}
+$crs = @(Get-ChildItem -LiteralPath $chartsDir -Filter '*.chr' -ErrorAction SilentlyContinue)
+$chartCount = $crs.Count
+$liveInputs = @{}
+foreach ($f in $crs) {
   try {
     $t = [System.IO.File]::ReadAllText($f.FullName, [System.Text.Encoding]::Unicode)
-    $p = [regex]::Match($t, 'MinAIConfidence=([^\r\n]*)').Groups[1].Value.Trim()
-    $s = @(([regex]::Match($t, 'Symbols=([^\r\n]*)').Groups[1].Value.Trim()) -split ',').Count
-    if ($p -eq $piso -or $piso -eq '') { $piso = $p }
-    if ($p -eq '45.0') { $nPisoOk++ }
-    if ($s -ge 15) { $nSimbolos++ }
+    foreach ($m in [regex]::Matches($t, '(?m)^([A-Za-z_][A-Za-z0-9_]*)=([^\r\n]*)')) {
+      $k = $m.Groups[1].Value; $v = $m.Groups[2].Value.Trim()
+      if (-not $liveInputs.ContainsKey($k)) { $liveInputs[$k] = $v }
+    }
   } catch { }
 }
-if ($nChr -eq 0) { $falhas += 'sem .chr no perfil oficial' }
-else {
-  if ($nPisoOk -lt $nChr) { $falhas += ("piso 45 so em {0}/{1} graficos" -f $nPisoOk, $nChr) }
-  if ($nSimbolos -lt $nChr) { $falhas += ("universo de 15 simbolos so em {0}/{1} graficos" -f $nSimbolos, $nChr) }
+$difInputs = @()
+if ($inputsDeclarados) {
+  foreach ($prop in $inputsDeclarados.PSObject.Properties) {
+    $k = $prop.Name; $dv = [string]$prop.Value
+    if (-not $liveInputs.ContainsKey($k)) { $difInputs += ("$k = AUSENTE no perfil (declarado $dv)"); continue }
+    if ($liveInputs[$k] -ne $dv) { $difInputs += ("$k : vivo=$($liveInputs[$k]) declarado=$dv") }
+  }
+} else {
+  $difInputs += 'o dossier nao declara o bloco de inputs'
+}
+$chartCountEsperado = 0
+if (Test-Path -LiteralPath $declF) {
+  try { $dd3 = Get-Content -LiteralPath $declF -Raw -Encoding UTF8 | ConvertFrom-Json; $chartCountEsperado = @($dd3.frota_simbolos).Count } catch { }
+}
+if ($chartCountEsperado -gt 0 -and $chartCount -ne $chartCountEsperado) {
+  $falhas += ("o perfil tem {0} graficos e o dossier declara {1} - falta aplicar o perfil completo" -f $chartCount, $chartCountEsperado)
+}
+if ($difInputs.Count -gt 0) {
+  $falhas += ("os inputs vivos nao batem com os declarados ({0}): {1}" -f $difInputs.Count, (($difInputs | Select-Object -First 4) -join ' ; '))
 }
 
 # --- 3. frota (sonda 0) ---
@@ -164,7 +189,7 @@ Write-Host ''
 Write-Host '== FECHA DA JANELA ==' -ForegroundColor Cyan
 Write-Host ("binario   : {0} B | MD5 {1} | {2} min estavel | memoria {3} | disco v{4}" -f $info.Length, $md5, $idadeMin, $versaoMemoria, $versaoDisco)
 Write-Host ("conta     : {0} | declarada: {1}" -f $(if ($contaMemoria) { $contaMemoria } else { 'n/d' }), $(if ($contaDeclarada) { $contaDeclarada } else { '(sem conta no dossier)' }))
-Write-Host ("perfil    : {0}/{1} .chr com piso 45.0 | {2}/{3} com 15 simbolos" -f $nPisoOk, $nChr, $nSimbolos, $nChr)
+Write-Host ("perfil    : {0} .chr | inputs a bater com o declarado: {1} | divergencias: {2}" -f $chartCount, $(if ($difInputs.Count -eq 0) { "todos" } else { "NAO" }), $difInputs.Count)
 Write-Host ("frota     : {0}/{1} LIGADO | {2} desligado | {3} sondas do perfil | {4} orfas de outras contas" -f $lig, $simbolosPerfil.Count, $des, $fich, $orfas)
 Write-Host ''
 
