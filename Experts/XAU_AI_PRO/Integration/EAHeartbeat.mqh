@@ -22,7 +22,7 @@ string EAHeartbeatFileName()
 
 bool EAHeartbeatWrite(const string state = "RUNNING")
   {
-   const datetime now = TimeCurrent();
+   const datetime now = TimeGMT();   // v1.2.203: grava UTC, não hora do servidor. O gateway le como UTC; com TimeCurrent() (MT5, UTC+2) o timestamp nascia +2h no futuro, o max(0.0,...) do watchdog truncava a idade em 0 e o EA mudo aparecia "alive". TimeGMT() fecha essa cadeia (backend/watchdog.py: HEARTBEAT_FUTURO_TOLERANCIA_SEC).
    if(g_heartbeat_last_write == now)
       return true;
 

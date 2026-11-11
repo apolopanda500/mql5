@@ -1150,6 +1150,12 @@ void OnTick()
 // estado de conexion/failure_mode/news/IA no forward test.
    ForwardHeartbeat();
 
+// Watchdog do EA (P1.84 / v1.2.203): grava o heartbeat consumido por
+// backend/watchdog.py no minimo uma vez por segundo (throttle interno de
+// 1s em EAHeartbeatWrite). Sem isso o TTL de 120s nunca vencia e o EA mudo
+// aparecia "alive" enquanto o arquivo nao era reescrito.
+   EAHeartbeatWrite("RUNNING");
+
 // Ponte app -> EA (Integration/ExternalBridge.mqh). Throttle interno de 1 Hz e
 // duas comparacoes quando desligada. So leitura: nao manda ordem.
    ExternalBridgePoll();
@@ -2167,6 +2173,11 @@ void OnTimer()
       HealthMonitorHeartbeat("RSI");
       HealthMonitorHeartbeat("AI");
      }
+
+// Watchdog do EA no timer (v1.2.203): simbolos sem feed nao geram OnTick,
+// entao o timer de 30 s mantem o heartbeat do watchdog vivo mesmo sem cotacao
+// (mesma razao de P1.3594/CPermState::Publish aqui no OnTimer).
+   EAHeartbeatWrite("RUNNING");
 
 //------------------------------------------------
 // Retry de simbolos pendentes
