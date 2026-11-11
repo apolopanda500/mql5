@@ -9661,3 +9661,71 @@ O perfil caiu de **15 para 5** `.chr` (mtime 20:02:16) e a build 6316 esta
 descarregada e pendente: **quando o terminal reiniciar, volta o perfil de 5.**
 O perfil de 15 tem de estar aplicado **antes** desse reinicio.
 
+
+
+---
+
+## D-183 | 11/11/2026 01:00 | A JANELA DO forward ESTA ABERTA (portao verde)
+
+- **Estado:** FECHADO (CMD, 11/11 01:00). **O forward de 30 dias comeca agora.**
+
+### 1. O que o portao mediu (as quatro condicoes, todas a passar)
+
+```
+binario : 1 025 248 B | MD5 F77F0AD083A140EB6E8A398EF816822F | memoria = disco v1.2.203
+conta   : 113568614 @ MetaQuotes Ltd./MetaQuotes-Demo   (declarada = a mesma)
+perfil  : 16 .chr | inputs a bater com o declarado: TODOS | divergencias: 0
+frota   : 16/16 LIGADO | 0 desligado | 16 sondas do perfil
+governanca: CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7 (87 meta.json)
+inputs  : MinAIConfidence=60.0 | AIUnavailableConfidenceCap=40.0 | EnableStoplessEntry=false
+          | AllowTradeWithoutAI=false | MaxDrawdownPercent=6.0 | RiskPercent=0.5
+```
+
+### 2. A ancora foi REANCORADA de proposito (e registada)
+
+A janela anterior era **invalida**: a conta migrou 4 vezes em 43 min
+(incluindo uma conta **REAL**), o binario mudou (10C4DF68 -> F77F0AD0, o ALFA
+recompilou as 21:43) e houve 42 min 58 s de escuridao.
+
+`declarar-forward.ps1` ganhou `-Reancorar`: **um reset da ancora e sempre um
+ato explicito, com motivo registado** - nunca um efeito colateral de uma
+re-declaracao (essa parte mantem-se: re-declarar **nao** move a ancora).
+Fica em `historico_declaracoes[]` com hora, MD5, inputs e motivo.
+
+### 3. Duas correcoes de medicao minhas (as sondas das contas que sairam)
+
+- A frota da declaracao vinha de **todas** as sondas `permission_state_*.csv`
+  do `Files\Data` - que e partilhado. Declarava **32 simbolos** (a uniao da
+  MetaQuotes-Demo com a Headway, com AMD, NVDA, TSLA, GOOGL, MSFT, XRP, BNB).
+  Agora vem do **PERFIL VIVO** (os `.chr` da conta ativa): **16**.
+- O portao lia so o log de **hoje**: a virada do dia partia os `[START]` e a
+  conta ficava "n/d". Agora le os **dois ultimos**.
+
+### 4. A causa do bit de permissao (do DELTA, confirmada e é deterministica)
+
+**Aplicar um TEMPLATE poe `MQL_TRADE_ALLOWED=0`; aplicar um PERFIL repõe 1.**
+O `ALFA_FWD_TRADE_ON.tpl` (23 822 B, 23:14:36) **nao tem bloco
+`<expert>`** - por isso o bit vai a 0. Nao e aleatorio, e o conteudo do
+ficheiro. **Regra para a equipa: para ligar o trading, aplica-se PERFIL; o
+template so nao deve ser usado para isso.**
+
+### 5. O que a forward vai medir, com os numeros de agora
+
+- **1 simbolo com modelo** (XAUUSD) e **confianca 74,4%** - a IA passou o
+  piso de 60 com folga pela primeira vez (as 23:18:40).
+- **Mas o sinal foi morto pelo veto TECNICO**: `[CENARIO] XAUUSD
+  TENDENCIA_FORTE ADX=27,9 ATR%=0,43 TREND_DOWN` e a IA queria **COMPRAR a
+  74%** -> `VALIDATION: TREND BUY` recusa. **Com a autoridade ligada, a IA
+  escolhe a direccao e o filtro tecnico ainda tem de concordar.** Um trade
+  so acontece quando **os dois concordam**.
+- **Teto de amostra: 12** (16 do perfil - 4 com cotacao morta: USDRUB 40 875 s,
+  USDCLP 31 867 s, USDCOP 29 930 s, USDBRL 19 122 s).
+- **Pendentes de codigo** (encaminhados ao ALFA pelo CMD, a pedido do DELTA):
+  **A6** - o memo do `ScanBlock` esconde o motivo real por 30 min e o
+  `[SCANNER] RESUMO` conta o balde sem o motivo (foi assim que se leu
+  "NoSignal" quando a razao era `VALIDATION: TREND`); **A7** - o cache de ADX
+  devolve o valor de outro grafico apos reload.
+- **O pico 15160,94 continua a contaminar o DD** (16,82% fantasma, push ao
+  telefone). Vive em RAM; o reinicio do terminal limpa-o. **Pico por `login`**
+  fica pedido ao ALFA.
+

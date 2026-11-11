@@ -56,6 +56,8 @@
 param(
   [string]$Root = '',
   [switch]$Forcar,
+  [switch]$Reancorar,
+  [string]$Motivo = '',
   [switch]$Simular,
   [switch]$ExigirFresco,
   [int]$MaxIdadeMin = 10
@@ -69,6 +71,25 @@ $equipe   = Join-Path $Root 'Experts\XAU_AI_PRO\EQUIPE'
 $fwdDir   = Join-Path $equipe 'FORWARD'
 $ex5      = Join-Path $Root 'Experts\XAU_AI_PRO\XAU_AI_PRO.ex5'
 $permData = Join-Path $Root 'Files\Data'
+# A FROTA DA DECLARACAO e a do PERFIL VIVO, nao a uniao de todas as sondas.
+#
+# MEDIDO em 11/11 23:30: o dossier declarava **32 simbolos** - a uniao da
+# conta MetaQuotes-Demo (16) com a conta Headway (16, com AMD, NVDA, TSLA,
+# GOOGL, MSFT, XRP, BNB...). As sondas `permission_state_*.csv` das contas
+# que ja sairam continuam no mesmo `Files\Data`. A frota que o forward mede
+# e a do PERFIL (os `.chr` da conta ativa).
+$perfilCharts = Join-Path $Root 'Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071'
+$simbolosPerfil = @()
+if (Test-Path -LiteralPath $perfilCharts) {
+  foreach ($cf in @(Get-ChildItem -LiteralPath $perfilCharts -Filter '*.chr' -ErrorAction SilentlyContinue)) {
+    try {
+      $tt = [System.IO.File]::ReadAllText($cf.FullName, [System.Text.Encoding]::Unicode)
+      $mm = [regex]::Match($tt, '(?m)^symbol=(\S+)')
+      if ($mm.Success) { $simbolosPerfil += $mm.Groups[1].Value.Trim() }
+    } catch { }
+  }
+}
+$simbolosPerfil = @($simbolosPerfil | Sort-Object -Unique)
 $decl     = Join-Path $fwdDir 'DECLARADO.json'
 $logDir   = Join-Path $Root 'Logs'
 
@@ -169,7 +190,16 @@ function Get-ImpressaoInputs([string]$ChartsDir) {
     'TakeProfitPoints','RewardRatio','RiskPerTradeUsd','Slippage','EnableBreakEven',
     'MaxOpenPositions','MaxTradesPerDay','EnableExposureCap','MaxExposurePercent',
     'MaxTotalRiskPercent','EnableDailyProfitTarget','DailyProfitStopTrading',
-    'DailyProfitSlowPercent'
+    'DailyProfitSlowPercent',
+    # 11/11/2026 - O GUARDA DE CONTA REAL ESTAVA FORA DA IMPRESSAO DIGITAL.
+    # EnableRealAccountGuard + BlockRealAccounts decidem se esta janela pode
+    # abrir UMA entrada numa conta real (RealGuardAccountBlocked recusa no topo
+    # de ExecuteTrade). Fora desta lista, passar BlockRealAccounts de true para
+    # false abria a frota inteira a conta real SEM mexer no inputs_sha256 -
+    # a mesma classe de ponto cego do P1.3604. MEDIDOS: presentes no bloco
+    # <inputs> dos 16 .chr do perfil vivo (EnableRealAccountGuard=true,
+    # BlockRealAccounts=true) antes de entrarem aqui.
+    'EnableRealAccountGuard','BlockRealAccounts'
   )
   $saida = @{}
   if (-not (Test-Path -LiteralPath $ChartsDir)) { return @{ sha256 = ''; campos = $saida } }
@@ -250,7 +280,11 @@ $ligados = 0; $desligados = 0; $semFresco = 0; $ficheiros = 0
 $detalhe = @(); $simbolosON = @(); $simbolosVelhos = @()
 if (Test-Path -LiteralPath $permData) {
   # so' a sonda 0 do EA: permission_state_<SIMBOLO>.csv (nunca permission_probe_*, que e' de script)
+  # E so' a dos simbolos do PERFIL VIVO: as sondas das contas que ja sairam
+  # continuam no mesmo Files\Data (MEDIDO 11/11 23:30: 32 sondas para 16 simbolos).
   foreach ($f in @(Get-ChildItem -LiteralPath $permData -Filter 'permission_state_*.csv' -ErrorAction SilentlyContinue)) {
+    $symFicha = $f.BaseName -replace '^permission_state_', ''
+    if ($simbolosPerfil.Count -gt 0 -and -not ($simbolosPerfil -contains $symFicha)) { continue }
     $ficheiros++
     $idadeMin = [int]((($agora - $f.LastWriteTime).TotalMinutes))
     try {
@@ -301,10 +335,23 @@ if ($ligados -gt 0 -and $distintos -ne $ligados) {
   Write-Host ("  AVISO: {0} linhas LIGADO mas so {1} simbolos distintos - ha ficheiros repetidos." -f $ligados, $distintos) -ForegroundColor Yellow
 }
 
-$frotaOK = ($ligados -ge 15 -and $distintos -ge 15)
+# 11/11/2026 - O PORTAO DA FROTA DEIXA DE TER UM NUMERO FIXO.
+# Estava aqui: $frotaOK = ($ligados -ge 15 -and $distintos -ge 15)
+# O 15 era o tamanho da frota no dia em que a regra foi escrita, nao uma
+# propriedade do defeito que o D-168 quer impedir. Consequencia MEDIDA hoje:
+# a frota corre a 16 graficos e o portao aprovava 15/16 (um grafico fechado
+# passava); e numa frota maior aprovava mesmo com ficheiros DESLIGADOS,
+# porque o denominador continuava a ser 15.
+# O que o D-168 quer impedir e' concreto e nao depende do tamanho da frota:
+# um universo medido com o bit de negociacao fechado, em silencio. Passa a
+# ser isso que se testa - todos os ficheiros de sensor medidos e LIGADOS.
+# $ligados so pode ser igual a $ficheiros quando nenhum ficheiro ficou
+# DESLIGADO e nenhum ficou por interpretar; o denominador publicado e' o
+# mesmo $ficheiros da linha "frota $ligados/$ficheiros".
+$frotaOK = ($ficheiros -gt 0 -and $ligados -eq $ficheiros)
 if (-not $frotaOK -and -not $Forcar) {
   Write-Host ""
-  Write-Host "BLOQUEADO: a frota tem $ligados/15 com o bit de negociacao." -ForegroundColor Red
+  Write-Host ("BLOQUEADO: a frota tem {0}/{1} com o bit de negociacao ({2} DESLIGADO)." -f $ligados, $ficheiros, $desligados) -ForegroundColor Red
   Write-Host "A janela de 30 dias nao pode abrir assim: mediria um universo fechado, em silencio (D-168)." -ForegroundColor Red
   Write-Host "Religa o botao por grafico (F7 > Comum > 'Permitir negociacao algoritmica') e volta a correr." -ForegroundColor Yellow
   Write-Host "Se a frota nao puder ser ligada, usa -Forcar - e a decisao fica registada." -ForegroundColor DarkGray
@@ -337,8 +384,17 @@ foreach ($p in $logs) {
   }
 }
 $naoCorrem = @(); $semStart = @()
-$simbolosAlvo = @(Get-ChildItem -LiteralPath $permData -Filter 'permission_state_*.csv' -ErrorAction SilentlyContinue | ForEach-Object { ($_.BaseName -replace '^permission_state_', '') } | Select-Object -Unique)
-# A versao em memoria e' propriedade da FROTA, nao so' dos graficos com o bit: com a frota a 0/15
+# A FROTA DA DECLARACAO e a do PERFIL VIVO, nao a uniao de todas as sondas.
+#
+# MEDIDO em 11/11 23:30: o dossier declarava **32 simbolos** - a uniao da
+# conta MetaQuotes-Demo (16) com a conta Headway (16, com AMD, NVDA, TSLA,
+# GOOGL, MSFT, XRP, BNB...). As sondas `permission_state_*.csv` das contas
+# que ja sairam continuam no mesmo `Files\Data`. A frota que o forward mede
+# e a do PERFIL (os `.chr` da conta ativa).
+$perfilCharts = Join-Path $Root 'Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071'
+$simbolosAlvo = @($simbolosPerfil)
+
+# A versao em memoria e' propriedade da FROTA, nao so' dos graficos com o bit: com a frota inteira a 0
 # este check continua a provar que o deploy reatou (era o furo que a noite de 10/11 expos).
 foreach ($sym in $simbolosAlvo) {
   if (-not $memoria.ContainsKey($sym)) { $semStart += $sym; continue }
@@ -390,7 +446,12 @@ $cotMorta = Get-CotacaoMorta $logDir
 # CONGELADA. Uma re-declaracao NAO toca em `janela_inicio_*`: registra-se
 # como EVENTO em `historico_declaracoes[]` (hora, md5, inputs, governanca,
 # frota, motivo). So o CMD reescreve este ficheiro.
-$janelaServidor = $serverNow.ToString('dd/MM/yyyy HH:mm') + ' (hora do SERVIDOR, desvio MEDIDO, no instante da declaracao)'
+if ($Reancorar) {
+  $janelaServidor = $serverNow.ToString('dd/MM/yyyy HH:mm') + ' (hora do SERVIDOR, desvio MEDIDO, REANCORADO de proposito)'
+  $janelaLocal = $agora.ToString('dd/MM/yyyy HH:mm')
+} else {
+  $janelaServidor = $serverNow.ToString('dd/MM/yyyy HH:mm') + ' (hora do SERVIDOR, desvio MEDIDO, no instante da declaracao)'
+}
 $janelaLocal = $agora.ToString('dd/MM/yyyy HH:mm')
 $historico = @()
 $jaDeclarado = $false
@@ -400,7 +461,7 @@ if (Test-Path -LiteralPath $decl) {
     if ($antigo.PSObject.Properties.Name -contains 'historico_declaracoes' -and $antigo.historico_declaracoes) {
       $historico = @($antigo.historico_declaracoes)
     }
-    if ($antigo.PSObject.Properties.Name -contains 'janela_inicio_servidor' -and $antigo.janela_inicio_servidor) {
+    if ($antigo.PSObject.Properties.Name -contains 'janela_inicio_servidor' -and $antigo.janela_inicio_servidor -and -not $Reancorar) {
       $janelaServidor = [string]$antigo.janela_inicio_servidor
       $janelaLocal = [string]$antigo.janela_inicio_local
       $jaDeclarado = $true
@@ -458,7 +519,7 @@ $declObj = [ordered]@{
   regra                   = 'D-139/D-141 (MD5) + D-162 (governanca) + D-168 (frota) + P1.3592 (memoria): o binario, os modelos, a frota da permissao E a versao em memoria entram na declaracao. Qualquer um deles mudar durante a janela e um evento registado.'
   notas                   = @(
     "Declarado por script: o MD5 e lido do disco, nao escrito a mao.",
-    "Frota no momento da declaracao: $ligados/15 com bit de negociacao (sensor: permission_state_*.csv do proprio EA).",
+    "Frota no momento da declaracao: $ligados/$ficheiros ficheiros de sensor com bit de negociacao (sensor: permission_state_*.csv do proprio EA). Desses, $($ligados - $semFresco) tem tick recente; os restantes $semFresco sao sensores de simbolos que ja nao estao na frota (ficam no disco e contam como LIGADO por desenho, P1.3593). A frota VIVA medida e' $($ligados - $semFresco) simbolo(s), nao $ligados.",
     "Versao em memoria: $corremNovos/$($simbolosAlvo.Count) simbolos com [START] $versaoDeclarada no journal.",
     "Sensor sem leitura recente (contados como LIGADO): $semFresco. NAO e o mesmo que cotacao morta.",
     ("Cotacao morta na ultima varredura do EA: {0} simbolo(s) {1} - lido do [DIAGSCAN] do EA ({2})." -f $cotMorta.qtd, ($cotMorta.lista -join ", "), $cotMorta.quando),
@@ -480,6 +541,6 @@ $json = ($declObj | ConvertTo-Json -Depth 6)
 [System.IO.File]::WriteAllText($decl, $json, (New-Object System.Text.UTF8Encoding($false)))
 Write-Host ""
 Write-Host ("DECLARADO: {0} | MD5 {1} | {2} B | governanca {3}" -f $versaoDeclarada, $md5, $info.Length, $gov.sha256) -ForegroundColor Green
-Write-Host ("           frota {0}/15 (sem tick: {1}) | memoria {2}/{3}" -f $ligados, $semFresco, $corremNovos, $simbolosAlvo.Count) -ForegroundColor Green
+Write-Host ("           frota {0}/{1} (sem tick: {2}) | memoria {3}/{4}" -f $ligados, $ficheiros, $semFresco, $corremNovos, $simbolosAlvo.Count) -ForegroundColor Green
 Write-Host "A tabela FORWARD.md passa a mostrar o binario novo a proxima medicao." -ForegroundColor Green
 exit 0

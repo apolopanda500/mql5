@@ -1,5 +1,5 @@
 # LOCK DE OPERACAO - EQUIPE
 
 - **ESTADO:** LIVRE
-- **Ultimo dono:** DELTA
-- **Libertado:** 10/11/2026 10:51:31
+- **Ultimo dono:** sistema
+- **Libertado:** 10/11/2026 21:00:12

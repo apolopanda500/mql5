@@ -1,12 +1,13 @@
 {
     "versao":  "v1.2.203",
-    "md5":  "10C4DF68A60CDDB0252F12C30AF4A86A",
-    "ex5_bytes":  1023258,
-    "ex5_mtime":  "10/11/2026 16:56:41",
+    "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+    "ex5_bytes":  1025248,
+    "ex5_mtime":  "10/11/2026 21:43:20",
     "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
     "governanca_modelos":  87,
-    "inputs_sha256":  "4B71E6E1F67F57DD6C8141497251181A9C4046595BD15895168D3C4EB0C46F28",
+    "inputs_sha256":  "AF492857692C4DDD54A02367E6CF93C3F36193FF1308EB66844234E44A8D63DB",
     "inputs":  {
+                   "EnableRealAccountGuard":  "true",
                    "RequireAIJSON":  "true",
                    "MaxDrawdownPercent":  "6.0",
                    "MinMarketScoreNoAI":  "45.0",
@@ -24,12 +25,13 @@
                    "MinMarketScore":  "65.0",
                    "MaxTradesPerDay":  "100",
                    "EnableExposureCap":  "true",
-                   "MinAIConfidence":  "45.0",
+                   "MinAIConfidence":  "60.0",
                    "MaxTotalRiskPercent":  "10.0",
                    "AIUnavailableConfidenceCap":  "40.0",
                    "MaxExposurePercent":  "20.0",
                    "EnableVolatilityFilter":  "true",
                    "MaxOpenPositions":  "50",
+                   "BlockRealAccounts":  "true",
                    "DailyProfitStopTrading":  "true",
                    "StopLossPoints":  "300",
                    "EnableMTFConfirmation":  "true",
@@ -49,13 +51,13 @@
                },
     "offset_servidor_h":  5,
     "declarado_por":  "CMD",
-    "declarado_em":  "10/11/2026 18:11",
-    "frota_ligada_no_declaro":  15,
-    "janela_inicio_servidor":  "10/11/2026 22:31 (hora do SERVIDOR, desvio MEDIDO, no instante da declaracao)",
-    "janela_inicio_local":  "10/11/2026 17:31",
+    "declarado_em":  "11/11/2026 00:58",
+    "frota_ligada_no_declaro":  16,
+    "janela_inicio_servidor":  "11/11/2026 05:52 (hora do SERVIDOR, desvio MEDIDO, REANCORADO de proposito)",
+    "janela_inicio_local":  "11/11/2026 00:52",
     "janela_congelada":  true,
-    "janela_fim":  "10/12/2026 22:31 (servidor)",
-    "decisao_ancora":  "DONO, 10/11/2026 18:08 local: a janela conta a partir de hoje. Dia 1 = 10/11/2026; 30 dias ate 10/12/2026 22:31 (servidor)",
+    "janela_fim":  "11/12/2026 05:52 (servidor)",
+    "decisao_ancora":  "DONO, 10/11/2026 18:08 local: a janela conta a partir de hoje. Dia 1 = 10/11/2026; 30 dias ate 11/12/2026 05:52 (servidor)",
     "historico_declaracoes":  [
                                   {
                                       "quando":  "10/11/2026 17:37:54",
@@ -74,17 +76,81 @@
                                       "frota_ligada":  15,
                                       "versao":  "v1.2.203",
                                       "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "11/11/2026 00:41:44",
+                                      "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+                                      "inputs_sha256":  "803CA7FF3EC7346BB3F08383DD6F17A81BF8B966978AF29829E2002B62927FF5",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  32,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "11/11/2026 00:43:32",
+                                      "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+                                      "inputs_sha256":  "AF492857692C4DDD54A02367E6CF93C3F36193FF1308EB66844234E44A8D63DB",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  32,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "11/11/2026 00:44:57",
+                                      "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+                                      "inputs_sha256":  "AF492857692C4DDD54A02367E6CF93C3F36193FF1308EB66844234E44A8D63DB",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  32,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "11/11/2026 00:50:49",
+                                      "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+                                      "inputs_sha256":  "AF492857692C4DDD54A02367E6CF93C3F36193FF1308EB66844234E44A8D63DB",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  32,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "11/11/2026 00:52:47",
+                                      "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+                                      "inputs_sha256":  "AF492857692C4DDD54A02367E6CF93C3F36193FF1308EB66844234E44A8D63DB",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  32,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "11/11/2026 00:58:42",
+                                      "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+                                      "inputs_sha256":  "AF492857692C4DDD54A02367E6CF93C3F36193FF1308EB66844234E44A8D63DB",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  16,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
+                                  },
+                                  {
+                                      "quando":  "11/11/2026 00:58:45",
+                                      "md5":  "F77F0AD083A140EB6E8A398EF816822F",
+                                      "inputs_sha256":  "AF492857692C4DDD54A02367E6CF93C3F36193FF1308EB66844234E44A8D63DB",
+                                      "governanca_sha256":  "CB7D8FD8D5CECAF51BC650FF491B2F6FA1DBCA57621ED140E9EE0C3E661187F7",
+                                      "frota_ligada":  16,
+                                      "versao":  "v1.2.203",
+                                      "motivo":  "re-declaracao (a janela nao se move; este registo e o evento)"
                                   }
                               ],
     "frota_sensor_sem_leitura":  0,
-    "frota_cotacao_morta":  3,
+    "frota_cotacao_morta":  4,
     "frota_cotacao_morta_lista":  [
-                                      "USDCLP(preco morto ultimo tick ha 9797s)",
-                                      "USDCOP(preco morto ultimo tick ha 7860s)",
-                                      "USDRUB(preco morto ultimo tick ha 18805)"
+                                      "USDCLP(preco morto ultimo tick ha 31637)",
+                                      "USDCOP(preco morto ultimo tick ha 29700)",
+                                      "USDRUB(preco morto ultimo tick ha 40645)"
                                   ],
     "frota_simbolos":  [
                            "AUDUSD",
+                           "EURUSD",
                            "GBPUSD",
                            "NZDUSD",
                            "USDBRL",
@@ -100,7 +166,8 @@
                            "USDSGD",
                            "XAUUSD"
                        ],
-    "versao_em_memoria":  "15/15",
+    "versao_em_memoria":  "16/16",
+    "conta":  "113568614 @ MetaQuotes Ltd./MetaQuotes-Demo",
     "janela_dias":  30,
     "criterios":  {
                       "pf_min":  1.2,
@@ -111,10 +178,10 @@
     "regra":  "D-139/D-141 (MD5) + D-162 (governanca) + D-168 (frota) + P1.3592 (memoria): o binario, os modelos, a frota da permissao E a versao em memoria entram na declaracao. Qualquer um deles mudar durante a janela e um evento registado.",
     "notas":  [
                   "Declarado por script: o MD5 e lido do disco, nao escrito a mao.",
-                  "Frota no momento da declaracao: 15/15 com bit de negociacao (sensor: permission_state_*.csv do proprio EA).",
-                  "Versao em memoria: 15/15 simbolos com [START] v1.2.203 no journal.",
+                  "Frota no momento da declaracao: 16/16 ficheiros de sensor com bit de negociacao (sensor: permission_state_*.csv do proprio EA). Desses, 16 tem tick recente; os restantes 0 sao sensores de simbolos que ja nao estao na frota (ficam no disco e contam como LIGADO por desenho, P1.3593). A frota VIVA medida e\u0027 16 simbolo(s), nao 16.",
+                  "Versao em memoria: 16/16 simbolos com [START] v1.2.203 no journal.",
                   "Sensor sem leitura recente (contados como LIGADO): 0. NAO e o mesmo que cotacao morta.",
-                  "Cotacao morta na ultima varredura do EA: 3 simbolo(s) USDCLP(preco morto ultimo tick ha 9797s), USDCOP(preco morto ultimo tick ha 7860s), USDRUB(preco morto ultimo tick ha 18805) - lido do [DIAGSCAN] do EA (20261110.log 17:10:50).",
+                  "Cotacao morta na ultima varredura do EA: 4 simbolo(s) USDCLP(preco morto ultimo tick ha 31637), USDCOP(preco morto ultimo tick ha 29700), USDRUB(preco morto ultimo tick ha 40645) - lido do [DIAGSCAN] do EA (20261110.log 23:14:50).",
                   "A sonda de script (permission_probe_*.csv) NAO serve como sensor da frota: num script o bit devolve a permissao do terminal (medido 10/11 12:53 vs 12:56, USDCZK).",
                   "Rollback: reescrever este ficheiro com o binario anterior (git checkout de EQUIPE/FORWARD/DECLARADO.json)."
               ]

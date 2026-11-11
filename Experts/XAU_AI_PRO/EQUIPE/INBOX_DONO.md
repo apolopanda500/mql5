@@ -1679,3 +1679,30 @@ decisao.
 - **Nao roda o `MCPServerToken`** (esta em claro nos `.chr` dos 14): rodar
   parte o acesso MCP do terminal. Fica para depois da janela, registado.
 
+
+---
+## Q-177 - O modelo de CLASSE (MULTI_*) pode operar um ativo cujo modelo proprio foi REPROVADO pela governanca (edge abaixo de +0.0200)? Hoje 10 dos 11 simbolos da frota estao nessa situacao.
+
+- **de:** ALFA | **hora:** 10/11 20:14
+- **prazo:** antes de declarar forward fechado
+- **arquivo:** `RELATORIOS\20261110_ALFA_P0_MULTI_FALLBACK.md`
+- **opcoes:** a) nao - MULTI so cobre ativo sem artefato proprio (implementado; destrava 1: XAGUSD) | b) sim, para toda a classe (destrava 10, com rotulo do modelo de classe no payload) | c) sim, mas so FIAT, nunca METALS
+- **estado:** FECHADA (dono, 10/11 20:34)
+- **RESPOSTA:** (b) - o modelo de CLASSE MULTI_* pode operar ativo cujo modelo proprio foi REPROVADO pela governanca, para toda a classe, com o rotulo do modelo de classe no payload (registado por ALFA a pedido do dono; resposta dada no chat em 10/11/2026). Aplicado no fonte do gateway no mesmo dia (D-175). Medido em dado real H1: 16 de 17 simbolos decidem; XAUUSD continua no modelo proprio; AAPL/EURTRY seguem recusados por nao terem classe. Relatorio: EQUIPE/RELATORIOS/20261110_ALFA_P0_OPCAO_B_Q177.md | **respondida por:** DONO | **hora:** 10/11 20:34
+
+
+---
+## Q-178 - Depois da opcao (b), o modelo de classe decide em 16 de 17 simbolos - mas a confianca dele fica entre 34.1 e 47.2, e o piso MinAIConfidence vivo nos 15 graficos e 60.0 (a D-174 autoriza 45). Com piso 45 passaria 1 de 16 (USDSGD 47.2); com o valor vivo 60, nenhum. Sem decidir isto, (b) nao gera uma unica ordem. Qual e a regra?
+
+- **de:** ALFA | **hora:** 10/11 20:35
+- **prazo:** antes do dia 2 do forward
+- **opcoes:** (a) aplicar o piso 45 da D-174 nos 15 .chr agora, mesmo com o forward a correr; (b) piso proprio para os modelos MULTI (ex.: 34), separado do piso do XAUUSD 30F; (c) criterio por edge em vez de probabilidade - operar quando o edge medio dos folds for >= +0.0200; (d) nao mexer no piso agora e aceitar que o MULTI fica sem sinal ate ao fim do forward
+- **estado:** ABERTA
+- **RESPOSTA:**
+
+
+---
+## 10/11 21:00 - ALFA -> DONO | Q-178 RECOMENDADA: (d) nao mexer no piso; 60.0 e INALCANCAVEL (max 54.6) e o modelo perde para o palpite trivial; os 3 cripto nao sao cripto nesta conta
+
+- **arquivo:** `EQUIPE/RELATORIOS/20261110_ALFA_Q178_RECOMENDACAO_PISO_E_CRIPTO.md`
+- **estado:** FEITO | **hora:** 10/11 21:00 | **de:** ALFA

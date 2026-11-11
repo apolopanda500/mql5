@@ -55,10 +55,12 @@ $versaoMemoria = ''
 $contaMemoria = ''
 $logDir = Join-Path $Root 'Logs'
 if (Test-Path -LiteralPath $logDir) {
-  $lf = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1)
-  if ($lf.Count -gt 0) {
+  # Os 2 ultimos ficheiros: a virada do dia parte os [START] entre dois
+  # ficheiros, e a conta do terminal pode estar no de ontem.
+  $logs = @(Get-ChildItem -LiteralPath $logDir -Filter '*.log' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 2)
+  foreach ($lf in $logs) {
     try {
-      $fs = [System.IO.File]::Open($lf[0].FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+      $fs = [System.IO.File]::Open($lf.FullName, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
       $sr = New-Object System.IO.StreamReader($fs, [System.Text.Encoding]::Unicode); $t = $sr.ReadToEnd(); $sr.Close()
       foreach ($l in ($t -split "`r?`n")) {
         if ($l -match '\[START\] XAU_AI_PRO\s+(v[0-9.]+)') { $versaoMemoria = $Matches[1] }
@@ -139,7 +141,12 @@ if ($inputsDeclarados) {
 }
 $chartCountEsperado = 0
 if (Test-Path -LiteralPath $declF) {
-  try { $dd3 = Get-Content -LiteralPath $declF -Raw -Encoding UTF8 | ConvertFrom-Json; $chartCountEsperado = @($dd3.frota_simbolos).Count } catch { }
+  try {
+    $dd3 = Get-Content -LiteralPath $declF -Raw -Encoding UTF8 | ConvertFrom-Json
+    # DISTINTOS: a lista de simbolos pode terentries repetidas de
+    # declaracoes anteriores (MEDIDO 11/11 23:30: 32 entradas para 16 simbolos).
+    $chartCountEsperado = @(@($dd3.frota_simbolos) | ForEach-Object { [string]$_ } | Sort-Object -Unique).Count
+  } catch { }
 }
 if ($chartCountEsperado -gt 0 -and $chartCount -ne $chartCountEsperado) {
   $falhas += ("o perfil tem {0} graficos e o dossier declara {1} - falta aplicar o perfil completo" -f $chartCount, $chartCountEsperado)

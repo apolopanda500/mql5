@@ -1412,3 +1412,90 @@ Assinatura: DELTA, 07/11/2026 09:00Z - medido, nao assinado como fecho de gate.
 - **arquivo:** `EQUIPE/DECISOES.md`
 - **precisa:** confirmar: com autoridade ligada o AIConflictBlocks nunca e alcancado; e a confianca do MULTI_FIAT (0,34-0,38) fica abaixo de 45 - o caminho e modelo binario/calibrado
 - **estado:** ABERTO | **hora:** 10/11 21:25 | **de:** CMD
+
+---
+## 10/11 21:40 - DELTA -> ALFA | D-182 verificado: 4 confirmacoes, 2 descobertas novas, 5 pedidos de codigo
+
+- **estado:** PEDIDO | **hora:** 10/11 21:40 | **de:** DELTA
+
+**Verificacao do D-182 (4ba07654) pelo DELTA — 10/11/2026 21:39**
+
+Os quatro pontos do D-182 estao confirmados contra codigo, jornal, .chr e terminal ao vivo. Ha duas descobertas novas e cinco pedidos de codigo para ti. Nada foi escrito por mim fora deste canal: sem .ex5, sem .chr/.tpl, sem DECLARADO.json, sem medicao, sem ordem.
+
+**1. CONFIRMADO — a causa estava invertida**
+
+`AI/AIEngine.mqh:446-455`: com `AIHasSignalAuthority=true` o bloco devolve antes de `AIConflictBlocks`. `[AI CONFLICT]` = 0 registos nas 13114 linhas do jornal de hoje. O caminho de conflito e codigo morto nesta configuracao — nao e lento, nao e raro, nao corre.
+A restricao real e `AIEngine.mqh:354`: `if(AI_Score<MinAIConfidence) return 0;`. Medido as 20:01:22: AI_Score/CONF **52.00** contra MinAIConfidence **60.0**.
+Consequencia aceite e retirada registada: com piso 45 o EA teria **VENDIDO** XAUUSD contra o tecnico BUY (IA SELL 51.99 > BUY 48.01). 86 leituras de IA hoje = **50 SELL / 36 BUY**.
+
+**2. CONFIRMADO — o quase-incidente na conta real**
+
+Conta `201124748` `Jarocel (Pty) Ltd/Headway-Real`, saldo `15.00`. 20 registos `[START]` de 19:18:20 a 19:23:52 (mais 3 as 19:18:15 ainda com `saldo=12610.68` antes de o nome do broker resolver). 17 registos `[PERM]`, todos com `veredicto=0 | suite=0 | PODE NEGOCIAR nesta instancia`.
+**Zero ordens e zero deals** em 19:15-19:30: `get_trading_history_orders` devolveu `orders[]` e `deals[]` vazios.
+O que travou foi o guarda de cotacao, nao um guarda de conta:
+`[TRADE BLOCK] COTACAO VELHA (timer)` — AMD 4939s, NVDA 4942s, GOOGL 4945s, TSLA 4971s, MSFT 4983s, AUS200 4987s, US500 1379s, NASDAQ-100 1368s — todas contra `limite=900s`.
+
+**3. DESCOBERTA 1 — o perfil de 15 nao se perdeu: foi desmontado as 19:19**
+
+`Profiles\Charts\XAU_AI_PRO_15CHARTS_Q071` tem **5 .chr**. `Profiles\deleted` tem **28**, e **14 deles foram apagados entre 19:19:14 e 19:19:26** — dentro da janela do Headway-Real:
+
+| ficheiro | simbolo | MinAIConfidence |
+|---|---|---|
+| 11 | USDCOP | 45.0 |
+| 12 | USDCLP | 45.0 |
+| 15 | USDBRL | 45.0 |
+| 16 | USDJPY | 45.0 |
+| 17 | USDSEK | 45.0 |
+| 18 | USDCHF | 45.0 |
+| 19 | USDCZK | 45.0 |
+| 20 | USDCAD | 45.0 |
+| 21 | USDCNH | 45.0 |
+| 23 | NZDUSD | 45.0 |
+| 24 | USDRUB | 45.0 |
+| 25 | USDSGD | 45.0 |
+| 13 | GBPUSD | sem bloco |
+| 22 | AUDUSD | sem bloco |
+
+Sao **14 dos 15 simbolos declarados** (XAUUSD sobreviveu como `chart02`) e **12 com piso 45.0 gravado**. O quase-incidente e o colapso do perfil sao **o mesmo evento**, na mesma janela de 12 segundos.
+Segundo lote, 20:00:07-20:00:21: 06 XAUUSD, 29 BTC, 30 ETH, 31 DOGE, 32 BNB, 33 SOL, 34 XRP, 36 ETHUSD, 38 XAUT — todos com **60.0**.
+
+**4. DESCOBERTA 2 — o guarda de conta real nao existe**
+
+Inputs vivos nos 5 graficos: `EnableRealAccountGuard=true`, `RealGuardBlockMinLotExceedsCap=true`, `RealGuardMaxUnarmedPositions=1`. Isso guarda lote minimo contra tecto de risco e posicoes desarmadas. **Nao guarda o tipo de conta.** Foi por isso que 17 `[PERM]` disseram `PODE NEGOCIAR` numa conta real de 15 USD com `EnableAutonomousMode=true` e `AIHasSignalAuthority=true`.
+
+**5. CONFIRMADO — o portao compara campo a campo**
+
+`fechar-janela.ps1` ja nao procura um 45 literal: le o objecto `inputs` do dossier, le cada `.chr` vivo, faz diff chave a chave e nomeia a falta. As tres FALTA observadas estao certas.
+Correccao de contagem: `vivo=60.0` vale nos **5** graficos, nao em 1. Nos `.chr` so o `chart01` persiste o bloco, mas `chart02`-`chart05` correm em defaults compilados e o default e igual: `MinAIConfidence=60.0` (Config.mqh:636), `MinMarketScore=65.0` (:1172), `AIHasSignalAuthority=true` (:689), `EnableAutonomousMode=true` (:1168), `KCI_*` 14/9/30/1.5/30.0 (:768-772). Logo a divergencia real e 1 campo (o do dossier), e o colapso de inputs e hoje inofensivo — e **latentemente perigoso**.
+
+**6. OS 5 PEDIDOS DE CODIGO (zona ALFA)**
+
+**A1 — `BlockRealAccounts` (bloqueante).** Novo input booleano, default `true`, verificado em `OnInit` e no inicio do caminho de execucao: se `ACCOUNT_TRADE_MODE != ACCOUNT_TRADE_MODE_DEMO` e o input esta `true`, o EA loga `[REAL GUARD] conta real | <login> | <server> | trading desligado` e nao envia ordens. Separar do `EnableRealAccountGuard` atual, que trata de lote. Sem isto, a proxima anexacao acidental repete o quase-incidente — e da proxima vez a cotacao pode estar viva.
+
+**A2 — persistencia de inputs nos `.chr` (bug).** So `chart01.chr` (23800 B) tem bloco `<inputs>`; `chart02` (71986 B), `chart03` (2782 B), `chart04` (2774 B), `chart05` (2060 B) nao tem. Consequencia: qualquer input nao-default aplicado por F7 num destes graficos **perde-se no reinicio**, em silencio. Hoje nao doi porque os valores vivos coincidem com os defaults; no dia em que nao coincidirem, a medicao deixa de ser comparavel com o declarado. Diagnosticar por que o MT5 nao grava o bloco nesses graficos (suspeita: template aplicado sem EA persistido, ou `.chr` gravado por outro processo). Nao corrigir por escrita manual de `.chr` com o terminal aberto (D-103: crash as 22:16:02).
+
+**A3 — `AIConflictBlocks` e codigo morto com `AIHasSignalAuthority=true`.** Ou o caminho de conflito volta a ser alcancavel, ou o comentario em `AIEngine.mqh:406-422` diz explicitamente que com autoridade ligada ele nao corre. Hoje tres relatorios consecutivos leram esse bloco como o mecanismo ativo. Documentacao falsa dentro do codigo custa mais do que a ausencia dela.
+
+**A4 — mensagem do guarda de cotacao mente quando `tick.time=0`.** `[TRADE BLOCK] COTACAO VELHA (timer) | EURUSD | idade=69901299s`. O guarda esta certo (bloqueia), a mensagem nao: quando `tick.time==0` deve dizer `sem tick` e nao uma idade aritetica. Correcao de texto, v1.2.204.
+
+**A5 — P1.3610 em `Core/TradePipeline.mqh`** so depois de a janela fechar (v1.2.204), como ja combinado.
+
+**7. NAO E TEU**
+
+- `DECLARADO.json` stale (declara `MinAIConfidence 45.0`, vivo 60.0) e sem campo `conta`: reescreve-se pelo CMD, nao por mim nem por ti.
+- Janela invalida: a conta migrou 4x em 43 min com 42 min 58 s de escuridao. Re-baseline e do CMD.
+- Build 6316 pendente (terminal em 6314). O reinicio devolve o perfil de 5 e nao existe perfil de 15 em disco para aplicar: ou se restauram os 14 `.chr` de `Profiles\deleted`, ou se reconstroi a partir dos conjuntos de 15 `.tpl` (`PROBE_chart01/13`, `ALFA_RK_01..15`, `DELTA_DEPLOY_01..15`, `ALFA_SL_01..15`, `ALFA_SLV_01..15`, `AISW_01..15`). Decisao do DONO.
+
+**8. FREEZE E ESTADO**
+
+`XAU_AI_PRO.ex5` = 1023258 B | 10/11/2026 16:56:41 | MD5 `10C4DF68A60CDDB0252F12C30AF4A86A` — intacto, reconfirmado agora. Sem recompilacao durante a janela de 30 dias.
+Conta: 113568614 MetaQuotes-Demo, 12610.68, 0 posicoes, margem 0.00. Build 6314, ping 216735 us, retransmit 0.24 (era 1.70).
+**Disco: 6.6 GB livres (era 8.3).** Cai ~1 GB/h. Um backtest anterior abortou a 0.37 GB. Relogio a correr dentro da janela.
+
+
+---
+## 11/11 00:59 - CMD -> ALFA | A6 e A7 do DELTA + a causa do bit de permissao (template vs perfil)
+
+- **arquivo:** `EQUIPE/DECISOES.md`
+- **precisa:** A6: o memo do ScanBlock esconde o motivo real por 30 min - o RESUMO conta o balde mas nao o motivo (foi assim que lemos NoSignal quando a razao era VALIDATION: TREND); A7: o cache de ADX devolve o valor de outro grafico apos reload ([ADX] VALOR DE OUTRO SIMBOLO). E o ALFA_FWD_TRADE_ON.tpl nao tem bloco <expert> - aplicar TEMPLATE poe o bit a 0, aplicar PERFIL repõe 1
+- **estado:** ABERTO | **hora:** 11/11 00:59 | **de:** CMD

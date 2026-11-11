@@ -2414,3 +2414,27 @@ ALFA -> CMD | 10/11/2026 10:00 | EnableStoplessEntry=false APLICADO 15/15 - nao 
 
 
 - **estado:** INFORMATIVO | 10/11 10:05 | ALFA
+
+---
+## 10/11 20:14 - ALFA -> CMD | P0 MULTI_* entregue no gateway; 10 simbolos recusados por GOVERNANCA, nao por resolvedor; gateway no ar ainda velho
+
+- **arquivo:** `RELATORIOS\20261110_ALFA_P0_MULTI_FALLBACK.md`
+- **precisa:** DEVOLVIDO
+- **estado:** ABERTO | **hora:** 10/11 20:14 | **de:** ALFA
+
+Medido em dado real do terminal (H1, 600 candles, 20:15): o resolver simbolo->classe->MULTI_* esta implementado em backend/ai_inference.py + backend/asset_classes.py (+180/-5), sem compilar e sem reattach. Regra fixada pelos testes: MULTI e COBERTURA (ativo sem artefato proprio), nunca substituicao de recusa de governanca. Efeito nesta conta: XAGUSD passou a MULTI_METALS (conf 42.8%); os 10 pares FIAT continuam recusados porque TODOS tem modelo proprio com edge abaixo de +0.0200 (EURUSD -0.0161, USDCOP -0.0584, USDCLP -0.0281, USDCZK -0.0072, USDRUB +0.0166, USDSGD +0.0193...). Nao era falta de resolvedor: e falta de edge. Segunda parede medida: MULTI_FIAT da 34.1-47.6% de confianca, logo com piso 45 passa 1 de 10 e com o piso vivo 60.0 passa nenhum - o piso 45 (D-174) continua ausente dos 15 .chr. Falta reiniciar o gateway (processo de outra sessao, OwningProcess 0, nao reiniciei) para o codigo entrar no ar. pytest test_ai_inference+test_governanca_multi: 111 passed, 3 failed, todas anteriores ao patch.
+
+---
+## 10/11 20:34 - ALFA -> CMD | P0 Q-177 opcao (b) aplicada no fonte; PEDIDO: reiniciar o gateway na 9011
+
+- **arquivo:** `EQUIPE/RELATORIOS/20261110_ALFA_P0_OPCAO_B_Q177.md`
+- **precisa:** reiniciar o uvicorn da 9011 (processo de outra sessao, OwningProcess=0). Sem reinicio o app continua a servir o codigo velho: USDCOP responde edge -0.0584 e XAGUSD responde 'modelo nao publicado ou ausente'. Nao ha rebuild: o fonte ja tem o patch.
+- **estado:** FEITO | **hora:** 10/11 20:34 | **de:** ALFA
+
+O dono autorizou a opcao (b) da Q-177 e a regra esta no fonte (D-175). Medido em dado real H1: 16 de 17 simbolos decidem agora; antes eram 11 recusas em 11. XAUUSD continua no modelo proprio (publicavel ganha sempre). AAPL/EURTRY recusam por nao terem classe - prova negativa. Suite: 1520 passed, 5 failed + 2 errors todos PRE-EXISTENTES (2 tkinter ausente no .venv, 1 PyInstaller ausente, 2 deriva de versao 1.391/1.2.191 contra 1.2.181). Regressao que a suite apanhou e ja corrigida: M1 e H1/../.. passavam a receber decisao do MULTI_METALS porque o nome geral do MULTI existe no disco; guarda posta em _nomes_de_artefato. ALERTA que impede sinal: a confianca do MULTI fica em 34.1-47.2 e o piso vivo nos 15 .chr e 60.0 (D-174 autoriza 45). Com piso 45 passaria 1 de 16; com 60, nenhum. Sem decisao do piso, (b) nao gera uma unica ordem.
+
+---
+## 10/11 21:00 - ALFA -> CMD | NAO alterar MinAIConfidence nos .chr: recomendacao (d) ao DONO, pendente de resposta. Piso 60.0 e INALCANCAVEL pelos MULTI (max 54.6) e a 45 o MULTI_METALS opera 49.6% das barras com 98.8% de direcao constante
+
+- **arquivo:** `EQUIPE/RELATORIOS/20261110_ALFA_Q178_RECOMENDACAO_PISO_E_CRIPTO.md`
+- **estado:** ABERTO | **hora:** 10/11 21:00 | **de:** ALFA

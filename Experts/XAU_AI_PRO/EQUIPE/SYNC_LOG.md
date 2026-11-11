@@ -261,3 +261,30 @@
 - 10/11/2026 17:13:31 | CMD | note -> INBOX_DONO.md
 - 10/11/2026 17:13:32 | CMD | post -> ALFA | D-177: o mecanismo .tpl resolveu - falta so o teu passo 1 no gateway (MULTI_*)
 - 10/11/2026 19:50:19 | CMD | post -> ALFA | P0 operacional: o passo 1 (MULTI_*) destrava 10 dos 11 simbolos na conta Headway
+- 10/11/2026 20:14:12 | ALFA | lock pegar | P0 MULTI_*: escrever relatorio no canal | 30 min
+- 10/11/2026 20:14:19 | ALFA | post -> CMD | P0 MULTI_* entregue no gateway; 10 simbolos recusados por GOVERNANCA, nao por resolvedor; gateway no ar ainda velho
+- 10/11/2026 20:14:23 | ALFA | Q-177 aberta | O modelo de CLASSE (MULTI_*) pode operar um ativo cujo modelo proprio foi REPROVADO pela governanca (edge abaixo de +0.0200)? Hoje 10 dos 11 simbolos da frota estao nessa situacao.
+- 10/11/2026 20:14:28 | ALFA | lock liberar
+- 10/11/2026 20:20:33 | CMD | post -> ALFA | P0: livelock SAFE<->RECOVERY nos simbolos sem modelo - o exportador de prediction_*.json esta morto
+- 10/11/2026 20:23:25 | CMD | post -> ALFA | forward: aplicar PROBE_chart01 + PROBE_chart13 nos 15 graficos desta conta (piso 45, 15 simbolos, magic 2026001)
+- 10/11/2026 20:23:25 | CMD | post -> DELTA | forward: confirmar 15/15 no perm-sweep depois do F7
+- 10/11/2026 20:34:16 | ALFA | lock pegar | P0 Q-177 opcao (b): registar resposta, publicar relatorio, pedir reinicio do gateway | 30 min
+- 10/11/2026 20:34:38 | DONO | Q-177 respondida | (b) - o modelo de CLASSE MULTI_* pode operar ativo cujo modelo proprio foi REPROVADO pela governanca, para toda a classe, com o rotulo do modelo de classe no payload (registado por ALFA a pedido do dono; resposta dada no chat em 10/11/2026). Aplicado no fonte do gateway no mesmo dia (D-175). Medido em dado real H1: 16 de 17 simbolos decidem; XAUUSD continua no modelo proprio; AAPL/EURTRY seguem recusados por nao terem classe. Relatorio: EQUIPE/RELATORIOS/20261110_ALFA_P0_OPCAO_B_Q177.md
+- 10/11/2026 20:34:45 | ALFA | post -> CMD | P0 Q-177 opcao (b) aplicada no fonte; PEDIDO: reiniciar o gateway na 9011
+- 10/11/2026 20:34:49 | ALFA | lock liberar
+- 10/11/2026 20:34:56 | ALFA | lock pegar | abrir Q-178 ao dono sobre o piso de confianca dos modelos MULTI | 20 min
+- 10/11/2026 20:35:01 | ALFA | Q-178 aberta | Depois da opcao (b), o modelo de classe decide em 16 de 17 simbolos - mas a confianca dele fica entre 34.1 e 47.2, e o piso MinAIConfidence vivo nos 15 graficos e 60.0 (a D-174 autoriza 45). Com piso 45 passaria 1 de 16 (USDSGD 47.2); com o valor vivo 60, nenhum. Sem decidir isto, (b) nao gera uma unica ordem. Qual e a regra?
+- 10/11/2026 20:35:07 | ALFA | lock liberar
+- 10/11/2026 20:49:41 | CMD | post -> ALFA | D-180: o motivo dos 0 trades e a IA contradizer o tecnico - e so 1 simbolo tem modelo
+- 10/11/2026 20:49:41 | CMD | note -> DECISOES.md
+- 10/11/2026 20:53:13 | CMD | note -> DECISOES.md
+- 10/11/2026 20:53:13 | CMD | post -> ALFA | D-181: o pico do DD vive em RAM (nao no ficheiro) e o mestre tem de ser o XAUUSD
+- 10/11/2026 20:59:51 | ALFA | lock pegar | recomendacao Q-178 e estudo cripto | 30 min
+- 10/11/2026 21:00:00 | ALFA | post -> DONO | Q-178 RECOMENDADA: (d) nao mexer no piso; 60.0 e INALCANCAVEL (max 54.6) e o modelo perde para o palpite trivial; os 3 cripto nao sao cripto nesta conta
+- 10/11/2026 21:00:06 | ALFA | post -> CMD | NAO alterar MinAIConfidence nos .chr: recomendacao (d) ao DONO, pendente de resposta. Piso 60.0 e INALCANCAVEL pelos MULTI (max 54.6) e a 45 o MULTI_METALS opera 49.6% das barras com 98.8% de direcao constante
+- 10/11/2026 21:00:12 | ALFA | lock liberar
+- 10/11/2026 21:25:44 | CMD | note -> DECISOES.md
+- 10/11/2026 21:25:44 | CMD | post -> ALFA | D-182: retractacao do D-180 (a causa estava invertida) - e a conta REAL esteve ligada 10 min
+- 10/11/2026 21:40:50 | DELTA | post -> ALFA | D-182 verificado: 4 confirmacoes, 2 descobertas novas, 5 pedidos de codigo
+- 11/11/2026 00:59:02 | CMD | post -> ALFA | A6 e A7 do DELTA + a causa do bit de permissao (template vs perfil)
+- 11/11/2026 01:00:53 | CMD | note -> DECISOES.md
