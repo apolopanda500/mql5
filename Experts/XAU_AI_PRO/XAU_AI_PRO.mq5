@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.191
+// XAU_AI_PRO v1.2.214
 //==================================================
 
 #property strict
@@ -19,7 +19,21 @@
 // A versao legivel ("1.2.27") vai na descricao do projeto (XAU_AI_PRO.mqproj),
 // tambem exibida na aba de propriedades. O build do projeto ja injeta essa
 // propriedade; repetir com `#property description` gera `warning 90`.
-#property version   "1.391"
+
+//
+
+// v1.2.210 (12/11/2026) - P1.3593: a identidade numerica tinha derivado. O
+
+// valor a vista era "1.407", que pela regra acima (minor*100 + patch) diz
+
+// v1.2.207, enquanto EA_VERSION_STRING ja dizia 1.2.209 e a frota publicava
+
+// v1.2.209 no [START]. Passa a ser derivado do texto semantico:
+
+// 1.2.210 -> "1.410". Nao altera comportamento, lote, alvo, stop, spread,
+
+// preco nem risco: corrige apenas o numero que o produto declara sobre si.
+#property version   "1.414"
 
 #include <Trade/Trade.mqh>
 
@@ -31,12 +45,20 @@ CTrade trade;
 //==================================================
 
 #include "Core/Config.mqh"
+// v1.2.207 - P1.3602: registo NUMERO -> DONO dos handles de indicador. Fica no
+// topo, antes de qualquer modulo que crie, use ou liberte um handle, porque a
+// pergunta "este numero ainda e meu?" tem de estar respondivel em todos eles.
+#include "Indicators/HandleRegistry.mqh"
 #include "Core/MCPServer.mqh"      // ETAPA MCP: servidor MCP (Model Context Protocol)
 // v1.2.115: expoe funcionalidades do EA para IA externa (risco, sinais, saude, contas, posicoes)
 #include "Monitoring/AccountLogGate.mqh"   // v1.2.91 P1.78: um facto por CONTA
 // P1.61 (v1.2.75): fonte unica de verdade das permissoes de negociacao.
 // Incluido logo apos Config, antes de qualquer modulo que possa negociar.
 #include "Core/TradeGate.mqh"
+// P1.3590 (v1.2.194): estado do bit POR GRAFICO publicado por cada instancia.
+// Uma sonda externa (script) le o bit do TERMINAL, nao o do grafico - medido
+// em 10/11/2026, ver o cabecalho de Core/PermState.mqh.
+#include "Core/PermState.mqh"
 // F2.1 (v1.2.176): kill switch do PLANO_10_10. Incluido DEPOIS de
 // <Trade/Trade.mqh> (usa CTrade) e de Monitoring/AccountLogGate.mqh (usa
 // AccountLogGatePodeImprimir), e antes de qualquer modulo que negocie.
@@ -717,6 +739,47 @@ void UpdatePerformance()
          ACCOUNT_EQUITY
       );
 
+// v1.2.204 (11/11/2026) - P1.3608: o pico de equity passa a ser
+// INTRADIARIO de facto, medido pelo dia do SERVIDOR.
+//
+// MEDIDO: o `Files\Data\XAU_AI_PRO_session.csv` de 11/11 continha
+// `113568614;2026.11.11;0;0;0;15160.94;...` - pico 15 160,94 com a conta em
+// 12 610,68 e ZERO trades no dia - e o `forward-gate.ps1` publicava 16,82 por
+// cento de drawdown que nunca existiu, enquanto o proprio motor de risco
+// (`risk.drawdown_pct` do `system_status.json`) dizia 0,00. O pico de 10/11
+// atravessou a meia-noite do servidor dentro de uma instancia que nunca
+// reiniciou e o `SessionStateStore()` gravou-o com a data de HOJE; o
+// `SessionStateLoad()` so rejeita dia DIFERENTE, logo o valor passou a ser
+// herdado por todas as instancias que recarregassem. Nada o resetava:
+// `ResetDaily()` em Management\DailyRisk.mqh e' um corpo vazio que nenhuma
+// fonte chama, e o `PeakEquity` so era inicializado no `OnInit`.
+//
+// Aqui o dia do servidor e' comparado a cada tick. Quando muda, o pico
+// recomeca no equity actual, que e' a definicao de pico intradiario.
+// Nao altera limite, lote, regra de entrada ou de saida, alvo, stop, spread,
+// preco ou parametro de risco: muda apenas de que dia e' o pico.
+   static int sPeakDayKey = 0;
+   MqlDateTime dtPico;
+   TimeToStruct(TimeCurrent(), dtPico);
+   int diaPico = dtPico.year * 1000 + dtPico.day_of_year;
+
+   if(sPeakDayKey == 0)
+     {
+      // primeira leitura desta instancia: adopta o dia e NAO mexe no pico,
+      // porque o `SessionStateRestore()` pode ter herdado o pico de HOJE.
+      sPeakDayKey = diaPico;
+     }
+   else if(sPeakDayKey != diaPico)
+     {
+      if(PeakEquity > 0.0 && AccountLogGatePodeImprimir("peak_day_reset", 600))
+         Print("[PEAK] RESET DIARIO | dia=", IntegerToString(diaPico),
+               " | pico_anterior=", DoubleToString(PeakEquity, 2),
+               " | equity=", DoubleToString(equity, 2),
+               " | o pico e' intradiario (dia do SERVIDOR)");
+
+      sPeakDayKey = diaPico;
+      PeakEquity  = equity;
+     }
    if(equity > PeakEquity)
       PeakEquity = equity;
 
@@ -921,8 +984,36 @@ void SessionStateRestore()
    ConsecutiveWins   = st.consecWins;
    ConsecutiveLosses = st.consecLosses;
 
+// v1.2.204 (11/11/2026) - P1.3608: o pico herdado do ficheiro tem de ser
+// coerente com o pico do DIA que o RiskHub mantem por GlobalVariable
+// (`XAI_PRO_RH_PEAK_<ano*1000+dia>`, chaveado pelo dia e autolimpante), que e'
+// o que o motor de risco usa em `GetDrawdownPercent()`. O ficheiro de sessao
+// guarda o `PeakEquity` em memoria, e em 11/11 guardou um pico de 10/11 com a
+// data de hoje (15 160,94 com a conta em 12 610,68 e zero trades). Uma
+// diferenca acima de 1 por cento entre os dois picos nao e' ruido de leitura:
+// e' contaminacao de outro dia. Nesse caso o pico recomeca no equity actual e
+// o valor do ficheiro e' recusado, com o motivo publicado.
+// Nao altera limite, lote, regra de entrada ou de saida, alvo, stop, spread,
+// preco ou parametro de risco: o pico do RiskHub, que e' o que bloqueia,
+// fica intocado.
    if(st.peakEquity > PeakEquity)
-      PeakEquity = st.peakEquity;
+     {
+      double picoDoDia = GetDailyPeakEquity();
+
+      if(picoDoDia <= 0.0 || st.peakEquity <= picoDoDia * 1.01)
+        {
+         PeakEquity = st.peakEquity;
+        }
+      else
+        {
+         if(AccountLogGatePodeImprimir("session_peak_reject", 600))
+            Print("[SESSION] pico do ficheiro RECUSADO | ficheiro=",
+                  DoubleToString(st.peakEquity, 2),
+                  " | pico_do_dia(RiskHub)=", DoubleToString(picoDoDia, 2),
+                  " | equity=", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY), 2),
+                  " | diferenca acima de 1 por cento: o pico e' intradiario e recomeca no equity");
+        }
+     }
 
    if(LogInicioDetalhe()) Print("[SESSION] estado restaurado | ",SessionStateSummary(st),
          " | pico_atual=",DoubleToString(PeakEquity,2));
@@ -985,6 +1076,42 @@ int OnInit()
          " | simbolo=", _Symbol,
          " | saldo=", DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2),
          " | equity=", DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2));
+
+   // 11/11/2026 (P0): o journal dizia "Risco=60.00 USD" e nao dizia de onde
+   // vinha. Passa a publicar no arranque a regra de risco em vigor. Nao
+   // decide nada e nao altera limite nenhum.
+   DeclararRegimeDeRisco();
+
+   // v1.2.192 (10/11/2026) - P1.3520: o estado de permissao POR GRAFICO passa a
+   // ser legivel no instante em que muda. MEDIDO em 10/11/2026 nos 15 graficos:
+   // quatro instancias perderam MQL_TRADE_ALLOWED em reinicios com motivo=7
+   // (REASON_TEMPLATE) - XAUUSD 10:02:57, USDCOP 10:10:05, USDCAD 10:27:05,
+   // USDRUB 10:29:26. O journal so deixou ver o estado de cada uma por sorte,
+   // porque a linha que o publica e' filtrada por CONTA: [TRADE BLOCK] PROGRAMA
+   // sem permissao passa por AccountLogGatePodeImprimir("tradeblock_nova",120)
+   // quando a causa e' nova e por ("tradeblock",3600) depois - ou seja, 15
+   // graficos sem o bit produzem no maximo 1 linha/2 min e, com a causa ja'
+   // conhecida, 1 linha/HORA para a conta inteira. E o [STATUS] com [PERM] exige
+   // EnableVerboseDebug e espera LOG_JANELA_SESSAO_SEC (12 h) na primeira
+   // impressao. Medido as 10:44 com EQUIPE/tools/perm-sweep.ps1: 1 LIGADO,
+   // 7 DESLIGADO, 7 DESCONHECIDO, com leituras de 12 a 95 min - todas anteriores
+   // ao reinicio das 10:37, ou seja o estado real da frota era ilegivel.
+   // Correcao: o OnInit publica o veredicto DESTA instancia, sem throttle. O
+   // OnInit corre em TODOS os reinicios e reaplicacoes de template, que e'
+   // exactamente quando o bit se perde, logo sao 15 linhas por reinicio e
+   // nenhuma em rotina. Nao decide nada: le o mesmo Core/TradeGate.mqh que
+   // decide, e neste ponto o EA ainda nao abriu, fechou ou alterou nada.
+   Print("[PERM] ", _Symbol, " | ", CTradeGate::Bits(),
+         " | veredicto=", (int)CTradeGate::Evaluate(),
+         " | suite=", (int)CTradeGate::EvaluateSuite(),
+         " | ", (CTradeGate::Ok() ? "PODE NEGOCIAR nesta instancia"
+                                  : CTradeGate::Cause(CTradeGate::Evaluate())));
+
+   // P1.3590 (v1.2.194): a mesma pergunta que o [PERM] acabou de responder,
+   // agora gravada num ficheiro por simbolo. Forcada no arranque, porque e'
+   // aqui que o bit se perde: 15 graficos a reiniciar sem permissao deixam de
+   // ser um facto invisivel no journal e passam a ser 15 linhas datadas.
+   CPermState::Publish(_Symbol, (int)CTradeGate::Evaluate(), "init", true);
 
    // v1.2.95 (02/11/2026) - P1.83: o logger de ficheiro nunca era aberto
    // porque LoggerInit() nao era chamado em lado nenhum. Medido no journal
@@ -1198,7 +1325,7 @@ void OnTick()
       datetime _now = TimeCurrent();
       if(_now - g_lastEventAIBlock >= 300)
         {
-         EventAIBlock(_Symbol, "AI_" + AI_Signal);
+         EventAIBlock(_Symbol, "AI_" + AI_Signal, AIBlockCausa(_Symbol));  // P1.3601
          g_lastEventAIBlock = _now;
         }
      }
@@ -1224,6 +1351,13 @@ void OnTick()
       return;
 
    ETradeGate tradeGate = CTradeGate::Evaluate();
+
+   // P1.3590 (v1.2.194): publica o estado desta instancia ANTES de o portao
+   // devolver, para que um grafico FECHADO apareca no ficheiro com codigo e
+   // idade - a varredura passa a distinguir "fechado" de "grafico morto" sem
+   // esperar pelo [PERM] do proximo reinicio. So' escreve quando muda ou a
+   // cada 60 s; falha em silencio.
+   CPermState::Publish(_Symbol, (int)tradeGate, "tick", false);
 
    if(tradeGate != TG_OK)
      {
@@ -2153,6 +2287,26 @@ void OnTimer()
 
    if(!SystemInitialized)
       return;
+//------------------------------------------------
+// P1.3594 (v1.2.196) - o bit POR GRAFICO passa a ser
+// legivel SEM TICK
+//------------------------------------------------
+// O sensor Core/PermState.mqh era escrito no OnInit e no
+// OnTick. MEDIDO em 10/11/2026, depois do deploy da
+// v1.2.195: USDCLP, USDCOP e USDRUB tinham cotacao
+// esparsa (USDCOP com update_time 19:59:50 no servidor e
+// ZERO ticks entre 20:02 e 20:08) e o ficheiro ficou em
+// stage=init para sempre - o bit podia estar LIGADO e a
+// frota lia DESLIGADO, o que impede distinguir "ninguem
+// ligou" de "ninguem consegue ver". E o mesmo mecanismo do
+// P1.84: um sensor que so vive no OnTick morre exactamente
+// quando o feed morre. O OnTimer corre a cada 30 s e nao
+// depende de cotacao, e MQLInfoInteger(MQL_TRADE_ALLOWED)
+// aqui responde pelo GRAFICO (como no OnTick), porque quem
+// corre e' o EA e nao um script - ver P1.3590.
+// Nao decide nada, nao retorna e falha em silencio
+// (fail-open): so publica.
+   CPermState::Publish(_Symbol, (int)CTradeGate::Evaluate(), "timer", false);
 
 //------------------------------------------------
 // v1.2.96 (03/11/2026) - P1.84: heartbeat no timer
