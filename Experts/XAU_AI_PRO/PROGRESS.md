@@ -4976,3 +4976,42 @@ Correcao (so notificacao, nenhuma regra de negociacao tocada):
 Residual honesto: (a) a primeira utilizacao de um ficheiro de portao pode deixar passar mais do que uma instancia no mesmo segundo (licao do P2.14) - nao aconteceu nesta medicao, o relatorio saiu uma unica vez; (b) o conteudo do relatorio (DailyProfit, TradesToday) e o da instancia que o envia; (c) o segundo reload seguido de 20:51:03 nao gerou o seu `EA finalizado` porque caiu dentro dos 120 s do portao - um encerramento isolado continua a sair.
 
 Compilacao: 0 errors, 0 warnings (`XAU_AI_PRO.ex5`, 926.192 B, 05/11/2026 20:50). 14 graficos com v1.2.166. Sem push, sem commit (380 commits locais). Conta real continua PROIBIDA.
+
+## Sessao 2026-11-12 05:42 (local) - limpeza de disco + forward 3 declarado (v1.2.207)
+
+- **Pedido do DONO:** meta diaria >= 100 USD/dia proporcional a banca, opcao A
+  (`MaxRiskPerTradePercentCap` 3.0 -> 1.0), limpar o disco sem parar o trabalho,
+  declarar o forward 3, salvar a sessao.
+- **Configuracao:** `DailyProfitTargetUsd` 20 -> 100, `DailyProfitTargetBalancePct`
+  10 -> 0.80, `DailyProfitTargetMaxUsd` 40 -> 200; meta efetiva hoje **101,74 USD**
+  = `MIN(MAX(100, 0.80% x 12.718,09), 200)`. `MaxRiskPerTradePercentCap` = 1.0.
+  Nenhum outro input de risco tocado.
+- **Binario:** `v1.2.207`, 1.044.040 B, MD5 `29CD00478C2AD82F6C5BD71B24C14539`,
+  11/11 23:52:04, estabilidade confirmada. Registada a anomalia de o `.ex5` ter
+  mudado de MD5 sem compilacao (DA8068F5 -> B4983713 -> 1E2F0EB8) e fechada por
+  recompilacao + prova `t0 = t40`.
+- **Forward 3 declarado:** janela 12/11/2026 04:50 -> 12/12/2026 04:50 (servidor),
+  frota **15/15** ligada, memoria 15/15, `inputs_sha256 BEC12CB5...`,
+  `governanca A1706B17...`, criterios `pf_min 1.2 / dd_max_pct 8 / trades_min 30 /
+  violacoes_risco_max 0`.
+- **Limpeza:** 5.332,9 -> 7.335,7 MB livres (**+2.002,8 MB**), com a frota a
+  correr; detalhe e lista do que nao se tocou em P1.3572.
+- **Resultado ate agora:** 6 trades fechados, 6 positivos, **+54,57 USD**
+  (54% da meta), saldo 12.718,09. PF sem perda, DD 0,08%.
+- **Defeitos medidos e nao corrigidos:** P1.3569 (cap de 1% nao limita, risco
+  real 1,99% do saldo) e P1.3570 (TP a 12-14 pts em vez de 600). Ambos exigem
+  recompilar, o que reinicia a janela - decisao do DONO.
+- **Documento:** `Docs/SESSAO_20261112_0542_LIMPEZA_DISCO_E_FORWARD3.md`.
+- Nada aqui e promessa de lucro. 6 trades nao sao amostra; backtest nao prova
+  lucro futuro.
+
+## Sessao 2026-11-17 — Alinhamento documental, CI e preservacao da janela forward
+
+- **Pedido do DONO:** atualizar `README.md`, `SECURITY.md` e `.github/workflows/ci.yml` do repositorio `apolopanda500/mql5` sem tocar na producao.
+- **Aplicado (3 ficheiros, todos documentais/CI):**
+  - `README.md`: versao canonica **v1.2.214** (fonte unica `EA_VERSION_STRING`), `Utils.mqh` removido, `Integration/` + `Scripts/` + travas de seguranca documentadas, links reais para o App e o Portal.
+  - `SECURITY.md`: template generico substituido pela politica *Local-First & Fail-Closed* (zero movimentacao externa de fundos, `RealAccountGuard`, sem segredos versionados, chamadas so em `127.0.0.1`).
+  - `ci.yml`: guarda de sincronia `README.md` ↔ `EA_VERSION_STRING` adicionada; `validate_mql5.py`, CodeQL, Gitleaks e Dependabot preservados.
+- **Bloqueado por governanca:** controle remoto de ordens (`CLOSE_ALL_POSITIONS`/`SET_RISK`), exposicao externa via tunel e orquestradores de loop com escrita automatica — conflito com `AGENTS.md`, com a postura `read_only=true` do gateway e com a janela congelada (D-139/D-141/D-186).
+- **Medido no fechamento:** `.ex5` `1 066 188 B` / MD5 `844081BF2D51D6A4072B150C3DDC6EBD` intocado; `EA_VERSION_STRING = 1.2.214` = `README.md = 1.2.214`, 0 erros; janela `16/11 19:00 -> 16/12 19:00` (servidor) intacta; nenhum commit/push.
+- **Nota:** checagem de CRLF nao adicionada ao CI — 15 fontes `.mq5/.mqh` estao em LF puro no worktree corrente (alterados por outros agentes).

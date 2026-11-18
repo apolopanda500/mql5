@@ -83,6 +83,51 @@ jobs:
         run: python "../../.github/scripts/validate_mql5.py"
 
       # ----------------------------------------------------------
+      # GUARDA DE GOVERNANCA: impede que o banner publico do README
+      # fique congelado em versoes antigas (ex.: v1.2.9) enquanto o
+      # codigo ja esta noutra versao. Fonte unica = EA_VERSION_STRING.
+      #
+      # NOTA: nao verificamos CRLF aqui. O validate_mql5.py ja cobre
+      # encoding/fim-de-linha, e medimos 15 fontes .mq5/.mqh em LF puro
+      # no worktree actual (editados por outros agentes). Exigi-los
+      # aqui poria o CI vermelho sem que caiba a este workflow tocar
+      # nesses ficheiros.
+      # ----------------------------------------------------------
+      - name: Verificar Sincronia de Versao (README vs VersionManager)
+        run: |
+          python - <<'EOF'
+          import re
+          import sys
+          from pathlib import Path
+
+          vm = Path("Experts/XAU_AI_PRO/Enterprise/VersionManager.mqh")
+          readme = Path("README.md")
+
+          if not vm.exists() or not readme.exists():
+              print("[ERRO] VersionManager.mqh ou README.md nao encontrado.")
+              sys.exit(1)
+
+          vm_txt = vm.read_text(encoding="utf-8", errors="replace")
+          rd_txt = readme.read_text(encoding="utf-8", errors="replace")
+
+          m_vm = re.search(r'#define\s+EA_VERSION_STRING\s+"([^"]+)"', vm_txt)
+          m_rd = re.search(r'XAU_AI_PRO\s+[-—–]\s+Expert Advisor MQL5\s+\(v([^)]+)\)', rd_txt)
+
+          if not m_vm or not m_rd:
+              print("[ERRO] Padrao de versao nao encontrado (README ou VersionManager.mqh).")
+              sys.exit(1)
+
+          ea_ver = m_vm.group(1).strip()
+          doc_ver = m_rd.group(1).strip()
+
+          if ea_ver != doc_ver:
+              print(f"[FALHA] Drift de versao: VersionManager={ea_ver} vs README={doc_ver}")
+              sys.exit(1)
+
+          print(f"[OK] Versao sincronizada em v{ea_ver}.")
+          EOF
+
+      # ----------------------------------------------------------
       # NOTIFICACAO DE FIM OK (so roda se todos os passos passaram)
       # ----------------------------------------------------------
       - name: Notificar Slack (sucesso do CI)

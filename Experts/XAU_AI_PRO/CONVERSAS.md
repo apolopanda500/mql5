@@ -1373,3 +1373,21 @@ O que se poe ao dono, medido e nao suposto:
 3. **O ATR continua a ser o do XAUUSD em todos os simbolos** (P1.119, agora com handle e barras): 33.952860 em oito pares, `barsCalc=60372` = barras do XAUUSD,H1. As guardas devolvem ausencia de leitura, logo o risco nao e contaminado, mas o filtro de volatilidade decide sem dado em dez graficos.
 
 Nenhum parametro de risco foi tocado. Zero posicoes, zero ordens.
+
+## Sessao 2026-11-17 — Alinhamento documental, CI e preservacao da janela forward
+
+### Pedido do DONO
+- Atualizar a documentacao publica e o pipeline de CI do repositorio `apolopanda500/mql5` (`README.md`, `SECURITY.md`, `.github/workflows/ci.yml`), mantendo o rigor de governanca e a integridade da producao.
+
+### O que foi aplicado (com prova)
+1. **`README.md` (`apolopanda500/mql5`):** atualizado para refletir a versao canonica **v1.2.214**, removendo a referencia inexistente a `Utils.mqh` (0 ocorrencias no disco), documentando as pastas reais (`Integration/`, `Scripts/`), as travas de seguranca (`RealAccountGuard`, `CostGate`, `StalenessGuard`, `MoneyLadder`, `Padrao F4`, `TradeGate`) e os links oficiais (`https://github.com/apolopanda500/XAU_AI_PRO` e `https://apolopanda500.github.io/XAU_AI_PRO/`).
+2. **`SECURITY.md` (`apolopanda500/mql5`):** substituido o template generico pela politica real *Local-First & Fail-Closed* (zero movimentacao externa de fundos, regras do `RealAccountGuard`, proibicao de segredos versionados e chamadas restritas a `127.0.0.1`).
+3. **`.github/workflows/ci.yml`:** adicionada validacao automatizada de sincronia entre `EA_VERSION_STRING` (`Enterprise/VersionManager.mqh`) e o cabecalho do `README.md`, preservando `validate_mql5.py`, CodeQL, Gitleaks e Dependabot. A checagem de CRLF foi deliberadamente omitida: medimos 15 fontes `.mq5/.mqh` em LF puro no worktree actual (editados por outros agentes), e exigi-la poria o CI vermelho sem que este workflow possa tocar nesses ficheiros.
+
+### O que foi bloqueado por governanca (Seguranca & D-186)
+- Recusada a implantacao de controle remoto de ordens (`CLOSE_ALL_POSITIONS` / `SET_RISK`), exposicao externa via tunel e orquestradores de loop continuo com escrita automatica no repositorio, preservando a regra `AGENTS.md` (zero commit/push sem ordem explicita), a postura `read_only=true` do gateway e o congelamento da janela de *Forward Test* (`16/11 19:00 -> 16/12 19:00`).
+
+### Medido no fechamento
+- **Binario de Producao (`XAU_AI_PRO.ex5`):** `1 066 188 B`, MD5 `844081BF2D51D6A4072B150C3DDC6EBD` — **100% intocado**.
+- **Validacao CI local:** `EA_VERSION_STRING = 1.2.214` | `README.md = 1.2.214` | **0 erros**.
+- **Escopo alterado:** apenas 3 ficheiros documentais/CI (`README.md`, `SECURITY.md`, `.github/workflows/ci.yml`). Nenhum commit ou push.
