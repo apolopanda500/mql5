@@ -94,14 +94,16 @@ jobs:
       # nesses ficheiros.
       # ----------------------------------------------------------
       - name: Verificar Sincronia de Versao (README vs VersionManager)
+        # ATENCAO: o job define defaults.run.working-directory = Experts/XAU_AI_PRO,
+        # portanto os caminhos abaixo sao relativos a essa pasta (nao a raiz).
         run: |
           python - <<'EOF'
           import re
           import sys
           from pathlib import Path
 
-          vm = Path("Experts/XAU_AI_PRO/Enterprise/VersionManager.mqh")
-          readme = Path("README.md")
+          vm = Path("Enterprise/VersionManager.mqh")
+          readme = Path("../../README.md")
 
           if not vm.exists() or not readme.exists():
               print("[ERRO] VersionManager.mqh ou README.md nao encontrado.")
