@@ -5013,5 +5013,14 @@ Compilacao: 0 errors, 0 warnings (`XAU_AI_PRO.ex5`, 926.192 B, 05/11/2026 20:50)
   - `SECURITY.md`: template generico substituido pela politica *Local-First & Fail-Closed* (zero movimentacao externa de fundos, `RealAccountGuard`, sem segredos versionados, chamadas so em `127.0.0.1`).
   - `ci.yml`: guarda de sincronia `README.md` ↔ `EA_VERSION_STRING` adicionada; `validate_mql5.py`, CodeQL, Gitleaks e Dependabot preservados.
 - **Bloqueado por governanca:** controle remoto de ordens (`CLOSE_ALL_POSITIONS`/`SET_RISK`), exposicao externa via tunel e orquestradores de loop com escrita automatica — conflito com `AGENTS.md`, com a postura `read_only=true` do gateway e com a janela congelada (D-139/D-141/D-186).
-- **Medido no fechamento:** `.ex5` `1 066 188 B` / MD5 `844081BF2D51D6A4072B150C3DDC6EBD` intocado; `EA_VERSION_STRING = 1.2.214` = `README.md = 1.2.214`, 0 erros; janela `16/11 19:00 -> 16/12 19:00` (servidor) intacta; nenhum commit/push.
+- **Medido no fechamento:** `.ex5` `1 066 188 B` / MD5 `844081BF2D51D6A4072B150C3DDC6EBD` intocado; `EA_VERSION_STRING = 1.2.214` = `README.md = 1.2.214`, 0 erros; janela `16/11 19:00 -> 16/12 19:00` (servidor) intacta.
+
+  **Fecho do ciclo (autorizado pelo DONO em 17/11):** commit e push feitos para
+  `github/main`, sem rotacao de token. Quatro commits: `7c13ccb0` (este pacote
+  documental), `8eb08691` (`Core/PermState.mqh` e `Indicators/HandleRegistry.mqh`,
+  que estavam untracked e deixavam o CI remoto com 2 erros `[INCLUDE]`),
+  `c0cf1dc9` (caminhos do passo de sincronia, relativo ao
+  `working-directory` do job) e `a0289ad1` (`VersionManager.mqh` em 1.2.214,
+  alinhado com o `#property version` ja publicado). CI MQL5, CodeQL e Secret
+  Scanning verdes em `a0289ad1`. O `.ex5` continua `844081BF...` com 1 066 188 B.
 - **Nota:** checagem de CRLF nao adicionada ao CI — 15 fontes `.mq5/.mqh` estao em LF puro no worktree corrente (alterados por outros agentes).

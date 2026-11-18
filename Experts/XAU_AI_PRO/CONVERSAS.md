@@ -1390,4 +1390,5 @@ Nenhum parametro de risco foi tocado. Zero posicoes, zero ordens.
 ### Medido no fechamento
 - **Binario de Producao (`XAU_AI_PRO.ex5`):** `1 066 188 B`, MD5 `844081BF2D51D6A4072B150C3DDC6EBD` — **100% intocado**.
 - **Validacao CI local:** `EA_VERSION_STRING = 1.2.214` | `README.md = 1.2.214` | **0 erros**.
-- **Escopo alterado:** apenas 3 ficheiros documentais/CI (`README.md`, `SECURITY.md`, `.github/workflows/ci.yml`). Nenhum commit ou push.
+- **Escopo alterado:** apenas 3 ficheiros documentais/CI (`README.md`, `SECURITY.md`, `.github/workflows/ci.yml`).
+- **Fecho do ciclo (autorizado pelo DONO em 17/11):** commit + push para `github/main` sem rotacao de token. Commits `7c13ccb0`, `8eb08691`, `c0cf1dc9` e `a0289ad1`; CI MQL5, CodeQL e Secret Scanning verdes no ultimo. O `.ex5` permanece `844081BF2D51D6A4072B150C3DDC6EBD`.
