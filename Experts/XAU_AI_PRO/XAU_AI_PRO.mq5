@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.214
+// XAU_AI_PRO v1.2.216
 //==================================================
 
 #property strict
@@ -33,7 +33,7 @@
 // 1.2.210 -> "1.410". Nao altera comportamento, lote, alvo, stop, spread,
 
 // preco nem risco: corrige apenas o numero que o produto declara sobre si.
-#property version   "1.414"
+#property version   "1.421"
 
 #include <Trade/Trade.mqh>
 
@@ -146,6 +146,7 @@ CTrade trade;
 //==================================================
 
 #include "Management/BreakEven.mqh"
+#include "Management/GrowthPolicy.mqh"
 #include "Management/MoneyLadder.mqh"
 #include "Management/DailyRisk.mqh"
 #include "Management/EquityProtection.mqh"
@@ -1129,6 +1130,18 @@ int OnInit()
    // regra de execucao muda, so a verbosidade.
    trade.LogLevel(LOG_LEVEL_ERRORS);
 
+   // P1.3644 - o canal remoto passa a declarar no arranque se esta ARMADO.
+   // Sem esta linha, EnableCopilotHub=false, token vazio e hub calado produzem
+   // o mesmo journal mudo, e o dono nao tem como saber qual dos tres e'.
+   // O token NUNCA e' impresso: so o comprimento, que basta para provar que
+   // foi colado e que nao foi truncado.
+   Print("[COPILOT] canal | ligado=", (EnableCopilotHub ? "SIM" : "NAO"),
+         " | token=", (StringLen(CopilotHubToken) >= 8
+                       ? "presente(" + IntegerToString(StringLen(CopilotHubToken)) + ")"
+                       : "ausente"),
+         " | url=", CopilotHubURL,
+         " | acoes=BUY,SELL,CLOSE_ALL,PING,STATUS");
+
    ForwardFileInit(); // ETAPA 13: abre CSV de sesion de forward test (FILE_COMMON)
 
 // ETAPA 15.6: EventEmitter (canal oficial de eventos)
@@ -1250,6 +1263,291 @@ bool AllowBlockPrint()
      }
    return false;
   }
+
+//==================================================
+// COPILOT HUB -> EA (Adaptador do Cloud MCP Hub)
+// v1.2.192 - a ordem do Copilot e executada pelo proprio EA, via
+// CExecutionEngine (RiskCenter unico gate de risco). O AdaptadorCopilot
+// separado foi removido; este modulo e a mesma ponte dentro do robao.
+//==================================================
+
+#define COPILOT_HUB_TIMEOUT_MS 10000
+
+string CopilotJsonGet(string json, string chave)
+{
+   string busca = "\"" + chave + "\"";
+   int inicio = StringFind(json, busca);
+   if(inicio < 0)
+   {
+      return("");
+   }
+   int pos = StringFind(json, ":", inicio);
+   int fim = StringFind(json, ",", pos);
+   if(fim < 0)
+   {
+      fim = StringFind(json, "}", pos);
+   }
+   if(fim < 0)
+   {
+      fim = StringLen(json);
+   }
+   int inicioValor = pos + 1;
+   int fimValor = fim;
+   while(inicioValor < fimValor && StringSubstr(json, inicioValor, 1) == " ")
+   {
+      inicioValor++;
+   }
+   while(fimValor > inicioValor && StringSubstr(json, fimValor - 1, 1) == " ")
+   {
+      fimValor--;
+   }
+   string valor = StringSubstr(json, inicioValor, fimValor - inicioValor);
+   if(StringLen(valor) > 1 && StringSubstr(valor, 0, 1) == "\"")
+   {
+      valor = StringSubstr(valor, 1, StringLen(valor) - 2);
+   }
+   return(valor);
+}
+
+//--------------------------------------------------------------
+// P1.3643 - endurecimento do adaptador remoto (13/11/2026, ordem do DONO)
+// Um canal HTTP que executa ordens tem de ter perimetro fechado:
+//  (a) CLOSE_ALL fecha SO as posicoes DESTE EA neste grafico (magic + _Symbol).
+//      Posicao manual nunca e tocada, e nenhuma instancia fecha a posicao de outra.
+//  (b) o comando so e aceite se "ativo" for o simbolo DESTE grafico: um comando
+//      do hub deixa de poder abrir 15 posicoes iguais nas 15 abas.
+//  (c) "ativo" tem de estar na lista Symbols (universo declarado do EA).
+//  (d) poll com throttle e backoff: nao bate no hub a cada timer.
+//  (e) cada desfecho deixa 1 linha no journal via DiagGate. O token NUNCA
+//      aparece em log; falhas dizem o codigo (401, 4060 = allowlist WebRequest).
+//--------------------------------------------------------------
+
+#define COPILOT_HUB_POLL_MIN_SEC     5
+#define COPILOT_HUB_BACKOFF_MAX_SEC  300
+
+datetime g_copilotUltimoPoll = 0;
+int      g_copilotNivelFalha  = 0;
+
+bool CopilotSimboloPermitido(string simbolo)
+{
+   if(StringLen(simbolo) == 0)
+   {
+      return(false);
+   }
+   string alvo = simbolo;
+   StringToUpper(alvo);
+   string lista = Symbols;
+   StringToUpper(lista);
+   int ini = 0;
+   int total = StringLen(lista);
+   while(ini <= total)
+   {
+      int fim = StringFind(lista, ",", ini);
+      if(fim < 0)
+      {
+         fim = total;
+      }
+      string item = StringSubstr(lista, ini, fim - ini);
+      StringTrimLeft(item);
+      StringTrimRight(item);
+      if(item == alvo)
+      {
+         return(true);
+      }
+      if(fim >= total)
+      {
+         break;
+      }
+      ini = fim + 1;
+   }
+   return(false);
+}
+
+bool CopilotHubExecute(string acao, string ativo)
+{
+   // P1.3644 - acoes de LEITURA. Um canal remoto que so sabe mandar ordens nao
+   // tem como ser provado em seguranca: o dono nao consegue distinguir "token
+   // errado" de "hub calado" de "canal a funcionar" sem arriscar capital.
+   // PING e STATUS respondem a essa pergunta e nao abrem, fecham nem alteram
+   // nada. O perimetro e o mesmo do CLOSE_ALL: magic + _Symbol deste grafico.
+   if(acao == "PING" || acao == "STATUS")
+   {
+      int abertas = 0;
+      double flutuante = 0.0;
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong tk = PositionGetTicket(i);
+         if(tk == 0 || !PositionSelectByTicket(tk))
+         {
+            continue;
+         }
+         if(PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+         {
+            continue;
+         }
+         if(PositionGetString(POSITION_SYMBOL) != _Symbol)
+         {
+            continue;
+         }
+         abertas++;
+         flutuante += PositionGetDouble(POSITION_PROFIT) + PositionGetDouble(POSITION_SWAP);
+      }
+      if(DiagGateAllow(_Symbol, "COPILOT_HUB", "leitura_" + acao, 60))
+      {
+         Print("COPILOT: ", acao, " | ", _Symbol, " | v", EA_VERSION_STRING,
+               " | magic=", MagicNumber,
+               " | posicoes=", abertas,
+               " | flutuante=", DoubleToString(flutuante, 2),
+               " | pode_negociar=", (CTradeGate::Ok() ? "SIM" : "NAO"));
+      }
+      return(true);
+   }
+   if(acao == "CLOSE_ALL")
+   {
+      int fechadas = 0;
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
+      {
+         ulong ticket = PositionGetTicket(i);
+         if(ticket == 0)
+         {
+            continue;
+         }
+         if(!PositionSelectByTicket(ticket))
+         {
+            continue;
+         }
+         if(PositionGetInteger(POSITION_MAGIC) != MagicNumber)
+         {
+            continue;   // posicao manual: fora do perimetro
+         }
+         if(PositionGetString(POSITION_SYMBOL) != _Symbol)
+         {
+            continue;   // outra instancia fecha a sua
+         }
+         if(trade.PositionClose(ticket))
+         {
+            fechadas++;
+         }
+      }
+      if(DiagGateAllow(_Symbol, "COPILOT_HUB", "close_all_" + IntegerToString(fechadas), 60))
+      {
+         Print("COPILOT: CLOSE_ALL | ", _Symbol, " | fechadas=", fechadas,
+               " | so posicoes do EA (magic=", MagicNumber, ")");
+      }
+      return(fechadas > 0);
+   }
+   int signal = 0;
+   if(acao == "BUY")
+   {
+      signal = 1;
+   }
+   else
+   {
+      if(acao == "SELL")
+      {
+         signal = -1;
+      }
+   }
+   if(signal == 0)
+   {
+      if(DiagGateAllow(_Symbol, "COPILOT_HUB", "acao_recusada_" + acao, 600))
+      {
+         Print("COPILOT: acao recusada | '", acao, "' | contrato aceita BUY, SELL, CLOSE_ALL, PING, STATUS");
+      }
+      return(false);
+   }
+   if(ativo != _Symbol)
+   {
+      if(DiagGateAllow(_Symbol, "COPILOT_HUB", "outro_grafico_" + ativo, 600))
+      {
+         Print("COPILOT: comando ignorado | ativo=", ativo,
+               " | este grafico e ", _Symbol, " (um comando = um grafico)");
+      }
+      return(false);
+   }
+   if(!CopilotSimboloPermitido(ativo))
+   {
+      if(DiagGateAllow(_Symbol, "COPILOT_HUB", "fora_do_universo_" + ativo, 600))
+      {
+         Print("COPILOT: simbolo recusado | ", ativo, " | nao esta na lista Symbols");
+      }
+      return(false);
+   }
+   bool ok = ExecuteTrade(ativo, signal);
+   if(DiagGateAllow(_Symbol, "COPILOT_HUB", acao + "_" + ativo + "_" + (ok ? "ok" : "recusada"), 60))
+   {
+      Print("COPILOT: ordem remota | ", acao, " ", ativo, " | resultado=",
+            (ok ? "executada" : "recusada pelo motor de execucao"));
+   }
+   return(ok);
+}
+
+bool CopilotHubPoll()
+{
+   if(!EnableCopilotHub)
+   {
+      return(false);
+   }
+   if(StringLen(CopilotHubToken) < 8)
+   {
+      return(false);   // sem token nao ha canal
+   }
+   if(!CTradeGate::Ok())
+   {
+      return(false);
+   }
+   datetime agora = TimeLocal();
+   int espera = COPILOT_HUB_POLL_MIN_SEC;
+   if(g_copilotNivelFalha > 0)
+   {
+      int mult = 1;
+      for(int i = 0; i < g_copilotNivelFalha && i < 7; i++)
+      {
+         mult *= 2;
+      }
+      espera = COPILOT_HUB_POLL_MIN_SEC * mult;
+      if(espera > COPILOT_HUB_BACKOFF_MAX_SEC)
+      {
+         espera = COPILOT_HUB_BACKOFF_MAX_SEC;
+      }
+   }
+   if(g_copilotUltimoPoll > 0 && (agora - g_copilotUltimoPoll) < espera)
+   {
+      return(false);
+   }
+   g_copilotUltimoPoll = agora;
+
+   char post[];
+   char result[];
+   string result_headers;
+   string headers = "x-token: " + CopilotHubToken;
+   ResetLastError();
+   int res = WebRequest("GET", CopilotHubURL, headers, COPILOT_HUB_TIMEOUT_MS, post, result, result_headers);
+   if(res != 200)
+   {
+      if(g_copilotNivelFalha < 8)
+      {
+         g_copilotNivelFalha++;
+      }
+      if(DiagGateAllow(_Symbol, "COPILOT_HUB_HTTP", "http_" + IntegerToString(res), 600))
+      {
+         Print("COPILOT: poll falhou | http=", res, " | erro=", GetLastError(),
+               " | nivel_backoff=", g_copilotNivelFalha,
+               " | 401=token nao bate | 4060=URL fora da allowlist WebRequest do terminal");
+      }
+      return(false);
+   }
+   g_copilotNivelFalha = 0;
+
+   string json = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
+   if(StringFind(json, "\"acao\"") < 0)
+   {
+      return(false);   // resposta sem ordem (ex.: {"status":"IDLE"})
+   }
+   string acao = CopilotJsonGet(json, "acao");
+   string ativo = CopilotJsonGet(json, "ativo");
+   return(CopilotHubExecute(acao, ativo));
+}
 
 //+------------------------------------------------------------------+
 //|                                                                  |
@@ -2476,6 +2774,7 @@ void OnTimer()
 //------------------------------------------------
 
    ExternalBridgePoll();
+   CopilotHubPoll();
 
 //------------------------------------------------
 // Salvar estatisticas
@@ -2614,8 +2913,22 @@ void OnTimer()
          bool healthy = HealthMonitorCheck();
          if(!healthy && !g_notifyHealthFailed)
            {
-            g_notifyHealthFailed = true;
-            CNotificationCenter::SendHealthAlert(HealthMonitorSummary());
+            // 14/11/2026 - P1.3642: fora de sessao declarada ABERTA o alerta
+            // fica no journal e nao vai para o telefone. Pedido do dono em
+            // 13/11 20:19, depois do falso ERROR das 20:02 com o mercado
+            // fechado. ABERTA e o unico estado que autoriza o telemovel;
+            // FECHADA e DESCONHECIDA calam o envio.
+            int estadoSessao = HealthSymbolSessionState();
+            string nomeSessao = (estadoSessao == HEALTH_SESSION_OPEN ? "ABERTA" :
+                                 (estadoSessao == HEALTH_SESSION_CLOSED ? "FECHADA" : "DESCONHECIDA"));
+            if(estadoSessao == HEALTH_SESSION_OPEN)
+              {
+               g_notifyHealthFailed = true;
+               CNotificationCenter::SendHealthAlert(HealthMonitorSummary());
+              }
+            else if(DiagGateAllow(_Symbol, "SAUDE_FORA_SESSAO", nomeSessao, 900))
+               Print("HEALTH: alerta de saude abafado | sessao=", nomeSessao,
+                     " | fica no journal, nao vai para o telefone");
            }
          if(healthy)
             g_notifyHealthFailed = false;
