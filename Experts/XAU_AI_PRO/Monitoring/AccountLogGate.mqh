@@ -194,49 +194,46 @@ bool AccountLogGatePodeImprimir(const string tag,const int janelaSeg)
    if(MQLInfoInteger(MQL_TESTER))
       return(TesterGatePodeImprimir(tag,janelaSeg));
 
-   string nome="XAU_AI_PRO\\loggate_"+tag+".bin";
-      // P2.05: os 15 graficos do terminal abrem o MESMO ficheiro de gate em
-   // threads diferentes. Sem partilha declarada a segunda abertura pode
-   // devolver INVALID_HANDLE e o gate cai no fail-open, o que devolve
-   // SEMPRE true e desliga o throttle por conta.
-   int h=FileOpen(nome,FILE_READ|FILE_WRITE|FILE_BIN|FILE_COMMON|FILE_SHARE_READ|FILE_SHARE_WRITE);
-   if(h==INVALID_HANDLE)
-     {
-      // Fail-open continua a ser a regra (erro de log nunca suprime),
-      // mas deixa de ser invisivel: no maximo 1 linha por hora por
-      // instancia, com a tag, a janela e o codigo do erro.
-      static datetime s_ultimoAvisoFail=0;
-      datetime agoraFail=MQLInfoInteger(MQL_TESTER) ? TimeCurrent() : TimeLocal();
-      int errFail=GetLastError();
-      if(s_ultimoAvisoFail==0 || agoraFail>=s_ultimoAvisoFail+3600)
-        {
-         s_ultimoAvisoFail=agoraFail;
-         Print("[DIAG] LOGGATE falhou | tag=",tag," | janela=",janelaSeg," | err=",errFail," | fail-open: linha desta chamada nao foi filtrada");
-        }
-      return(true);                     // falha de ficheiro NUNCA suprime
-     }
+   // v1.2.223 (23/11/2026): o gate por ficheiro FILE_COMMON era correcto na
+   // intencao mas tinha TOCTOU entre 16 instancias do MESMO terminal: todas
+   // liam o timestamp velho antes de alguma escrever, e o cooldown por conta
+   // nao segurava. MEDIDO em 23/11/2026: 12 pushes "[RISCO] Drawdown atual:
+   // 10.05%" em 64 s, um por grafico, apesar de NotifyCooldownSec=30 e da
+   // janela NCAT_DRAWDOWN=600 s. A correccao usa variavel global do terminal
+   // com GlobalVariableSetOnCondition (CAS atomico): so a instancia que ganha
+   // a comparacao-e-escrita recebe true; as outras veem a janela ocupada. O
+   // GlobalVariableCheck/Set inicial fecha a janela de GV inexistente.
+   string gv="XAI_LG_"+tag;
+   int gvLen=StringLen(gv);
+   if(gvLen>63)
+      gv=StringSubstr(gv,gvLen-63); // preserva o sufixo (categoria/id) quando a tag e longa
 
-   datetime agora = MQLInfoInteger(MQL_TESTER) ? TimeCurrent() : TimeLocal();
-   datetime ultimo=0;
+   datetime agora=MQLInfoInteger(MQL_TESTER) ? TimeCurrent() : TimeLocal();
 
-   if(FileSize(h)>=(int)sizeof(long))
-     {
-      if(FileSeek(h,0,SEEK_SET))
-         ultimo=(datetime)FileReadLong(h);
-     }
+   if(!GlobalVariableCheck(gv))
+      GlobalVariableSet(gv,0.0);
 
-   // agora < ultimo = hora do servidor recuou (reconexao/rollover):
-   // trata como desconhecido e deixa passar uma vez.
+   double cur=GlobalVariableGet(gv);
+   datetime ultimo=(datetime)(long)cur;
+
+   // agora < ultimo = hora recuou (reconexao/rollover): trata como desconhecido e deixa passar uma vez.
    bool pode=(ultimo==0 || agora>=ultimo+janelaSeg || agora<ultimo);
+   if(!pode)
+      return(false);
 
-   if(pode)
+   if(GlobalVariableSetOnCondition(gv,(double)(long)agora,cur))
+      return(true);
+
+   // Perdeu a corrida atomica: outra instancia reclamou a janela neste mesmo instante.
+   double cur2=GlobalVariableGet(gv);
+   datetime ultimo2=(datetime)(long)cur2;
+   if(ultimo2==0 || agora>=ultimo2+janelaSeg || agora<ultimo2)
      {
-      FileSeek(h,0,SEEK_SET);
-      FileWriteLong(h,(long)agora);
+      // Raro: GV mudou por razao externa; tenta reclamar uma vez.
+      if(GlobalVariableSetOnCondition(gv,(double)(long)agora,cur2))
+         return(true);
      }
-
-   FileClose(h);
-   return(pode);
+   return(false);
   }
 
 //+------------------------------------------------------------------+

@@ -45,6 +45,31 @@ input bool   AIUseGateway       = true;
 // a porta que o backend usa quando XAU_GATEWAY_PORT nao esta definido.
 input string AIGatewayUrl       = "http://127.0.0.1:9011/api/ai/predict";
 input string AIGatewayToken     = "";
+
+//==================================================
+// MAPEIO DE SIMBOLO PARA O GATEWAY (v1.2.217 - 23/11/2026)
+//==================================================
+// DECISAO DO DONO (23/11/2026): "mapeio no EA".
+//
+// MEDIDO nesta corretora, 23/11/2026, com o gateway em 9027 e o token da
+// sessao: GET /api/ai/predict?symbol=GOLD devolve
+//   {"ok":true,"available":true,"signal":"BUY","confidence":46.1,
+//    "model":"MULTI_METALS - GOLD 1H"}
+// e o MESMO pedido com symbol=XAUUSD devolve
+//   {"ok":false,"available":false,
+//    "reason":"MT5 nao devolveu candles para XAUUSD H1 (no_candles_for_symbol)"}
+// Ou seja: o gateway publica GOLD e NAO publica XAUUSD.
+//
+// O EA JA pede GOLD nesta corretora: NormalizeAISymbol (AI/AIConnector.mqh,
+// D-218) so converte GOLD->XAUUSD quando o simbolo XAUUSD existe no terminal,
+// e aqui nao existe (o metal chama-se GOLD). A prova do "available=false"
+// registada antes vinha de um pedido XAUUSD feito por FORA do EA (sonda).
+//
+// Esta input e o mapeio explicito, para o dia em que o nome tiver de ser
+// forcado sem recompilar: pares `DE=PARA` separados por `;`, aplicados DEPOIS
+// de todas as regras acima. Vazio (omissao) nao altera nada.
+//   exemplo: "XAUUSD=GOLD"  manda sempre GOLD quando o EA calculou XAUUSD.
+input string AIGatewaySymbolAlias = "";
 // Segundos entre uma consulta e outra. 15 s alinha com o ciclo do motor e com
 // a leitura de latencia: mais rapido e consumo sem ganho, mais lento e o EA
 // age sobre previsao velha.
@@ -98,6 +123,15 @@ input string ExternalBridgeToken  = "";
 // por XAU_AI_PRO.mq5 (linha "token literal publico recusado").
 input bool   EnableMCPServer      = false; // Ligar/desligar servidor MCP (opt-in: exige token privado)
 input string MCPServerToken       = "";     // Token de autenticação (8+ caracteres)
+//==================================================
+// COPILOT HUB (Adaptador dentro do EA) - v1.2.192
+//==================================================
+// Ponte com o Cloud MCP Hub do Copilot Ultra: o hub faz GET /mt5/pull com
+// este token e devolve ordens no contrato {"acao":...}. O EA executa via
+// CExecutionEngine (RiskCenter unico gate de risco). Fechado por padrao.
+input bool   EnableCopilotHub = false;
+input string CopilotHubURL     = "https://copilot-ultra-3d-hub.onrender.com/mt5/pull";
+input string CopilotHubToken  = "";
 
 //==================================================
 // RISCO
@@ -108,7 +142,7 @@ input string MCPServerToken       = "";     // Token de autenticação (8+ carac
 // perfil e davam a impressao de que lote fixo ainda existia.
 
 
-input double RiskPercent        = 1.0;
+input double RiskPercent        = 0.5;
 
 // v1.2.191 (09/11/2026) - P1.3515: o default compilado passa a ser o valor
 // APROVADO em operacao. Estava 10.0 enquanto os 15 graficos corriam 3.0: um
@@ -149,13 +183,13 @@ input double MaxDailyLossUsd    = 600.0;
 // 3,3x mais drawdown. Custo aceito por escrito pelo DONO em DEMO. Em conta
 // REAL o criterio de aceitacao continua a ser o do CICLO_FINAL: drawdown
 // realizado abaixo de 8% no forward de 30 dias, sem alterar criterio.
-input double MaxDrawdownPercent = 50.0;
+input double MaxDrawdownPercent = 6.0;
 input double MinEquityPercent   = 10.0;  // Equity minima (% do balance) para operar
 
-input double MinFreeMargin      = 10.0;  // Margem livre minima (moeda da conta)
+input double MinFreeMargin      = 2.0;   // Margem livre minima (moeda da conta). 23/11/2026: era 10.0 - a conta real tem margin_free 7.43 e o EA recusava toda entrada nova
 
 input int    MaxTradesPerDay    = 100;
-input int    MaxOpenPositions   = 50;
+input int    MaxOpenPositions   = 20;   // 23/11/2026: autorizado pelo DONO (forward real, multi-simbolo) - teto de 20 posicoes simultaneas
 
 //==================================================
 // F2.2 (v1.2.180) - TETO DE EXPOSICAO EM MARGEM (D-066) - DESLIGADO
@@ -383,7 +417,7 @@ input double RewardRatio         = 0.65;  // alvo: 0.65 = TP a 65% da distancia 
 // o envelope rapido. Com alvo curto o stop costuma ser atingido antes do
 // alvo; o envelope existe para que isso nao vire conta zerada.
 input double RiskPerTradePercent = 0.50;   // % do saldo por operacao (0 = usa RiskPerTradeUsd)
-input double MaxTotalRiskPercent = 10.0;   // teto do risco aberto somado (% do saldo)
+input double MaxTotalRiskPercent = 0.50;   // teto do risco aberto somado (% do saldo). 11/11/2026 P0: era 10.0; com 0.50 o envelope fica igual ao risco por trade (0,50% = 63,32 hoje) e escala com a banca - para N posicoes simultaneas use N*0.50
 
 // TETO ABSOLUTO EM USD DO RISCO ABERTO (v1.2.32 - 30/10/2026) - P1.1
 // O teto em % acompanha o saldo, e por isso ele CRESCE quando a conta cresce e
@@ -400,7 +434,7 @@ input double MaxTotalRiskPercent = 10.0;   // teto do risco aberto somado (% do 
 // IMPORTANTE (paridade de backtest): com deposito de 200 e 10% de envelope o
 // teto em % da 20 USD, portanto ESTE limite nao interfere no backtest de 200
 // USD - ele so morde onde o saldo e grande. `0` desliga e volta ao de antes.
-input double MaxTotalRiskOpenUsd = 60.0;   // teto do risco aberto somado em USD (0 = so o de %)
+input double MaxTotalRiskOpenUsd = 0.0;   // teto do risco aberto somado em USD (0 = so o de %). 11/11/2026 P0: era 60.0 e cortava o risco por trade de 63,32 para 60,00 sem escalar com a banca
 
 //==================================================
 // BREAK EVEN
@@ -425,9 +459,9 @@ input double BreakEvenLockR     = 0.30;   // trava fica X R alem da entrada
 //==================================================
 // Regra do operador, em DOLARES:
 //   1) entrada sem stop (EnableStoplessEntry);
-//   2) lucro >= LadderArmUsd  -> stop na ENTRADA (zero a zero);
-//   3) lucro >= LadderLockTriggerUsd -> stop no nivel que trava LadderLockUsd;
-//   4) alvo = LadderTpUsd em dinheiro, fecha a posicao inteira.
+//   2) lucro >= LadderArmPct (% do saldo) -> stop na ENTRADA (zero a zero);
+//   3) lucro >= LadderLockTriggerPct  -> stop no nivel que trava LadderLockPct;
+//   4) alvo = LadderTpPct (% do saldo), fecha a posicao inteira.
 // Quando EnableMoneyLadder=true esta escada e a UNICA dona de SL/TP: o
 // break-even em R, o trailing ATR, o alvo aproximado, a parcial e a saida
 // rapida por regime de disparada ficam desligados para nao brigarem pelo
@@ -439,7 +473,52 @@ input bool   EnableMoneyLadder    = true;    // escada de saida em dinheiro (USD
 input double LadderArmUsd         = 5.0;     // lucro (USD) que arma o stop na entrada
 input double LadderLockUsd        = 1.0;     // lucro (USD) que fica travado
 input double LadderLockTriggerUsd = 7.0;     // lucro (USD) que move o stop para LadderLockUsd
-input double LadderTpUsd          = 10.0;    // alvo (USD) que fecha a posicao inteira
+input double LadderTpUsd          = 10.0;    // legado: alvo em USD (usado so se LadderTpPct = 0)
+
+// v1.2.214 (13/11/2026) - P1.3643: OS QUATRO DEGRAUS PASSAM A SER PERCENTAGEM
+// DO SALDO, LIDA EM CADA PASSAGEM. Pedido do dono: acompanhar a banca atual,
+// sempre atualizada, nada fixo, com percentagens certas.
+//
+// `pct` e por cento do SALDO LIDO AGORA (AccountInfoDouble(ACCOUNT_BALANCE)).
+// Nao ha valor guardado em lado nenhum: se a banca subir, o degrau sobe com ela;
+// se cair, desce. Ninguem tem de reconfigurar nada.
+//
+// PORQUE A PERCENTAGEM E A UNIDADE CERTA: o lote nasce de RiskPercent x saldo,
+// logo volume e saldo crescem juntos. O que o mercado mede e a DISTANCIA EM
+// PRECO do degrau, que vale USD / (volume x valor do ponto). Com o USD
+// proporcional ao saldo, essa distancia fica CONSTANTE em qualquer banca - a
+// escada vale o mesmo numa conta de 200 e numa de 100.000. Um valor fixo em USD
+// faz o contrario: encolhe em pontos a medida que a banca cresce, e foi assim
+// que a armadura disparou 9 vezes entre 5,01 e 6,93 USD no dia 13/11.
+//
+// Os valores por omissao (0,05 / 0,01 / 0,07 / 0,10 por cento) reproduzem
+// exactamente o que a v1.2.213 valia numa conta de 10.000 USD: 5 / 1 / 7 / 10.
+// `pct = 0` volta ao valor em USD correspondente (LadderArmUsd, LadderLockUsd,
+// LadderLockTriggerUsd, LadderTpUsd) - e o rollback, sem recompilar.
+input double LadderArmPct         = 0.05;    // % do saldo que arma o stop na entrada
+input double LadderLockPct        = 0.01;    // % do saldo que fica travado
+input double LadderLockTriggerPct = 0.07;    // % do saldo que move o stop para LadderLockPct
+input double LadderTpPct          = 0.10;    // % do saldo que fecha a posicao inteira
+
+// v1.2.213 (13/11/2026) - P1.3642: A ESCADA PASSA A ACOMPANHAR A BANCA.
+// PEDIDO DO DONO (13/11): "armar stop na entrada quando passar de 5 USD mas
+// dependendo da banca".
+// MEDIDO em 13/11/2026 com a banca em 12.810,96 USD: a ARMADURA armou 9 vezes
+// no dia, todas entre 5,01 e 6,93 USD de lucro. O gatilho e um numero FIXO em
+// USD enquanto o lote cresce com o saldo (RiskPercent 0,5 por cento), logo o
+// MESMO numero em USD e uma distancia de preco cada vez MENOR quando a banca
+// cresce: 5 USD num lote 0,10 sao ~50 pontos, num lote 0,50 sao ~10 pontos -
+// a armadura passa a disparar dentro do ruido e o stop vai para a entrada
+// antes de o preco andar. E o mesmo defeito que o v1.2.16 mediu no GBPUSD 0,41
+// ("USD sozinho nao serve como gatilho") e que o P1.55 mediu a 1R. A correcao
+// agora e a ESCALA, nao o valor: o dono continua a configurar 5 / 1 / 7 / 10.
+// Regra: os quatro degraus em USD valem o que esta configurado para uma conta
+// de `LadderBalanceRefUsd` e escalam LINEARMENTE com o saldo (saldo/referencia),
+// nunca abaixo de 1,0 (banca menor nao aperta a escada) e com tecto de 10x.
+// A geometria em PRECO fica identica em qualquer banca - que e a unica coisa
+// que o mercado ve e que o stop de emergencia mede. `LadderBalanceRefUsd <= 0`
+// desliga a escala e devolve exactamente o comportamento anterior.
+input double LadderBalanceRefUsd  = 10000.0; // legado: referencia (USD) do caminho sem percentagem
 
 //==================================================
 // RESUMO PARA O OPERADOR (29/10/2026)
@@ -514,12 +593,12 @@ input double TPAproxMaxFraction  = 1.0;
 // FILTROS
 //==================================================
 input bool EnableSpreadFilter      = true;
-input bool EnableSessionFilter     = false;
+input bool EnableSessionFilter     = true;
 input bool EnableTrendFilter       = true;
-input bool EnableVolatilityFilter  = false;
+input bool EnableVolatilityFilter  = true;
 input bool EnableADXFilter         = true;
-input bool EnableMTFConfirmation   = false;
-input bool EnableNewsFilter        = false;
+input bool EnableMTFConfirmation   = true;
+input bool EnableNewsFilter        = true;
 input bool EnableAIFilter          = true;
 
 //==================================================
@@ -633,7 +712,7 @@ input bool   SimulationUseConfidence  = true;   // confianca do sinal = probabil
 //==================================================
 // IA
 //==================================================
-input double MinAIConfidence    = 60.0;
+input double MinAIConfidence    = 40.0;   // 11/11/2026 P0: era 60.0. Medido 34,1-48,3 em 16 simbolos -> 0/16 passavam e o EA nao abria nada. Piso 40,0 = teto da confianca de fallback (AIUnavailableConfidenceCap)
 
 //----------------------------------------------
 // IA AUSENTE x CONFIANCA (23/10/2026)
@@ -650,7 +729,7 @@ input double MinAIConfidence    = 60.0;
 // `true` existe para o Strategy Tester, onde o pipeline Python nao roda.
 // Nesse modo o fallback e CAPADO em `AIUnavailableConfidenceCap`, para que o
 // numero nao volte a mentir sobre a existencia de uma IA.
-input bool   AllowTradeWithoutAI           = true;    // v1.2.186: D-088 #6 (DONO 07/11/2026) OPERAR TODOS
+input bool   AllowTradeWithoutAI           = false;    // v1.2.186: D-088 #6 (DONO 07/11/2026) OPERAR TODOS
 
 //==================================================
 // CONFLITO IA x TECNICO (v1.2.10 - 29/10/2026)
@@ -686,13 +765,36 @@ input double AIUnavailableConfidenceCap    = 40.0;
 //
 // false (padrao) = comportamento anterior: IA veta, tecnico decide. - a
 // opcao segura e a que estava valendo antes desta mudanca.
-input bool   AIHasSignalAuthority = false;
+input bool   AIHasSignalAuthority = true;
 
 // Minimo de score para a IA ASSUMIR a decisao, separado do veto.
 // `MinAIConfidence` e o piso do veto; este e o piso para mandar.
 // 75 = o mesmo valor que `GetCombinedSignal` ja usava para dar autoridade
 // a IA sobre o tecnico - o numero nao e novo, so passa a ter nome.
 input double AIAuthorityMinScore  = 75.0;
+
+//----------------------------------------------
+// IA SEM MODELO PUBLICADO x TECNICO (11/11/2026)
+//----------------------------------------------
+// ORDEM DO DONO (11/11/2026): "o EA nao pode ser exclusivo para XAUUSD".
+// D-088 #6 (07/11/2026) ja tinha decidido "OPERAR TODOS E TUDO".
+//
+// MEDIDO em 11/11/2026 no forward: o gateway so publica previsao para
+// XAUUSD; os outros 15 pares respondem available=false (edge abaixo do
+// minimo / folds instaveis). Com `AIHasSignalAuthority=true` e a IA calada,
+// `GetCombinedSignal` devolvia 0 SEMPRE, e o scanner registava
+// NoSignal=7146 contra sinais=553 - a exclusividade nao era do simbolo,
+// era da recusa do gateway a ser lida como "nao operar".
+//
+// REGRA: "a IA nao tem previsao" e diferente de "a IA diz que nao".
+//   * sem previsao publicada -> a IA nao opina: o tecnico decide e o portao
+//     de IA nao fecha o simbolo (os outros filtros continuam valendo);
+//   * com previsao (mesmo NEUTRAL ou abaixo do piso) -> a IA opina: a
+//     autoridade e o veto valem exactamente como antes.
+// XAUUSD, que tem modelo, nao muda de comportamento.
+//
+// false = comportamento antigo: sem previsao, o simbolo nao opera.
+input bool   AIFallbackToTechNoPrediction = true;
 
 //==================================================
 // MARKET INTELLIGENCE - IQ do mercado (v1.3)
@@ -732,7 +834,7 @@ input double LowIntelLotFactor       = 0.5;
 //
 // MEDIDO 05/10/2026: com `false`, o EA opera MESMO SEM IA - que e o
 // oposto de "operar guiado por IA". Quem quer a IA no comando liga isto.
-input bool   RequireAIJSON      = false;
+input bool   RequireAIJSON      = true;
 
 //==================================================
 // RISCO - STOP LOSS OBRIGATORIO (05/10/2026)
@@ -900,7 +1002,7 @@ input bool   EnableWeekendShutdown = true;
 // Integracao com DatabaseManager,
 // TradeLogger e Statistics.
 //==================================================
-input bool   EnableDatabase        = false;
+input bool   EnableDatabase        = true;
 input string DatabasePath          = "XAU_AI_PRO.db";
 input bool   EnableTelemetry       = true;
 
@@ -986,19 +1088,7 @@ input bool   NotifyExecutionFailures = true;   // notificar rejeicoes de ordem
 //==================================================
 input bool EnableMultiSymbol    = true;
 
-input string Symbols=
-"XAUUSD,"    // Conta DEMO - nomes reais sem sufixo
-"EURUSD,"
-"GBPUSD,"
-"USDJPY,"
-"AUDUSD,"
-"USDCAD,"
-"NZDUSD,"
-"USDCHF,"
-"USDBRL,"
-"USDSEK,"
-
-"USDCNH";
+input string Symbols="XAUUSD,USDCLP,USDCOP,USDCZK,USDSGD,GBPUSD,USDJPY,AUDUSD,USDCAD,NZDUSD,USDCHF,USDBRL,USDSEK,USDCNH";   // v1.2.206: USDRUB saiu do default - a exclusao vive em SymbolsExclude
 
 // v1.2.167 (05/11/2026) - P1.130: UNIVERSO DO EA.
 // `Symbols` deixou de ser o universo inteiro: e a lista de BASE, por ordem de
@@ -1011,7 +1101,66 @@ input string Symbols=
 // XAUUSD e nunca acompanhava o que o terminal realmente tem.
 // true  = universo = Symbols + Market Watch + simbolo do grafico (universal).
 // false = universo = Symbols + simbolo do grafico (comportamento anterior).
-input bool   SymbolsFromMarketWatch = true;
+input bool   SymbolsFromMarketWatch = false;
+
+// v1.2.206 (11/11/2026): EXCLUSAO DE SIMBOLOS DO UNIVERSO DO EA.
+// MEDIDO em 11/11/2026: o USDRUB tem spread estrutural acima de 25% do ATR H1
+// e o teto de custo (MaxSpreadPct=0,6% do preco) nunca o deixava passar - era
+// um simbolo avaliado em todas as instancias e permanentemente recusado. A
+// cura anterior era reanexar grafico a grafico e editar a lista Symbols de
+// cada um; com esta input o simbolo sai de TODAS as instancias no arranque
+// seguinte, sem tocar em nenhuma outra input e sem reanexar nada.
+//
+// Formato: lista separada por virgulas. A comparacao e sem distincao de
+// maiusculas, sem o sufixo do broker, e aceita SIMBOLO ou SIMBOLO:motivo
+// (o motivo e ignorado) - o mesmo criterio de MaxSpreadPctBySymbol.
+// Exemplo: "USDRUB" ou "USDRUB,USDCLP".
+// Vazio = nenhum simbolo excluido (comportamento anterior a v1.2.206).
+input string SymbolsExclude = "USDRUB";
+
+//--------------------------------------------------
+// v1.2.206: true quando symbol esta em SymbolsExclude.
+// Nao decide nada sobre negociacao: so responde a uma pergunta de
+// configuracao, para o universo do EA (Core/SymbolManager.mqh) poder filtrar
+// antes de avaliar o simbolo.
+//--------------------------------------------------
+bool SymbolExcluido(string symbol)
+{
+   if(symbol == "")
+      return false;
+
+   string lista = SymbolsExclude;
+   StringTrimLeft(lista);
+   StringTrimRight(lista);
+
+   if(lista == "")
+      return false;
+
+   string entries[];
+   int total = StringSplit(lista, ',', entries);
+
+   for(int i = 0; i < total; i++)
+   {
+      string item = entries[i];
+      StringTrimLeft(item);
+      StringTrimRight(item);
+
+      if(item == "")
+         continue;
+
+      // Aceita SIMBOLO e SIMBOLO:motivo - so o nome conta.
+      string kv[];
+      int k = StringSplit(item, ':', kv);
+      string nome = kv[0];
+      StringTrimLeft(nome);
+      StringTrimRight(nome);
+
+      if(nome != "" && StringCompare(nome, symbol, false) == 0)
+         return true;
+   }
+
+   return false;
+}
 
 //==================================================
 // RISCO EM DINHEIRO -> DISTANCIA EM PONTOS
@@ -1039,6 +1188,55 @@ input bool   SymbolsFromMarketWatch = true;
 // A fonte correta e a ficha do simbolo: `TICK_VALUE` ja vem na MOEDA DA CONTA.
 // O fallback por contrato continua existindo, mas DEPOIS, e so quando a ficha
 // nao responde - nunca como primeira escolha.
+//==================================================
+// VALOR DE UM PONTO EM MOEDA DA CONTA (11/11/2026 - P0)
+//==================================================
+// MEDIDO em 11/11/2026 na conta 113568614, simbolo XAUUSD (contract_size=100,
+// tick_size=0.01000000, tick_value=0.10): a formula `(tickVal/tickSize)*point`
+// devolve 0,10000000 por lote por ponto. A verdade e 1,00000000 - conferida
+// com OrderCalcProfit, que e a MESMA funcao que calcula o lucro da posicao.
+// FATOR 0,1000. Com StopLossPoints=300: o EA dimensionava a ordem como se o
+// stop valesse 30,00 USD por lote, quando vale 300,00. O lote saia 10x maior
+// que o risco autorizado (journal: "ValorPorLote=30.00" e "perda no stop com
+// 2.000 lotes = 60.00 USD" - reais 300,00 e 600,00).
+//
+// Nao existe campo da ficha do simbolo para trocar: o servidor publica
+// tick_value = tick_value_profit = tick_value_loss = 0,10 para um ouro cujo
+// contract_size=100 com ponto 0,01 vale 1,00. E `contract_size * point`
+// tambem nao serve: acerta o XAUUSD (100*0,01=1,00) mas da 100,00 no USDJPY,
+// onde a verdade e 0,63. OrderCalcProfit acertou os seis simbolos medidos:
+// XAUUSD 1,0000 | EURUSD 1,0000 | USDJPY 0,9944 | USDCHF 1,0014 |
+// USDBRL 0,9992 | USDCLP 1,0143 (todos dentro de +-1,5%).
+//
+// Mede 1,0 lote com 1 ponto de distancia: devolve o lucro em moeda da conta
+// por lote por ponto. Devolve 0,0 quando o simbolo nao responde - e quem
+// chama trata 0,0 como "desconhecido" (bloqueia), nunca como valor valido.
+double ValorPorPontoUSD(string symbol)
+{
+   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+
+   if(point <= 0.0)
+      return(0.0);
+
+   double preco = SymbolInfoDouble(symbol, SYMBOL_BID);
+
+   if(preco <= 0.0)
+      preco = SymbolInfoDouble(symbol, SYMBOL_ASK);
+
+   if(preco <= 0.0)
+      return(0.0);
+
+   double lucro = 0.0;
+
+   if(!OrderCalcProfit(ORDER_TYPE_BUY, symbol, 1.0, preco, preco + point, lucro))
+      return(0.0);
+
+   if(lucro <= 0.0)
+      return(0.0);
+
+   return(lucro);
+}
+
 double DistanciaPontosParaRiscoUSD(
    string symbol,
    double volume,
@@ -1048,29 +1246,23 @@ double DistanciaPontosParaRiscoUSD(
    if(risco_usd <= 0.0 || volume <= 0.0)
       return(0.0);
 
-   double point    = SymbolInfoDouble(symbol, SYMBOL_POINT);
-   double tickVal  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
-   double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
 
    if(point <= 0.0)
       return(0.0);
 
-   if(tickVal > 0.0 && tickSize > 0.0)
-   {
-      double valorPorPonto = (tickVal / tickSize) * point;
+   // 11/11/2026 (P0): fonte trocada para OrderCalcProfit (ValorPorPontoUSD).
+   // A formula antiga `(tickVal/tickSize)*point` devolvia 0,10 no XAUUSD
+   // contra 1,00 real, e a distancia saia 10x maior que a devida.
+   // O fallback por `contract_size * point` foi REMOVIDO de proposito: ele
+   // acerta o XAUUSD mas erra o USDJPY em ~150x. Sem fonte confiavel a
+   // funcao devolve 0,0 e a entrada e bloqueada - erra para o lado seguro.
+   double valorPorPonto = ValorPorPontoUSD(symbol);
 
-      if(valorPorPonto <= 0.0)
-         return(0.0);
-
-      return(risco_usd / (valorPorPonto * volume));
-   }
-
-   double contrato = SymbolInfoDouble(symbol, SYMBOL_TRADE_CONTRACT_SIZE);
-
-   if(contrato <= 0.0)
+   if(valorPorPonto <= 0.0)
       return(0.0);
 
-   return(risco_usd / (contrato * volume * point));
+   return(risco_usd / (valorPorPonto * volume));
 }
 
 //==================================================
@@ -1096,7 +1288,18 @@ double OrcamentoDiarioPerda()
    double orcamento = (balance > 0.0 && MaxDailyLossPercent > 0.0 ? balance * MaxDailyLossPercent / 100.0 : 0.0);
    // v1.2.35 - P1.2b: o criterio em USD entra quando for menor (ou quando o de % estiver desligado).
 
-   return(MaxDailyLossUsd > 0.0 && (orcamento <= 0.0 || MaxDailyLossUsd < orcamento) ? MaxDailyLossUsd : orcamento);
+   double teto = (MaxDailyLossUsd > 0.0 && (orcamento <= 0.0 || MaxDailyLossUsd < orcamento) ? MaxDailyLossUsd : orcamento);
+
+   // v1.2.219 (23/11/2026): em conta micro o orcamento do dia nao pode ser
+   // menor que UMA operacao autorizada. Sem isto, `RiscoCabeNoOrcamento`
+   // recusava todas as entradas por aritmetica (risco 1,00 USD contra um
+   // orcamento de 0,12 a 0,41 USD) e o EA nunca chegava a tentar.
+   double pisoMicroOrcamento = MicroAccountRiskFloor();
+
+   if(pisoMicroOrcamento > 0.0 && teto < pisoMicroOrcamento)
+      teto = pisoMicroOrcamento;
+
+   return(teto);
 }
 
 // Valor em dinheiro de uma distancia em PONTOS, para um lote. Mesma fonte da
@@ -1111,14 +1314,11 @@ double RiscoEmDinheiroDaOrdem(
    if(volume <= 0.0 || pontos <= 0.0)
       return(0.0);
 
-   double point    = SymbolInfoDouble(symbol, SYMBOL_POINT);
-   double tickVal  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
-   double tickSize = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
-
-   if(point <= 0.0 || tickVal <= 0.0 || tickSize <= 0.0)
-      return(0.0);
-
-   double valorPorPonto = (tickVal / tickSize) * point;
+   // 11/11/2026 (P0): mesma fonte da distancia (OrderCalcProfit), no sentido
+   // inverso. Era `(tickVal/tickSize)*point`, que no XAUUSD devolvia 0,10 em
+   // vez de 1,00 - o journal imprimia "ValorPorLote=30.00" onde o real era
+   // 300,00, e o lote saia 10x maior que o risco autorizado.
+   double valorPorPonto = ValorPorPontoUSD(symbol);
 
    if(valorPorPonto <= 0.0)
       return(0.0);
@@ -1177,7 +1377,7 @@ bool RiscoCabeNoOrcamento(double risco_usd, string &motivo)
 // NAO exige disponibilidade. Toda a cadeia de risco continua valendo
 // (spread, tendencia, ADX, volatilidade, SafetyManager, CircuitBreaker,
 // EquityProtection, drawdown e limite diario).
-input bool   EnableAutonomousMode = false;   // IA real: veta e exige gateway (era consultiva)
+input bool   EnableAutonomousMode = true;   // IA real: veta e exige gateway (era consultiva)
 
 // Piso do MarketScore aplicado em AllowTrade (DecisionEngine). Era 60.0 fixo
 // no codigo; agora e ajustavel sem recompilar.
@@ -1230,7 +1430,7 @@ input bool   BlockZeroAIScore     = true;
 //                             distancia de referencia StopLossPoints;
 //   * MaxDailyLossPercent  -> bloqueia novas entradas quando o dia perde;
 //   * StoplessEmergencyRMult -> fecha a mercado em StoplessEmergencyRMult x 1R.
-input bool   EnableStoplessEntry     = true;   // true = entra sem SL e arma no lucro
+input bool   EnableStoplessEntry     = false;   // true = entra sem SL e arma no lucro
 input double StoplessArmATRMult      = 0.8;    // anda X ATR a favor -> arma o stop
 input int    StoplessArmMinPoints    = 30;     // piso do gatilho, em pontos
 input double StoplessLockATRMult     = 0.35;   // stop nasce X ATR ALEM da entrada
@@ -1303,10 +1503,14 @@ double RiscoAbertoUSD()
       double open  = PositionGetDouble(POSITION_PRICE_OPEN);
       double vol   = PositionGetDouble(POSITION_VOLUME);
       double point = SymbolInfoDouble(sym, SYMBOL_POINT);
-      double tv    = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
-      double ts    = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
 
-      if(point <= 0.0 || tv <= 0.0 || ts <= 0.0 || vol <= 0.0)
+      // 11/11/2026 (P0): o envelope de risco aberto usava a MESMA formula
+      // 10x do dimensionamento. Efeito: o risco das posicoes abertas era
+      // contado 10x MENOR do que e, o envelope nunca enchia e o EA aceitava
+      // muito mais posicoes simultaneas do que o autorizado.
+      double valorPorPonto = ValorPorPontoUSD(sym);
+
+      if(point <= 0.0 || valorPorPonto <= 0.0 || vol <= 0.0)
          continue;
 
       double sl = PositionGetDouble(POSITION_SL);
@@ -1356,7 +1560,7 @@ double RiscoAbertoUSD()
       }
 
       double pontos = MathAbs(open - sl) / point;
-      total += (tv / ts) * point * pontos * vol;
+      total += valorPorPonto * pontos * vol;
    }
 
    return(total);
@@ -1376,6 +1580,14 @@ double RiscoPorTradeUsd()
          risco = b * RiskPerTradePercent / 100.0;
    }
 
+   // v1.2.219 (23/11/2026): em conta micro o risco pedido por operacao nunca
+   // fica abaixo do piso autorizado pelo dono (MicroAccountRiskCapUsd). Este
+   // numero alimenta o dimensionamento do lote E o envelope de risco aberto.
+   double pisoMicroRisco = MicroAccountRiskFloor();
+
+   if(pisoMicroRisco > 0.0 && risco < pisoMicroRisco)
+      risco = pisoMicroRisco;
+
    if(risco <= 0.0 || MaxTotalRiskPercent <= 0.0)
       return(risco);
 
@@ -1385,6 +1597,12 @@ double RiscoPorTradeUsd()
       return(risco);
 
    double envelope = balance * MaxTotalRiskPercent / 100.0;
+
+   // v1.2.219 (23/11/2026): o envelope aberto tambem nao pode valer menos que
+   // UMA operacao autorizada, senao o bloco de envelope reduzia o lote abaixo
+   // do minimo do broker e devolvia ENVELOPE_SEM_SOBRA_MIN_LOT.
+   if(pisoMicroRisco > 0.0 && envelope < pisoMicroRisco)
+      envelope = pisoMicroRisco;
 
    // v1.2.32 - P1.1: o teto em USD manda quando for menor que o de %.
    if(MaxTotalRiskOpenUsd > 0.0 && MaxTotalRiskOpenUsd < envelope)
@@ -1433,7 +1651,7 @@ input double DynConfElite              = 90.0;  // piso para escala 4x
 // `NewsTradeTrendOnly` (ExecutionEngine.mqh:554) passa a exigir ADX >= 35.
 input double DynADXClear               = 35.0;  // ADX minimo para "tendencia clara"
 input double DynADXStrong              = 35.0;  // ADX para "tendencia forte"
-input double MaxRiskPerTradePercentCap = 3.0;   // teto de risco por operacao apos escalar
+input double MaxRiskPerTradePercentCap = 1.0;   // teto de risco por operacao apos escalar
 
 //==================================================
 // TETO DE RISCO REAL POR OPERACAO (v1.2.26 - 29/10/2026)
@@ -1451,7 +1669,7 @@ input double MaxRiskPerTradePercentCap = 3.0;   // teto de risco por operacao ap
 //
 // `MaxRiskPerTradeUsd = 0` desliga a checagem e volta ao comportamento antigo.
 //==================================================
-input double MaxRiskPerTradeUsd = 8.0;   // perda maxima REAL por operacao (0 = desliga)
+input double MaxRiskPerTradeUsd = 0.0;   // perda maxima REAL por operacao (0 = desliga). 11/11/2026 P0: era 8.0; com o valor por ponto 10x menor capava em 80,00 reais. A regua passou a ser RiskPerTradePercent = 0,50% do saldo, que escala com a banca
 
 // v1.2.27 (30/10/2026) - DECISAO em vez de aviso.
 // Antes, quando o lote caia abaixo do minimo do simbolo, o EA imprimia
@@ -1463,6 +1681,107 @@ input double MaxRiskPerTradeUsd = 8.0;   // perda maxima REAL por operacao (0 = 
 // MIN_LOT_EXCEEDS_RISK_CAP. Fica em `false` por padrao para nao mudar
 // comportamento de producao sem decisao explicita do dono.
 input bool   BlockWhenMinLotExceedsRiskCap = true;   // v1.2.35 - P1.4: nao abrir quando o lote minimo ja estoura o teto
+
+//==================================================
+// TECTO DE RISCO EM CONTA MICRO (v1.2.219 - 23/11/2026)
+//==================================================
+// DECISAO DO DONO (23/11/2026): "4,13 USD so comporta 0,01 lote; o EA pode
+// comecar a operar a partir de 1 USD por operacao."
+//
+// O QUE ESTAVA A BLOQUEAR (medido, nao suposto): com saldo 4,13 os QUATRO
+// limites de risco por operacao apontavam para valores abaixo do que o lote
+// minimo arrisca:
+//   * RiskPerTradePercent 0,50% do saldo -> 0,02 USD de risco pedido
+//   * MaxRiskPerTradePercentCap 10%      -> 0,41 USD de tecto
+//   * MaxTotalRiskPercent (envelope)     -> 0,41 USD de envelope aberto
+//   * OrcamentoDiarioPerda (3% a 10%)    -> 0,12 a 0,41 USD por entrada
+// Com StopLossPoints=300 o lote minimo ja arrisca mais do que qualquer um
+// deles, logo o lote caia abaixo do minimo do broker e a entrada morria em
+// ENVELOPE_SEM_SOBRA_MIN_LOT, GROWTH_TARGET_BELOW_COST ou LOT MIN.
+//
+// A CORRECAO: numa banca ate `MicroAccountMaxBalanceUsd`, os QUATRO limites
+// passam a ter como PISO `MicroAccountRiskCapUsd` (1,00 USD). O tecto continua
+// a ser TECTO: se o lote minimo do simbolo arriscar MAIS que isso na distancia
+// real do stop (1R), a entrada e RECUSADA com MIN_LOT_EXCEEDS_RISK_CAP -
+// nunca arredondada para cima contra o dono. Acima de
+// `MicroAccountMaxBalanceUsd` nada muda: os limites normais voltam a mandar.
+//
+// INPUTS NOVOS de proposito: estes nomes nao existem nos .chr dos graficos,
+// portanto o MT5 aplica-lhes estes defaults no reload sem precisar de um
+// reattach com a lista completa de inputs.
+input bool   EnableMicroAccountRiskCap = true;   // piso de risco por operacao em conta micro
+input double MicroAccountMaxBalanceUsd = 25.0;   // saldo ate onde o piso de 1 USD por operacao vale
+input double MicroAccountRiskCapUsd    = 1.00;   // risco maximo por operacao nessa faixa (USD)
+
+// Piso de risco por operacao em vigor (0 = fora da faixa micro ou desligado).
+double MicroAccountRiskFloor()
+{
+   if(!EnableMicroAccountRiskCap || MicroAccountRiskCapUsd <= 0.0)
+      return(0.0);
+
+   double saldo = AccountInfoDouble(ACCOUNT_BALANCE);
+
+   if(saldo <= 0.0 || saldo > MicroAccountMaxBalanceUsd)
+      return(0.0);
+
+   return(MicroAccountRiskCapUsd);
+}
+
+// Tecto REAL por operacao depois do escalonamento (0 = sem tecto).
+// Substitui a leitura directa de MaxRiskPerTradeUsd nos dois sitios do
+// ExecutionEngine: em conta micro o tecto absoluto passa a ser o piso acima.
+double RiskCapPerTradeUsd()
+{
+   double pisoMicro = MicroAccountRiskFloor();
+
+   if(pisoMicro > 0.0)
+      return(pisoMicro);
+
+   return(MaxRiskPerTradeUsd);
+}
+
+//==================================================
+// REGIME DE RISCO EM VIGOR (11/11/2026 - P0)
+//==================================================
+// MEDIDO no journal vivo de 11/11/2026, tres vezes (03:15:03, 09:41:24,
+// 10:00:03): a linha [RISK] CALC USD dizia "Risco=60.00 USD" com saldo
+// 12.633,04. Com RiskPerTradePercent=0.50 esse saldo vale 63,17. O 60,00 nao
+// vinha da formula: vinha de o chart estar anexado com
+// RiskPerTradePercent=0.00 e RiskPerTradeUsd=60,0, caso em que
+// RiscoPorTradeUsd() devolve o valor ABSOLUTO. O EA obedeceu ao que estava
+// configurado; o que faltava era dizer QUEM manda. Valor absoluto nao escala
+// com a banca, e o tamanho da posicao tem de escalar com a banca.
+//
+// Esta funcao NAO decide nada e NAO altera limite nenhum: publica no arranque
+// qual das duas regras esta em vigor e quanto isso vale em USD e em % do
+// saldo. Sem esta linha o journal pode ser lido como se a regra percentual
+// estivesse a mandar quando nao esta.
+void DeclararRegimeDeRisco()
+{
+   double saldo  = AccountInfoDouble(ACCOUNT_BALANCE);
+   double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+   double risco  = RiscoPorTradeUsd();
+   string regra  = "";
+   string aviso  = "";
+
+   if(RiskPerTradePercent > 0.0)
+      regra = "PERCENTUAL " + DoubleToString(RiskPerTradePercent, 2) + "% do saldo";
+   else if(RiskPerTradeUsd > 0.0)
+   {
+      regra = "ABSOLUTO " + DoubleToString(RiskPerTradeUsd, 2) + " USD";
+      aviso = " | ATENCAO: absoluto NAO escala com a banca - use RiskPerTradePercent > 0";
+   }
+   else
+   {
+      regra = "NENHUM";
+      aviso = " | ATENCAO: risco por trade desligado (RiskPerTradePercent=0 e RiskPerTradeUsd=0)";
+   }
+
+   double pctSaldo = (saldo > 0.0 ? 100.0 * risco / saldo : 0.0);
+
+   PrintFormat("[RISCO EM VIGOR] regra=%s | risco por trade=%.2f USD (%.3f%% do saldo) | saldo=%.2f | equity=%.2f | teto por operacao=%.2f%% do saldo | teto absoluto=%.2f%s",
+               regra, risco, pctSaldo, saldo, equity, MaxRiskPerTradePercentCap, MaxRiskPerTradeUsd, aviso);
+}
 
 //==================================================
 // DISTANCIA DE RUIDO EM PONTOS (mesma regra da MoneyLadder)
@@ -1604,7 +1923,7 @@ input bool   EnableGlobalScenarioLog     = true;   // linha [GLOBAL] no journal 
 //                                     DailyProfitSlowLotFactor.
 // Para subir a meta no futuro, basta alterar DailyProfitTargetUsd.
 input bool   EnableDailyProfitTarget   = true;
-input double DailyProfitTargetUsd      = 20.0;
+input double DailyProfitTargetUsd      = 100.0;
 
 // META PROPORCIONAL A BANCA (v1.2.14)
 // 20 USD e a meta certa para banca pequena (<=200 USD). Quando a banca cresce,
@@ -1612,13 +1931,15 @@ input double DailyProfitTargetUsd      = 20.0;
 // a meta efetiva passa a ser o MAIOR entre DailyProfitTargetUsd e
 // DailyProfitTargetBalancePct% do saldo - a meta nunca DIMINUI.
 input bool   EnableDailyTargetBalancePct = true;
-input double DailyProfitTargetBalancePct = 10.0;   // % do saldo (0 = desliga o piso por %)
+input double DailyProfitTargetBalancePct = 0.80;   // % do saldo (0 = desliga o piso por %)
 // v1.2.28 (30/10/2026) - P1.2: era 100.0. Com saldo ~12 348 e
 // DailyProfitTargetBalancePct=10 o piso por % da 1234 USD, logo o teto era
 // quem mandava e a meta efetiva ficava em 100 USD - cinco vezes a meta pedida
 // pelo dono (10-20 USD/dia). Com 40.0 o EA para de abrir quando o dia chega a
-// 40 USD (2x o topo da meta) e continua a proteger o que esta aberto.
-input double DailyProfitTargetMaxUsd     = 40.0;   // teto absoluto da meta (0 = sem teto)
+// 40 USD - SUBSTITUIDO em 11/11/2026 por decisao do DONO: meta minima 100
+// USD/dia, 0,80% do saldo acima disso, teto 200 USD. O teto nao e limite de
+// risco; o risco por trade segue em 0,50% do saldo (63,32 USD na banca atual).
+input double DailyProfitTargetMaxUsd     = 200.0;   // teto absoluto da meta (0 = sem teto)
 input double DailyProfitSlowPercent    = 100.0;
 input bool   DailyProfitStopTrading    = true;
 input double DailyProfitSlowLotFactor  = 0.25;
@@ -1729,6 +2050,161 @@ input bool   EnablePipelineMasterGuard = true;
 input bool EnableStreakBrake        = true;   // freio apos N perdas seguidas
 input int  StreakBrakeLosses        = 3;      // N perdas seguidas armam a pausa
 input int  StreakBrakePauseMinutes  = 240;    // duracao da pausa em minutos (0 = desliga)
+
+//==================================================
+// DEGRAUS DE CRESCIMENTO DA BANCA (v1.2.215 - 23/11/2026)
+//==================================================
+// Regra do dono: o EA tem de saber SEMPRE se a banca e pequena, media ou
+// grande, e ajustar sozinho o alvo em dinheiro e o tecto de lote - sem
+// reconfigurar graficos quando o saldo muda de faixa.
+//
+//   saldo < GrowthSmallLimitUsd         -> alvo GrowthSmallTargetUsd, lote <= 0.01
+//   saldo < GrowthMediumLimitUsd        -> alvo GrowthMediumTargetUsd, lote <= 0.02
+//   saldo >= GrowthMediumLimitUsd       -> sem tecto (a escada volta a mandar)
+//
+// A camada SO reduz o lote e SO recusa a entrada quando o alvo do degrau nao
+// cobre GrowthMaxCostPctOfTarget do custo do spread para aquele lote - ou seja,
+// quando a operacao nao consegue "bater no minimo" pedido. O tecto de lote
+// respeita sempre o minimo do simbolo (GOLD 0.001, ETHUSD 0.02, BTCUSD 0.01,
+// SOLUSD 0.05): o degrau nunca forca um lote que o broker nao aceita.
+input bool   EnableGrowthPolicy        = true;  // degraus de crescimento (banca pequena/media/grande)
+input double GrowthSmallLimitUsd       = 50.0;  // limite (USD) entre banca pequena e media
+input double GrowthMediumLimitUsd      = 200.0; // limite (USD) entre banca media e grande
+input double GrowthSmallTargetUsd      = 0.70;  // alvo por operacao na banca pequena (USD)
+input double GrowthMediumTargetUsd     = 1.50;  // alvo por operacao na banca media (USD)
+input double GrowthSmallLotTarget      = 0.01;  // tecto de lote na banca pequena
+input double GrowthMediumLotTarget     = 0.02;  // tecto de lote na banca media
+input double GrowthMaxCostPctOfTarget  = 20.0;  // custo do spread maximo como % do alvo (0 = desliga)
+
+//--------------------------------------------------
+// STOP POR DEGRAU DE BANCA (v1.2.222 - 23/11/2026, D-224)
+//--------------------------------------------------
+// REGRA DO DONO (23/11/2026): "so poder ativar estrategia stop com banca
+// media acima de 100 usd" e "sim sem stop [a subir] crescimento".
+//   SALDO <  GrowthStopMinBancaUsd (100 USD) -> so CRESCIMENTO: a escada NAO
+//        sobe o stop; fica o SL que a entrada trouxe e o alvo em dinheiro e
+//        que fecha no lucro. Nenhum degrau de protecao e armado - a vencedora
+//        pode devolver o lucro ate ao SL da entrada, e e a regra do dono.
+//   SALDO >= GrowthStopMinBancaUsd (100 USD) -> crescimento + stop de
+//        protecao: arma quando o lucro passa de GrowthStopArmUsd (5.00 USD) e
+//        fica ACIMA da entrada, garantindo GrowthStopLockUsd (0.50 USD).
+//   GRANDE  (>= GrowthMediumLimitUsd) -> alvos maiores (GrowthLargeTargetUsd)
+//        com a mesma protecao da banca media.
+// O limiar de 100 USD e SEPARADO do degrau de alvo (GrowthSmallLimitUsd=50):
+// o degrau diz qual e o alvo em dinheiro, este limiar diz se ha protecao.
+// A banca 50-99 USD continua a ter alvo de banca media e ZERO stop a subir.
+// Tudo em USD de lucro da POSICAO (nao em pontos), como o resto da escada.
+// GrowthStopLockUsd e a GARANTIA, nao a distancia da trava: a trava continua
+// a nascer fora do ruido do simbolo (StoplessLockATRMult/StoplessLockMinPoints)
+// e o piso acima da entrada e que passa a ser a garantia.
+input bool   GrowthStopEnabled       = true;   // stop por degrau (abaixo de GrowthStopMinBancaUsd nao arma)
+input double GrowthStopMinBancaUsd   = 100.0;  // banca minima (USD) para a protecao poder armar
+input double GrowthStopArmUsd        = 5.00;   // lucro (USD) que arma o stop acima da banca minima
+input double GrowthStopLockUsd       = 0.50;   // lucro (USD) que o stop ACIMA da entrada garante
+input double GrowthLargeTargetUsd    = 3.00;   // alvo por operacao na banca grande (USD; 0 = escada decide)
+
+//==================================================
+// CRIPTO 24/7 - SEM FREIO DIARIO (v1.2.217 - 23/11/2026)
+//==================================================
+// DECISAO DO DONO (23/11/2026): "sem freio nenhum" em cripto. Cripto negoceia
+// 24/7, sete dias por semana, e nao tem sessao que feche o dia - por isso os
+// QUATRO freios que fecham o dia deixam de se aplicar aos simbolos de cripto:
+//
+//   1. limite de PERDA do dia        (CSafetyManager::CheckDailyLoss)
+//   2. limite de DRAWDOWN do dia     (CSafetyManager::CheckDailyDrawdown)
+//   3. limite de NUMERO de operacoes (CSafetyManager::CheckDailyTrades)
+//   4. meta diaria de LUCRO que trava novas entradas
+//                                    (ExecutionEngine, EnableDailyProfitTarget)
+//
+// O que NAO muda, porque nao e freio DIARIO: o risco POR OPERACAO
+// (RiskPerTradeUsd / RiskPerTradePercent / MaxRiskPerTradeUsd), o envelope de
+// risco aberto, o limite de spread, o custo minimo do alvo (GrowthPolicy), o
+// SL obrigatorio e a pausa por perdas seguidas (EnableStreakBrake, que conta
+// perdas e nao horas do dia). Esses continuam a valer em cripto: sem eles a
+// conta nao tem limite nenhum por operacao e uma unica entrada mal parada
+// consome a banca de 5,63 USD.
+//
+// A deteccao e pelo PREFIXO do nome do simbolo (BTCUSD, ETHUSD, SOLUSD,
+// AAVEUSD...). Lista vazia desliga a regra e todos os simbolos voltam a ter
+// freio diario.
+input bool   EnableCryptoNoDailyBrake = true;  // cripto: sem freio diario (24/7)
+input string CryptoSymbolsList        = "BTC,ETH,SOL,XRP,LTC,BCH,DOGE,ADA,AVAX,LINK,UNI,NEAR,ETC,DASH,ZEC,AAVE,DOT,TRX,SHIB,XLM,ATOM,FIL,APT,ARB,BNB";
+
+bool SymbolIsCrypto(string symbol)
+{
+   if(StringLen(symbol) <= 0 || StringLen(CryptoSymbolsList) <= 0)
+      return(false);
+
+   string alvo = symbol;
+   StringToUpper(alvo);
+
+   string lista = CryptoSymbolsList;
+   StringToUpper(lista);
+
+   string tokens[];
+   int n = StringSplit(lista, (ushort)',', tokens);
+
+   for(int i = 0; i < n; i++)
+   {
+      string tok = tokens[i];
+      StringTrimLeft(tok);
+      StringTrimRight(tok);
+
+      // Prefixo, e nao "contem": EURUSD nao e cripto e BTCUSD e.
+      if(StringLen(tok) >= 3 && StringSubstr(alvo, 0, StringLen(tok)) == tok)
+         return(true);
+   }
+
+   return(false);
+}
+
+bool CryptoDailyBrakeOff(string symbol)
+{
+   return(EnableCryptoNoDailyBrake && SymbolIsCrypto(symbol));
+}
+
+//==================================================
+// MAPEIO EXPLICITO DO SIMBOLO DA IA (v1.2.217)
+//==================================================
+// Aplica a tabela AIGatewaySymbolAlias ("DE=PARA;DE2=PARA2") DEPOIS de todas
+// as regras de NormalizeAISymbol. Lista vazia devolve o valor recebido tal e
+// qual - ou seja, sem configuracao o comportamento anterior fica intacto.
+string AIGatewayAliasResolve(string baseSymbol)
+{
+   if(StringLen(AIGatewaySymbolAlias) <= 0 || StringLen(baseSymbol) <= 0)
+      return(baseSymbol);
+
+   string alvo = baseSymbol;
+   StringToUpper(alvo);
+
+   string pares[];
+   int np = StringSplit(AIGatewaySymbolAlias, (ushort)';', pares);
+
+   for(int i = 0; i < np; i++)
+   {
+      string par = pares[i];
+      StringTrimLeft(par);
+      StringTrimRight(par);
+
+      int pos = StringFind(par, "=");
+
+      if(pos <= 0)
+         continue;
+
+      string de   = StringSubstr(par, 0, pos);
+      string para = StringSubstr(par, pos + 1);
+      StringTrimLeft(de);
+      StringTrimRight(de);
+      StringTrimLeft(para);
+      StringTrimRight(para);
+      StringToUpper(de);
+
+      if(StringLen(para) > 0 && de == alvo)
+         return(para);
+   }
+
+   return(baseSymbol);
+}
 
 //==================================================
 // DEBUG - NAO ALTERE
