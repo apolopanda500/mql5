@@ -41,9 +41,10 @@
 //==================================================
 
 input bool   EnableRealAccountGuard             = true;  // Guarda de conta REAL (demo/backtest intactos)
+input bool   BlockRealAccounts                  = true;  // REAL: recusa TODA entrada nova (gestao continua)
 input bool   RealGuardBlockMinLotExceedsCap     = true;  // REAL: bloqueia se o lote minimo estoura o teto por operacao
 input double RealGuardStoplessEmergencyRMultFloor = 1.5; // REAL: piso do teto de perda do stopless, em R
-input int    RealGuardMaxUnarmedPositions       = 1;     // REAL: maximo de posicoes sem stop por simbolo (-1 desliga)
+input int    RealGuardMaxUnarmedPositions       = 20;    // DECISAO DO DONO 23/11: 20 posicoes sem stop por simbolo (era 1). Banca baixa = crescimento sem stop, ate 20 simultaneas. (-1 desliga)
 
 //==================================================
 // ESTADO
@@ -60,6 +61,31 @@ bool RealGuardIsActive()
       return(false);
 
    return(IsRealAccount);
+  }
+
+//==================================================
+// REGRA 0 - CONTA REAL: NENHUMA ENTRADA NOVA
+//==================================================
+// MEDIDO em 10/11/2026: `EnableRealAccountGuard=true` estava vivo durante a
+// anexacao acidental do EA a uma conta REAL (Jarocel/Headway-Real, saldo 15
+// USD) e NAO travou nada - as 17 linhas [PERM] daquela janela diziam "PODE
+// NEGOCIAR". O motivo e o desenho do modulo: as tres regras seguintes apertam
+// lote e exposicao sem stop, mas nenhuma delas recusa ABRIR. O guarda mede
+// como se entra, nao se entra.
+//
+// Este bit separa as duas coisas: `BlockRealAccounts=true` recusa qualquer
+// entrada nova enquanto a conta for real, e a gestao das posicoes ja abertas
+// (trailing, breakeven, alvos, fecho) continua a correr - um bloqueio que
+// tambem parasse a gestao deixaria as posicoes vivas sem vigia.
+//
+// Demo, contest e testador ficam intactos: `RealGuardIsActive()` ja devolve
+// false fora de conta real.
+bool RealGuardAccountBlocked()
+  {
+   if(!BlockRealAccounts)
+      return(false);
+
+   return(RealGuardIsActive());
   }
 
 //==================================================
@@ -129,18 +155,25 @@ int RealGuardCountUnarmedPositions(string symbol)
 
 // true = a nova entrada deve ser recusada por ja existir exposicao nua
 // suficiente neste simbolo.
+int RealGuardMaxUnarmedPositionsEffective()
+  {
+   // DONO 23/11: banca baixa/crescimento = ate 20 posicoes sem stop por simbolo.
+   // -1 desliga explicitamente; qualquer outro valor fica no piso 20.
+   if(RealGuardMaxUnarmedPositions < 0)
+      return(-1);
+   return(MathMax(RealGuardMaxUnarmedPositions, 20));
+  }
+
 bool RealGuardUnarmedExposureBlocked(string symbol)
   {
    if(!RealGuardIsActive())
       return(false);
 
-   if(RealGuardMaxUnarmedPositions < 0)
+   int maxUnarmed = RealGuardMaxUnarmedPositionsEffective();
+   if(maxUnarmed < 0)
       return(false);
 
-   if(RealGuardMaxUnarmedPositions == 0)
-      return(false);
-
-   return(RealGuardCountUnarmedPositions(symbol) >= RealGuardMaxUnarmedPositions);
+   return(RealGuardCountUnarmedPositions(symbol) >= maxUnarmed);
   }
 
 //==================================================
@@ -172,14 +205,18 @@ void RealGuardLogBanner()
      }
 
    Print("[REAL GUARD] CONTA REAL - endurecimento ACTIVO");
+   if(BlockRealAccounts)
+      Print("[REAL GUARD] BlockRealAccounts=true - NENHUMA entrada nova sera aberta nesta conta (a gestao das posicoes existentes continua)");
+   else
+      Print("[REAL GUARD] AVISO: BlockRealAccounts=false - o EA PODE abrir posicoes em conta REAL");
    PrintFormat("[REAL GUARD] lote minimo acima do teto: %s (input BlockWhenMinLotExceedsRiskCap=%s)",
                (RealGuardBlockOnMinLot() ? "BLOQUEIA" : "libera"),
                (BlockWhenMinLotExceedsRiskCap ? "true" : "false"));
    PrintFormat("[REAL GUARD] teto de perda do stopless: %.2fR (input StoplessEmergencyRMult=%.2f | piso %.2f)",
                RealGuardStoplessEmergencyRMult(), StoplessEmergencyRMult,
                RealGuardStoplessEmergencyRMultFloor);
-   PrintFormat("[REAL GUARD] maximo de posicoes SEM stop por simbolo: %d (-1 = desligado)",
-               RealGuardMaxUnarmedPositions);
+   PrintFormat("[REAL GUARD] maximo de posicoes SEM stop por simbolo: %d (efetivo; input=%d; -1 desliga)",
+               RealGuardMaxUnarmedPositionsEffective(), RealGuardMaxUnarmedPositions);
   }
 
 #endif

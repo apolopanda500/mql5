@@ -28,6 +28,19 @@
 // EXECUTION ENGINE
 //==================================================
 
+// P1.3640 (13/11/2026, FONTE - binario NAO recompilado durante a janela de 30 dias)
+// O MOTIVO da recusa de lote passou a viajar numa variavel de modulo. Antes,
+// o motivo so existia no texto das linhas [ENVELOPE]/[RISK], que o DiagGate
+// abafa a 1x/hora; a linha de eco do ExecuteTrade imprimia "motivo acima" a
+// apontar para uma linha que o operador ja nao ve - e repetia-se em cada tick.
+// MEDIDO no journal de 13/11/2026: 670 linhas "EXECUTION: LOTE INVALIDO |
+// GBPUSD | motivo acima (risco/escala)" entre 18:10:40 e 18:46:36, com a causa
+// real (envelope sem sobra: sobra=1.33 USD contra 3.00 USD do lote minimo)
+// impressa UMA vez. Nenhuma regra de risco, lote ou execucao e tocada: muda
+// apenas o que se escreve, e a chave do portao e um desfecho pequeno e estavel
+// (regra do P1.34).
+string g_motivoRecusaLote = "NAO_CLASSIFICADO";
+
 //==================================================
 // NOTA DE CONVICCAO DO SINAL (29/10/2026)
 //==================================================
@@ -162,6 +175,9 @@ double CalculateDynamicLot(
    adxOut   = GetADX(symbol);
    gradeOut = ConvictionGrade(confOut, adxOut);
 
+   // P1.3640: cada chamada comeca sem motivo; quem recusa escreve o seu.
+   g_motivoRecusaLote = "NAO_CLASSIFICADO";
+
    double baseLot = CalculateLotByRiskAuto(symbol, slRefPoints);
 
    if(baseLot <= 0.0)
@@ -205,12 +221,22 @@ double CalculateDynamicLot(
 
       if(balance > 0.0 && perLot > 0.0)
       {
-         double capLot = (balance * MaxRiskPerTradePercentCap / 100.0) / perLot;
+         // v1.2.219 (23/11/2026): em conta micro o tecto percentual (10% de
+         // 4,13 = 0,41 USD) nao paga um lote minimo do broker. O tecto passa a
+         // ter como piso MicroAccountRiskCapUsd (1,00 USD), o valor autorizado
+         // pelo dono, para o lote minimo caber no orcamento por operacao.
+         double capUsd       = balance * MaxRiskPerTradePercentCap / 100.0;
+         double pisoMicroCap = MicroAccountRiskFloor();
+
+         if(pisoMicroCap > 0.0 && capUsd < pisoMicroCap)
+            capUsd = pisoMicroCap;
+
+         double capLot = capUsd / perLot;
 
          if(lot > capLot)
          {
             Print("LOT CAP | ", symbol,
-                  " | teto por operacao ", DoubleToString(MaxRiskPerTradePercentCap, 2),
+                  " | teto por operacao ", DoubleToString(capUsd, 2), " USD (", DoubleToString(MaxRiskPerTradePercentCap, 2),
                   "% = ", DoubleToString(capLot, 3),
                   " lotes | faixa pedia ", DoubleToString(lot, 3));
             lot = capLot;
@@ -225,7 +251,11 @@ double CalculateDynamicLot(
    // capado pela distancia que o stop realmente vai usar. Sem isto, um
    // NZDUSD de 0,60 lotes com stop de 5 pts custou -20,92 USD em 29/10/2026.
    //--------------------------------------------------
-   if(MaxRiskPerTradeUsd > 0.0)
+   // v1.2.219 (23/11/2026): tecto efectivo por operacao ANTES do arredondamento
+   // por step. Em conta micro vale MicroAccountRiskCapUsd (1,00 USD).
+   double capRealUsd = RiskCapPerTradeUsd();
+
+   if(capRealUsd > 0.0)
    {
       double oneRPoints = RiskDistancePointsForCap(symbol, slRefPoints);
 
@@ -235,7 +265,7 @@ double CalculateDynamicLot(
 
          if(perLotReal > 0.0)
          {
-            double capReal = MaxRiskPerTradeUsd / perLotReal;
+            double capReal = capRealUsd / perLotReal;
 
             if(lot > capReal)
             {
@@ -244,7 +274,7 @@ double CalculateDynamicLot(
                // acontece SEMPRE; so o texto passa a sair 1x/hora.
                if(DiagGateAllow(symbol, "LOT_CAP", "REAL", 3600))
                PrintFormat("LOT CAP REAL | %s | 1R=%.0f pts | perda no stop com %.3f lotes = %.2f USD > teto %.2f | lote -> %.3f",
-                           symbol, oneRPoints, lot, lot * perLotReal, MaxRiskPerTradeUsd, capReal);
+                           symbol, oneRPoints, lot, lot * perLotReal, capRealUsd, capReal);
                lot = capReal;
             }
          }
@@ -264,10 +294,29 @@ double CalculateDynamicLot(
    if(maxLot > 0.0 && lot > maxLot)
       lot = maxLot;
 
+   //==================================================
+   // TECTO DE LOTE DO DEGRAU DE CRESCIMENTO (v1.2.215 - 23/11/2026)
+   //==================================================
+   // O lote nunca cresce mais depressa do que o degrau da banca permite:
+   // 0.01 abaixo de 50 USD, 0.02 dos 50 aos 200 USD. Esta camada SO reduz -
+   // nunca aumenta lote, nunca mexe em risco nem em stops.
+   double tetoDegrau = GrowthLotCeiling(symbol);
+
+   if(tetoDegrau > 0.0 && lot > tetoDegrau + 1e-8)
+   {
+      if(DiagGateAllow(symbol, "GROWTH_LOT", DoubleToString(tetoDegrau, 3), 3600))
+         PrintFormat("[GROWTH] lote limitado pelo degrau | %s | %.3f -> %.3f | banca %s (%.2f USD) | alvo %.2f USD",
+                     symbol, lot, tetoDegrau, GrowthTierName(GrowthTier()),
+                     GrowthBalance(), GrowthEffectiveTargetUsd());
+
+      lot = tetoDegrau;
+   }
+
    if(lot < minLot - 1e-8)
    {
       if(!AllowMinLotOverride)
       {
+         g_motivoRecusaLote = "LOT_MIN_SEM_OVERRIDE";
          Print("EXECUTION BLOCK | LOT MIN | ", symbol,
                " | Lot=", DoubleToString(lot, 3),
                " | Min=", DoubleToString(minLot, 3));
@@ -285,6 +334,102 @@ double CalculateDynamicLot(
             " | Risco real excede o configurado");
       lot = minLot;
    }
+
+    //==================================================
+   //==================================================
+   // ALVO MINIMO VIAVEL (v1.2.215 - 23/11/2026)
+   //==================================================
+   // Se o alvo em dinheiro do degrau nao cobre o custo do spread neste lote,
+   // a operacao nao tem como "bater no minimo" pedido pelo dono - recusa com
+   // motivo proprio em vez de abrir um trade que nasce devendo o spread.
+   if(EnableGrowthPolicy && !GrowthTargetFeasible(symbol, lot))
+   {
+      g_motivoRecusaLote = "GROWTH_TARGET_BELOW_COST";
+
+      if(DiagGateAllow(symbol, "GROWTH_COST", "BLOCK", 3600))
+         PrintFormat("[GROWTH] BLOCK | %s | alvo %.2f USD < minimo viavel %.2f USD | custo do spread %.2f USD em %.3f lote",
+                     symbol, GrowthEffectiveTargetUsd(), GrowthMinViableTargetUsd(symbol, lot),
+                     GrowthCostUsd(symbol, lot), lot);
+
+      return(0.0);
+   }
+
+    // ENVELOPE DE RISCO - a decisao que faltava
+    //==================================================
+    // MEDIDO no journal de 05:42:19 (GBPUSD): ordem enviada 0.84 lote =
+    // 252.00 USD contra um envelope de 63.57 USD (0,50% x 12.713,23). O
+    // bloco acima protege o risco por operacao, mas o envelope de risco
+    // aberto nao chegou a entrar no CALCULO do lote. Este bloco reduz o
+    // lote ate caber no envelope real.
+    //
+    // `RiscoPorTradeUsd()` devolve
+    //   - o risco-percent-por-trade configurado (ex.: 0,50% do saldo) se
+    //     nao houver posicoes com risco aberto; ou
+    //   - o que SOBRA no envelope, se as abertas ja comprometerem parte dele.
+    // Se devolver 0,0, o envelope esta CHEIO e o lote vai a 0 (recusa).
+    // Se ValorPorPontoUSD devolver 0,0, e fail-closed: bloqueia a entrada.
+    if(MaxTotalRiskPercent > 0.0)
+    {
+       double riscoDisponivel = RiscoPorTradeUsd();
+       double valorPorPonto   = ValorPorPontoUSD(symbol);
+       double stopPoints      = (double)slRefPoints;
+
+       // FAIL-CLOSED: nao sei o valor do ponto -> nunca deixar passar.
+       if(valorPorPonto <= 0.0)
+       {
+          g_motivoRecusaLote = "ENVELOPE_VPP_DESCONHECIDO";
+          if(DiagGateAllow(symbol, "ENVELOPE", "REFUSE_VPP", 3600))
+             Print("EXECUTION BLOCK | ENVELOPE | ", symbol,
+                   " | ValorPorPonto desconhecido | bloqueio de entrada");
+          return(0.0);
+       }
+
+       if(stopPoints > 0.0 && riscoDisponivel <= 0.0)
+       {
+          // Envelope cheio: recusa sem duplicar o log de ExecuteTrade:847.
+          g_motivoRecusaLote = "ENVELOPE_CHEIO";
+          if(DiagGateAllow(symbol, "ENVELOPE", "FULL", 3600))
+             Print("EXECUTION BLOCK | ENVELOPE DE RISCO ABERTO CHEIO | ", symbol,
+                   " | aberto=", DoubleToString(RiscoAbertoUSD(), 2),
+                   " | teto=", DoubleToString(MaxTotalRiskPercent, 2), "%");
+          return(0.0);
+       }
+
+       if(stopPoints > 0.0 && riscoDisponivel > 0.0)
+       {
+          double riscoEsteLote = valorPorPonto * stopPoints * lot;
+
+          if(riscoEsteLote > riscoDisponivel && riscoEsteLote > 0.0)
+          {
+             double fator = riscoDisponivel / riscoEsteLote;
+
+             if(fator > 0.0)
+             {
+                double novoEnvLot = lot * fator;
+
+                if(step > 0.0)
+                   novoEnvLot = MathFloor(novoEnvLot / step + 1e-8) * step;
+
+                if(novoEnvLot >= minLot - 1e-8 && novoEnvLot > 0.0)
+                {
+                   if(DiagGateAllow(symbol, "ENVELOPE", "REDUCED", 3600))
+                      PrintFormat("[ENVELOPE] teto por sobra | %s | lote %.3f -> %.3f | risco %.2f -> %.2f USD | sobra %.2f USD",
+                                  symbol, lot, novoEnvLot, riscoEsteLote,
+                                  novoEnvLot * valorPorPonto * stopPoints, riscoDisponivel);
+                   lot = novoEnvLot;
+                }
+                else
+                {
+                   g_motivoRecusaLote = "ENVELOPE_SEM_SOBRA_MIN_LOT";
+                   if(DiagGateAllow(symbol, "ENVELOPE", "NO_ROOM", 3600))
+                      PrintFormat("[ENVELOPE] envelope sem sobra para lote minimo | %s | lote %.3f derivado=%.3f | sobra=%.2f USD",
+                                  symbol, lot, novoEnvLot, riscoDisponivel);
+                   return(0.0);
+                }
+             }
+          }
+       }
+    }
 
    // v1.2.57 (P1.34): o desfecho era ConvictionGradeName+lot, e o lote muda a
    // cada candidato - logo o portao nunca via repeticao. MEDIDO no journal do
@@ -314,6 +459,31 @@ bool ExecuteTrade(string symbol,int signal)
 
    if(signal==0)
       return false;
+
+   //------------------------------------------------
+   // CONTA REAL - NENHUMA ENTRADA NOVA (10/11/2026)
+   //------------------------------------------------
+   // O guarda de conta real apertava lote e exposicao sem stop, mas nao
+   // recusava abrir: medido em 10/11/2026, com o EA anexado por engano a uma
+   // conta REAL de 15 USD, as 17 linhas [PERM] diziam "PODE NEGOCIAR" e nada
+   // travava a entrada. Este teste e o bit que faltava.
+   //
+   // Fica na ENTRADA e nao no OnTick de proposito: no OnTick pararia tambem
+   // trailing, breakeven, alvos e fecho, deixando posicoes vivas sem vigia.
+   if(RealGuardAccountBlocked())
+     {
+      static datetime g_lastRealBlockPrint = 0;
+      datetime agoraRealBlock = TimeLocal();
+      if(agoraRealBlock - g_lastRealBlockPrint >= 300)
+        {
+         Print("[TRADE BLOCK] CONTA REAL BLOQUEADA | BlockRealAccounts=true | login=",
+               (long)AccountInfoInteger(ACCOUNT_LOGIN),
+               " | entrada recusada; a gestao das posicoes existentes continua");
+         EventTradeRejected(symbol, "conta real bloqueada", "BLOCK_REAL_ACCOUNTS");
+         g_lastRealBlockPrint = agoraRealBlock;
+        }
+      return false;
+     }
 
    if(!CanTrade(symbol))
    {
@@ -437,7 +607,11 @@ bool ExecuteTrade(string symbol,int signal)
    // lote. O freio olha LucroRealizadoHojeUSD() (deals FECHADOS do EA), nao
    // posicao aberta.
    double slowFactor = 1.0;
-   double metaDia    = EnableDailyProfitTarget ? DailyTargetEffectiveUsd() : 0.0;
+   // v1.2.217 (23/11/2026) - DECISAO DO DONO: em cripto a meta diaria de lucro
+   // NAO fecha o dia (mercado 24/7). A meta deixa de travar entradas, mas o
+   // risco por operacao e o custo minimo do alvo continuam a decidir cada uma.
+   double metaDia    = (EnableDailyProfitTarget && !CryptoDailyBrakeOff(symbol))
+                       ? DailyTargetEffectiveUsd() : 0.0;
 
    if(EnableDailyProfitTarget && metaDia > 0.0)
    {
@@ -549,8 +723,14 @@ bool ExecuteTrade(string symbol,int signal)
 
    if(lot <= 0.0)
    {
+      // P1.3640: motivo vindo da variavel de modulo, e a propria linha de
+      // eco passa pelo DiagGate (desfecho = motivo): a primeira ocorrencia
+      // de cada motivo sai sempre, a repeticao identica sai no maximo a
+      // cada 30 min como prova de vida.
+      if(DiagGateAllow(symbol, "LOTE_NULO", g_motivoRecusaLote, 1800))
       Print("EXECUTION: LOTE INVALIDO | ", symbol,
-            " | motivo acima (risco/escala)");
+            " | motivo=", g_motivoRecusaLote,
+            " | valores na 1a linha [ENVELOPE]/[RISK] do simbolo");
       EventTradeRejected(symbol, "lote invalido (bloqueio de risco)", "INVALID_LOT");
       return false;
    }
@@ -563,7 +743,7 @@ bool ExecuteTrade(string symbol,int signal)
    if(RealGuardUnarmedExposureBlocked(symbol))
    {
       PrintFormat("[REAL GUARD] ENTRADA BLOQUEADA | %s | posicoes sem stop=%d | limite=%d",
-                  symbol, RealGuardCountUnarmedPositions(symbol), RealGuardMaxUnarmedPositions);
+                  symbol, RealGuardCountUnarmedPositions(symbol), RealGuardMaxUnarmedPositionsEffective());
 
       EventTradeRejected(symbol, "exposicao sem stop acima do limite do guarda real", "REAL_GUARD_UNARMED");
       return false;
@@ -585,7 +765,12 @@ bool ExecuteTrade(string symbol,int signal)
    // stop. Toda ordem declara o proprio risco em USD ANTES do envio.
    double oneRDist = RiskDistancePointsForCap(symbol, slRefPts);
 
-   if(MaxRiskPerTradeUsd > 0.0 && oneRDist > 0.0)
+   // v1.2.219 (23/11/2026): tecto efectivo por operacao com o lote FINAL.
+   // Em conta micro vale MicroAccountRiskCapUsd (1,00 USD) em vez do valor
+   // dos inputs, porque 10% de 4,13 USD nao paga sequer o lote minimo.
+   double capOperFinal = RiskCapPerTradeUsd();
+
+   if(capOperFinal > 0.0 && oneRDist > 0.0)
    {
       double perLot1R = RiscoEmDinheiroDaOrdem(symbol, 1.0, oneRDist);
 
@@ -594,9 +779,9 @@ bool ExecuteTrade(string symbol,int signal)
          double riscoFinal = perLot1R * lot;
          string ajuste     = "DENTRO_DO_TETO";
 
-         if(riscoFinal > MaxRiskPerTradeUsd * 1.02)
+         if(riscoFinal > capOperFinal * 1.02)
          {
-            double capLot = MaxRiskPerTradeUsd / perLot1R;
+            double capLot = capOperFinal / perLot1R;
             double stepL  = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
             double minL   = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
 
@@ -610,7 +795,7 @@ bool ExecuteTrade(string symbol,int signal)
             {
                PrintFormat("[RISK] TETO REAL APLICADO | %s | lote %.3f -> %.3f | R=%.0f pts | risco %.2f -> %.2f USD | teto %.2f USD",
                            symbol, lot, capLot, oneRDist, riscoFinal,
-                           capLot * perLot1R, MaxRiskPerTradeUsd);
+                           capLot * perLot1R, capOperFinal);
 
                lot        = capLot;
                riscoFinal = lot * perLot1R;
@@ -622,7 +807,7 @@ bool ExecuteTrade(string symbol,int signal)
                if(RealGuardBlockOnMinLot())
                {
                   PrintFormat("[RISK] MIN_LOT_EXCEEDS_RISK_CAP | %s | lote minimo %.3f | R=%.0f pts | risco %.2f USD > teto %.2f USD | entrada BLOQUEADA",
-                              symbol, minL, oneRDist, minL * perLot1R, MaxRiskPerTradeUsd);
+                              symbol, minL, oneRDist, minL * perLot1R, capOperFinal);
 
                   EventTradeRejected(symbol,
                                      "risco do lote minimo excede o teto por operacao",
@@ -631,7 +816,7 @@ bool ExecuteTrade(string symbol,int signal)
                }
 
                PrintFormat("[RISK] MIN_LOT_EXCEEDS_RISK_CAP | %s | lote minimo %.3f | R=%.0f pts | risco %.2f USD > teto %.2f USD | liberado (BlockWhenMinLotExceedsRiskCap=false)",
-                           symbol, minL, oneRDist, minL * perLot1R, MaxRiskPerTradeUsd);
+                           symbol, minL, oneRDist, minL * perLot1R, capOperFinal);
 
                ajuste = "MIN_LOT_LIBERADO";
             }
@@ -644,8 +829,8 @@ bool ExecuteTrade(string symbol,int signal)
          // estavel) e o risco continua a sair no texto.
          if(DiagGateAllow(symbol, "RISCO_REAL", ajuste, 14400))
          PrintFormat("[RISK] RISCO REAL DA ORDEM | %s | %s | lote=%.3f | R=%.0f pts | risco=%.2f USD | teto=%.2f USD | %.1f%% do teto",
-                     symbol, ajuste, lot, oneRDist, riscoFinal, MaxRiskPerTradeUsd,
-                     (MaxRiskPerTradeUsd > 0.0 ? 100.0 * riscoFinal / MaxRiskPerTradeUsd : 0.0));
+                     symbol, ajuste, lot, oneRDist, riscoFinal, capOperFinal,
+                     (capOperFinal > 0.0 ? 100.0 * riscoFinal / capOperFinal : 0.0));
       }
    }
 
