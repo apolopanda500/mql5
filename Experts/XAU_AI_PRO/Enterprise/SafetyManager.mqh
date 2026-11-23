@@ -153,7 +153,7 @@ void CSafetyManager::Init()
       MaxTradesPerDay;
 
    m_limits.max_total_exposure =
-      10.0;
+      30.0;   // 23/11/2026: autorizado DONO - 10% bloqueava forward micro conta (17% float com 4 posicoes). Guarda mantida em 30%.
 
    m_limits.min_free_margin =
       MinFreeMargin;
@@ -312,6 +312,23 @@ bool CSafetyManager::CheckDailyLoss()
    if(m_limits.max_daily_loss <= 0.0)
       return true;
 
+   // v1.2.217 (23/11/2026) - DECISAO DO DONO: cripto negoceia 24/7 e nao tem
+   // dia que feche, logo os freios DIARIOS nao se aplicam (Config.mqh,
+   // EnableCryptoNoDailyBrake / CryptoSymbolsList). O risco POR OPERACAO, o
+   // envelope de risco aberto e o SL continuam a valer em cripto.
+   if(CryptoDailyBrakeOff(_Symbol))
+   {
+      static string sLogCryptoPerda = "";
+
+      if(sLogCryptoPerda != _Symbol)
+      {
+         PrintFormat("[SAFETY] %s | cripto 24/7: freio de PERDA diaria DESLIGADO (EnableCryptoNoDailyBrake)", _Symbol);
+         sLogCryptoPerda = _Symbol;
+      }
+
+      return true;
+   }
+
    if(m_daily_profit < 0.0)
    {
       double loss =
@@ -340,6 +357,26 @@ bool CSafetyManager::CheckDailyLoss()
 
 bool CSafetyManager::CheckDailyDrawdown()
 {
+   // v1.2.217 (23/11/2026): `0` tem de DESLIGAR o freio. Sem esta guarda a
+   // comparacao `dd >= 0` era verdadeira com dd=0 e o EA bloqueava TODAS as
+   // entradas com o freio supostamente desligado - o oposto do pedido.
+   if(m_limits.max_daily_drawdown <= 0.0)
+      return true;
+
+   // v1.2.217: cripto 24/7 sem freio diario (decisao do dono, 23/11/2026).
+   if(CryptoDailyBrakeOff(_Symbol))
+   {
+      static string sLogCryptoDd = "";
+
+      if(sLogCryptoDd != _Symbol)
+      {
+         PrintFormat("[SAFETY] %s | cripto 24/7: freio de DRAWDOWN diario DESLIGADO (EnableCryptoNoDailyBrake)", _Symbol);
+         sLogCryptoDd = _Symbol;
+      }
+
+      return true;
+   }
+
    double equity =
       AccountInfoDouble(
          ACCOUNT_EQUITY
@@ -419,6 +456,20 @@ bool CSafetyManager::CheckDailyTrades()
 {
    if(m_limits.max_trades_per_day <= 0)
       return true;
+
+   // v1.2.217: cripto sem tecto de numero de operacoes por dia (24/7).
+   if(CryptoDailyBrakeOff(_Symbol))
+   {
+      static string sLogCryptoOps = "";
+
+      if(sLogCryptoOps != _Symbol)
+      {
+         PrintFormat("[SAFETY] %s | cripto 24/7: limite de OPERACOES por dia DESLIGADO (EnableCryptoNoDailyBrake)", _Symbol);
+         sLogCryptoOps = _Symbol;
+      }
+
+      return true;
+   }
 
    int tradesToday = GetEffectiveDailyTradesCount();
 

@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.224
+// XAU_AI_PRO v1.2.225
 //==================================================
 
 #property strict
@@ -33,7 +33,7 @@
 // 1.2.210 -> "1.410". Nao altera comportamento, lote, alvo, stop, spread,
 
 // preco nem risco: corrige apenas o numero que o produto declara sobre si.
-#property version   "1.424"
+#property version   "1.425"
 
 #include <Trade/Trade.mqh>
 
