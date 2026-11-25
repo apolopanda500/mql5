@@ -58,13 +58,20 @@ bool IsSymbolTradeable(string symbol)
    long tradeMode = SymbolInfoInteger(symbol, SYMBOL_TRADE_MODE);
    if(tradeMode == SYMBOL_TRADE_MODE_DISABLED)
    {
-      Print("SYMBOL MANAGER | Trade disabled | ", symbol);
+      // 23/11/2026: medido 240 linhas em 20 000 de journal so deste aviso -
+      // o mesmo simbolo desactivado e re-resolvido em cada ciclo/recarga.
+      // Passa a 1x/dia por CONTA e simbolo. A recusa (return false) e igual.
+      if(AccountLogGatePodeImprimir("symmg_trade_off_" + symbol, 86400))
+         Print("SYMBOL MANAGER | Trade disabled | ", symbol);
+
       return false;
    }
 
    if(tradeMode == SYMBOL_TRADE_MODE_CLOSEONLY)
    {
-      Print("SYMBOL MANAGER | Close-only mode | ", symbol);
+      if(AccountLogGatePodeImprimir("symmg_closeonly_" + symbol, 86400))
+         Print("SYMBOL MANAGER | Close-only mode | ", symbol);
+
       return false;
    }
 
@@ -284,12 +291,27 @@ bool InitSymbolManager()
    int    totalMW    = SymbolsTotal(true);
    string duplicados = "";
 
+   // v1.2.206 (11/11/2026): simbolos retirados por SymbolsExclude. Contados
+   // para a linha [SYMS] provar que a exclusao agiu, em vez de a lista
+   // parecer apenas mais curta do que a configuracao.
+   int    excluidos      = 0;
+   string listaExcluidos = "";
+
    for(int i = 0; i < count; i++)
    {
       string symbol = ResolveBrokerSymbol(temp[i]);
 
       if(symbol == "")
          continue;
+
+      if(SymbolExcluido(symbol))
+      {
+         if(listaExcluidos != "")
+            listaExcluidos += ",";
+         listaExcluidos += symbol;
+         excluidos++;
+         continue;
+      }
 
       if(SymbolAlreadyActive(symbol))
       {
@@ -331,6 +353,15 @@ bool InitSymbolManager()
          if(mwSymbol == "")
             continue;
 
+         if(SymbolExcluido(mwSymbol))
+         {
+            if(listaExcluidos != "")
+               listaExcluidos += ",";
+            listaExcluidos += mwSymbol;
+            excluidos++;
+            continue;
+         }
+
          if(SymbolAlreadyActive(mwSymbol))
             continue;
 
@@ -352,7 +383,17 @@ bool InitSymbolManager()
 
    bool graficoAdicionado = false;
 
-   if(!SymbolAlreadyActive(selfResolved) && IsSymbolTradeable(selfResolved))
+   // v1.2.206: o proprio grafico pode estar no simbolo excluido. Nao entra,
+   // e a recusa e contada para o operador ver que a exclusao venceu o
+   // privilegio do simbolo do grafico.
+   if(SymbolExcluido(selfResolved))
+     {
+      if(listaExcluidos != "")
+         listaExcluidos += ",";
+      listaExcluidos += selfResolved;
+      excluidos++;
+     }
+   else if(!SymbolAlreadyActive(selfResolved) && IsSymbolTradeable(selfResolved))
      {
       int selfSize = ArraySize(ActiveSymbols);
       ArrayResize(ActiveSymbols, selfSize + 1);
@@ -364,9 +405,16 @@ bool InitSymbolManager()
    // que o P1.19 publicava continua, agora com o universo JA completo e com a
    // origem dita por extenso (antes avisava que o simbolo do grafico nao estava
    // em `Symbols` e nada era feito com essa informacao).
+   // v1.2.206: linha propria, com gate proprio. A [SYMS] UNIVERSO e 1x/dia
+   // por conta e por isso nao serve para provar a exclusao num reinicio.
+   if(excluidos > 0 && AccountLogGatePodeImprimir("syms_exclusao", 3600))
+      Print("[SYMS] EXCLUIDOS | ", listaExcluidos, " | retirados=", excluidos,
+            " | deSymbols=", count, " | ativos=", ArraySize(ActiveSymbols));
+
    if(AccountLogGatePodeImprimir("syms_universo", 86400))
       Print("[SYMS] UNIVERSO | marketwatch=", totalMW, " | deSymbols=", count,
             " | adicionadosDoMarketWatch=", mwAdicionados,
+            " | excluidos=", excluidos, (listaExcluidos != "" ? (" (" + listaExcluidos + ")") : ""),
             " | grafico=", selfResolved, (graficoAdicionado ? " (adicionado)" : ""),
             " | ativos=", ArraySize(ActiveSymbols), " | origem=",
             (SymbolsFromMarketWatch ? "Symbols+MarketWatch+grafico" : "Symbols+grafico"));

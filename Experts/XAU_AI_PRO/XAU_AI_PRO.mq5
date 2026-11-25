@@ -1,5 +1,5 @@
 //==================================================
-// XAU_AI_PRO v1.2.226
+// XAU_AI_PRO v1.2.238
 //==================================================
 
 #property strict
@@ -33,7 +33,7 @@
 // 1.2.210 -> "1.410". Nao altera comportamento, lote, alvo, stop, spread,
 
 // preco nem risco: corrige apenas o numero que o produto declara sobre si.
-#property version   "1.426"
+#property version   "1.439"
 
 #include <Trade/Trade.mqh>
 
@@ -1146,8 +1146,15 @@ int OnInit()
 
 // ETAPA 15.6: EventEmitter (canal oficial de eventos)
    EventInit();
+   // v1.2.233 - P1.3664: no arranque os dois marcadores de sistema esperam ate
+   // ~6 s pelo lock (EV_LOCK_RETRIES_INIT). MEDIDO no arranque de 21:19: com 1,2 s
+   // de paciencia, GOLD, BTCUSD e EURUSD perderam SYSTEM_START e FORWARD_TEST_START
+   // porque o lock estava ocupado por outro grafico - e sao exactamente as linhas com
+   // que o agregador Python segmenta o forward. Fora do arranque volta a 1,2 s.
+   EventLockPatience(EV_LOCK_RETRIES_INIT);
    EventSystemStart("mode=live chart=" + _Symbol);
    EventForwardStart("forward test ativo");
+   EventLockPatience(EV_LOCK_RETRIES);
 
    if(!InitializeModules())
      {

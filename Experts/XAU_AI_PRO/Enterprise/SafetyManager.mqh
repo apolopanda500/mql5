@@ -338,11 +338,16 @@ bool CSafetyManager::CheckDailyLoss()
 
       if(loss >= m_limits.max_daily_loss)
       {
-         PrintFormat(
-            "[SAFETY] Daily loss limit: %.2f/%.2f",
-            loss,
-            m_limits.max_daily_loss
-         );
+         // 23/11/2026: esta linha saia a cada tick em cada grafico (medido:
+         // 10 309 linhas em 20 000 = 51% do journal numa unica noite). O veto
+         // NAO muda; a linha passa a 1x/5 min por CONTA. Medido antes:
+         // 1 226 linhas em 5 minutos. Nenhum limite, lote ou regra foi tocado.
+         if(AccountLogGatePodeImprimir("safety_dailyloss", 300))
+            PrintFormat(
+               "[SAFETY] Daily loss limit: %.2f/%.2f",
+               loss,
+               m_limits.max_daily_loss
+            );
 
          return false;
       }
@@ -434,13 +439,16 @@ bool CSafetyManager::CheckDailyDrawdown()
 
    if(dd >= m_limits.max_daily_drawdown)
    {
-      PrintFormat(
-         "[SAFETY] Daily loss limit: %.2f%%/%.2f%% (realizado %.2f de %.2f)",
-         dd,
-         m_limits.max_daily_drawdown,
-         perdaDoDia,
-         base
-      );
+      // 23/11/2026: mesma correcao do CheckDailyLoss - o veto fica igual, a
+      // linha passa a 1x/5 min por CONTA em vez de 1x por tick por grafico.
+      if(AccountLogGatePodeImprimir("safety_dailydd", 300))
+         PrintFormat(
+            "[SAFETY] Daily loss limit: %.2f%%/%.2f%% (realizado %.2f de %.2f)",
+            dd,
+            m_limits.max_daily_drawdown,
+            perdaDoDia,
+            base
+         );
 
       return false;
    }

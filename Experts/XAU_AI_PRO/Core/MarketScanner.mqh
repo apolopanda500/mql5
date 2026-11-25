@@ -154,12 +154,58 @@ int      g_scanAdxVPub      = 0;
 int      g_scanSigNoReadPub = 0;
 int      g_scanSigNeutroPub = 0;
 
+// v1.2.229 (24/11/2026) - FUNIL AllowTrade (observabilidade pura).
+// MEDIDO 23/11: SCANNER RESUMO mostrou sinais=1845, AllowTrade=1845, trades=0,
+// mas o motivo dentro de AllowTrade fica escondido pelo throttle de log.
+// Estes contadores NAO mudam nenhuma decisao; so agregam por janela publicada.
+#define FUNNEL_BUCKETS 8
+enum ENUM_FUNNEL_BUCKET
+  {
+   FUNNEL_VAL_TREND = 0,
+   FUNNEL_VAL_MTF,
+   FUNNEL_VAL_OTHER,
+   FUNNEL_NEWS,
+   FUNNEL_MARKET,
+   FUNNEL_CORREL,
+   FUNNEL_SCORE,
+   FUNNEL_ADV_AI
+  };
+string g_funnelNome[FUNNEL_BUCKETS] = {"VAL_TREND","VAL_MTF","VAL_OUTRO","NEWS","MARKET","CORREL","SCORE","ADV_AI"};
+int    g_funnelQtd[FUNNEL_BUCKETS];
+
+int FunnelClassifyAllow(const string detalhe)
+  {
+   int p = StringFind(detalhe, "Motivo=");
+   string m = (p >= 0 ? StringSubstr(detalhe, p + 7) : detalhe);
+   StringTrimLeft(m);
+   StringTrimRight(m);
+
+   if(StringFind(m, "VALIDATION: TREND") == 0) return FUNNEL_VAL_TREND;
+   if(StringFind(m, "VALIDATION: MTF") == 0)   return FUNNEL_VAL_MTF;
+   if(StringFind(m, "VALIDATION:") == 0)       return FUNNEL_VAL_OTHER;
+   if(StringFind(m, "NEWS:") == 0)             return FUNNEL_NEWS;
+   if(StringFind(m, "MARKET INTEL:") == 0)     return FUNNEL_MARKET;
+   if(StringFind(m, "SCORE ") == 0)            return FUNNEL_SCORE;
+   if(StringFind(m, "ADV AI") == 0)            return FUNNEL_ADV_AI;
+   if(StringFind(m, "CORREL") == 0)            return FUNNEL_CORREL;
+   return FUNNEL_VAL_OTHER;
+  }
+
 void ScanBlock(ENUM_SCAN_BUCKET bucket, string symbol, string detalhe="")
 {
    int i = (int)bucket;
 
    if(i >= 0 && i < SCAN_BUCKETS)
       g_scanQtd[i]++;
+
+   // v1.2.229: contagem de funil sempre ativa (mesmo com verbose off/throttle),
+   // porque o RESUMO depende dela. Nenhuma decisao muda.
+   if(bucket == SCAN_ALLOW_TRADE)
+     {
+      int fb = FunnelClassifyAllow(detalhe);
+      if(fb >= 0 && fb < FUNNEL_BUCKETS)
+         g_funnelQtd[fb]++;
+     }
 
    if(!EnableVerboseDebug || MQLInfoInteger(MQL_TESTER))
       return;
@@ -310,6 +356,19 @@ void ScanFlush(datetime now)
             (partes == "" ? "" : " | " + partes),
             prova);
 
+      // v1.2.229: quebra do AllowTrade por motivo (observabilidade pura).
+      // A mesma janela do RESUMO - sem nova cadencia, sem mudar veredito.
+      string funil = "";
+      int allowTotal = (SCAN_ALLOW_TRADE >= 0 && SCAN_ALLOW_TRADE < SCAN_BUCKETS ? g_scanQtd[SCAN_ALLOW_TRADE] : 0);
+      for(int fb = 0; fb < FUNNEL_BUCKETS; fb++)
+        {
+         if(g_funnelQtd[fb] <= 0)
+            continue;
+         funil += (funil == "" ? "" : " ") + g_funnelNome[fb] + "=" + IntegerToString(g_funnelQtd[fb]);
+        }
+      Print("[FUNIL] AllowTrade=", allowTotal,
+            (funil == "" ? " | (sem bloqueio AllowTrade)" : " | " + funil));
+
       publicouResumo = true;
 
       g_scanSilencio = now;
@@ -342,6 +401,8 @@ void ScanFlush(datetime now)
    g_scanSimbolos = 0;
    g_scanSinais   = 0;
       g_scanTrades   = 0;
+      for(int fb = 0; fb < FUNNEL_BUCKETS; fb++)
+         g_funnelQtd[fb] = 0;
      }
    g_scanJanela   = now;
 }
@@ -520,7 +581,9 @@ void ReadOnlyScanTick(int portaoCodigo)
         }
      }
 
-   Print("[DIAGSCAN] portao do grafico=FECHADO | codigo=", IntegerToString(portaoCodigo), " | suite=", (CTradeGate::EvaluateSuite() == TG_OK ? "ABERTA" : "FECHADA"),
+   Print("[DIAGSCAN] portao do grafico=", (CTradeGate::Ok() ? "ABERTO" : "FECHADO"),
+         " | codigo=", IntegerToString(portaoCodigo),
+         " | suite=", (CTradeGate::EvaluateSuite() == TG_OK ? "ABERTA" : "FECHADA"),
          " | simbolos=", IntegerToString(total),
          " | frescos=", IntegerToString(frescos),
          " | stale=", IntegerToString(stale), (staleTxt == "" ? "" : " [" + staleTxt + "]"),
@@ -528,7 +591,8 @@ void ReadOnlyScanTick(int portaoCodigo)
          " | sinais=", IntegerToString(comprados + vendidos), (sinalTxt == "" ? "" : " [" + sinalTxt + "]"),
          " | neutros=", IntegerToString(neutros),
          " | sem_leitura=", IntegerToString(semLeitura),
-         " | modo=SO LEITURA nesta instancia (o grafico dono e que envia)");
+         " | modo=", (CTradeGate::Ok() ? "PODE NEGOCIAR" : "SO LEITURA"), " nesta instancia | ", CTradeGate::SuiteNote(),
+         " | ", CTradeGate::Bits());
 }
 
 //==================================================

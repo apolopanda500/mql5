@@ -74,7 +74,13 @@ static string EV_FILE = "Data\\forward_test_events.csv";
 static bool   evInitialized = false;
 
 // Versao local (nao depende de VersionManager)
-#define EV_VERSION_STRING "1.2.191"
+// v1.2.231 (24/11/2026) - P1.3662: alinhado com EA_VERSION_STRING.
+// MEDIDO: o journal dizia "XAU_AI_PRO (ETHUSD,M5) ... v1.2.230" enquanto o
+// CSV do forward escrevia "EA inicializado 1.2.229" na linha SYSTEM_START,
+// porque este literal e local e ficou para tras no bump anterior. A linha
+// SYSTEM_START e a que rotula o build no ficheiro que o Python agrega: com
+// ela atrasada, a agregacao do dia atribui os eventos ao build antigo.
+#define EV_VERSION_STRING "1.2.239"
 
 // F4: estatisticas locais de escrita desta instancia
 int g_ev_written = 0;      // total de eventos gravados (esta instancia)
@@ -161,6 +167,34 @@ bool EventWriteLine(const string event,
       return false;
      }
 
+   //==================================================
+   // v1.2.231 (24/11/2026) - P1.3662: QUEM VAI ESCREVER CONFIRMA A POSSE
+   //
+   // MEDIDO no Files\Data\forward_test_events.csv: 1 192 linhas malformadas
+   // em 65 688 (1,8%), com a assinatura de dois escritores no mesmo offset
+   // ("NE" = cauda de "ONLINE", dois timestamp concatenados). O lock existe,
+   // mas entre o EventLockAcquire() do EventEmit e este FileSeek passa o
+   // FileOpen, e uma instancia que julgue o lock expirado (TTL) pode
+   // substituir o token nesse intervalo: as duas escrevem depois no mesmo
+   // fim-de-ficheiro, cada uma com o SEU ponteiro.
+   // Aqui a posse e reconfirmada imediatamente antes da escrita. Se o token
+   // ja nao for o desta instancia, a linha e abandonada (drop contabilizado)
+   // em vez de sobrepor a linha de outra instancia.
+   // Nenhum limite, lote, alvo, stop, spread, preco, RR, regra de entrada ou
+   // de saida, ou parametro de risco e tocado: muda apenas se uma escrita
+   // que perdeu o lock chega ou nao ao ficheiro.
+   //==================================================
+   if(!EventLockOwned())
+     {
+      FileClose(h);
+      g_ev_dropped++;
+      Print("[EVENT] DROP | lock perdido antes da escrita | ", event,
+            " | ", sym,
+            " | total_dropped=", g_ev_dropped,
+            " | ", EventLockStats());
+      return false;
+     }
+
    FileSeek(h, 0, SEEK_END);
 
    FileWrite(h,
@@ -204,19 +238,44 @@ bool EventEmit(
    //--------------------------------------------------
    // F4: serializa a escrita (1 produtor por vez no CSV).
    //--------------------------------------------------
-   if(!EventLockAcquire())
+   // v1.2.237 - P1.3668: PERDER A POSSE DEPOIS DE A ADQUIRIR NAO E
+   // MOTIVO PARA PERDER O MARCADOR. MEDIDO no arranque simultaneo
+   // dos 5 graficos as 22:07:23.861 (build v1.2.236): BTCUSD
+   // adquiriu o lock e 60 ms depois ja nao era dono, e a linha
+   // SYSTEM_START foi abandonada, exactamente a linha com que o
+   // agregador Python segmenta o forward. O drop continua a existir
+   // como ultimo recurso, mas deixa de ser a primeira resposta: se a
+   // posse caiu antes da escrita, a linha NAO entrou no ficheiro e
+   // volta a ser tentada com o lock readquirido (3 tentativas).
+   // Nenhum limite, lote, alvo, stop, spread, preco, RR ou regra de
+   // entrada e de saida e tocado: muda apenas quantas vezes INSISTE
+   // uma escrita que ainda nao aconteceu.
+   bool ok = false;
+   for(int tentativa = 1; tentativa <= 3; tentativa++)
      {
-      g_ev_dropped++;
-      Print("[EVENT] DROP | ", event, " | ", symbol,
-            " | total_dropped=", g_ev_dropped,
-            " | timeouts=", g_ev_lock_timeouts);
-      return false;
+      if(!EventLockAcquire())
+        {
+         g_ev_dropped++;
+         Print("[EVENT] DROP | ", event, " | ", symbol,
+               " | total_dropped=", g_ev_dropped,
+               " | timeouts=", g_ev_lock_timeouts);
+         return false;
+        }
+
+      ok = EventWriteLine(event, severity, sym, tf, ticket,
+                          module, message, value, status);
+
+      bool aindaDono = EventLockOwned();
+      EventLockRelease();
+
+      // Escrita aceite (ok) ou recusada por outra causa que nao a
+      // posse: nao ha nada a repetir.
+      if(ok || aindaDono)
+         break;
+
+      if(tentativa < 3)
+         Sleep(0);
      }
-
-   bool ok = EventWriteLine(event, severity, sym, tf, ticket,
-                            module, message, value, status);
-
-   EventLockRelease();
 
    if(ok)
       g_ev_written++;
@@ -269,10 +328,12 @@ bool EventAIPrediction(string symbol, string signal, string score)
                     "Predicao IA", signal, score);
 }
 
-bool EventAIBlock(string symbol, string reason)
+bool EventAIBlock(string symbol, string reason, string causa = "")
 {
+   string detalhe = (causa == "" ? "IA indisponivel/bloqueio"
+                                 : "IA indisponivel/bloqueio: " + causa);
    return EventEmit(EV_AI_BLOCK, EV_SEV_WARN, symbol, "AI",
-                    "IA indisponivel/bloqueio", reason, "UNAVAILABLE");
+                    detalhe, reason, "UNAVAILABLE");
 }
 
 bool EventAIError(string symbol, string reason)
